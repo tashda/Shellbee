@@ -1,0 +1,23 @@
+.DS_Store
+
+# Build products
+build/
+DerivedData/
+
+# Xcode user state
+*.xcuserstate
+**/xcuserdata/
+
+# Local AI assistant instructions
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# Local planning and scratch docs
+CACHE_PLAN.md
+PLAN.md
+REFINEMENT_PLAN.md
+SETTINGS_ARCHITECTURE.md
+
+# Local logs and diagnostics
+Z2Mlog.txt

@@ -1,0 +1,691 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0A9D45D12F96232B00DF6DF5 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A9D45D02F96232B00DF6DF5 /* WidgetKit.framework */; };
+		0A9D45D32F96232B00DF6DF5 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A9D45D22F96232B00DF6DF5 /* SwiftUI.framework */; };
+		0A9D45E22F96232C00DF6DF5 /* ShellbeeWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0A9D45E02F96232C00DF6DF5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A9D45052F96077A00DF6DF5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A9D45CD2F96232B00DF6DF5;
+			remoteInfo = ShellbeeWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0A9D45E32F96232C00DF6DF5 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				0A9D45E22F96232C00DF6DF5 /* ShellbeeWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0A9D450D2F96077A00DF6DF5 /* Shellbee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Shellbee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShellbeeWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A9D45D02F96232B00DF6DF5 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		0A9D45D22F96232B00DF6DF5 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		0A9D45EE2F96238500DF6DF5 /* Shellbee.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Shellbee.entitlements; sourceTree = "<group>"; };
+		0A9D45EF2F96238500DF6DF5 /* ShellbeeWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShellbeeWidgets.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0A9D45E72F96232C00DF6DF5 /* Exceptions for "ShellbeeWidgets" folder in "ShellbeeWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */;
+		};
+		0A9D45E92F96238500DF6DF5 /* Exceptions for "Shellbee" folder in "ShellbeeWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/AppEnvironment.swift,
+				App/ConnectionSessionController.swift,
+				App/MainTabView.swift,
+				App/RootView.swift,
+				Assets.xcassets,
+				ShellbeeApp.swift,
+				ContentView.swift,
+				Core/Log/LogContext.swift,
+				Core/Log/LogMapperEngine.swift,
+				Core/Log/Z2MLogPatterns.swift,
+				Core/Models/AppearanceMode.swift,
+				Core/Models/BridgeHealth.swift,
+				Core/Models/BridgeInfo.swift,
+				Core/Models/BridgeSettings.swift,
+				Core/Models/ConnectionHistory.swift,
+				Core/Models/DeviceDoc.swift,
+				Core/Models/Group.swift,
+				Core/Models/LogEntry.swift,
+				Core/Models/LogMessage.swift,
+				Core/Models/TouchlinkDevice.swift,
+				Core/Networking/ConnectionConfig.swift,
+				Core/Networking/Z2MDiscoveryService.swift,
+				Core/Networking/Z2MError.swift,
+				Core/Networking/Z2MEvent.swift,
+				Core/Networking/Z2MMessageRouter.swift,
+				Core/Networking/Z2MTopics.swift,
+				Core/Networking/Z2MWebSocketClient.swift,
+				Core/Networking/Z2MWebSocketSessionDelegate.swift,
+				Core/Parsing/DocParser.swift,
+				Core/Services/DeviceDocService.swift,
+				Core/Store/AppStore.swift,
+				Features/Bridge/PhilipsHueResetSheet.swift,
+				Features/Bridge/TouchlinkDeviceRow.swift,
+				Features/Bridge/TouchlinkView.swift,
+				Features/Connection/ConnectionEditorView.swift,
+				Features/Connection/ConnectionFormSections.swift,
+				Features/Connection/ConnectionOverviewView.swift,
+				Features/Connection/ConnectionSetupView.swift,
+				Features/Connection/ConnectionViewModel.swift,
+				Features/Devices/AddBindingSheet.swift,
+				Features/Devices/AddReportingSheet.swift,
+				Features/Devices/BindingRow.swift,
+				Features/Devices/DeviceBindView.swift,
+				Features/Devices/DeviceDetailView.swift,
+				Features/Devices/DeviceDocView.swift,
+				Features/Devices/DeviceFilterMenu.swift,
+				Features/Devices/DeviceFilterMenuSnapshot.swift,
+				Features/Devices/DeviceListRow.swift,
+				Features/Devices/DeviceListView.swift,
+				Features/Devices/DeviceListViewModel.swift,
+				Features/Devices/DevicePairingSheet.swift,
+				Features/Devices/DeviceReportingView.swift,
+				Features/Devices/DeviceRowView.swift,
+				Features/Devices/DeviceSettingsView.swift,
+				Features/Devices/PendingDeviceAlert.swift,
+				Features/Groups/AddGroupMemberDeviceRow.swift,
+				Features/Groups/AddGroupMembersSheet.swift,
+				Features/Groups/AddGroupSheet.swift,
+				Features/Groups/GroupCard.swift,
+				Features/Groups/GroupCardFooterBar.swift,
+				Features/Groups/GroupCardHeader.swift,
+				Features/Groups/GroupDetailView.swift,
+				Features/Groups/GroupDetailViewModel.swift,
+				Features/Groups/GroupListRow.swift,
+				Features/Groups/GroupListView.swift,
+				Features/Groups/GroupListViewModel.swift,
+				Features/Groups/GroupMemberRow.swift,
+				Features/Groups/GroupMembersSection.swift,
+				Features/Groups/GroupRowView.swift,
+				Features/Groups/GroupScenesSection.swift,
+				Features/Groups/RemoveGroupSheet.swift,
+				Features/Groups/RenameGroupSheet.swift,
+				Features/Home/HomeBridgeCard.swift,
+				Features/Home/HomeCardComponents.swift,
+				Features/Home/HomeDevicesCard.swift,
+				Features/Home/HomeMeshCard.swift,
+				Features/Home/HomeSnapshot.swift,
+				Features/Home/HomeStatsSnapshot.swift,
+				Features/Home/HomeView.swift,
+				Features/Home/PermitJoinActiveSheet.swift,
+				Features/Home/PermitJoinSheet.swift,
+				Features/Home/PermitJoinToolbarButton.swift,
+				Features/Logs/LogDetailChangesSection.swift,
+				Features/Logs/LogDetailDevicesSection.swift,
+				Features/Logs/LogDetailSummaryBarView.swift,
+				Features/Logs/LogDetailView.swift,
+				Features/Logs/LogDeviceFilterSheet.swift,
+				Features/Logs/LogFilterMenu.swift,
+				Features/Logs/LogRowView.swift,
+				Features/Logs/LogsView.swift,
+				Features/Logs/LogsViewModel.swift,
+				Features/Settings/AboutView.swift,
+				Features/Settings/AppGeneralView.swift,
+				Features/Settings/AvailabilitySettingsView.swift,
+				Features/Settings/FrontendSettingsView.swift,
+				Features/Settings/HealthSettingsView.swift,
+				Features/Settings/HomeAssistantSettingsView.swift,
+				Features/Settings/LoggingSettingsView.swift,
+				Features/Settings/MainSettingsView.swift,
+				Features/Settings/MQTTSettingsView.swift,
+				Features/Settings/NetworkAccessSettingsView.swift,
+				Features/Settings/NetworkSettingsView.swift,
+				Features/Settings/OTASettingsView.swift,
+				Features/Settings/SerialSettingsView.swift,
+				Features/Settings/ServerDetailView.swift,
+				Features/Settings/SettingsView.swift,
+				LiveActivities/ConnectionLiveActivityCoordinator.swift,
+				LiveActivities/LiveActivityController.swift,
+				LiveActivities/OTAUpdateLiveActivityCoordinator.swift,
+				Shared/CardDisplayMode.swift,
+				Shared/ClimateControl/ClimateControlCard.swift,
+				Shared/ClimateControl/ClimateControlContext.swift,
+				Shared/Components/BeautifulPayloadView.swift,
+				Shared/Components/BeautifulRow.swift,
+				Shared/Components/DevicePickerRow.swift,
+				Shared/Components/Doc/DefaultDocSectionView.swift,
+				Shared/Components/Doc/DeviceInfoCardView.swift,
+				Shared/Components/Doc/DocBlockView.swift,
+				Shared/Components/Doc/DocInlineTextView.swift,
+				Shared/Components/Doc/DocNoteView.swift,
+				Shared/Components/Doc/DocOptionRowView.swift,
+				Shared/Components/Doc/DocSectionRegistry.swift,
+				Shared/Components/Doc/DocStepListView.swift,
+				Shared/Components/Doc/OptionsSectionView.swift,
+				Shared/Components/Doc/PairingSectionView.swift,
+				Shared/Components/FilterChip.swift,
+				Shared/Components/MemberAvatarStack.swift,
+				Shared/Components/SafariBrowserView.swift,
+				Shared/CoverControl/CoverControlCard.swift,
+				Shared/CoverControl/CoverControlContext.swift,
+				"Shared/DesignTokens+Groups.swift",
+				Shared/ExposeCardView.swift,
+				Shared/FanControl/FanControlCard.swift,
+				Shared/FanControl/FanControlContext.swift,
+				Shared/GenericExposeCard/GenericExposeCard.swift,
+				"Shared/LightControl/Color+HexString.swift",
+				Shared/LightControl/LightAdvancedFeatureRow.swift,
+				Shared/LightControl/LightAdvancedSheet.swift,
+				Shared/LightControl/LightColorControl.swift,
+				Shared/LightControl/LightConfigBar.swift,
+				Shared/LightControl/LightControlCard.swift,
+				Shared/LightControl/LightControlContext.swift,
+				Shared/LightControl/LightDisplayColor.swift,
+				Shared/LightControl/LightEffectsSheet.swift,
+				Shared/LightControl/LightTemperatureControl.swift,
+				Shared/LockControl/LockControlCard.swift,
+				Shared/LockControl/LockControlContext.swift,
+				Shared/RemoteCard/RemoteCard.swift,
+				Shared/SensorCard/SensorCard.swift,
+				Shared/SwitchControl/SwitchControlCard.swift,
+				Shared/SwitchControl/SwitchControlContext.swift,
+			);
+			target = 0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		0A9D450F2F96077A00DF6DF5 /* Shellbee */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0A9D45E92F96238500DF6DF5 /* Exceptions for "Shellbee" folder in "ShellbeeWidgetsExtension" target */,
+			);
+			path = Shellbee;
+			sourceTree = "<group>";
+		};
+		0A9D45D42F96232B00DF6DF5 /* ShellbeeWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0A9D45E72F96232C00DF6DF5 /* Exceptions for "ShellbeeWidgets" folder in "ShellbeeWidgetsExtension" target */,
+			);
+			path = ShellbeeWidgets;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0A9D450A2F96077A00DF6DF5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0A9D45CB2F96232B00DF6DF5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0A9D45D32F96232B00DF6DF5 /* SwiftUI.framework in Frameworks */,
+				0A9D45D12F96232B00DF6DF5 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0A9D45042F96077A00DF6DF5 = {
+			isa = PBXGroup;
+			children = (
+				0A9D45EE2F96238500DF6DF5 /* Shellbee.entitlements */,
+				0A9D45EF2F96238500DF6DF5 /* ShellbeeWidgets.entitlements */,
+				0A9D450F2F96077A00DF6DF5 /* Shellbee */,
+				0A9D45D42F96232B00DF6DF5 /* ShellbeeWidgets */,
+				0A9D45CF2F96232B00DF6DF5 /* Frameworks */,
+				0A9D450E2F96077A00DF6DF5 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0A9D450E2F96077A00DF6DF5 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0A9D450D2F96077A00DF6DF5 /* Shellbee.app */,
+				0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0A9D45CF2F96232B00DF6DF5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				0A9D45D02F96232B00DF6DF5 /* WidgetKit.framework */,
+				0A9D45D22F96232B00DF6DF5 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A9D450C2F96077A00DF6DF5 /* Shellbee */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0A9D45182F96077B00DF6DF5 /* Build configuration list for PBXNativeTarget "Shellbee" */;
+			buildPhases = (
+				0A9D45092F96077A00DF6DF5 /* Sources */,
+				0A9D450A2F96077A00DF6DF5 /* Frameworks */,
+				0A9D450B2F96077A00DF6DF5 /* Resources */,
+				0A9D45E32F96232C00DF6DF5 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0A9D45E12F96232C00DF6DF5 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				0A9D450F2F96077A00DF6DF5 /* Shellbee */,
+			);
+			name = Shellbee;
+			packageProductDependencies = (
+			);
+			productName = Shellbee;
+			productReference = 0A9D450D2F96077A00DF6DF5 /* Shellbee.app */;
+			productType = "com.apple.product-type.application";
+		};
+		0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0A9D45E62F96232C00DF6DF5 /* Build configuration list for PBXNativeTarget "ShellbeeWidgetsExtension" */;
+			buildPhases = (
+				0A9D45CA2F96232B00DF6DF5 /* Sources */,
+				0A9D45CB2F96232B00DF6DF5 /* Frameworks */,
+				0A9D45CC2F96232B00DF6DF5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				0A9D450F2F96077A00DF6DF5 /* Shellbee */,
+				0A9D45D42F96232B00DF6DF5 /* ShellbeeWidgets */,
+			);
+			name = ShellbeeWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = ShellbeeWidgetsExtension;
+			productReference = 0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0A9D45052F96077A00DF6DF5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					0A9D450C2F96077A00DF6DF5 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+					0A9D45CD2F96232B00DF6DF5 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+				};
+			};
+			buildConfigurationList = 0A9D45082F96077A00DF6DF5 /* Build configuration list for PBXProject "Shellbee" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 0A9D45042F96077A00DF6DF5;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0A9D450E2F96077A00DF6DF5 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0A9D450C2F96077A00DF6DF5 /* Shellbee */,
+				0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0A9D450B2F96077A00DF6DF5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0A9D45CC2F96232B00DF6DF5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0A9D45092F96077A00DF6DF5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0A9D45CA2F96232B00DF6DF5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0A9D45E12F96232C00DF6DF5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */;
+			targetProxy = 0A9D45E02F96232C00DF6DF5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0A9D45162F96077B00DF6DF5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		0A9D45172F96077B00DF6DF5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		0A9D45192F96077B00DF6DF5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		0A9D451A2F96077B00DF6DF5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		0A9D45E42F96232C00DF6DF5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShellbeeWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Shellbee Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.shellbeeWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		0A9D45E52F96232C00DF6DF5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShellbeeWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Shellbee Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.shellbeeWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0A9D45082F96077A00DF6DF5 /* Build configuration list for PBXProject "Shellbee" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A9D45162F96077B00DF6DF5 /* Debug */,
+				0A9D45172F96077B00DF6DF5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0A9D45182F96077B00DF6DF5 /* Build configuration list for PBXNativeTarget "Shellbee" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A9D45192F96077B00DF6DF5 /* Debug */,
+				0A9D451A2F96077B00DF6DF5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0A9D45E62F96232C00DF6DF5 /* Build configuration list for PBXNativeTarget "ShellbeeWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A9D45E42F96232C00DF6DF5 /* Debug */,
+				0A9D45E52F96232C00DF6DF5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 0A9D45052F96077A00DF6DF5 /* Project object */;
+}

@@ -1,0 +1,304 @@
+import Foundation
+import UIKit
+
+@Observable
+final class AppStore {
+    var devices: [Device] = []
+    var groups: [Group] = []
+    var bridgeInfo: BridgeInfo?
+    var bridgeHealth: BridgeHealth?
+    var bridgeOnline = false
+    var isConnected = false
+    var deviceStates: [String: [String: JSONValue]] = [:]
+    var deviceAvailability: [String: Bool] = [:]
+    var otaUpdates: [String: OTAUpdateStatus] = [:]
+    var logEntries: [LogEntry] = []
+    var operationErrors: [Z2MOperationError] = []
+    var touchlinkDevices: [TouchlinkDevice] = []
+    var touchlinkScanInProgress = false
+    var touchlinkIdentifyInProgress = false
+    var touchlinkResetInProgress = false
+
+    static let logLimit = 1000
+
+    func apply(_ event: Z2MEvent) {
+        switch event {
+        case .bridgeInfo(let info):
+            bridgeInfo = info
+        case .bridgeState(let state):
+            bridgeOnline = state == "online"
+        case .devices(let list):
+            devices = list
+        case .groups(let list):
+            groups = list
+        case .logMessage(let msg):
+            print("[Logs] Received: \(msg.level) — \(msg.message.prefix(80))")
+            let level = LogLevel(raw: msg.level) ?? .info
+            let knownNames = Set(devices.map(\.friendlyName) + groups.map(\.friendlyName))
+            let ctx = LogMapperEngine.context(
+                message: msg.message, namespace: msg.namespace, knownDevices: knownNames
+            )
+            // MQTT publish for a known device/group state topic is redundant — the
+            // .deviceState event creates a richer stateChange entry for the same update.
+            if case .mqttPublish = ctx.action,
+               let deviceName = ctx.primaryDevice?.friendlyName,
+               knownNames.contains(deviceName) {
+                break
+            }
+            let entry = LogEntry(
+                id: msg.id, timestamp: .now, level: level,
+                category: ctx.inferredCategory,
+                namespace: msg.namespace, message: msg.message,
+                deviceName: ctx.primaryDevice?.friendlyName, context: ctx
+            )
+            insertLogEntry(entry)
+        case .bridgeEvent(let event):
+            if let entry = Self.logEntry(from: event) {
+                insertLogEntry(entry)
+            }
+        case .deviceState(let name, let state):
+            let previous = deviceStates[name] ?? [:]
+            if !previous.isEmpty {
+                let changes = LogMapperEngine.diff(previous, state)
+                if !changes.isEmpty {
+                    insertLogEntry(LogMapperEngine.stateChangeEntry(device: name, changes: changes))
+                }
+            }
+            deviceStates[name] = state
+            handleOTAState(for: name, state: state)
+        case .deviceAvailability(let name, let available):
+            deviceAvailability[name] = available
+        case .deviceOTAUpdateResponse(let response):
+            handleOTAResponse(response)
+        case .deviceOTACheckResponse(let response):
+            handleOTACheckResponse(response)
+        case .permitJoinChanged(let enabled, let remaining):
+            if let info = bridgeInfo {
+                bridgeInfo = BridgeInfo(
+                    version: info.version,
+                    commit: info.commit,
+                    coordinator: info.coordinator,
+                    network: info.network,
+                    logLevel: info.logLevel,
+                    permitJoin: enabled,
+                    permitJoinTimeout: remaining,
+                    permitJoinEnd: remaining.map { Int(Date().timeIntervalSince1970 * 1000) + ($0 * 1000) },
+                    restartRequired: info.restartRequired,
+                    config: info.config
+                )
+            }
+
+        case .bridgeResponse(_, let payload):
+            if let data = payload.object?["data"] {
+                let restartRequired = data.object?["restart_required"]?.boolValue
+                let config = data.decode(BridgeConfig.self)
+                
+                if let info = bridgeInfo {
+                    bridgeInfo = info.copyUpdating(
+                        restartRequired: restartRequired,
+                        config: config
+                    )
+                }
+            }
+
+        case .bridgeHealth(let health):
+            if let existing = bridgeHealth, health.process == nil {
+                // Sparse response (e.g. bridge/response/health_check returns only {healthy:true})
+                // Merge: preserve rich stats, update the healthy flag
+                bridgeHealth = BridgeHealth(
+                    healthy: health.healthy,
+                    responseTime: existing.responseTime,
+                    process: existing.process,
+                    os: existing.os,
+                    mqtt: existing.mqtt
+                )
+            } else {
+                bridgeHealth = health
+            }
+
+        case .touchlinkScanResult(let devices):
+            touchlinkDevices = devices
+            touchlinkScanInProgress = false
+
+        case .touchlinkIdentifyDone:
+            touchlinkIdentifyInProgress = false
+
+        case .touchlinkFactoryResetDone:
+            touchlinkResetInProgress = false
+
+        case .operationError(let error):
+            touchlinkScanInProgress = false
+            touchlinkIdentifyInProgress = false
+            touchlinkResetInProgress = false
+            Haptics.notification(.error)
+            operationErrors.insert(error, at: 0)
+            let entry = LogEntry(
+                id: UUID(),
+                timestamp: error.timestamp,
+                level: .error,
+                category: .general,
+                namespace: "z2m:response",
+                message: error.message,
+                deviceName: nil
+            )
+            insertLogEntry(entry)
+
+        case .unknown:
+            break
+        }
+    }
+
+    private func insertLogEntry(_ entry: LogEntry) {
+        logEntries.insert(entry, at: 0)
+        if logEntries.count > Self.logLimit {
+            logEntries = Array(logEntries.prefix(Self.logLimit))
+        }
+    }
+
+    private static func logEntry(from event: BridgeDeviceEvent) -> LogEntry? {
+        guard let data = event.data.object else { return nil }
+        let deviceName = data["friendly_name"]?.stringValue
+        let ieeeAddr = data["ieee_address"]?.stringValue
+        let name = deviceName ?? ieeeAddr ?? "unknown"
+
+        switch event.type {
+        case "device_joined":
+            return LogEntry(id: UUID(), timestamp: .now, level: .info, category: .deviceJoined, namespace: nil, message: "Device '\(name)' joined the network", deviceName: deviceName)
+        case "device_announce":
+            return LogEntry(id: UUID(), timestamp: .now, level: .info, category: .deviceAnnounce, namespace: nil, message: "Device '\(name)' announced", deviceName: deviceName)
+        case "device_interview":
+            let status = data["status"]?.stringValue ?? "unknown"
+            let level: LogLevel = status == "failed" ? .error : .info
+            return LogEntry(id: UUID(), timestamp: .now, level: level, category: .interview, namespace: nil, message: "Interview of '\(name)' \(status)", deviceName: deviceName)
+        case "device_leave":
+            return LogEntry(id: UUID(), timestamp: .now, level: .warning, category: .deviceLeave, namespace: nil, message: "Device '\(name)' left the network", deviceName: deviceName)
+        default:
+            return nil
+        }
+    }
+
+    func device(named friendlyName: String) -> Device? {
+        devices.first { $0.friendlyName == friendlyName }
+    }
+
+    func state(for friendlyName: String) -> [String: JSONValue] {
+        deviceStates[friendlyName] ?? [:]
+    }
+
+    func isAvailable(_ friendlyName: String) -> Bool {
+        deviceAvailability[friendlyName] ?? false
+    }
+
+    func otaStatus(for friendlyName: String) -> OTAUpdateStatus? {
+        otaUpdates[friendlyName] ?? state(for: friendlyName).otaUpdateStatus(for: friendlyName)
+    }
+
+    func startOTAUpdate(for friendlyName: String) {
+        otaUpdates[friendlyName] = OTAUpdateStatus(
+            deviceName: friendlyName,
+            phase: .requested,
+            progress: nil,
+            remaining: nil
+        )
+        OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices)
+    }
+
+    func startOTACheck(for friendlyName: String) {
+        otaUpdates[friendlyName] = OTAUpdateStatus(
+            deviceName: friendlyName,
+            phase: .checking,
+            progress: nil,
+            remaining: nil
+        )
+    }
+
+    func reset() {
+        devices = []
+        groups = []
+        bridgeInfo = nil
+        bridgeHealth = nil
+        bridgeOnline = false
+        isConnected = false
+        deviceStates = [:]
+        deviceAvailability = [:]
+        otaUpdates = [:]
+        logEntries = []
+        operationErrors = []
+        touchlinkDevices = []
+        touchlinkScanInProgress = false
+        touchlinkIdentifyInProgress = false
+        touchlinkResetInProgress = false
+        OTAUpdateLiveActivityCoordinator.shared.clearAll()
+    }
+
+    private var activeOTAUpdates: [OTAUpdateStatus] {
+        otaUpdates.values.filter(\.isActive)
+    }
+
+    private func handleOTAState(for deviceName: String, state: [String: JSONValue]) {
+        guard let update = state.otaUpdateStatus(for: deviceName) else { return }
+
+        let previous = otaUpdates[deviceName]
+
+        switch update.phase {
+        case .available:
+            if previous?.isActive == true {
+                otaUpdates.removeValue(forKey: deviceName)
+            }
+        case .checking:
+            break // Handled by manual check trigger
+        case .requested:
+            otaUpdates[deviceName] = update
+        case .scheduled, .updating:
+            otaUpdates[deviceName] = update
+        case .idle:
+            otaUpdates.removeValue(forKey: deviceName)
+            if previous?.isActive == true, activeOTAUpdates.isEmpty {
+                Haptics.notification(.success)
+                OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: true)
+                return
+            }
+        }
+
+        OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices)
+    }
+
+    private func handleOTAResponse(_ response: DeviceOTAUpdateResponse) {
+        guard !response.isSuccess else { return }
+        guard let deviceName = response.deviceName else { return }
+
+        Haptics.notification(.error)
+        otaUpdates.removeValue(forKey: deviceName)
+
+        if activeOTAUpdates.isEmpty {
+            OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: false)
+        } else {
+            OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices)
+        }
+    }
+
+    private func handleOTACheckResponse(_ response: DeviceOTAUpdateResponse) {
+        guard let deviceName = response.deviceName else { return }
+        
+        // If it failed or no update was found, we want to clear the 'checking' status after a delay
+        // so the user can see it finished.
+        if !response.isSuccess {
+            Haptics.notification(.warning)
+            Task {
+                try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivitySuccess))
+                await MainActor.run {
+                    if otaUpdates[deviceName]?.phase == .checking {
+                        otaUpdates.removeValue(forKey: deviceName)
+                    }
+                }
+            }
+        } else {
+            Haptics.notification(.success)
+            // Success means it might have found an update. 
+            // The next device state update will carry the 'available' status.
+            if otaUpdates[deviceName]?.phase == .checking {
+                otaUpdates.removeValue(forKey: deviceName)
+            }
+        }
+    }
+}

@@ -1,0 +1,55 @@
+enum Z2MTopics {
+    static let bridgeInfo = "bridge/info"
+    static let bridgeState = "bridge/state"
+    static let bridgeDevices = "bridge/devices"
+    static let bridgeGroups = "bridge/groups"
+    static let bridgeLogging = "bridge/logging"
+    static let bridgeEvent = "bridge/event"
+    static let bridgeResponseDeviceOTAUpdate = "bridge/response/device/ota_update/update"
+    static let bridgeResponseDeviceOTACheck = "bridge/response/device/ota_update/check"
+    static let bridgeHealth = "bridge/health"
+    static let bridgeDefinitions = "bridge/definitions"
+
+    static let bridgeResponseOptions = "bridge/response/options"
+    static let bridgeResponseInfo = "bridge/response/info"
+    static let bridgeResponseHealthCheck = "bridge/response/health_check"
+    static let bridgeResponseTouchlinkScan = "bridge/response/touchlink/scan"
+    static let bridgeResponseTouchlinkIdentify = "bridge/response/touchlink/identify"
+    static let bridgeResponseTouchlinkFactoryReset = "bridge/response/touchlink/factory_reset"
+
+    enum Request {
+        static let deviceRename = "bridge/request/device/rename"
+        static let deviceRemove = "bridge/request/device/remove"
+        static let deviceOptions = "bridge/request/device/options"
+        static let deviceInterview = "bridge/request/device/interview"
+        static let deviceConfigure = "bridge/request/device/configure"
+        static let deviceBind = "bridge/request/device/bind"
+        static let deviceUnbind = "bridge/request/device/unbind"
+        static let deviceOTACheck = "bridge/request/device/ota_update/check"
+        static let deviceOTAUpdate = "bridge/request/device/ota_update/update"
+        static let deviceReportingConfigure = "bridge/request/device/configure_reporting"
+        static let groupAdd = "bridge/request/group/add"
+        static let groupRemove = "bridge/request/group/remove"
+        static let groupRename = "bridge/request/group/rename"
+        static let groupMembersAdd = "bridge/request/group/members/add"
+        static let groupMembersRemove = "bridge/request/group/members/remove"
+        static let permitJoin = "bridge/request/permit_join"
+        static let info = "bridge/request/info"
+        static let restart = "bridge/request/restart"
+        static let backup = "bridge/request/backup"
+        static let options = "bridge/request/options"
+        static let healthCheck = "bridge/request/health_check"
+        static let installCode = "bridge/request/install_code/add"
+        static let devices = "bridge/request/devices"
+        static let touchlinkScan = "bridge/request/touchlink/scan"
+        static let touchlinkIdentify = "bridge/request/touchlink/identify"
+        static let touchlinkFactoryReset = "bridge/request/touchlink/factory_reset"
+        static let action = "bridge/request/action"
+    }
+
+    static let availabilitySuffix = "/availability"
+
+    static func deviceSet(_ friendlyName: String) -> String {
+        "\(friendlyName)/set"
+    }
+}
