@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 struct ConnectionConfig: Codable, Sendable, Equatable, Hashable {
     private static let savedConfigKey = "lastSuccessfulConnectionConfig"
@@ -30,6 +31,11 @@ struct ConnectionConfig: Codable, Sendable, Equatable, Hashable {
         let scheme = useTLS ? "https" : "http"
         return "\(scheme)://\(host):\(port)\(basePath)"
     }
+
+    var secretLookupKey: String {
+        let normalizedBase = basePath.hasSuffix("/") ? basePath : "\(basePath)/"
+        return "\(host.lowercased())|\(port)|\(useTLS ? "tls" : "plain")|\(normalizedBase)"
+    }
 }
 
 extension ConnectionConfig {
@@ -45,16 +51,180 @@ extension ConnectionConfig {
 
     static func load() -> ConnectionConfig? {
         guard let data = UserDefaults.standard.data(forKey: Self.savedConfigKey) else { return nil }
-        return try? JSONDecoder().decode(ConnectionConfig.self, from: data)
+
+        // Older payloads still decode as PersistedSnapshot because extra JSON keys are ignored.
+        if containsLegacyToken(in: data),
+           let legacy = try? JSONDecoder().decode(ConnectionConfig.self, from: data) {
+            persistToken(for: legacy)
+            UserDefaults.standard.set(try? JSONEncoder().encode(legacy.persistedSnapshot), forKey: Self.savedConfigKey)
+            return legacy
+        }
+
+        if let snapshot = try? JSONDecoder().decode(PersistedSnapshot.self, from: data) {
+            return snapshot.connectionConfig
+        }
+
+        return nil
     }
 
     func save() {
-        guard let data = try? JSONEncoder().encode(self) else { return }
+        guard let data = try? JSONEncoder().encode(persistedSnapshot) else { return }
         UserDefaults.standard.set(data, forKey: Self.savedConfigKey)
+        Self.persistToken(for: self)
     }
 
     static func clear() {
+        if let config = load() {
+            removeToken(for: config)
+        }
         UserDefaults.standard.removeObject(forKey: Self.savedConfigKey)
         UserDefaults.standard.removeObject(forKey: Self.legacySavedConfigKey)
+    }
+
+    var persistedSnapshot: PersistedSnapshot {
+        PersistedSnapshot(host: host, port: port, useTLS: useTLS, basePath: basePath)
+    }
+
+    static func persistToken(for config: ConnectionConfig) {
+        ConnectionTokenKeychain.shared.setToken(config.authToken, for: config.secretLookupKey)
+    }
+
+    static func removeToken(for config: ConnectionConfig) {
+        ConnectionTokenKeychain.shared.removeToken(for: config.secretLookupKey)
+    }
+
+    static func containsLegacyToken(in data: Data) -> Bool {
+        guard let object = try? JSONSerialization.jsonObject(with: data) else {
+            return false
+        }
+
+        if let dictionary = object as? [String: Any] {
+            return dictionary["authToken"] != nil || dictionary["auth_token"] != nil
+        }
+
+        if let dictionaries = object as? [[String: Any]] {
+            return dictionaries.contains { $0["authToken"] != nil || $0["auth_token"] != nil }
+        }
+
+        return false
+    }
+
+    #if DEBUG
+    static func clearPersistedSecretsForTests() {
+        ConnectionTokenKeychain.shared.removeAllTokensForTests()
+    }
+    #endif
+}
+
+extension ConnectionConfig {
+    struct PersistedSnapshot: Codable {
+        let host: String
+        let port: Int
+        let useTLS: Bool
+        let basePath: String
+
+        var connectionConfig: ConnectionConfig {
+            let config = ConnectionConfig(
+                host: host,
+                port: port,
+                useTLS: useTLS,
+                basePath: basePath,
+                authToken: nil
+            )
+
+            return ConnectionConfig(
+                host: host,
+                port: port,
+                useTLS: useTLS,
+                basePath: basePath,
+                authToken: ConnectionTokenKeychain.shared.token(for: config.secretLookupKey)
+            )
+        }
+    }
+}
+
+private final class ConnectionTokenKeychain {
+    static let shared = ConnectionTokenKeychain()
+
+    private let service = "dev.echodb.shellbee.connection-token"
+    private let accountPrefix = "z2m:"
+
+    func token(for lookupKey: String) -> String? {
+        var query = baseQuery(for: lookupKey)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess,
+              let data = item as? Data,
+              let token = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        return token
+    }
+
+    func setToken(_ token: String?, for lookupKey: String) {
+        guard let token, !token.isEmpty else {
+            removeToken(for: lookupKey)
+            return
+        }
+
+        let data = Data(token.utf8)
+        let query = baseQuery(for: lookupKey)
+
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+        ]
+
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var addQuery = query
+            addQuery[kSecValueData as String] = data
+            SecItemAdd(addQuery as CFDictionary, nil)
+        }
+    }
+
+    func removeToken(for lookupKey: String) {
+        SecItemDelete(baseQuery(for: lookupKey) as CFDictionary)
+    }
+
+    #if DEBUG
+    func removeAllTokensForTests() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let entries = item as? [[String: Any]] else {
+            return
+        }
+
+        for entry in entries {
+            guard let account = entry[kSecAttrAccount as String] as? String,
+                  account.hasPrefix(accountPrefix) else {
+                continue
+            }
+
+            let deleteQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: account,
+            ]
+            SecItemDelete(deleteQuery as CFDictionary)
+        }
+    }
+    #endif
+
+    private func baseQuery(for lookupKey: String) -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "\(accountPrefix)\(lookupKey)",
+        ]
     }
 }

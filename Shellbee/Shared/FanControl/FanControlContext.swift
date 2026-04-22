@@ -18,7 +18,7 @@ struct FanControlContext: Equatable {
 
     init?(device: Device, state: [String: JSONValue]) {
         let exposes = device.definition?.exposes ?? []
-        let flat = Self.flatten(exposes)
+        let flat = exposes.flattened
         let fanFeatures = exposes.first(where: { $0.type == "fan" })?.features ?? flat
 
         let stateFeature = Self.find(in: fanFeatures + flat, names: ["state"])
@@ -41,10 +41,6 @@ struct FanControlContext: Equatable {
     func fanModePayload(_ mode: String) -> JSONValue? {
         guard let f = fanModeFeature, f.isWritable else { return nil }
         return .object([f.property: .string(mode)])
-    }
-
-    private static func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { [$0] + flatten($0.features ?? []) }
     }
 
     private static func find(in exposes: [Expose], names: Set<String>) -> Feature? {

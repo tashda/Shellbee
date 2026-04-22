@@ -1,15 +1,26 @@
 import SwiftUI
 
+private enum GroupMenuDestination: Hashable {
+    case settings
+}
+
 struct GroupDetailView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = GroupDetailViewModel()
     @State private var showAddMembers = false
     @State private var showAddScene = false
     @State private var memberToRemove: GroupMember?
+    @State private var menuDestination: GroupMenuDestination?
     let group: Group
 
     private var currentGroup: Group {
         environment.store.groups.first { $0.id == group.id } ?? group
+    }
+
+    private var memberDevices: [Device] {
+        currentGroup.members.compactMap { member in
+            environment.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
+        }
     }
 
     private var groupState: [String: JSONValue] {
@@ -27,7 +38,7 @@ struct GroupDetailView: View {
     var body: some View {
         List {
             Section {
-                GroupCard(group: currentGroup, state: groupState)
+                GroupCard(group: currentGroup, memberDevices: memberDevices, state: groupState)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
@@ -44,9 +55,9 @@ struct GroupDetailView: View {
                 BeautifulPayloadView(payload: groupState)
             }
 
-            GroupScenesSection(group: currentGroup, viewModel: viewModel)
-
             GroupMembersSection(group: currentGroup) { memberToRemove = $0 }
+
+            GroupScenesSection(group: currentGroup, viewModel: viewModel)
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
         .navigationTitle(currentGroup.friendlyName)
@@ -54,6 +65,10 @@ struct GroupDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button { menuDestination = .settings } label: {
+                        Label("Group Settings", systemImage: "slider.horizontal.3")
+                    }
+                    Divider()
                     Button {
                         showAddMembers = true
                     } label: {
@@ -65,9 +80,15 @@ struct GroupDetailView: View {
                         Label("Save Scene", systemImage: "sparkles")
                     }
                 } label: {
-                    Image(systemName: "plus")
+                    Image(systemName: "ellipsis")
                 }
                 .menuIndicator(.hidden)
+                .accessibilityLabel("Group Actions")
+            }
+        }
+        .navigationDestination(item: $menuDestination) { destination in
+            switch destination {
+            case .settings: GroupSettingsView(group: group)
             }
         }
         .sheet(isPresented: $showAddMembers) {

@@ -23,7 +23,7 @@ enum DeviceCondition: String, CaseIterable, Sendable {
 
     func matches(device: Device, state: [String: JSONValue], isAvailable: Bool) -> Bool {
         switch self {
-        case .updatesAvailable: return state.hasUpdateAvailable
+        case .updatesAvailable: return state.hasUpdateAvailable || state.isUpdating
         case .online:           return isAvailable
         case .offline:          return !isAvailable
         case .batteryLow:       return (state.battery ?? 100) < DesignTokens.Threshold.lowBattery

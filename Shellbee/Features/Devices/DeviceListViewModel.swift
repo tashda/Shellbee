@@ -92,9 +92,18 @@ final class DeviceListViewModel {
     var statusFilter: DeviceStatusFilter = .all
     var sortOrder: DeviceSortOrder = .name
     var sortAscending = true
+    var groupByCategory = true
 
     var hasActiveFilter: Bool {
         categoryFilter != nil || typeFilter != nil || vendorFilter != nil || statusFilter != .all
+    }
+
+    func categorizedDevices(store: AppStore) -> [(Device.Category, [Device])] {
+        let devices = filteredDevices(store: store)
+        return Device.Category.allCases.compactMap { category in
+            let group = devices.filter { $0.category == category }
+            return group.isEmpty ? nil : (category, group)
+        }
     }
 
     func filteredDevices(store: AppStore) -> [Device] {
@@ -177,7 +186,7 @@ final class DeviceListViewModel {
     }
 
     func renameDevice(_ device: Device, to newName: String, homeassistantRename: Bool = true, environment: AppEnvironment) {
-        environment.send(topic: "bridge/request/device/rename", payload: .object([
+        environment.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
             "from": .string(device.friendlyName),
             "to": .string(newName),
             "homeassistant_rename": .bool(homeassistantRename)
@@ -185,15 +194,15 @@ final class DeviceListViewModel {
     }
 
     func reconfigureDevice(_ device: Device, environment: AppEnvironment) {
-        environment.send(topic: "bridge/request/device/configure", payload: .object(["id": .string(device.friendlyName)]))
+        environment.send(topic: Z2MTopics.Request.deviceConfigure, payload: .object(["id": .string(device.friendlyName)]))
     }
 
     func interviewDevice(_ device: Device, environment: AppEnvironment) {
-        environment.send(topic: "bridge/request/device/interview", payload: .object(["id": .string(device.friendlyName)]))
+        environment.send(topic: Z2MTopics.Request.deviceInterview, payload: .object(["id": .string(device.friendlyName)]))
     }
 
     func removeDevice(_ device: Device, force: Bool = false, block: Bool = false, environment: AppEnvironment) {
-        environment.send(topic: "bridge/request/device/remove", payload: .object([
+        environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
             "id": .string(device.friendlyName),
             "force": .bool(force),
             "block": .bool(block)

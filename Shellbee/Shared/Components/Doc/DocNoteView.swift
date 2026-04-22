@@ -2,6 +2,12 @@ import SwiftUI
 
 struct DocNoteView: View {
     let spans: [InlineSpan]
+    let sourcePath: String?
+
+    init(spans: [InlineSpan], sourcePath: String? = nil) {
+        self.spans = spans
+        self.sourcePath = sourcePath
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -10,7 +16,7 @@ struct DocNoteView: View {
                 .frame(width: DesignTokens.Size.docNoteBarWidth)
                 .padding(.vertical, DesignTokens.Spacing.summaryRowVerticalPadding)
 
-            DocInlineTextView(spans: spans)
+            DocInlineTextView(spans: spans, sourcePath: sourcePath)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

@@ -82,6 +82,7 @@ final class ConnectionSessionController {
         sessionTask = nil
         store.isConnected = false
         connectionState = .idle
+        ConnectionLiveActivityCoordinator.shared.cancel()
 
         return Task { [client] in
             await client.disconnect()
@@ -101,8 +102,8 @@ final class ConnectionSessionController {
         connectionState = .connecting
 
         do {
-            try await establishConnection(config: config)
-            await monitorConnection(config: config)
+            let events = try await establishConnection(config: config)
+            await monitorConnection(config: config, events: events)
         } catch is CancellationError {
             return
         } catch {
@@ -110,18 +111,19 @@ final class ConnectionSessionController {
         }
     }
 
-    private func establishConnection(config: ConnectionConfig) async throws {
+    private func establishConnection(config: ConnectionConfig) async throws -> AsyncStream<Z2MSocketEvent> {
         guard let url = config.webSocketURL else {
             throw Z2MError.invalidURL
         }
 
-        try await client.connect(url: url)
+        let events = try await client.connect(url: url)
         config.save()
         connectionState = .connected
         hasBeenConnected = true
         store.isConnected = true
         history.add(config)
         requestInitialState()
+        return events
     }
 
     private func requestInitialState() {
@@ -132,8 +134,8 @@ final class ConnectionSessionController {
         )
     }
 
-    private func monitorConnection(config: ConnectionConfig) async {
-        for await socketEvent in client.events {
+    private func monitorConnection(config: ConnectionConfig, events: AsyncStream<Z2MSocketEvent>) async {
+        for await socketEvent in events {
             if Task.isCancelled { return }
 
             switch socketEvent {
@@ -143,37 +145,48 @@ final class ConnectionSessionController {
                 }
             case .disconnected(let reason):
                 store.isConnected = false
-                let recovered = await reconnect(config: config, reason: reason)
-                if !recovered { return }
+                if let newEvents = await reconnect(config: config, reason: reason) {
+                    await monitorConnection(config: config, events: newEvents)
+                }
+                return
             }
         }
     }
 
-    private func reconnect(config: ConnectionConfig, reason: String) async -> Bool {
+    private func reconnect(config: ConnectionConfig, reason: String) async -> AsyncStream<Z2MSocketEvent>? {
         var attempt = 1
         var delay = Self.baseReconnectDelay
+        let coordinator = ConnectionLiveActivityCoordinator.shared
+        let host = config.host
+
+        coordinator.show(host: host, phase: .reconnecting, attempt: 1, maxAttempts: Self.maxReconnectAttempts)
 
         while attempt <= Self.maxReconnectAttempts {
-            if Task.isCancelled { return false }
+            if Task.isCancelled { return nil }
 
             connectionState = .reconnecting(attempt: attempt)
 
             try? await Task.sleep(for: .seconds(delay))
-            if Task.isCancelled { return false }
+            if Task.isCancelled { return nil }
 
             do {
-                try await establishConnection(config: config)
-                return true
+                let events = try await establishConnection(config: config)
+                coordinator.finish(.connected, displayFor: 2.5)
+                return events
             } catch is CancellationError {
-                return false
+                return nil
             } catch {
                 attempt += 1
                 delay = min(delay * 2, Self.maxReconnectDelay)
+                if attempt <= Self.maxReconnectAttempts {
+                    coordinator.update(phase: .reconnecting, attempt: attempt, maxAttempts: Self.maxReconnectAttempts)
+                }
             }
         }
 
+        coordinator.finish(.failed, displayFor: 4)
         await handleFailure(reason.isEmpty ? "Connection lost." : reason)
-        return false
+        return nil
     }
 
     private func handleFailure(_ message: String) async {

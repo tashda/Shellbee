@@ -69,7 +69,7 @@ final class ConnectionViewModel {
     func startDiscovery() {
         Task { @MainActor in
             environment.discovery.start()
-            try? await Task.sleep(for: .seconds(10))
+            try? await Task.sleep(for: .seconds(15))
             environment.discovery.stop()
         }
     }

@@ -19,6 +19,23 @@ struct NetworkAccessSettingsView: View {
     var body: some View {
         Form {
             Section {
+                HStack(spacing: DesignTokens.Spacing.lg) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(.cyan)
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                        Text("Device Filtering")
+                            .font(.headline)
+                        Text("Control which Zigbee devices are allowed to join your network by IEEE address. An empty Allow List permits any device.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, DesignTokens.Spacing.xs)
+            }
+            .listRowBackground(Color(.secondarySystemGroupedBackground))
+
+            Section {
                 ForEach(passlistEntries, id: \.self) { entry in
                     Text(entry)
                         .font(.system(.body, design: .monospaced))
@@ -41,7 +58,7 @@ struct NetworkAccessSettingsView: View {
             } header: {
                 Text("Allow List")
             } footer: {
-                Text("Only devices with these addresses may join. Leave empty to allow any device. Swipe left to remove an entry.")
+                Text("Leave empty to allow any device to join.")
             }
 
             Section {
@@ -67,12 +84,11 @@ struct NetworkAccessSettingsView: View {
             } header: {
                 Text("Block List")
             } footer: {
-                Text("Devices with these addresses are always rejected, even during an active permit-join window. Swipe left to remove.")
+                Text("Devices here are always rejected, even during an active join window.")
             }
         }
-        .navigationTitle("Network Access")
+        .navigationTitle("Device Filtering")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(hasChanges)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 EditButton()
@@ -87,10 +103,7 @@ struct NetworkAccessSettingsView: View {
                     .disabled(!hasChanges)
             }
         }
-        .alert("Discard Unsaved Changes?", isPresented: $showingDiscardAlert) {
-            Button("Discard Changes", role: .destructive) { loadFromStore(); dismiss() }
-            Button("Keep Editing", role: .cancel) {}
-        } message: { Text("Any modifications you have made will be lost.") }
+        .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
         .task { loadFromStore() }
     }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GroupCardHeader: View {
     let group: Group
+    let memberDevices: [Device]
 
     var body: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
@@ -9,9 +10,11 @@ struct GroupCardHeader: View {
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(group.friendlyName)
-                    .font(.title3.weight(.semibold))
+                    .font(DesignTokens.Typography.cardHeadline)
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .allowsTightening(true)
 
                 Text("#\(group.id)")
                     .font(.system(size: DesignTokens.Size.statusBadgeFont, weight: .medium, design: .monospaced))
@@ -29,18 +32,14 @@ struct GroupCardHeader: View {
     }
 
     private var avatarArea: some View {
-        Image(systemName: "rectangle.3.group.fill")
-            .font(.system(size: DesignTokens.Size.deviceCardImage * 0.45, weight: .medium))
-            .foregroundStyle(.secondary)
-            .frame(width: DesignTokens.Size.deviceCardImage, height: DesignTokens.Size.deviceCardImage)
-            .background(.fill.secondary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg))
+        GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage)
     }
 }
 
 #Preview {
     VStack(spacing: DesignTokens.Spacing.lg) {
-        GroupCardHeader(group: .preview)
-        GroupCardHeader(group: .previewWithMembers)
+        GroupCardHeader(group: .preview, memberDevices: [])
+        GroupCardHeader(group: .previewWithMembers, memberDevices: [.preview, .fallbackPreview])
     }
     .padding()
     .background(Color(.secondarySystemGroupedBackground))

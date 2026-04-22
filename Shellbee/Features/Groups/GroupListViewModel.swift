@@ -10,7 +10,7 @@ enum GroupSortOrder: String, CaseIterable {
 @Observable
 final class GroupListViewModel {
     var searchText = ""
-    var sortOrder: GroupSortOrder = .name
+    var sortOrder: GroupSortOrder = .id
     var sortAscending = true
 
     func filteredGroups(store: AppStore) -> [Group] {

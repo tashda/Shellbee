@@ -88,7 +88,7 @@ struct DeviceDefinition: Codable, Sendable, Equatable {
     let model: String
     let vendor: String
     let description: String
-    let supportsOTA: Bool
+    let supportsOTA: Bool?
     let exposes: [Expose]
     let options: [Expose]?
     let icon: String?
@@ -118,8 +118,8 @@ struct Expose: Codable, Sendable, Equatable {
     let valueOff: JSONValue?
     let presets: [ExposePreset]?
 
-    var isReadable: Bool { (access ?? 0) & 0x01 != 0 }
-    var isWritable: Bool { (access ?? 0) & 0x02 != 0 }
+    nonisolated var isReadable: Bool { (access ?? 0) & 0x01 != 0 }
+    nonisolated var isWritable: Bool { (access ?? 0) & 0x02 != 0 }
 
     enum CodingKeys: String, CodingKey {
         case type, name, label, description, access, property, endpoint, features, options, unit, values, presets
@@ -134,4 +134,25 @@ struct Expose: Codable, Sendable, Equatable {
 struct ExposePreset: Codable, Sendable, Equatable {
     let name: String
     let value: JSONValue
+}
+
+extension Expose {
+    // All exposes in the tree — each node plus its descendants.
+    nonisolated var flattened: [Expose] {
+        [self] + (features ?? []).flatMap(\.flattened)
+    }
+}
+
+extension [Expose] {
+    // All nodes in the tree (parents + children).
+    nonisolated var flattened: [Expose] {
+        flatMap(\.flattened)
+    }
+
+    // Only leaf nodes — exposes that have no features of their own.
+    nonisolated var flattenedLeaves: [Expose] {
+        flatMap { e in
+            (e.features?.isEmpty == false) ? (e.features ?? []).flattenedLeaves : [e]
+        }
+    }
 }

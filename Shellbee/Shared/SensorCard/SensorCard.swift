@@ -43,9 +43,19 @@ struct SensorCard: View {
         }
     }
 
+    static func hasReadings(device: Device, state: [String: JSONValue]) -> Bool {
+        let flat = device.definition?.exposes.flatMap { [$0] + ($0.features ?? []) } ?? []
+        return flat.contains { expose in
+            let prop = expose.property ?? expose.name ?? ""
+            guard !skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return false }
+            guard expose.type == "numeric" || expose.type == "binary" else { return false }
+            return state[prop] != nil
+        }
+    }
+
     private func makeReadings() -> [SensorReading] {
         let exposes = device.definition?.exposes ?? []
-        let flat = flatten(exposes)
+        let flat = exposes.flattened
         return flat.compactMap { expose in
             let prop = expose.property ?? expose.name ?? ""
             guard !Self.skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return nil }
@@ -55,9 +65,6 @@ struct SensorCard: View {
         }
     }
 
-    private func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { [$0] + flatten($0.features ?? []) }
-    }
 }
 
 struct SensorReading {
@@ -83,6 +90,26 @@ struct SensorReading {
         default:
             return value.stringified
         }
+    }
+
+    var numericDisplayValue: String {
+        switch expose.type {
+        case "binary":
+            let isTrue = value.boolValue == true || value.stringValue?.lowercased() == "true"
+            return binaryLabel(isTrue: isTrue)
+        case "numeric":
+            guard let num = value.numberValue else { return value.stringified }
+            return num.truncatingRemainder(dividingBy: 1) == 0
+                ? String(format: "%.0f", num)
+                : String(format: "%.1f", num)
+        default:
+            return value.stringified
+        }
+    }
+
+    var unitDisplay: String? {
+        guard expose.type == "numeric" else { return nil }
+        return expose.unit
     }
 
     var icon: String {
@@ -116,12 +143,28 @@ struct SensorReading {
         case "pressure": return .indigo
         case "co2", "pm25", "pm10": return .green
         case "illuminance", "illuminance_lux": return .yellow
-        case "motion", "occupancy": return value.boolValue == true ? .orange : .secondary
-        case "contact": return value.boolValue == true ? .red : .green
-        case "water_leak", "gas", "smoke": return (value.boolValue == true) ? .red : .secondary
+        case "motion": return .orange
+        case "occupancy": return .purple
+        case "contact": return .green
+        case "water_leak": return .teal
+        case "smoke", "gas": return .secondary
+        case "vibration": return .purple
+        case "tamper": return .red
         case "battery": return batteryTint
         case "voltage", "current", "power", "energy": return .blue
         default: return .secondary
+        }
+    }
+
+    var isAlert: Bool {
+        switch property {
+        case "contact", "water_leak", "smoke", "gas", "vibration", "tamper", "battery_low":
+            return value.boolValue == true
+        case "battery":
+            guard let pct = value.numberValue else { return false }
+            return pct < Double(DesignTokens.Threshold.lowBattery)
+        default:
+            return false
         }
     }
 
@@ -135,21 +178,19 @@ struct SensorReading {
         case "gas": return isTrue ? "Detected" : "Clear"
         case "vibration": return isTrue ? "Vibrating" : "Still"
         case "tamper": return isTrue ? "Tampered" : "Secure"
-        default: return isTrue ? "On" : "Off"
+        case "battery_low": return isTrue ? "Low" : "OK"
+        default: return isTrue ? "True" : "False"
         }
     }
 
     private var batteryIcon: String {
         guard let pct = value.numberValue else { return "battery.50" }
-        if pct > 75 { return "battery.100" }
-        if pct > 40 { return "battery.50" }
-        if pct > 10 { return "battery.25" }
-        return "battery.0"
+        return Int(pct).batterySymbol
     }
 
     private var batteryTint: Color {
         guard let pct = value.numberValue else { return .secondary }
-        return pct < Double(DesignTokens.Threshold.lowBattery) ? .red : .green
+        return Int(pct).batteryColor
     }
 }
 
@@ -157,24 +198,33 @@ private struct SensorReadingTile: View {
     let reading: SensorReading
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Image(systemName: reading.icon)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(reading.tint)
-                .frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(reading.displayValue)
-                    .font(.subheadline.weight(.semibold))
+
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(reading.numericDisplayValue)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(reading.isAlert ? Color.red : Color.primary)
                     .lineLimit(1)
-                Text(reading.label)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                if let unit = reading.unitDisplay {
+                    Text(unit)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(reading.isAlert ? Color.red.opacity(0.7) : Color.secondary)
+                        .lineLimit(1)
+                }
             }
-            Spacer(minLength: 0)
+
+            Text(reading.label)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
         }
-        .padding(DesignTokens.Spacing.sm)
-        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DesignTokens.Spacing.md)
+        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
     }
 }
 

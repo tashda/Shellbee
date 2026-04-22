@@ -5,6 +5,7 @@ struct LightAdvancedFeatureRow: View {
     let onChange: (JSONValue) -> Void
 
     @State private var numericDraftValue: Double
+    @FocusState private var numericFocused: Bool
 
     init(feature: LightAdvancedFeature, onChange: @escaping (JSONValue) -> Void) {
         self.feature = feature
@@ -88,13 +89,13 @@ struct LightAdvancedFeatureRow: View {
                     numericDraftValue = newValue
                 }
             } else {
-                Stepper(value: $numericDraftValue, step: step ?? 1) {
-                    EmptyView()
-                }
-                .labelsHidden()
-                .onChange(of: numericDraftValue) { _, newValue in
-                    onChange(.double(newValue))
-                }
+                TextField("", value: $numericDraftValue, format: .number)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.center)
+                    .focused($numericFocused)
+                    .onChange(of: numericFocused) { _, isFocused in
+                        if !isFocused { onChange(.double(numericDraftValue)) }
+                    }
             }
         }
     }

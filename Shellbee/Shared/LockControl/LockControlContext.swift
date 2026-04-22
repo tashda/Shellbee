@@ -11,7 +11,7 @@ struct LockControlContext: Equatable {
 
     init?(device: Device, state: [String: JSONValue]) {
         let exposes = device.definition?.exposes ?? []
-        let flat = Self.flatten(exposes)
+        let flat = exposes.flattened
         let lockFeatures = exposes.first(where: { $0.type == "lock" })?.features ?? flat
 
         guard let stateFeature = Self.find(in: lockFeatures, names: ["state"]) else { return nil }
@@ -22,10 +22,6 @@ struct LockControlContext: Equatable {
     func togglePayload() -> JSONValue? {
         guard let f = stateFeature, f.isWritable else { return nil }
         return .object([f.property: .string(isLocked ? "UNLOCK" : "LOCK")])
-    }
-
-    private static func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { [$0] + flatten($0.features ?? []) }
     }
 
     private static func find(in exposes: [Expose], names: Set<String>) -> Feature? {

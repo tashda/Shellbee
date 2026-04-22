@@ -23,6 +23,8 @@ nonisolated enum DesignTokens {
 
     nonisolated enum Size {
         static let statusDot: CGFloat = 10
+        static let statusDotHero: CGFloat = 8
+        static let statusDotInline: CGFloat = 6
         static let chipFont: CGFloat = 10
         static let chipSymbol: CGFloat = 9
         static let compactChipFont: CGFloat = 10
@@ -74,6 +76,7 @@ nonisolated enum DesignTokens {
         static let statusBadgeFont: CGFloat = 11
         static let colorSwatchSize: CGFloat = 12
         static let logLevelDotSize: CGFloat = 8
+        static let logLevelIconWidth: CGFloat = 14
         static let logLevelDotTopPad: CGFloat = 6
         static let restartIconFrame: CGFloat = 40
         static let logRowDeviceImage: CGFloat = 34
@@ -125,6 +128,11 @@ nonisolated enum DesignTokens {
         static let statusPulse: Double = 1.8
         static let otaBadgeSpin: Double = 1.1
         static let pressedState: Double = 0.16
+    }
+
+    nonisolated enum Typography {
+        static let cardHeadline: Font = .headline
+        static let cardSubheadline: Font = .subheadline
     }
 
     nonisolated enum Opacity {

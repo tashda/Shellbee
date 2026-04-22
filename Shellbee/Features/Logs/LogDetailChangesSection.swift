@@ -4,7 +4,7 @@ struct LogDetailChangesSection: View {
     let changes: [LogContext.StateChange]
 
     var body: some View {
-        Section("Changes") {
+        Section {
             ForEach(changes) { change in
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Text(change.displayLabel)

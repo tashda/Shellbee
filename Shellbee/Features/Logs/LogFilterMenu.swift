@@ -98,7 +98,7 @@ struct LogFilterMenu: View {
         } label: {
             switch viewModel.selectedDevices.count {
             case 0:
-                Label("Device\u{2026}", systemImage: "cpu")
+                Label("Device", systemImage: "cpu")
             case 1:
                 Label(viewModel.selectedDevices.first!, systemImage: "cpu.fill")
             default:

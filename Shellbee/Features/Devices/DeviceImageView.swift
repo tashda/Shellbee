@@ -6,18 +6,13 @@ struct DeviceImageView: View {
     var hasUpdate: Bool = false
     var otaStatus: OTAUpdateStatus?
     var size: CGFloat = 44
-    
+
+    @State private var bundledImageData: Data?
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            PersistentAsyncImage(url: device.imageURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            } placeholder: {
-                fallbackIcon
-            }
-            
+            deviceImage
+
             if hasUpdate || otaStatus?.isActive == true {
                 DeviceUpgradeBadgeView(status: otaStatus, hasUpdate: hasUpdate, size: size)
                     .offset(
@@ -26,8 +21,51 @@ struct DeviceImageView: View {
                     )
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if !isAvailable {
+                offlineDot
+            }
+        }
         .frame(width: size, height: size)
         .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: isAvailable)
+        .task(id: device.ieeeAddress) {
+            bundledImageData = nil
+            if let key = device.imageKey {
+                bundledImageData = await BundledImageStore.shared.imageData(for: key)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var deviceImage: some View {
+        if let data = bundledImageData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .saturation(isAvailable ? 1 : 0)
+                .opacity(isAvailable ? 1 : 0.4)
+                .transition(.opacity)
+        } else {
+            PersistentAsyncImage(url: device.imageURL) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .saturation(isAvailable ? 1 : 0)
+                    .opacity(isAvailable ? 1 : 0.4)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            } placeholder: {
+                fallbackIcon
+            }
+        }
+    }
+
+    private var offlineDot: some View {
+        let dotSize = max(7, size * 0.26)
+        return Circle()
+            .fill(Color.red)
+            .frame(width: dotSize, height: dotSize)
+            .overlay(Circle().strokeBorder(Color(.systemBackground), lineWidth: max(1, dotSize * 0.22)))
+            .offset(x: dotSize * 0.3, y: -(dotSize * 0.3))
     }
     
     private var fallbackIcon: some View {

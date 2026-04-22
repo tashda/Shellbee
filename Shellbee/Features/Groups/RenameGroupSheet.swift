@@ -3,12 +3,14 @@ import SwiftUI
 struct RenameGroupSheet: View {
     @Environment(\.dismiss) private var dismiss
     let group: Group
+    let memberDevices: [Device]
     let onConfirm: (String) -> Void
 
     @State private var newName: String
 
-    init(group: Group, onConfirm: @escaping (String) -> Void) {
+    init(group: Group, memberDevices: [Device] = [], onConfirm: @escaping (String) -> Void) {
         self.group = group
+        self.memberDevices = memberDevices
         self.onConfirm = onConfirm
         _newName = State(initialValue: group.friendlyName)
     }
@@ -23,11 +25,7 @@ struct RenameGroupSheet: View {
             Form {
                 Section {
                     HStack(spacing: DesignTokens.Spacing.md) {
-                        Image(systemName: "rectangle.3.group.fill")
-                            .font(.system(size: DesignTokens.Size.summaryRowSymbol, weight: .medium))
-                            .foregroundStyle(Color.accentColor)
-                            .frame(width: DesignTokens.Size.deviceActionSheetImage, height: DesignTokens.Size.deviceActionSheetImage)
-                            .background(Color.accentColor.opacity(DesignTokens.Opacity.accentFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg))
+                        GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceActionSheetImage)
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                             Text(group.friendlyName)
                                 .font(.headline)

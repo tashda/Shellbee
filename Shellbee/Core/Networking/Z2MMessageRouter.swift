@@ -45,7 +45,6 @@ struct Z2MMessageRouter: Sendable {
                let log = try? JSONDecoder().decode(LogMessage.self, from: d) {
                 return .logMessage(log)
             }
-            print("[Logs] bridge/logging decode failed — payload type: \(raw.payload)")
             return nil
 
         case Z2MTopics.bridgeEvent:

@@ -19,7 +19,7 @@ actor DeviceDocService {
     static let shared = DeviceDocService()
 
     private nonisolated let log = Logger(subsystem: "dev.echodb.shellbee", category: "DeviceDocService")
-    private var cache: [String: ParsedDeviceDoc] = [:]
+    private var cache: [String: DeviceDocumentation] = [:]
     private nonisolated let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
@@ -29,7 +29,52 @@ actor DeviceDocService {
 
     private init() {}
 
-    func doc(for model: String, z2mVersion: String) async throws -> ParsedDeviceDoc {
+    func doc(for device: Device, z2mVersion: String) async throws -> DeviceDocumentation {
+        let model = device.definition?.model ?? device.modelId ?? ""
+        guard !model.isEmpty else { throw DeviceDocError.unsupportedDevice }
+        return try await doc(for: model, device: device, z2mVersion: z2mVersion)
+    }
+
+    func doc(for model: String, z2mVersion: String) async throws -> DeviceDocumentation {
+        try await doc(for: model, vendor: "", description: "", z2mVersion: z2mVersion)
+    }
+
+    func doc(for entry: DocBrowserEntry, z2mVersion: String) async throws -> DeviceDocumentation {
+        try await doc(for: entry.docKey, vendor: entry.vendor, description: entry.description, z2mVersion: z2mVersion)
+    }
+
+    func doc(for model: String, vendor: String, description: String, z2mVersion: String) async throws -> DeviceDocumentation {
+        let device = Device(
+            ieeeAddress: "doc-preview",
+            type: .unknown,
+            networkAddress: 0,
+            supported: true,
+            friendlyName: model,
+            disabled: false,
+            description: description.isEmpty ? nil : description,
+            definition: DeviceDefinition(
+                model: model,
+                vendor: vendor,
+                description: description,
+                supportsOTA: false,
+                exposes: [],
+                options: nil,
+                icon: nil
+            ),
+            powerSource: nil,
+            modelId: model,
+            manufacturer: vendor.isEmpty ? nil : vendor,
+            interviewCompleted: true,
+            interviewing: false,
+            softwareBuildId: nil,
+            dateCode: nil,
+            endpoints: nil,
+            options: nil
+        )
+        return try await doc(for: model, device: device, z2mVersion: z2mVersion)
+    }
+
+    private func doc(for model: String, device: Device, z2mVersion: String) async throws -> DeviceDocumentation {
         let branch = z2mVersion.isStableZ2MVersion ? "master" : "dev"
         let key = "\(model)@\(branch)"
 
@@ -43,6 +88,18 @@ actor DeviceDocService {
         // Z2M multi-model filenames use underscores (e.g. E2001/E2002/E2313 → E2001_E2002_E2313.md).
         // Slashes must be replaced before percent-encoding, otherwise they become URL path separators.
         let sanitized = model.replacingOccurrences(of: "/", with: "_")
+
+        // Check the bundled snapshot before hitting the network.
+        if let markdown = await BundledDocStore.shared.markdown(for: model) {
+            let parsed = DocParser.parse(markdown)
+            let normalized = DeviceDocNormalizer.normalize(parsed: parsed, device: device)
+            let documentation = DeviceDocumentation(sourcePath: "devices/\(sanitized).md", parsed: parsed, normalized: normalized)
+            cache[key] = documentation
+            log.debug("loaded from bundle: \(key)")
+            return documentation
+        }
+
+        // Fall back to the network for devices not yet in the bundle.
         let encoded = sanitized.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? sanitized
         guard let url = URL(string: "https://raw.githubusercontent.com/Koenkk/zigbee2mqtt.io/\(branch)/docs/devices/\(encoded).md") else {
             log.error("URL construction failed for: \(model)")
@@ -59,9 +116,15 @@ actor DeviceDocService {
                 throw DeviceDocError.notFound
             }
             let parsed = DocParser.parse(String(data: data, encoding: .utf8) ?? "")
-            cache[key] = parsed
-            log.debug("parsed \(parsed.sections.count) sections for \(key)")
-            return parsed
+            let normalized = DeviceDocNormalizer.normalize(parsed: parsed, device: device)
+            let documentation = DeviceDocumentation(
+                sourcePath: "devices/\(sanitized).md",
+                parsed: parsed,
+                normalized: normalized
+            )
+            cache[key] = documentation
+            log.debug("parsed \(parsed.sections.count) sections for \(key) via network")
+            return documentation
         } catch let e as DeviceDocError {
             throw e
         } catch {
@@ -71,11 +134,4 @@ actor DeviceDocService {
     }
 
     func clearCache() { cache.removeAll() }
-}
-
-private extension String {
-    nonisolated var isStableZ2MVersion: Bool {
-        let parts = split(separator: ".")
-        return parts.count == 3 && parts.allSatisfy { $0.allSatisfy(\.isNumber) }
-    }
 }

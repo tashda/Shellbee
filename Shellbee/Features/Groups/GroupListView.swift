@@ -20,7 +20,7 @@ struct GroupListView: View {
                     )
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .navigationTitle("Groups")
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(for: Group.self) { group in
@@ -38,11 +38,13 @@ struct GroupListView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Add Group")
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     sortMenu
                 }
             }
+            .refreshable { await environment.refreshBridgeData() }
             .overlay {
                 if environment.store.groups.isEmpty {
                     ContentUnavailableView(
@@ -61,12 +63,12 @@ struct GroupListView: View {
             }
         }
         .sheet(item: $groupToRename) { group in
-            RenameGroupSheet(group: group) { newName in
+            RenameGroupSheet(group: group, memberDevices: memberDevices(for: group)) { newName in
                 viewModel.renameGroup(group, to: newName, environment: environment)
             }
         }
         .sheet(item: $groupToRemove) { group in
-            RemoveGroupSheet(group: group) { force in
+            RemoveGroupSheet(group: group, memberDevices: memberDevices(for: group)) { force in
                 viewModel.removeGroup(group, force: force, environment: environment)
             }
         }

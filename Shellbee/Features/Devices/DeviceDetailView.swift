@@ -59,20 +59,12 @@ struct DeviceDetailView: View {
             }
 
             Section("Device Info") {
-                LabeledContent("Zigbee Model", value: device.modelId ?? "Unknown")
-                LabeledContent("IEEE Address", value: device.ieeeAddress)
-                LabeledContent("Network Address", value: "\(device.networkAddress)")
-                LabeledContent("MQTT Topic", value: "zigbee2mqtt/\(device.friendlyName)")
+                CopyableRow(label: "Zigbee Model", value: device.modelId ?? "Unknown")
+                CopyableRow(label: "IEEE Address", value: device.ieeeAddress)
+                CopyableRow(label: "Network Address", value: "\(device.networkAddress)")
+                CopyableRow(label: "MQTT Topic", value: "zigbee2mqtt/\(device.friendlyName)")
                 if let fw = device.softwareBuildId {
-                    LabeledContent("Firmware", value: fw)
-                }
-            }
-
-            Section("Activity") {
-                Button {
-                    environment.selectedTab = .settings
-                } label: {
-                    Label("View Recent Activity", systemImage: "clock.arrow.circlepath")
+                    CopyableRow(label: "Firmware", value: fw)
                 }
             }
 

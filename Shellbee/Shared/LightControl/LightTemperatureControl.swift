@@ -59,7 +59,7 @@ struct LightTemperatureControl: View {
                     VStack(spacing: DesignTokens.Spacing.xs) {
                         Circle()
                             .fill(LightDisplayColor.temperatureColor(mireds: mireds))
-                            .frame(width: 36, height: 36)
+                            .frame(width: DesignTokens.Size.lightControlButton, height: DesignTokens.Size.lightControlButton)
                             .overlay(Circle().strokeBorder(
                                 isSelected ? Color.primary : Color.clear, lineWidth: 2
                             ))

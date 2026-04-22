@@ -14,6 +14,7 @@ struct ConnectionHistorySection: View {
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                                 Text(config.host)
                                     .font(.headline)
+                                    .foregroundStyle(.primary)
                                 Text(config.displayURL)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
@@ -25,7 +26,7 @@ struct ConnectionHistorySection: View {
                                     .controlSize(.small)
                             } else if viewModel.matchesCurrentConfig(config) && viewModel.connectionState.isConnected {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
+                                    .foregroundStyle(.secondary)
                             } else {
                                 Image(systemName: "chevron.right")
                                     .font(.footnote.weight(.semibold))
@@ -34,6 +35,7 @@ struct ConnectionHistorySection: View {
                         }
                         .padding(.vertical, DesignTokens.Spacing.xs)
                     }
+                    .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             viewModel.deleteConnection(config)
@@ -68,6 +70,7 @@ struct ConnectionDiscoverySection: View {
                     viewModel.startDiscovery()
                 } label: {
                     Label("Scan for Zigbee2MQTT", systemImage: "magnifyingglass")
+                        .foregroundStyle(.primary)
                 }
             } else {
                 ForEach(viewModel.discoveredHosts, id: \.self) { host in
@@ -84,13 +87,17 @@ struct ConnectionDiscoverySection: View {
                             }
                             Spacer()
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.tint)
+                                .foregroundStyle(.secondary)
                         }
                     }
+                    .buttonStyle(.plain)
                 }
 
-                Button("Scan Again") {
+                Button {
                     viewModel.startDiscovery()
+                } label: {
+                    Text("Scan Again")
+                        .foregroundStyle(.primary)
                 }
             }
         }

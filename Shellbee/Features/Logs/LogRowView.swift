@@ -18,9 +18,6 @@ struct LogRowView: View {
                 }
 
                 HStack(spacing: DesignTokens.Spacing.sm) {
-                    Image(systemName: entry.category.systemImage)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(entry.category.chipTint)
                     Text(entry.summarySubtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -35,66 +32,52 @@ struct LogRowView: View {
 
     // MARK: - Leading visual
 
-    @ViewBuilder
     private var leadingVisual: some View {
-        let resolved = resolvedDevices
         let size = DesignTokens.Size.logRowDeviceImage
-        ZStack(alignment: .bottomTrailing) {
-            switch resolved.count {
-            case 2:
-                ZStack(alignment: .topLeading) {
-                    deviceImage(resolved[0], size: size * 0.72)
-                    deviceImage(resolved[1], size: size * 0.72)
-                        .offset(x: size * 0.28, y: size * 0.28)
-                }
-                .frame(width: size, height: size, alignment: .topLeading)
-            case 1:
-                deviceImage(resolved[0], size: size)
-                    .frame(width: size, height: size, alignment: .top)
-            default:
-                fallbackSymbol
-            }
-            levelBadge(size: size)
-        }
-    }
+        let badgeSize = size * 0.47
 
-    private func deviceImage(_ device: Device, size: CGFloat) -> some View {
-        DeviceImageView(
-            device: device,
-            isAvailable: environment.store.isAvailable(device.friendlyName),
-            size: size
-        )
-    }
-
-    private func levelBadge(size: CGFloat) -> some View {
-        let badge = size * 0.44
-        return ZStack {
+        return ZStack(alignment: .bottomTrailing) {
             Circle()
-                .fill(Color(.systemBackground))
-                .frame(width: badge, height: badge)
-            Image(systemName: entry.level.systemImage)
-                .font(.system(size: badge * 0.60, weight: .semibold))
-                .foregroundStyle(entry.level.color)
+                .fill(entry.level.color)
+                .frame(width: size, height: size)
+                .overlay {
+                    Image(systemName: entry.category.systemImage)
+                        .font(.system(size: size * 0.38, weight: .semibold))
+                        .foregroundStyle(iconForeground)
+                }
+
+            if let device = resolvedDevice {
+                deviceThumbnail(device, size: badgeSize)
+                    .offset(x: 3, y: 3)
+            }
         }
-        .offset(x: DesignTokens.Spacing.xs, y: DesignTokens.Spacing.xs)
     }
 
-    // Resolve device names → Device objects, max 2
-    private var resolvedDevices: [Device] {
-        let names: [String]
+    private var iconForeground: Color {
+        entry.level == .warning ? Color.black.opacity(0.75) : Color.white
+    }
+
+    private func deviceThumbnail(_ device: Device, size: CGFloat) -> some View {
+        DeviceImageView(device: device, isAvailable: true, size: size)
+            .clipShape(Circle())
+            .overlay(Circle().strokeBorder(Color(.systemBackground), lineWidth: max(1.5, size * 0.1)))
+    }
+
+    private var resolvedDevice: Device? {
+        let name: String?
         if let ctx = entry.context, !ctx.devices.isEmpty {
-            names = ctx.devices.map(\.friendlyName)
-        } else if let name = entry.deviceName {
-            names = [name]
+            name = ctx.devices.first?.friendlyName
+        } else if let n = entry.deviceName {
+            name = n
         } else if case .mqttPublish(let d, _, _) = entry.parsedMessageKind {
-            names = [d]
+            name = d
         } else {
-            return []
+            name = nil
         }
-        return names.prefix(2).compactMap { environment.store.device(named: $0) }
+        return name.flatMap { environment.store.device(named: $0) }
     }
 
-    // MARK: - Supporting views
+    // MARK: - Timestamps
 
     private var absoluteTimestamp: some View {
         Text(entry.timestamp, format: .dateTime.hour().minute().second())
@@ -106,23 +89,6 @@ struct LogRowView: View {
         Text(entry.timestamp, style: .relative)
             .font(.caption2)
             .foregroundStyle(.tertiary)
-    }
-
-    private var fallbackSymbol: some View {
-        let size = DesignTokens.Size.logRowDeviceImage
-        return Image(systemName: fallbackSymbolName)
-            .font(.system(size: size * 0.48, weight: .medium))
-            .foregroundStyle(.secondary)
-            .frame(width: size, height: size, alignment: .top)
-    }
-
-    private var fallbackSymbolName: String {
-        if let namespace = entry.namespace?.lowercased() {
-            if namespace.contains("mqtt") { return "antenna.radiowaves.left.and.right" }
-            if namespace.contains("bridge") { return "cpu" }
-            if namespace.contains("controller") { return "dot.radiowaves.left.and.right" }
-        }
-        return entry.category.systemImage
     }
 }
 

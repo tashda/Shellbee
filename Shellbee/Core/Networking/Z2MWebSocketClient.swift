@@ -4,11 +4,11 @@ actor Z2MWebSocketClient {
 
     private static let connectionTimeout: TimeInterval = 10
 
-    nonisolated let events: AsyncStream<Z2MSocketEvent>
-    private let continuation: AsyncStream<Z2MSocketEvent>.Continuation
     private let delegate: Z2MWebSocketSessionDelegate
     private let session: URLSession
     private var task: URLSessionWebSocketTask?
+    private var receiveLoopTask: Task<Void, Never>?
+    private var currentContinuation: AsyncStream<Z2MSocketEvent>.Continuation?
     private(set) var state: State = .disconnected
 
     enum State: Sendable {
@@ -16,7 +16,6 @@ actor Z2MWebSocketClient {
     }
 
     init() {
-        (events, continuation) = AsyncStream.makeStream(of: Z2MSocketEvent.self)
         delegate = Z2MWebSocketSessionDelegate()
         session = URLSession(
             configuration: .default,
@@ -25,11 +24,18 @@ actor Z2MWebSocketClient {
         )
     }
 
-    func connect(url: URL) async throws {
+    func connect(url: URL) async throws -> AsyncStream<Z2MSocketEvent> {
+        // Finish any in-progress stream so old for-await loops exit cleanly.
+        currentContinuation?.finish()
+        currentContinuation = nil
+
+        let (stream, continuation) = AsyncStream.makeStream(of: Z2MSocketEvent.self)
+        currentContinuation = continuation
+
         state = .connecting
-        delegate.prepareForConnectionAttempt()
         let wsTask = session.webSocketTask(with: url)
         task = wsTask
+        delegate.setExpectedTask(wsTask)
         wsTask.resume()
 
         do {
@@ -38,16 +44,24 @@ actor Z2MWebSocketClient {
             wsTask.cancel(with: .normalClosure, reason: nil)
             task = nil
             state = .failed(Z2MError.interpret(error))
+            continuation.finish()
+            currentContinuation = nil
             throw error
         }
+
         state = .connected
-        Task { await self.receiveLoop(wsTask) }
+        receiveLoopTask = Task { await self.receiveLoop(wsTask, continuation: continuation) }
+        return stream
     }
 
     func disconnect() {
+        receiveLoopTask?.cancel()
+        receiveLoopTask = nil
         task?.cancel(with: .normalClosure, reason: nil)
         task = nil
         state = .disconnected
+        currentContinuation?.finish()
+        currentContinuation = nil
     }
 
     func send(_ data: Data) async throws {
@@ -59,13 +73,14 @@ actor Z2MWebSocketClient {
         }
     }
 
-    private func receiveLoop(_ wsTask: URLSessionWebSocketTask) async {
+    private func receiveLoop(_ wsTask: URLSessionWebSocketTask, continuation: AsyncStream<Z2MSocketEvent>.Continuation) async {
         do {
             while true {
                 let msg = try await wsTask.receive()
                 continuation.yield(.message(try Self.extractData(msg)))
             }
         } catch {
+            if Task.isCancelled { return }
             guard case .connected = state else { return }
             state = .failed(error.localizedDescription)
             continuation.yield(.disconnected(error.localizedDescription))

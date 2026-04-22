@@ -9,27 +9,27 @@ struct HomeMeshCard: View {
     }
 
     var body: some View {
-        HomeCardContainer(tint: .indigo) {
-            header
-            Divider().padding(.vertical, DesignTokens.Spacing.sm)
-            statsRow
-            if hasAlerts {
-                Divider().padding(.vertical, DesignTokens.Spacing.sm)
-                VStack(spacing: DesignTokens.Spacing.sm) { alertRows }
+        HomeCardContainer {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                header
+                statsRow
+                if hasAlerts {
+                    VStack(spacing: DesignTokens.Spacing.sm) { alertRows }
+                }
             }
         }
     }
 
     private var header: some View {
         HStack(alignment: .top) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                Image(systemName: "point.3.connected.trianglepath.dotted")
-                    .font(.system(size: DesignTokens.Size.summaryRowSymbol, weight: .semibold))
-                    .foregroundStyle(.indigo)
-                    .frame(width: DesignTokens.Size.summaryRowSymbolFrame, height: DesignTokens.Size.summaryRowSymbolFrame)
-                    .background(Color.indigo.opacity(DesignTokens.Opacity.subtleFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.summaryRowSymbolBackground, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
                 Text("Mesh")
                     .font(.headline)
+                if let coordinator = snapshot.coordinatorType {
+                    Text(coordinator)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
@@ -60,8 +60,7 @@ struct HomeMeshCard: View {
             .buttonStyle(StatCellButtonStyle())
 
             if let lqi = snapshot.averageLinkQuality {
-                let color: Color = lqi >= 100 ? .green : lqi >= 60 ? .orange : .red
-                HomeStatCell(value: "\(lqi)", label: "Avg LQI", valueColor: color)
+                HomeStatCell(value: "\(lqi)", label: "Avg LQI", valueColor: lqi >= 60 ? .primary : .red)
             }
         }
     }
@@ -107,7 +106,7 @@ private extension HomeMeshCard {
             devices: [], availability: [:], states: [:],
             isConnected: true, isBridgeOnline: true, groupCount: 0,
             bridgeVersion: nil, bridgeCommit: nil,
-            coordinatorType: nil, coordinatorIEEEAddress: nil,
+            coordinatorType: "EmberZNet", coordinatorIEEEAddress: "0x4c5bb3fffe932a84",
             networkChannel: 20, panID: 54_074,
             isPermitJoinActive: false, permitJoinEnd: nil, restartRequired: false
         )

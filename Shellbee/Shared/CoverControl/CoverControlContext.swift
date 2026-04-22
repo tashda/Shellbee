@@ -33,7 +33,7 @@ struct CoverControlContext: Equatable {
 
     init?(device: Device, state: [String: JSONValue]) {
         let exposes = device.definition?.exposes ?? []
-        let flat = Self.flatten(exposes)
+        let flat = exposes.flattened
         let coverFeatures = exposes.first(where: { $0.type == "cover" })?.features ?? flat
 
         let stateFeature = Self.find(in: coverFeatures, names: ["state"])
@@ -63,10 +63,6 @@ struct CoverControlContext: Equatable {
     func tiltPayload(_ value: Double) -> JSONValue? {
         guard let f = tiltFeature, f.isWritable else { return nil }
         return .object([f.property: .int(Int(value.rounded()))])
-    }
-
-    private static func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { [$0] + flatten($0.features ?? []) }
     }
 
     private static func find(in exposes: [Expose], names: Set<String>) -> Feature? {

@@ -1,5 +1,11 @@
 import Foundation
 
+struct ParsedGuideDoc: Sendable {
+    let title: String
+    let sourcePath: String
+    let parsed: ParsedDeviceDoc
+}
+
 struct ParsedDeviceDoc: Sendable {
     let sections: [DocSection]
 

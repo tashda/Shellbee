@@ -33,6 +33,7 @@ final class AppEnvironment {
     static let maxReconnectAttempts = ConnectionSessionController.maxReconnectAttempts
 
     func connect(config: ConnectionConfig) {
+        selectedTab = .home
         session.connect(config: config)
     }
 
@@ -60,6 +61,12 @@ final class AppEnvironment {
         send(topic: Z2MTopics.Request.restart, payload: .string(""))
     }
 
+    func refreshBridgeData() async {
+        send(topic: Z2MTopics.Request.devices, payload: .string(""))
+        send(topic: Z2MTopics.Request.groups, payload: .string(""))
+        try? await Task.sleep(for: .milliseconds(600))
+    }
+
     func send(topic: String, payload: JSONValue) {
         session.send(topic: topic, payload: payload)
     }
@@ -80,6 +87,21 @@ final class AppEnvironment {
         ConnectionLiveActivityCoordinator.shared.clearAll()
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
         await Task.yield()
+
+        let env = ProcessInfo.processInfo.environment
+        if env["UI_TEST_MODE"] == "1" {
+            if env["UI_TEST_CLEAR_SAVED_SERVER"] == "1" {
+                ConnectionConfig.clear()
+                session.connectionConfig = nil
+                return
+            }
+            if let host = env["UI_TEST_Z2M_HOST"],
+               let portStr = env["UI_TEST_Z2M_PORT"],
+               let port = Int(portStr) {
+                connect(config: ConnectionConfig(host: host, port: port, useTLS: false, basePath: "/", authToken: nil))
+                return
+            }
+        }
 
         if let config = connectionConfig {
             connect(config: config)

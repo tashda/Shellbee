@@ -8,6 +8,23 @@ struct ConnectionOverviewView: View {
             List {
                 ConnectionHistorySection(viewModel: viewModel)
                 ConnectionDiscoverySection(viewModel: viewModel)
+                Section("Explore") {
+                    NavigationLink(destination: DocBrowserView()) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Device Library")
+                                Text("Browse docs for 5,000+ Zigbee devices")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "books.vertical.fill")
+                                .foregroundStyle(.white)
+                                .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
+                                .background(.orange, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
+                        }
+                    }
+                }
             }
             .navigationTitle("Connect")
             .navigationBarTitleDisplayMode(.large)

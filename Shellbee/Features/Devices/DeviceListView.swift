@@ -3,35 +3,37 @@ import SwiftUI
 struct DeviceListView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = DeviceListViewModel()
+    @State private var navigationPath = NavigationPath()
     @State private var deviceToRename: Device?
     @State private var deviceToRemove: Device?
     @State private var pendingDeviceAlert: PendingDeviceAlert?
 
+    private var isGrouped: Bool {
+        viewModel.groupByCategory && !viewModel.hasActiveFilter && viewModel.searchText.isEmpty
+    }
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             List {
-                let devices = viewModel.filteredDevices(store: environment.store)
-                ForEach(devices) { device in
-                    let state = environment.store.state(for: device.friendlyName)
-                    let isAvailable = environment.store.isAvailable(device.friendlyName)
-                    let otaStatus = environment.store.otaStatus(for: device.friendlyName)
-                    DeviceListRow(
-                        device: device,
-                        state: state,
-                        isAvailable: isAvailable,
-                        otaStatus: otaStatus,
-                        onRename: { deviceToRename = device },
-                        onRemove: { deviceToRemove = device },
-                        onReconfigure: { pendingDeviceAlert = .reconfigure(device) },
-                        onInterview: { pendingDeviceAlert = .interview(device) },
-                        onUpdate: state.hasUpdateAvailable
-                            ? { viewModel.updateDevice(device, environment: environment) }
-                            : nil,
-                        onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment) }
-                    )
+                if isGrouped {
+                    let grouped = viewModel.categorizedDevices(store: environment.store)
+                    ForEach(grouped, id: \.0) { (category, devices) in
+                        Section {
+                            ForEach(devices) { device in
+                                deviceRow(for: device)
+                            }
+                        } header: {
+                            Text(category.label)
+                        }
+                    }
+                } else {
+                    let devices = viewModel.filteredDevices(store: environment.store)
+                    ForEach(devices) { device in
+                        deviceRow(for: device)
+                    }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .navigationTitle("Devices")
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(for: Device.self) { device in
@@ -45,9 +47,7 @@ struct DeviceListView: View {
                     sortMenu
                 }
             }
-            .refreshable {
-                try? await Task.sleep(for: .seconds(1))
-            }
+            .refreshable { await environment.refreshBridgeData() }
             .overlay {
                 if environment.store.devices.isEmpty {
                     ContentUnavailableView(
@@ -59,8 +59,15 @@ struct DeviceListView: View {
                     ContentUnavailableView.search(text: viewModel.searchText)
                 }
             }
-            .task(id: environment.pendingDeviceFilter) {
+            .onAppear {
                 guard let filter = environment.pendingDeviceFilter else { return }
+                navigationPath = NavigationPath()
+                viewModel.applyQuickFilter(filter)
+                environment.pendingDeviceFilter = nil
+            }
+            .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
+                guard let filter = newFilter else { return }
+                navigationPath = NavigationPath()
                 viewModel.applyQuickFilter(filter)
                 environment.pendingDeviceFilter = nil
             }
@@ -100,8 +107,39 @@ struct DeviceListView: View {
         }
     }
 
+    // MARK: - Row builder
+
+    @ViewBuilder
+    private func deviceRow(for device: Device) -> some View {
+        let state = environment.store.state(for: device.friendlyName)
+        let isAvailable = environment.store.isAvailable(device.friendlyName)
+        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        DeviceListRow(
+            device: device,
+            state: state,
+            isAvailable: isAvailable,
+            otaStatus: otaStatus,
+            onRename: { deviceToRename = device },
+            onRemove: { deviceToRemove = device },
+            onReconfigure: { pendingDeviceAlert = .reconfigure(device) },
+            onInterview: { pendingDeviceAlert = .interview(device) },
+            onUpdate: state.hasUpdateAvailable
+                ? { viewModel.updateDevice(device, environment: environment) }
+                : nil,
+            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment) }
+        )
+    }
+
+    // MARK: - Sort menu
+
     private var sortMenu: some View {
         Menu {
+            Toggle(isOn: $viewModel.groupByCategory) {
+                Label("Group by Type", systemImage: "square.grid.2x2")
+            }
+
+            Divider()
+
             Picker("Sort by", selection: $viewModel.sortOrder) {
                 ForEach(DeviceSortOrder.allCases, id: \.self) { order in
                     Text(order.rawValue).tag(order)

@@ -21,7 +21,9 @@ struct ExposeCardView: View {
                 GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
             }
         case .sensor:
-            SensorCard(device: device, state: state, mode: mode)
+            if SensorCard.hasReadings(device: device, state: state) {
+                SensorCard(device: device, state: state, mode: mode)
+            }
         case .climate:
             if let ctx = ClimateControlContext(device: device, state: state) {
                 ClimateControlCard(context: ctx, mode: mode, onSend: onSend)

@@ -46,7 +46,7 @@ struct GenericExposeCard: View {
 
     private func makeRows() -> [ExposeRow] {
         let exposes = device.definition?.exposes ?? []
-        let flat = flatten(exposes)
+        let flat = exposes.flattenedLeaves
         return flat.compactMap { expose -> ExposeRow? in
             guard !Self.skipTypes.contains(expose.type) else { return nil }
             guard expose.isReadable || expose.isWritable else { return nil }
@@ -56,14 +56,6 @@ struct GenericExposeCard: View {
         }
     }
 
-    private func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { expose -> [Expose] in
-            if !expose.features.isNilOrEmpty {
-                return flatten(expose.features ?? [])
-            }
-            return [expose]
-        }
-    }
 }
 
 struct ExposeRow: Identifiable {

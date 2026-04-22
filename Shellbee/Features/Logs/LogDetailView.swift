@@ -28,13 +28,27 @@ struct LogDetailView: View {
         return payload.linkQuality
     }
 
+    private static let stateMetadataKeys: Set<String> = [
+        "linkquality", "last_seen", "update", "update_available", "device"
+    ]
+
+    private var logTimeState: [String: JSONValue]? {
+        if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
+            return payload.isEmpty ? nil : payload
+        }
+        if entry.category == .stateChange, let changes = entry.context?.stateChanges {
+            var state: [String: JSONValue] = [:]
+            for change in changes where !Self.stateMetadataKeys.contains(change.property) {
+                state[change.property] = change.to
+            }
+            return state.isEmpty ? nil : state
+        }
+        return nil
+    }
+
     var body: some View {
         List {
-            Section {
-                LogDetailSummaryBarView(entry: entry, linkQuality: payloadLinkQuality)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
+            metadataSection
 
             if displayDevices.count == 1, let (_, device) = displayDevices.first {
                 singleDeviceSection(device)
@@ -42,21 +56,20 @@ struct LogDetailView: View {
                 LogDetailDevicesSection(devices: displayDevices)
             }
 
-            let changes = entry.context?.stateChanges ?? []
-            if !changes.isEmpty {
-                LogDetailChangesSection(changes: changes)
-            }
-
-            if entry.category != .stateChange {
-                if viewMode == .beautiful, case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
-                    BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
-                } else {
-                    jsonSection
+            if viewMode == .beautiful {
+                let changes = entry.context?.stateChanges ?? []
+                if !changes.isEmpty {
+                    LogDetailChangesSection(changes: changes)
                 }
+                if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
+                    BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
+                }
+            } else {
+                jsonSection
             }
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
-        .navigationTitle("Log Detail")
+        .navigationTitle(entry.category.label)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if entry.category != .stateChange {
@@ -64,7 +77,7 @@ struct LogDetailView: View {
                     Button {
                         viewMode = viewMode == .json ? .beautiful : .json
                     } label: {
-                        Image(systemName: viewMode == .json ? "curlybraces.square.fill" : "curlybraces")
+                        Image(systemName: "curlybraces")
                     }
                     .tint(viewMode == .json ? .accentColor : .secondary)
                 }
@@ -78,7 +91,7 @@ struct LogDetailView: View {
             ZStack {
                 DeviceCard(
                     device: device,
-                    state: deviceState(for: device),
+                    state: environment.store.state(for: device.friendlyName),
                     isAvailable: environment.store.isAvailable(device.friendlyName),
                     otaStatus: environment.store.otaStatus(for: device.friendlyName)
                 )
@@ -88,11 +101,29 @@ struct LogDetailView: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
-        Section {
-            ExposeCardView(device: device, state: deviceState(for: device), mode: .snapshot)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
+        if let state = logTimeState {
+            Section {
+                ExposeCardView(device: device, state: state, mode: .snapshot)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
         }
+    }
+
+    private var metadataSection: some View {
+        Section {
+            Label {
+                Text(entry.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute().second())
+                    .monospacedDigit()
+            } icon: {
+                Image(systemName: entry.level.systemImage)
+                    .foregroundStyle(entry.level.color)
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+        .listSectionSeparator(.hidden)
+        .listSectionSpacing(.compact)
     }
 
     private var jsonSection: some View {
@@ -102,11 +133,6 @@ struct LogDetailView: View {
                 .textSelection(.enabled)
                 .padding(.vertical, DesignTokens.Spacing.xs)
         }
-    }
-
-    private func deviceState(for device: Device) -> [String: JSONValue] {
-        if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind { return payload }
-        return environment.store.state(for: device.friendlyName)
     }
 }
 

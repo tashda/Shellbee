@@ -6,9 +6,38 @@ import SwiftUI
 // Links are tappable — they open in the default browser via the .link attribute.
 struct DocInlineTextView: View {
     let spans: [InlineSpan]
+    let sourcePath: String?
+    @State private var presentedDestination: InAppDocumentationDestination?
+
+    init(spans: [InlineSpan], sourcePath: String? = nil) {
+        self.spans = spans
+        self.sourcePath = sourcePath
+    }
 
     var body: some View {
         Text(attributedString)
+            .environment(\.openURL, OpenURLAction { url in
+                if let destination = DocLinkResolver.destination(for: url) {
+                    presentedDestination = destination
+                    return .handled
+                }
+                return .systemAction(url)
+            })
+            .sheet(item: $presentedDestination) { destination in
+                NavigationStack {
+                    switch destination {
+                    case .touchlinkGuide:
+                        TouchlinkGuideView()
+                            .toolbar {
+                                ToolbarItem(placement: .primaryAction) {
+                                    Button("Done") {
+                                        presentedDestination = nil
+                                    }
+                                }
+                            }
+                    }
+                }
+            }
     }
 
     private var attributedString: AttributedString {
@@ -39,7 +68,7 @@ struct DocInlineTextView: View {
 
             case .link(let label, let urlString):
                 var a = AttributedString(label)
-                a.link = URL(string: urlString)
+                a.link = DocLinkResolver.resolvedURL(for: urlString, sourcePath: sourcePath)
                 result += a
             }
         }

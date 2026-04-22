@@ -4,19 +4,21 @@ struct SerialSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
 
-    @State private var port: String = ""
     @State private var adapter: String = ""
     @State private var baudrate: Int = 115200
     @State private var rtscts: Bool = false
     @State private var disableLed: Bool = false
 
     @State private var showingDiscardAlert = false
-    @State private var showingDangerConfirm = false
+    @State private var showingApplyConfirm = false
+
+    private var currentPort: String {
+        environment.store.bridgeInfo?.config?.serial?.port ?? ""
+    }
 
     private var hasChanges: Bool {
         let serial = environment.store.bridgeInfo?.config?.serial
-        return port != (serial?.port ?? "")
-            || adapter != (serial?.adapter ?? "")
+        return adapter != (serial?.adapter ?? "")
             || baudrate != (serial?.baudrate ?? 115200)
             || rtscts != (serial?.rtscts ?? false)
             || disableLed != (serial?.disableLed ?? false)
@@ -27,14 +29,11 @@ struct SerialSettingsView: View {
     var body: some View {
         Form {
             Section {
-                SettingsWarningBanner(
-                    message: "Changes here can prevent the bridge from connecting to the Zigbee adapter. Proceed only if you know what you are doing.",
-                    severity: .danger
-                )
-            }
-
-            Section {
-                SettingsTextField("Serial Port", text: $port, placeholder: "/dev/ttyUSB0")
+                if currentPort.isEmpty {
+                    LabeledContent("Serial Port", value: "Not configured")
+                } else {
+                    CopyableRow(label: "Serial Port", value: currentPort)
+                }
                 LabeledContent("Adapter Type") {
                     Picker("Adapter", selection: $adapter) {
                         Text("Auto-detect").tag("")
@@ -53,7 +52,7 @@ struct SerialSettingsView: View {
             } header: {
                 Text("Adapter")
             } footer: {
-                Text("Enter the device path for your Zigbee adapter (e.g. /dev/ttyUSB0). Leave Adapter Type on Auto-detect unless your adapter requires a specific driver.")
+                Text("The serial port is read-only and can only be changed in Zigbee2MQTT directly.")
             }
 
             Section {
@@ -66,7 +65,6 @@ struct SerialSettingsView: View {
         }
         .navigationTitle("Adapter")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(hasChanges)
         .toolbar {
             if hasChanges {
                 ToolbarItem(placement: .topBarLeading) {
@@ -74,26 +72,22 @@ struct SerialSettingsView: View {
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Apply") { showingDangerConfirm = true }
+                Button("Apply") { showingApplyConfirm = true }
                     .disabled(!hasChanges)
             }
         }
-        .alert("Discard Unsaved Changes?", isPresented: $showingDiscardAlert) {
-            Button("Discard Changes", role: .destructive) { loadFromStore(); dismiss() }
-            Button("Keep Editing", role: .cancel) {}
-        } message: { Text("Any modifications you have made will be lost.") }
-        .alert("Apply Adapter Settings?", isPresented: $showingDangerConfirm) {
-            Button("Apply — I understand the risk", role: .destructive) { applyChanges() }
+        .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
+        .alert("Apply Adapter Settings?", isPresented: $showingApplyConfirm) {
+            Button("Apply", role: .destructive) { applyChanges() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Changing serial settings requires a bridge restart and may break the Zigbee adapter connection.")
+            Text("Changing adapter settings requires a bridge restart.")
         }
         .task { loadFromStore() }
     }
 
     private func loadFromStore() {
         let serial = environment.store.bridgeInfo?.config?.serial
-        port = serial?.port ?? ""
         adapter = serial?.adapter ?? ""
         baudrate = serial?.baudrate ?? 115200
         rtscts = serial?.rtscts ?? false
@@ -106,7 +100,6 @@ struct SerialSettingsView: View {
             "disable_led": .bool(disableLed),
             "baudrate": .int(baudrate)
         ]
-        if !port.isEmpty { serial["port"] = .string(port) }
         if !adapter.isEmpty { serial["adapter"] = .string(adapter) }
         environment.send(topic: Z2MTopics.Request.options, payload: .object(["serial": .object(serial)]))
     }

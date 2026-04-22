@@ -54,7 +54,7 @@ struct ClimateControlContext: Equatable {
 
     init?(device: Device, state: [String: JSONValue]) {
         let exposes = device.definition?.exposes ?? []
-        let flat = Self.flatten(exposes)
+        let flat = exposes.flattened
         let climateFeatures = exposes.first(where: { $0.type == "climate" })?.features ?? flat
 
         let tempFeature = Self.find(in: climateFeatures, names: ["local_temperature"])
@@ -93,10 +93,6 @@ struct ClimateControlContext: Equatable {
     func systemModePayload(_ mode: String) -> JSONValue? {
         guard let f = systemModeFeature, f.isWritable else { return nil }
         return .object([f.property: .string(mode)])
-    }
-
-    private static func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { [$0] + flatten($0.features ?? []) }
     }
 
     private static func find(in exposes: [Expose], names: Set<String>) -> Feature? {

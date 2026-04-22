@@ -9,39 +9,24 @@ struct RemoteCard: View {
         guard let s = state["action"]?.stringValue, !s.isEmpty else { return nil }
         return s
     }
+
     private var voltage: Double? { state["voltage"]?.numberValue }
+
     private var voltageUnit: String {
         let flat = (device.definition?.exposes ?? []).flatMap { [$0] + ($0.features ?? []) }
         return flat.first(where: { $0.name == "voltage" || $0.property == "voltage" })?.unit ?? "mV"
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
             header
-                .padding(DesignTokens.Spacing.lg)
-
             actionSection
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.bottom, DesignTokens.Spacing.lg)
-
             if let voltage {
-                Divider()
-                    .padding(.leading, DesignTokens.Spacing.lg)
                 voltageRow(voltage)
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.vertical, DesignTokens.Spacing.md)
-            }
-
-            if mode == .interactive {
-                Divider()
-                    .padding(.leading, DesignTokens.Spacing.lg)
-                Text("This remote sends commands directly — no actions to send from here.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.vertical, DesignTokens.Spacing.md)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DesignTokens.Spacing.lg)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
@@ -53,13 +38,12 @@ struct RemoteCard: View {
     private var header: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             if mode == .snapshot {
-                Image(systemName: "remote")
+                Image(systemName: "command")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.secondary)
-                Text("Remote State").font(.headline)
-            } else {
-                Text("Remote").font(.headline)
             }
+            Text(mode == .snapshot ? "Remote State" : "Remote")
+                .font(.headline)
         }
     }
 
@@ -68,31 +52,20 @@ struct RemoteCard: View {
     @ViewBuilder
     private var actionSection: some View {
         if let action = lastAction {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: "hand.tap.fill")
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundStyle(.tint)
-                    .frame(width: 32, alignment: .center)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(action.replacingOccurrences(of: "_", with: " ").capitalized)
-                        .font(.body.weight(.semibold))
-                    Text("Last action")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(action.replacingOccurrences(of: "_", with: " ").capitalized)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                Text("Last action")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
         } else {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: "hand.tap")
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundStyle(Color(.tertiaryLabel))
-                    .frame(width: 32, alignment: .center)
-                Text("No actions received yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-            }
+            Text("Waiting for actions")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -100,17 +73,15 @@ struct RemoteCard: View {
 
     private func voltageRow(_ value: Double) -> some View {
         HStack {
-            Label {
-                Text("Battery Voltage")
-            } icon: {
-                Image(systemName: "bolt")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            Image(systemName: "bolt")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("Voltage")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Spacer()
             Text("\(Int(value)) \(voltageUnit)")
-                .font(.footnote.monospacedDigit())
+                .font(.caption.weight(.medium).monospacedDigit())
                 .foregroundStyle(.secondary)
         }
     }
@@ -121,7 +92,6 @@ struct RemoteCard: View {
         VStack(spacing: DesignTokens.Spacing.lg) {
             RemoteCard(device: .preview, state: [
                 "action": .string("1_short_release"),
-                "battery": .double(100),
                 "voltage": .double(1500)
             ], mode: .interactive)
             RemoteCard(device: .preview, state: [

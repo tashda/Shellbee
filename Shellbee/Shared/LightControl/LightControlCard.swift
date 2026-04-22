@@ -155,13 +155,13 @@ struct LightControlCard: View {
                 Text("Color Temperature").font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Text("\(Int(1_000_000 / tempMireds))K").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                Circle().fill(context.displayColor).frame(width: 12, height: 12)
+                Circle().fill(context.displayColor).frame(width: DesignTokens.Size.colorSwatchSize, height: DesignTokens.Size.colorSwatchSize)
             }
         } else if isColorMode {
             HStack {
                 Text("Color").font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Circle().fill(context.displayColor).frame(width: 12, height: 12)
+                Circle().fill(context.displayColor).frame(width: DesignTokens.Size.colorSwatchSize, height: DesignTokens.Size.colorSwatchSize)
                     .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
             }
         }
@@ -174,7 +174,7 @@ struct LightControlCard: View {
             Image(systemName: systemImage)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 36, height: 36)
+                .frame(width: DesignTokens.Size.lightControlButton, height: DesignTokens.Size.lightControlButton)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

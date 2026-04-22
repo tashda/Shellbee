@@ -6,7 +6,7 @@ struct GroupRowView: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
-            groupIcon
+            groupLeadingVisual
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(group.friendlyName)
@@ -14,49 +14,50 @@ struct GroupRowView: View {
                     .fontWeight(.semibold)
                     .lineLimit(1)
 
-                if memberDevices.isEmpty {
-                    Text("No devices")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                } else {
-                    memberThumbnailRow
-                }
+                Text(memberSubtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xs) {
                 Text("#\(group.id)")
-                    .font(.system(size: DesignTokens.Size.chipFont, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-
-                if !group.scenes.isEmpty {
-                    Text("\(group.scenes.count) \(group.scenes.count == 1 ? "scene" : "scenes")")
-                        .font(.system(size: DesignTokens.Size.chipFont, weight: .regular))
-                        .foregroundStyle(.tertiary)
-                }
+                    .font(.system(size: DesignTokens.Size.chipFont, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
-    private var groupIcon: some View {
-        Image(systemName: "rectangle.3.group.fill")
-            .font(.system(size: DesignTokens.Size.summaryRowSymbol, weight: .medium))
-            .foregroundStyle(.secondary)
-            .frame(width: DesignTokens.Size.summaryRowSymbolFrame, height: DesignTokens.Size.summaryRowSymbolFrame)
-            .background(.fill.secondary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.summaryRowSymbolBackground))
+    private var groupLeadingVisual: some View {
+        GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.summaryRowSymbolFrame)
     }
 
-    private var memberThumbnailRow: some View {
-        MemberAvatarStack(devices: memberDevices, size: 24)
+    private var memberSubtitle: String {
+        let count = group.members.count
+        let deviceText = count == 0 ? "No devices" : "\(count) \(count == 1 ? "device" : "devices")"
+        guard !group.scenes.isEmpty else { return deviceText }
+        let s = group.scenes.count
+        return "\(deviceText) · \(s) \(s == 1 ? "scene" : "scenes")"
     }
 }
 
 #Preview {
-    List {
-        GroupRowView(group: .preview, memberDevices: [])
-        GroupRowView(group: .previewWithMembers, memberDevices: [.preview, .fallbackPreview, .preview])
+    NavigationStack {
+        List {
+            GroupListRow(
+                group: .preview,
+                memberDevices: [],
+                onRename: {},
+                onRemove: {}
+            )
+            GroupListRow(
+                group: .previewWithMembers,
+                memberDevices: [.preview, .fallbackPreview],
+                onRename: {},
+                onRemove: {}
+            )
+        }
     }
-    .listStyle(.plain)
 }

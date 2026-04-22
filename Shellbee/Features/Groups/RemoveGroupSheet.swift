@@ -3,20 +3,23 @@ import SwiftUI
 struct RemoveGroupSheet: View {
     @Environment(\.dismiss) private var dismiss
     let group: Group
+    let memberDevices: [Device]
     let onConfirm: (Bool) -> Void
 
     @State private var forceRemove = false
+
+    init(group: Group, memberDevices: [Device] = [], onConfirm: @escaping (Bool) -> Void) {
+        self.group = group
+        self.memberDevices = memberDevices
+        self.onConfirm = onConfirm
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     HStack(spacing: DesignTokens.Spacing.md) {
-                        Image(systemName: "rectangle.3.group.fill")
-                            .font(.system(size: DesignTokens.Size.summaryRowSymbol, weight: .medium))
-                            .foregroundStyle(.red)
-                            .frame(width: DesignTokens.Size.deviceActionSheetImage, height: DesignTokens.Size.deviceActionSheetImage)
-                            .background(.red.opacity(DesignTokens.Opacity.chipFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg))
+                        GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceActionSheetImage)
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                             Text(group.friendlyName)
                                 .font(.headline)

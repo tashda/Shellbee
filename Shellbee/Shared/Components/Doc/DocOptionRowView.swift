@@ -2,6 +2,12 @@ import SwiftUI
 
 struct DocOptionRowView: View {
     let option: DocOption
+    let sourcePath: String?
+
+    init(option: DocOption, sourcePath: String? = nil) {
+        self.option = option
+        self.sourcePath = sourcePath
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -23,7 +29,7 @@ struct DocOptionRowView: View {
             }
 
             if !option.description.isEmpty {
-                DocInlineTextView(spans: option.description)
+                DocInlineTextView(spans: option.description, sourcePath: sourcePath)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

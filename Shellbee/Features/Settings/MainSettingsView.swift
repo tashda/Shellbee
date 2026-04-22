@@ -12,7 +12,6 @@ struct MainSettingsView: View {
     @State private var cacheStateSendOnStartup: Bool = true
     @State private var output: BridgeSettings.OutputFormat = .json
     @State private var timestampFormat: String = "YYYY-MM-DD HH:mm:ss"
-    @State private var logDebugToMqttFrontend: Bool = false
     @State private var logRotation: Bool = true
     @State private var logDirectoriesToKeep: Int = 10
 
@@ -29,9 +28,12 @@ struct MainSettingsView: View {
             || cacheStateSendOnStartup != (advanced?.cacheStateSendOnStartup ?? true)
             || output.rawValue != (advanced?.output ?? "json")
             || timestampFormat != (advanced?.timestampFormat ?? "YYYY-MM-DD HH:mm:ss")
-            || logDebugToMqttFrontend != (advanced?.logDebugToMqttFrontend ?? false)
             || logRotation != (advanced?.logRotation ?? true)
             || logDirectoriesToKeep != (advanced?.logDirectoriesToKeep ?? 10)
+    }
+
+    private var serverOutputIsAttributeOnly: Bool {
+        environment.store.bridgeInfo?.config?.advanced?.output == "attribute"
     }
 
     var body: some View {
@@ -39,19 +41,18 @@ struct MainSettingsView: View {
             Section {
                 Picker("Log Level", selection: $logLevel) {
                     ForEach(BridgeSettings.LogLevel.allCases, id: \.self) { level in
-                        Text(level.rawValue.capitalized).tag(level)
+                        Text(level.label).tag(level)
                     }
                 }
-                Toggle("Publish Debug Logs to Web UI", isOn: $logDebugToMqttFrontend)
             } header: {
                 Text("Logging")
             } footer: {
-                Text("Controls how verbose the bridge logs are. Publishing debug logs to the web UI lets you see them in the Zigbee2MQTT interface.")
+                Text("Controls how verbose the bridge logs are.")
             }
 
             Section {
                 Toggle("Log Rotation", isOn: $logRotation)
-                InlineIntField("Log Directories to Keep", value: $logDirectoriesToKeep, range: 1...50)
+                InlineIntField("Directories to Keep", value: $logDirectoriesToKeep, range: 1...50)
             } header: {
                 Text("Log Files")
             } footer: {
@@ -91,20 +92,24 @@ struct MainSettingsView: View {
             }
 
             Section {
+                if serverOutputIsAttributeOnly {
+                    SettingsWarningBanner(
+                        message: "Your Zigbee2MQTT server is set to Attribute-only output. Shellbee requires JSON to display device states — change to JSON or Both below and tap Apply.",
+                        severity: .caution
+                    )
+                }
                 Picker("Output Format", selection: $output) {
-                    ForEach(BridgeSettings.OutputFormat.allCases, id: \.self) { format in
-                        Text(format.label).tag(format)
-                    }
+                    Text(BridgeSettings.OutputFormat.json.label).tag(BridgeSettings.OutputFormat.json)
+                    Text(BridgeSettings.OutputFormat.attributeAndJson.label).tag(BridgeSettings.OutputFormat.attributeAndJson)
                 }
             } header: {
                 Text("Output")
             } footer: {
-                Text("JSON publishes all device properties in a single message. Attribute mode uses a separate topic for each property. Both sends both formats at the same time.")
+                Text("JSON publishes all device properties in a single message. Both adds a separate per-topic message for each property alongside JSON. Shellbee requires JSON to be included.")
             }
         }
         .navigationTitle("General")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(hasChanges)
         .toolbar {
             if hasChanges {
                 ToolbarItem(placement: .topBarLeading) {
@@ -116,10 +121,7 @@ struct MainSettingsView: View {
                     .disabled(!hasChanges)
             }
         }
-        .alert("Discard Unsaved Changes?", isPresented: $showingDiscardAlert) {
-            Button("Discard Changes", role: .destructive) { loadFromStore(); dismiss() }
-            Button("Keep Editing", role: .cancel) {}
-        } message: { Text("Any modifications you have made will be lost.") }
+        .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
         .task { loadFromStore() }
     }
 
@@ -134,7 +136,6 @@ struct MainSettingsView: View {
         cacheStateSendOnStartup = advanced?.cacheStateSendOnStartup ?? true
         output = BridgeSettings.OutputFormat(rawValue: advanced?.output ?? "json") ?? .json
         timestampFormat = advanced?.timestampFormat ?? "YYYY-MM-DD HH:mm:ss"
-        logDebugToMqttFrontend = advanced?.logDebugToMqttFrontend ?? false
         logRotation = advanced?.logRotation ?? true
         logDirectoriesToKeep = advanced?.logDirectoriesToKeep ?? 10
     }
@@ -149,7 +150,6 @@ struct MainSettingsView: View {
             "cache_state_send_on_startup": .bool(cacheStateSendOnStartup),
             "output": .string(output.rawValue),
             "timestamp_format": .string(timestampFormat),
-            "log_debug_to_mqtt_frontend": .bool(logDebugToMqttFrontend),
             "log_rotation": .bool(logRotation),
             "log_directories_to_keep": .int(logDirectoriesToKeep)
         ]

@@ -6,58 +6,73 @@ private let log = Logger(subsystem: "dev.echodb.shellbee", category: "DeviceDocV
 struct DeviceDocView: View {
     let device: Device
     @Environment(AppEnvironment.self) private var environment
-    @State private var doc: ParsedDeviceDoc?
+    @State private var documentation: DeviceDocumentation?
     @State private var loadError: DeviceDocError?
     @State private var isLoading = false
+    @State private var showPairingGuide = false
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                DeviceInfoCardView(device: device)
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-
-                if isLoading {
-                    HStack {
-                        Spacer()
-                        VStack(spacing: DesignTokens.Spacing.md) {
-                            ProgressView()
-                            Text("Loading documentation")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, DesignTokens.Spacing.xxl)
-                } else if let error = loadError {
-                    errorView(error)
-                        .padding(.horizontal, DesignTokens.Spacing.lg)
-                } else if let doc {
-                    if doc.isEmpty {
-                        ContentUnavailableView(
-                            "No Documentation",
-                            systemImage: "doc.questionmark",
-                            description: Text("No documentation is available for \(device.definition?.model ?? "this device").")
-                        )
-                        .padding(.top, DesignTokens.Spacing.xxl)
-                    } else {
-                        ForEach(doc.sections) { section in
-                            DocSectionRegistry.view(for: section)
-                                .padding(DesignTokens.Spacing.lg)
-                                .background(
-                                    Color(.secondarySystemGroupedBackground),
-                                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
-                                )
-                                .padding(.horizontal, DesignTokens.Spacing.lg)
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, DesignTokens.Spacing.lg)
+            content
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Documentation")
         .navigationBarTitleDisplayMode(.large)
         .task { await loadDoc() }
+        .sheet(isPresented: $showPairingGuide) {
+            if let documentation {
+                NavigationStack {
+                    PairingGuideExperienceView(
+                        device: device,
+                        identity: documentation.normalized.identity,
+                        pairing: documentation.normalized.pairing,
+                        sourcePath: documentation.sourcePath
+                    )
+                    .navigationTitle("How to Pair")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .primaryAction) {
+                            Button("Done") { showPairingGuide = false }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if isLoading {
+            HStack {
+                Spacer()
+                VStack(spacing: DesignTokens.Spacing.md) {
+                    ProgressView()
+                    Text("Loading documentation")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.top, DesignTokens.Spacing.xxl)
+        } else if let error = loadError {
+            errorView(error)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+        } else if let documentation {
+            if documentation.parsed.isEmpty {
+                ContentUnavailableView(
+                    "No Documentation",
+                    systemImage: "doc.questionmark",
+                    description: Text("No documentation is available for \(device.definition?.model ?? "this device").")
+                )
+                .padding(.top, DesignTokens.Spacing.xxl)
+            } else {
+                DocumentationExperienceView(
+                    device: device,
+                    documentation: documentation,
+                    openPairing: documentation.normalized.pairing == nil ? nil : { showPairingGuide = true }
+                )
+            }
+        }
     }
 
     @ViewBuilder
@@ -79,8 +94,8 @@ struct DeviceDocView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            doc = try await DeviceDocService.shared.doc(for: model, z2mVersion: version)
-            log.debug("loadDoc: success, sections=\(doc?.sections.count ?? 0)")
+            documentation = try await DeviceDocService.shared.doc(for: device, z2mVersion: version)
+            log.debug("loadDoc: success, sections=\(documentation?.parsed.sections.count ?? 0)")
         } catch let err as DeviceDocError {
             log.error("loadDoc: DeviceDocError — \(err.localizedDescription)")
             loadError = err

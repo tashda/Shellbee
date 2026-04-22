@@ -13,9 +13,9 @@ struct SettingsView: View {
                 }
 
                 connectionSection
+                toolsSection
                 bridgeConfigSection
                 loggingSection
-                toolsSection
                 integrationsSection
                 networkSection
                 applicationSection
@@ -64,16 +64,13 @@ struct SettingsView: View {
     private var bridgeConfigSection: some View {
         Section {
             NavigationLink { MainSettingsView() } label: {
-                settingsLabel(title: "Main Settings", systemImage: "slider.horizontal.3", color: .purple)
+                settingsLabel(title: "General", systemImage: "slider.horizontal.3", color: .purple)
             }
             NavigationLink { MQTTSettingsView() } label: {
                 settingsLabel(title: "MQTT", systemImage: "point.3.connected.trianglepath.dotted", color: .blue)
             }
-            NavigationLink { FrontendSettingsView() } label: {
-                settingsLabel(title: "Frontend", systemImage: "macwindow", color: .teal)
-            }
             NavigationLink { SerialSettingsView() } label: {
-                settingsLabel(title: "Serial / Adapter", systemImage: "cable.connector", color: .brown)
+                settingsLabel(title: "Adapter", systemImage: "cable.connector", color: .brown)
             }
         } header: {
             Text("Bridge Configuration")
@@ -92,6 +89,9 @@ struct SettingsView: View {
 
     private var toolsSection: some View {
         Section {
+            NavigationLink { DocBrowserView() } label: {
+                settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+            }
             NavigationLink { LogsView() } label: {
                 settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
             }
@@ -128,7 +128,7 @@ struct SettingsView: View {
                 settingsLabel(title: "Network & Hardware", systemImage: "network", color: .red)
             }
             NavigationLink { NetworkAccessSettingsView() } label: {
-                settingsLabel(title: "Network Access", systemImage: "lock.shield.fill", color: .cyan)
+                settingsLabel(title: "Device Filtering", systemImage: "lock.shield.fill", color: .cyan)
             }
         } header: {
             Text("Network")

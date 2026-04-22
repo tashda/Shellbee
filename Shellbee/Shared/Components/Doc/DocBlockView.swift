@@ -5,23 +5,29 @@ import SwiftUI
 // To add a new block type: add a case to DocBlock, then add a rendering branch here.
 struct DocBlockView: View {
     let block: DocBlock
+    let sourcePath: String?
+
+    init(block: DocBlock, sourcePath: String? = nil) {
+        self.block = block
+        self.sourcePath = sourcePath
+    }
 
     var body: some View {
         switch block {
         case .paragraph(let spans):
-            DocInlineTextView(spans: spans)
+            DocInlineTextView(spans: spans, sourcePath: sourcePath)
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
         case .stepList(let steps):
-            DocStepListView(steps: steps)
+            DocStepListView(steps: steps, sourcePath: sourcePath)
 
         case .bulletList(let items):
-            BulletListView(items: items)
+            BulletListView(items: items, sourcePath: sourcePath)
 
         case .note(let spans):
-            DocNoteView(spans: spans)
+            DocNoteView(spans: spans, sourcePath: sourcePath)
 
         case .codeBlock(let code):
             ScrollView(.horizontal, showsIndicators: false) {
@@ -39,13 +45,13 @@ struct DocBlockView: View {
         case .optionsList(let options):
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 ForEach(options) { option in
-                    DocOptionRowView(option: option)
+                    DocOptionRowView(option: option, sourcePath: sourcePath)
                     if option.id != options.last?.id { Divider() }
                 }
             }
 
         case .subsection(let title, let blocks):
-            SubsectionView(title: title, blocks: blocks)
+            SubsectionView(title: title, blocks: blocks, sourcePath: sourcePath)
         }
     }
 }
@@ -54,6 +60,7 @@ struct DocBlockView: View {
 
 private struct BulletListView: View {
     let items: [[InlineSpan]]
+    let sourcePath: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
@@ -62,7 +69,7 @@ private struct BulletListView: View {
                     Text("•")
                         .foregroundStyle(.secondary)
                         .padding(.top, 1)
-                    DocInlineTextView(spans: spans)
+                    DocInlineTextView(spans: spans, sourcePath: sourcePath)
                         .font(.body)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -112,6 +119,7 @@ private struct DocTableView: View {
 private struct SubsectionView: View {
     let title: String
     let blocks: [DocBlock]
+    let sourcePath: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
@@ -120,7 +128,7 @@ private struct SubsectionView: View {
                 .foregroundStyle(.primary)
 
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                DocBlockView(block: block)
+                DocBlockView(block: block, sourcePath: sourcePath)
             }
         }
     }

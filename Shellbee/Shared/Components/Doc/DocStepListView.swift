@@ -2,11 +2,17 @@ import SwiftUI
 
 struct DocStepListView: View {
     let steps: [StepItem]
+    let sourcePath: String?
+
+    init(steps: [StepItem], sourcePath: String? = nil) {
+        self.steps = steps
+        self.sourcePath = sourcePath
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(steps.enumerated()), id: \.offset) { idx, step in
-                DocStepRow(step: step, showConnector: idx < steps.count - 1)
+                DocStepRow(step: step, showConnector: idx < steps.count - 1, sourcePath: sourcePath)
             }
         }
     }
@@ -15,6 +21,13 @@ struct DocStepListView: View {
 private struct DocStepRow: View {
     let step: StepItem
     let showConnector: Bool
+    let sourcePath: String?
+
+    init(step: StepItem, showConnector: Bool, sourcePath: String?) {
+        self.step = step
+        self.showConnector = showConnector
+        self.sourcePath = sourcePath
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
@@ -37,7 +50,7 @@ private struct DocStepRow: View {
             }
             .frame(width: DesignTokens.Size.docStepCircle)
 
-            DocInlineTextView(spans: step.spans)
+            DocInlineTextView(spans: step.spans, sourcePath: sourcePath)
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -4,19 +4,20 @@ struct NetworkSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
 
-    @State private var channel: Int = 11
     @State private var transmitPower: String = ""
     @State private var adapterConcurrent: String = ""
     @State private var adapterDelay: String = ""
 
     @State private var showingDiscardAlert = false
-    @State private var showingDangerConfirm = false
+
+    private var currentChannel: Int {
+        let adv = environment.store.bridgeInfo?.config?.advanced
+        return environment.store.bridgeInfo?.network?.channel ?? adv?.channel ?? 11
+    }
 
     private var hasChanges: Bool {
         let adv = environment.store.bridgeInfo?.config?.advanced
-        let storedChannel = environment.store.bridgeInfo?.network?.channel ?? (adv?.channel ?? 11)
-        return channel != storedChannel
-            || transmitPower != optionalIntString(adv?.transmitPower)
+        return transmitPower != optionalIntString(adv?.transmitPower)
             || adapterConcurrent != optionalIntString(adv?.adapterConcurrent)
             || adapterDelay != optionalIntString(adv?.adapterDelay)
     }
@@ -24,25 +25,11 @@ struct NetworkSettingsView: View {
     var body: some View {
         Form {
             Section {
-                SettingsWarningBanner(
-                    message: "Changing the Zigbee channel or PAN ID causes all paired devices to lose connection and require re-pairing.",
-                    severity: .danger
-                )
-            }
-
-            Section {
-                LabeledContent("Zigbee Channel") {
-                    Picker("Channel", selection: $channel) {
-                        ForEach(11...26, id: \.self) { ch in
-                            Text("\(ch)").tag(ch)
-                        }
-                    }
-                    .labelsHidden()
-                }
+                LabeledContent("Zigbee Channel", value: "\(currentChannel)")
             } header: {
                 Text("RF Channel")
             } footer: {
-                Text("Zigbee 2.4 GHz channels 11–26. Recommended: 15, 20, or 25 for minimal Wi-Fi interference. Requires bridge restart and re-pairing all devices.")
+                Text("To change the Zigbee channel, use the Zigbee2MQTT web interface. Changing it causes all paired devices to lose connection and require re-pairing.")
             }
 
             Section {
@@ -52,12 +39,11 @@ struct NetworkSettingsView: View {
             } header: {
                 Text("Hardware Tuning")
             } footer: {
-                Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrent/delay affect how fast commands are sent to the adapter.")
+                Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrent and delay affect how fast commands are sent to the adapter.")
             }
         }
         .navigationTitle("Network & Hardware")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(hasChanges)
         .toolbar {
             if hasChanges {
                 ToolbarItem(placement: .topBarLeading) {
@@ -65,20 +51,11 @@ struct NetworkSettingsView: View {
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Apply") { showingDangerConfirm = true }
+                Button("Apply") { applyChanges() }
                     .disabled(!hasChanges)
             }
         }
-        .alert("Discard Unsaved Changes?", isPresented: $showingDiscardAlert) {
-            Button("Discard Changes", role: .destructive) { loadFromStore(); dismiss() }
-            Button("Keep Editing", role: .cancel) {}
-        } message: { Text("Any modifications you have made will be lost.") }
-        .alert("Apply Network Settings?", isPresented: $showingDangerConfirm) {
-            Button("Apply — I understand", role: .destructive) { applyChanges() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Changing the Zigbee channel will disconnect all paired devices.")
-        }
+        .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
         .task { loadFromStore() }
     }
 
@@ -97,14 +74,13 @@ struct NetworkSettingsView: View {
 
     private func loadFromStore() {
         let adv = environment.store.bridgeInfo?.config?.advanced
-        channel = environment.store.bridgeInfo?.network?.channel ?? adv?.channel ?? 11
         transmitPower = optionalIntString(adv?.transmitPower)
         adapterConcurrent = optionalIntString(adv?.adapterConcurrent)
         adapterDelay = optionalIntString(adv?.adapterDelay)
     }
 
     private func applyChanges() {
-        var advanced: [String: JSONValue] = ["channel": .int(channel)]
+        var advanced: [String: JSONValue] = [:]
         if let v = Int(transmitPower) { advanced["transmit_power"] = .int(v) }
         if let v = Int(adapterConcurrent) { advanced["adapter_concurrent"] = .int(v) }
         if let v = Int(adapterDelay) { advanced["adapter_delay"] = .int(v) }

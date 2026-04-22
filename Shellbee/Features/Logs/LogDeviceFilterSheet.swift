@@ -55,7 +55,7 @@ struct LogDeviceFilterSheet: View {
                 }
             }
             .listStyle(.plain)
-            .searchable(text: $searchText, prompt: "Search devices\u{2026}")
+            .searchable(text: $searchText, prompt: "Search devices")
             .overlay {
                 if !searchText.isEmpty && candidates.isEmpty {
                     ContentUnavailableView.search(text: searchText)

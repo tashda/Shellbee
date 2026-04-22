@@ -6,12 +6,7 @@ struct HomeBridgeCard: View {
     let onRestart: () -> Void
 
     @State private var latestVersion: String? = nil
-
-    private var tint: Color { snapshot.isBridgeOnline ? .green : .red }
-
-    private var hasAlerts: Bool {
-        updateAvailable || snapshot.restartRequired || snapshot.isPermitJoinActive
-    }
+    @State private var lastVersionFetch: Date? = nil
 
     private var updateAvailable: Bool {
         guard let latest = latestVersion.flatMap(Z2MVersion.parse),
@@ -19,15 +14,28 @@ struct HomeBridgeCard: View {
         return latest > current
     }
 
+    private var hasMemoryAlert: Bool {
+        let z2mHigh = (health?.process?.memoryPercent ?? 0) > 30
+        let osHigh  = (health?.os?.memoryPercent ?? 0) > 85
+        return z2mHigh || osHigh
+    }
+
+    private var hasAlerts: Bool {
+        updateAvailable || snapshot.restartRequired || snapshot.isPermitJoinActive || hasMemoryAlert
+    }
+
     var body: some View {
-        HomeCardContainer(tint: tint) {
-            header
-            Divider().padding(.vertical, DesignTokens.Spacing.sm)
-            if let health, health.process != nil || health.mqtt != nil {
-                healthStatsRow(health)
-                Divider().padding(.vertical, DesignTokens.Spacing.sm)
+        HomeCardContainer {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                header
+                if health?.process != nil || health?.responseTime != nil {
+                    statsRow
+                }
+                statusRow
+                if hasAlerts {
+                    VStack(spacing: DesignTokens.Spacing.sm) { alertRows }
+                }
             }
-            VStack(spacing: DesignTokens.Spacing.sm) { alertRows }
         }
         .task(id: snapshot.bridgeVersion) {
             await fetchLatestVersion()
@@ -35,72 +43,85 @@ struct HomeBridgeCard: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                Image(systemName: snapshot.isBridgeOnline ? "antenna.radiowaves.left.and.right" : "wifi.slash")
-                    .font(.system(size: DesignTokens.Size.summaryRowSymbol, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: DesignTokens.Size.summaryRowSymbolFrame, height: DesignTokens.Size.summaryRowSymbolFrame)
-                    .background(tint.opacity(DesignTokens.Opacity.subtleFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.summaryRowSymbolBackground, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Zigbee2MQTT")
-                        .font(.headline)
-                    if let coordinator = snapshot.coordinatorType {
-                        Text(coordinator)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+        HStack(alignment: .center) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(snapshot.isBridgeOnline ? Color.green : Color.red)
+                    .frame(width: DesignTokens.Size.statusDotHero, height: DesignTokens.Size.statusDotHero)
+                Text("Zigbee2MQTT")
+                    .font(.headline)
             }
-
             Spacer()
-
-            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xs) {
-                if let version = snapshot.bridgeVersion, let url = snapshot.releaseURL {
-                    Link(version, destination: url)
-                        .font(.subheadline.weight(.semibold))
-                } else if let version = snapshot.bridgeVersion {
-                    Text(version)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                statusBadge
-            }
-        }
-    }
-
-    private var statusBadge: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Circle()
-                .fill(tint)
-                .frame(width: DesignTokens.Size.statusDot * 0.7, height: DesignTokens.Size.statusDot * 0.7)
-            Text(snapshot.isBridgeOnline ? "Online" : "Offline")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(tint)
+            versionBadge
         }
     }
 
     @ViewBuilder
-    private func healthStatsRow(_ h: BridgeHealth) -> some View {
+    private var versionBadge: some View {
+        if let version = snapshot.bridgeVersion,
+           let url = URL(string: "https://github.com/Koenkk/zigbee2mqtt/releases/tag/\(version)") {
+            Link(destination: url) {
+                Text("v\(version)")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(updateAvailable ? Color.orange : Color.secondary)
+            }
+        } else if let version = snapshot.bridgeVersion {
+            Text("v\(version)")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var statsRow: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
-            if let uptime = h.process?.uptimeFormatted {
+            if let uptime = health?.process?.uptimeFormatted {
                 HomeStatCell(value: uptime, label: "Uptime")
             }
-            if let ram = h.process?.rssMB {
-                HomeStatCell(value: ram, label: "Z2M RAM",
-                             subtitle: h.process?.ramPercentFormatted)
+            if let published = health?.mqtt?.published {
+                HomeStatCell(value: formatCount(published), label: "Published")
             }
-            if let osRam = h.os?.ramMB {
-                HomeStatCell(value: osRam, label: "OS RAM",
-                             subtitle: h.os?.ramPercentFormatted)
+            if let received = health?.mqtt?.received {
+                HomeStatCell(value: formatCount(received), label: "Received")
             }
+        }
+    }
+
+    private func formatCount(_ n: Int) -> String {
+        switch n {
+        case 0..<1_000:       return "\(n)"
+        case 1_000..<1_000_000: return String(format: "%.0fK", Double(n) / 1_000)
+        default:              return String(format: "%.1fM", Double(n) / 1_000_000)
+        }
+    }
+
+private var statusRow: some View {
+        HStack(spacing: DesignTokens.Spacing.lg) {
+            statusDot(connected: snapshot.isConnected, label: "WebSocket")
+            if let mqtt = health?.mqtt, let connected = mqtt.connected {
+                statusDot(connected: connected, label: "MQTT")
+            }
+            if !hasAlerts {
+                statusDot(connected: true, label: "Healthy")
+            }
+            Spacer()
+        }
+    }
+
+    private func statusDot(connected: Bool, label: String) -> some View {
+        HStack(spacing: DesignTokens.Spacing.xs) {
+            Circle()
+                .fill(connected ? Color.green : Color.red)
+                .frame(width: DesignTokens.Size.statusDotInline, height: DesignTokens.Size.statusDotInline)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
     @ViewBuilder
     private var alertRows: some View {
-        if updateAvailable, let latest = latestVersion, let url = URL(string: "https://github.com/Koenkk/zigbee2mqtt/releases/tag/\(latest)") {
+        if updateAvailable, let latest = latestVersion,
+           let url = URL(string: "https://github.com/Koenkk/zigbee2mqtt/releases/tag/\(latest)") {
             Link(destination: url) {
                 HomeCardAlertRow(symbol: "arrow.down.circle.fill", title: "v\(latest) available", color: .blue, action: nil)
             }
@@ -118,20 +139,33 @@ struct HomeBridgeCard: View {
             let label = snapshot.permitJoinRemaining.map { "Permit Join open — \($0)s remaining" } ?? "Permit Join open"
             HomeCardAlertRow(symbol: "person.crop.circle.badge.plus", title: label, color: .orange, action: nil)
         }
-        if !hasAlerts {
-            HomeCardAlertRow(symbol: "checkmark.circle.fill", title: "Bridge healthy", color: .green, action: nil)
+        if let pct = health?.process?.memoryPercent, pct > 30 {
+            HomeCardAlertRow(
+                symbol: "memorychip",
+                title: "High Z2M memory (\(Int(pct))%)",
+                color: .orange,
+                action: nil
+            )
+        }
+        if let pct = health?.os?.memoryPercent, pct > 85 {
+            HomeCardAlertRow(
+                symbol: "memorychip",
+                title: "High system memory (\(Int(pct))%)",
+                color: .orange,
+                action: nil
+            )
         }
     }
 
     private func fetchLatestVersion() async {
+        if let last = lastVersionFetch, Date().timeIntervalSince(last) < 300 { return }
         guard let url = URL(string: "https://api.github.com/repos/Koenkk/zigbee2mqtt/releases/latest") else { return }
+        lastVersionFetch = Date()
         guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
         struct Release: Decodable { let tag_name: String }
         guard let release = try? JSONDecoder().decode(Release.self, from: data) else { return }
         latestVersion = release.tag_name
     }
-
-
 }
 
 #Preview {
@@ -148,14 +182,14 @@ private extension HomeBridgeCard {
             bridgeVersion: "2.9.2", bridgeCommit: "2b485a98c5f9",
             coordinatorType: "EmberZNet", coordinatorIEEEAddress: "0x4c5bb3fffe932a84",
             networkChannel: 20, panID: 54_074,
-            isPermitJoinActive: false, permitJoinEnd: nil, restartRequired: true
+            isPermitJoinActive: false, permitJoinEnd: nil, restartRequired: false
         )
     }
 
     static var previewHealth: BridgeHealth {
         BridgeHealth(
             healthy: true,
-            responseTime: nil,
+            responseTime: 12,
             process: BridgeHealth.ProcessStats(uptimeSec: 527404, memoryUsedMb: 309.41, memoryPercent: 7.64),
             os: BridgeHealth.OSStats(loadAverage: [0.16, 0.03, 0.01], memoryUsedMb: 677.89, memoryPercent: 16.74),
             mqtt: BridgeHealth.MQTTStats(connected: true, queued: 0, published: 367_623, received: 15_575)

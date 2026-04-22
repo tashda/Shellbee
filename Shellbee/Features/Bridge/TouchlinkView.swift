@@ -4,6 +4,7 @@ struct TouchlinkView: View {
     @Environment(AppEnvironment.self) private var environment
 
     @State private var showHueResetSheet = false
+    @State private var showGuideSheet = false
 
     private var store: AppStore { environment.store }
 
@@ -25,6 +26,16 @@ struct TouchlinkView: View {
                 extendedPanId: store.bridgeInfo?.network?.extendedPanID?.stringValue ?? ""
             ) { panId, serials in
                 philipsHueReset(extendedPanId: panId, serialNumbers: serials)
+            }
+        }
+        .sheet(isPresented: $showGuideSheet) {
+            NavigationStack {
+                TouchlinkGuideView()
+                    .toolbar {
+                        ToolbarItem(placement: .primaryAction) {
+                            Button("Done") { showGuideSheet = false }
+                        }
+                    }
             }
         }
     }
@@ -62,7 +73,13 @@ struct TouchlinkView: View {
 
     @ToolbarContentBuilder
     private var toolbarItems: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            Button {
+                showGuideSheet = true
+            } label: {
+                Label("Guide", systemImage: "book.pages")
+            }
+
             Button {
                 scan()
             } label: {

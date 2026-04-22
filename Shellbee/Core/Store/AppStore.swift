@@ -13,11 +13,13 @@ final class AppStore {
     var deviceAvailability: [String: Bool] = [:]
     var otaUpdates: [String: OTAUpdateStatus] = [:]
     var logEntries: [LogEntry] = []
+    var rawLogEntries: [LogEntry] = []
     var operationErrors: [Z2MOperationError] = []
     var touchlinkDevices: [TouchlinkDevice] = []
     var touchlinkScanInProgress = false
     var touchlinkIdentifyInProgress = false
     var touchlinkResetInProgress = false
+    var pendingNotifications: [InAppNotification] = []
 
     static let logLimit = 1000
 
@@ -32,8 +34,12 @@ final class AppStore {
         case .groups(let list):
             groups = list
         case .logMessage(let msg):
-            print("[Logs] Received: \(msg.level) — \(msg.message.prefix(80))")
             let level = LogLevel(raw: msg.level) ?? .info
+            insertRawLogEntry(LogEntry(
+                id: msg.id, timestamp: .now, level: level,
+                category: .general, namespace: msg.namespace,
+                message: msg.message, deviceName: nil
+            ))
             let knownNames = Set(devices.map(\.friendlyName) + groups.map(\.friendlyName))
             let ctx = LogMapperEngine.context(
                 message: msg.message, namespace: msg.namespace, knownDevices: knownNames
@@ -52,9 +58,15 @@ final class AppStore {
                 deviceName: ctx.primaryDevice?.friendlyName, context: ctx
             )
             insertLogEntry(entry)
+            if let note = notification(for: ctx.action, level: level, deviceName: ctx.primaryDevice?.friendlyName, message: msg.message, id: msg.id) {
+                enqueueNotification(note)
+            }
         case .bridgeEvent(let event):
             if let entry = Self.logEntry(from: event) {
                 insertLogEntry(entry)
+                if let note = Self.notification(from: event, entry: entry) {
+                    enqueueNotification(note)
+                }
             }
         case .deviceState(let name, let state):
             let previous = deviceStates[name] ?? [:]
@@ -142,9 +154,83 @@ final class AppStore {
                 deviceName: nil
             )
             insertLogEntry(entry)
+            enqueueNotification(InAppNotification(
+                level: .error,
+                title: "Operation Failed",
+                subtitle: stripped(String(error.message.prefix(100))),
+                logEntryID: entry.id
+            ))
 
         case .unknown:
             break
+        }
+    }
+
+    func clearLogs() {
+        logEntries = []
+        rawLogEntries = []
+    }
+
+    func popNotification() -> InAppNotification? {
+        guard !pendingNotifications.isEmpty else { return nil }
+        return pendingNotifications.removeFirst()
+    }
+
+    private func enqueueNotification(_ notification: InAppNotification) {
+        pendingNotifications.append(notification)
+    }
+
+    private func notification(
+        for action: LogContext.LogAction, level: LogLevel,
+        deviceName: String?, message: String, id: UUID
+    ) -> InAppNotification? {
+        let truncated = stripped(String(message.prefix(100)))
+        switch action {
+        case .bindSuccess:
+            return InAppNotification(level: .info, title: "Bind Successful", subtitle: deviceName, logEntryID: id)
+        case .bindFailure:
+            return InAppNotification(level: .error, title: "Bind Failed", subtitle: deviceName ?? truncated, logEntryID: id)
+        case .unbind:
+            return InAppNotification(level: .info, title: "Unbound", subtitle: deviceName, logEntryID: id)
+        case .groupAdd:
+            return InAppNotification(level: .info, title: "Added to Group", subtitle: deviceName, logEntryID: id)
+        case .groupRemove:
+            return InAppNotification(level: .info, title: "Removed from Group", subtitle: deviceName, logEntryID: id)
+        case .publishFailure(let command):
+            let detail = command.isEmpty ? truncated : command
+            return InAppNotification(level: .error, title: "Command Failed", subtitle: detail, logEntryID: id)
+        case .requestFailure:
+            return InAppNotification(level: .error, title: "Request Failed", subtitle: truncated, logEntryID: id)
+        case .otaFinished:
+            return InAppNotification(level: .info, title: "Update Installed", subtitle: deviceName, logEntryID: id)
+        case .reportingConfigure:
+            return InAppNotification(level: .info, title: "Reporting Configured", subtitle: deviceName, logEntryID: id)
+        case .general where level == .error:
+            return InAppNotification(level: .error, title: "Error", subtitle: truncated, logEntryID: id)
+        default:
+            return nil
+        }
+    }
+
+    // Z2M log messages sometimes embed their namespace at the start ("z2m:controller Something failed").
+    // Strip it so notifications show only the human-readable part.
+    private func stripped(_ text: String) -> String {
+        guard text.hasPrefix("z2m:") else { return text }
+        if let spaceRange = text.range(of: " ") {
+            return String(text[spaceRange.upperBound...])
+        }
+        return text
+    }
+
+    private static func notification(from event: BridgeDeviceEvent, entry: LogEntry) -> InAppNotification? {
+        switch event.type {
+        case "device_leave":
+            return InAppNotification(level: .warning, title: "Device Left Network", subtitle: entry.deviceName, logEntryID: entry.id)
+        case "device_interview":
+            guard let data = event.data.object, data["status"]?.stringValue == "failed" else { return nil }
+            return InAppNotification(level: .error, title: "Interview Failed", subtitle: entry.deviceName, logEntryID: entry.id)
+        default:
+            return nil
         }
     }
 
@@ -152,6 +238,13 @@ final class AppStore {
         logEntries.insert(entry, at: 0)
         if logEntries.count > Self.logLimit {
             logEntries = Array(logEntries.prefix(Self.logLimit))
+        }
+    }
+
+    private func insertRawLogEntry(_ entry: LogEntry) {
+        rawLogEntries.insert(entry, at: 0)
+        if rawLogEntries.count > Self.logLimit {
+            rawLogEntries = Array(rawLogEntries.prefix(Self.logLimit))
         }
     }
 
@@ -224,6 +317,7 @@ final class AppStore {
         otaUpdates = [:]
         logEntries = []
         operationErrors = []
+        pendingNotifications = []
         touchlinkDevices = []
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false

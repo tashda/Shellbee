@@ -25,13 +25,13 @@ struct SwitchControlContext: Equatable {
 
     init?(device: Device, state: [String: JSONValue]) {
         let exposes = device.definition?.exposes ?? []
+        let flat = exposes.flattened
         let switchFeatures = exposes.first(where: { $0.type == "switch" })?.features ?? []
-        let searchPool = switchFeatures.isEmpty ? Self.flatten(exposes) : Self.flatten(switchFeatures) + Self.flatten(exposes)
+        let searchPool = switchFeatures.isEmpty ? flat : switchFeatures.flattened + flat
 
         let stateFeature = Self.find(in: searchPool, names: ["state"])
         guard stateFeature != nil else { return nil }
 
-        let flat = Self.flatten(exposes)
         self.stateFeature = stateFeature
         self.powerFeature = Self.find(in: flat, names: ["power"])
         self.energyFeature = Self.find(in: flat, names: ["energy"])
@@ -48,10 +48,6 @@ struct SwitchControlContext: Equatable {
     func togglePayload() -> JSONValue? {
         guard let f = stateFeature, f.isWritable else { return nil }
         return .object([f.property: .string(isOn ? "OFF" : "ON")])
-    }
-
-    private static func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { [$0] + flatten($0.features ?? []) }
     }
 
     private static func find(in exposes: [Expose], names: Set<String>) -> Feature? {

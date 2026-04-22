@@ -19,14 +19,14 @@ struct DeviceCardHeader: View {
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     Text(device.friendlyName)
-                        .font(.headline)
+                        .font(DesignTokens.Typography.cardHeadline)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                         .allowsTightening(true)
 
                     Text(vendor)
-                        .font(.subheadline)
+                        .font(DesignTokens.Typography.cardSubheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
 

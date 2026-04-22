@@ -19,35 +19,35 @@ struct DeviceListRow: View {
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if let onUpdate {
                 Button(action: onUpdate) {
-                    swipeActionLabel("Update", systemImage: "arrow.up.circle")
+                    Label("Update", systemImage: "arrow.up.circle")
                 }
                 .tint(.blue)
             } else {
                 Button(action: onCheckUpdate) {
-                    swipeActionLabel("Check", systemImage: "arrow.trianglehead.2.clockwise")
+                    Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
                 }
                 .tint(.blue)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive, action: onRemove) {
-                swipeActionLabel("Delete", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             }
             Button(action: onRename) {
-                swipeActionLabel("Rename", systemImage: "pencil")
+                Label("Rename", systemImage: "pencil")
             }
             .tint(.orange)
             Button(action: onReconfigure) {
-                swipeActionLabel("Config", systemImage: "gearshape")
+                Label("Config", systemImage: "gearshape")
             }
             .tint(.gray)
             Button(action: onInterview) {
-                swipeActionLabel("Interview", systemImage: "questionmark.circle")
+                Label("Interview", systemImage: "questionmark.circle")
             }
             .tint(.purple)
             if let onUpdate {
                 Button(action: onUpdate) {
-                    swipeActionLabel("Update", systemImage: "arrow.up.circle")
+                    Label("Update", systemImage: "arrow.up.circle")
                 }
                 .tint(.blue)
             }
@@ -74,17 +74,6 @@ struct DeviceListRow: View {
         }
     }
 
-    private func swipeActionLabel(_ title: String, systemImage: String) -> some View {
-        VStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: systemImage)
-                .font(.system(size: DesignTokens.Size.metricSymbol - 2, weight: .semibold))
-            Text(title)
-                .font(.caption2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
-        }
-        .frame(minWidth: DesignTokens.Size.deviceActionSheetImage)
-    }
 }
 
 #Preview {

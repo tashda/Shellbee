@@ -10,9 +10,11 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
 
     private let lock = NSLock()
     private var openState: OpenState = .idle
+    private weak var expectedTask: URLSessionWebSocketTask?
 
-    func prepareForConnectionAttempt() {
+    func setExpectedTask(_ task: URLSessionWebSocketTask) {
         lock.lock()
+        expectedTask = task
         openState = .idle
         lock.unlock()
     }
@@ -32,7 +34,6 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
                 throw Z2MError.timeout
             }
             group.cancelAll()
-            prepareForConnectionAttempt()
         }
     }
 
@@ -94,6 +95,7 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
         webSocketTask: URLSessionWebSocketTask,
         didOpenWithProtocol protocol: String?
     ) {
+        guard webSocketTask === expectedTask else { return }
         resolveOpen(.success(()))
     }
 
@@ -103,6 +105,7 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
         didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
         reason: Data?
     ) {
+        guard webSocketTask === expectedTask else { return }
         resolveOpen(.failure(Z2MError.requestFailed("Connection closed before opening.")))
     }
 }

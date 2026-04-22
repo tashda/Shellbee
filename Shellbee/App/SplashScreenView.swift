@@ -1,17 +1,22 @@
 import SwiftUI
 
 struct SplashScreenView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isVisible = false
-    
+
+    private var splashImageName: String {
+        colorScheme == .dark ? "SplashAppIconDark" : "SplashAppIcon"
+    }
+
     var body: some View {
         ZStack {
             Color(uiColor: .systemBackground)
                 .ignoresSafeArea()
-            
+
             VStack(spacing: DesignTokens.Spacing.xl) {
                 Spacer()
-                
-                Image("SplashAppIcon")
+
+                Image(splashImageName)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)

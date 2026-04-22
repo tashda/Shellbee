@@ -59,7 +59,7 @@ struct DeviceInfoCardView: View {
         if !exposesSummary.isEmpty {
             result.append(RowData(label: "Exposes", value: exposesSummary))
         }
-        result.append(RowData(label: "OTA Updates", value: def.supportsOTA ? "Supported" : "Not supported"))
+        result.append(RowData(label: "OTA Updates", value: (def.supportsOTA ?? false) ? "Supported" : "Not supported"))
         return result
     }
 

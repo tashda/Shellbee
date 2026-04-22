@@ -61,7 +61,6 @@ struct OTASettingsView: View {
         }
         .navigationTitle("OTA Updates")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(hasChanges)
         .toolbar {
             if hasChanges {
                 ToolbarItem(placement: .topBarLeading) {
@@ -73,10 +72,7 @@ struct OTASettingsView: View {
                     .disabled(!hasChanges)
             }
         }
-        .alert("Discard Unsaved Changes?", isPresented: $showingDiscardAlert) {
-            Button("Discard Changes", role: .destructive) { loadFromStore(); dismiss() }
-            Button("Keep Editing", role: .cancel) {}
-        } message: { Text("Any modifications you have made will be lost.") }
+        .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
         .task { loadFromStore() }
     }
 

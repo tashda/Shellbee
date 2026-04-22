@@ -40,7 +40,7 @@ struct PermitJoinActiveSheet: View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Circle()
                 .fill(Color.green)
-                .frame(width: 8, height: 8)
+                .frame(width: DesignTokens.Size.statusDotHero, height: DesignTokens.Size.statusDotHero)
                 .opacity(pulseOpacity)
                 .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulseOpacity)
                 .onAppear { pulseOpacity = 0.25 }

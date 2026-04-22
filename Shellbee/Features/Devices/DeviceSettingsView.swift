@@ -6,17 +6,29 @@ struct DeviceSettingsView: View {
 
     @State private var throttle: Int = 0
     @State private var retention: Int = 0
+    @State private var debounce: Int = 0
+    @State private var haName: String = ""
+    @State private var showRename = false
+    @FocusState private var haNameFocused: Bool
 
     private var currentDevice: Device {
         environment.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
     }
 
     private var deviceOptions: [Expose] {
-        flatten(currentDevice.definition?.options ?? [])
+        (currentDevice.definition?.options ?? []).flattenedLeaves
     }
 
     var body: some View {
         List {
+            Section {
+                Button {
+                    showRename = true
+                } label: {
+                    Label("Rename Device", systemImage: "pencil")
+                }
+            }
+
             if !deviceOptions.isEmpty {
                 Section("Device Options") {
                     ForEach(deviceOptions, id: \.property) { expose in
@@ -31,15 +43,11 @@ struct DeviceSettingsView: View {
             }
 
             Section {
-                Toggle("Optimistic", isOn: Binding(
-                    get: { currentDevice.options?["optimistic"]?.boolValue ?? true },
-                    set: { sendOption("optimistic", value: .bool($0)) }
-                ))
-                Toggle("Retain Messages", isOn: Binding(
+                Toggle("Retain", isOn: Binding(
                     get: { currentDevice.options?["retain"]?.boolValue ?? false },
                     set: { sendOption("retain", value: .bool($0)) }
                 ))
-                Picker("Quality of Service", selection: Binding(
+                Picker("QoS", selection: Binding(
                     get: { currentDevice.options?["qos"]?.intValue ?? -1 },
                     set: { sendOption("qos", value: $0 < 0 ? .null : .int($0)) }
                 )) {
@@ -57,17 +65,72 @@ struct DeviceSettingsView: View {
                         sendOption("retention", value: v == 0 ? .null : .int(v))
                     }
             } header: {
-                Text("General")
+                Text("MQTT")
             } footer: {
                 Text("Changes apply immediately.")
+            }
+
+            Section {
+                Toggle("Optimistic", isOn: Binding(
+                    get: { currentDevice.options?["optimistic"]?.boolValue ?? true },
+                    set: { sendOption("optimistic", value: .bool($0)) }
+                ))
+                Toggle("Disabled", isOn: Binding(
+                    get: { currentDevice.options?["disabled"]?.boolValue ?? currentDevice.disabled },
+                    set: { sendOption("disabled", value: .bool($0)) }
+                ))
+                InlineIntField("Debounce", value: $debounce, unit: "s", range: 0...60, offLabel: "Off")
+                    .onChange(of: debounce) { _, v in
+                        sendOption("debounce", value: v == 0 ? .null : .int(v))
+                    }
+            } header: {
+                Text("General")
+            } footer: {
+                Text("Disabled and Debounce require a Zigbee2MQTT restart.")
+            }
+
+            Section {
+                LabeledContent("Device Name") {
+                    TextField("Same as friendly name", text: $haName)
+                        .multilineTextAlignment(.trailing)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($haNameFocused)
+                        .onChange(of: haNameFocused) { _, isFocused in
+                            if !isFocused { sendHAName() }
+                        }
+                }
+            } header: {
+                Text("Home Assistant")
+            } footer: {
+                Text("Overrides the Home Assistant display name for this device.")
             }
         }
         .navigationTitle("Device Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            throttle = currentDevice.options?["throttle"]?.intValue ?? 0
-            retention = currentDevice.options?["retention"]?.intValue ?? 0
+        .onAppear { syncState() }
+        .onChange(of: currentDevice.ieeeAddress) { _, _ in syncState() }
+        .sheet(isPresented: $showRename) {
+            RenameDeviceSheet(device: currentDevice) { newName, updateHA in
+                environment.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
+                    "from": .string(currentDevice.friendlyName),
+                    "to": .string(newName),
+                    "homeassistant_rename": .bool(updateHA)
+                ]))
+            }
         }
+    }
+
+    private func syncState() {
+        throttle = currentDevice.options?["throttle"]?.intValue ?? 0
+        retention = currentDevice.options?["retention"]?.intValue ?? 0
+        debounce = currentDevice.options?["debounce"]?.intValue ?? 0
+        haName = currentDevice.options?["homeassistant"]?.object?["name"]?.stringValue ?? ""
+    }
+
+    private func sendHAName() {
+        let value: JSONValue = haName.isEmpty ? .null : .object(["name": .string(haName)])
+        sendOption("homeassistant", value: value)
     }
 
     private func sendOption(_ key: String, value: JSONValue) {
@@ -80,9 +143,6 @@ struct DeviceSettingsView: View {
         )
     }
 
-    private func flatten(_ exposes: [Expose]) -> [Expose] {
-        exposes.flatMap { e in (e.features?.isEmpty == false) ? flatten(e.features ?? []) : [e] }
-    }
 }
 
 private struct DeviceOptionRow: View {
@@ -90,7 +150,7 @@ private struct DeviceOptionRow: View {
     let currentValue: JSONValue?
     let onChange: (JSONValue) -> Void
 
-    @State private var numericDraft: Double = 0
+    @State private var numericInt: Int = 0
 
     private var label: String {
         let raw = expose.property ?? expose.name ?? ""
@@ -135,18 +195,18 @@ private struct DeviceOptionRow: View {
     }
 
     @ViewBuilder private var numericRow: some View {
-        let unit = expose.unit.map { " \($0)" } ?? ""
-        LabeledContent(label) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                Text("\(Int(numericDraft))\(unit)").foregroundStyle(.secondary).monospacedDigit()
-                Stepper("", value: Binding(
-                    get: { numericDraft },
-                    set: { numericDraft = $0; onChange(.double($0)) }
-                ), in: (expose.valueMin ?? 0)...(expose.valueMax ?? 100), step: expose.valueStep ?? 1)
-                .labelsHidden()
-            }
-        }
-        .onAppear { numericDraft = currentValue?.numberValue ?? expose.valueMin ?? 0 }
+        let range: ClosedRange<Int>? = {
+            guard let lo = expose.valueMin, let hi = expose.valueMax else { return nil }
+            return Int(lo)...Int(hi)
+        }()
+        InlineIntField(
+            label,
+            value: $numericInt,
+            unit: expose.unit ?? "",
+            range: range
+        )
+        .onAppear { numericInt = Int(currentValue?.numberValue ?? expose.valueMin ?? 0) }
+        .onChange(of: numericInt) { _, v in onChange(.double(Double(v))) }
     }
 
     private var textRow: some View {

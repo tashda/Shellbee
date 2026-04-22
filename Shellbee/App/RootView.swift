@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var isInitializing = true
+    @State private var pendingCrash: PendingCrash?
 
     var body: some View {
         ZStack {
@@ -16,6 +17,14 @@ struct RootView: View {
             }
         }
         .animation(.spring(duration: 0.6), value: isInitializing)
+        .sheet(item: $pendingCrash) { crash in
+            PendingCrashSheet(
+                crash: crash,
+                onShare: { SentryService.shared.approveAndSendPending() },
+                onAlwaysShare: { SentryService.shared.enableAlwaysShareAndSendPending() },
+                onDiscard: { SentryService.shared.discardPending() }
+            )
+        }
         .task {
             // Start the environment (auto-connect if config exists)
             await environment.start()
@@ -42,6 +51,10 @@ struct RootView: View {
             
             withAnimation {
                 isInitializing = false
+            }
+
+            if let crash = PendingCrashStore.load() {
+                pendingCrash = crash
             }
         }
     }
@@ -72,17 +85,6 @@ struct RootView: View {
     @ViewBuilder
     private var connectionBanner: some View {
         switch environment.connectionState {
-        case .reconnecting(let attempt):
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                ProgressView().controlSize(.small)
-                Text("Reconnecting… (attempt \(attempt) of \(AppEnvironment.maxReconnectAttempts))")
-                    .font(.footnote)
-            }
-            .padding(.horizontal, DesignTokens.Spacing.lg)
-            .padding(.vertical, DesignTokens.Spacing.md)
-            .background(.regularMaterial, in: Capsule())
-            .padding(.top, DesignTokens.Spacing.sm)
-            .transition(.move(edge: .top).combined(with: .opacity))
         case .lost(let msg):
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: "wifi.slash")

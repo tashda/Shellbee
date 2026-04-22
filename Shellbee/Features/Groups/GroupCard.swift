@@ -2,11 +2,12 @@ import SwiftUI
 
 struct GroupCard: View {
     let group: Group
+    let memberDevices: [Device]
     let state: [String: JSONValue]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            GroupCardHeader(group: group)
+            GroupCardHeader(group: group, memberDevices: memberDevices)
                 .padding(DesignTokens.Spacing.lg)
 
             Divider().opacity(DesignTokens.Opacity.subtleFill)
@@ -25,8 +26,8 @@ struct GroupCard: View {
 
 #Preview {
     VStack(spacing: DesignTokens.Spacing.lg) {
-        GroupCard(group: .preview, state: ["state": .string("ON")])
-        GroupCard(group: .previewWithMembers, state: [:])
+        GroupCard(group: .preview, memberDevices: [], state: ["state": .string("ON")])
+        GroupCard(group: .previewWithMembers, memberDevices: [.preview, .fallbackPreview], state: [:])
     }
     .padding()
     .background(Color(.systemGroupedBackground))

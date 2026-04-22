@@ -29,18 +29,9 @@ struct MemberAvatarStack: View {
     }
 
     private func avatarCircle(for device: Device) -> some View {
-        PersistentAsyncImage(url: device.imageURL) { image in
-            image.resizable().aspectRatio(contentMode: .fill)
-        } placeholder: {
-            Image(systemName: device.categorySystemImage)
-                .font(.system(size: placeholderFont, weight: .medium))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.fill.secondary)
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-        .overlay(Circle().strokeBorder(.background, lineWidth: borderWidth))
+        DeviceImageView(device: device, isAvailable: true, size: size)
+            .clipShape(Circle())
+            .overlay(Circle().strokeBorder(.background, lineWidth: borderWidth))
     }
 
     private func overflowBadge(_ count: Int) -> some View {

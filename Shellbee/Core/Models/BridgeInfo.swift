@@ -81,6 +81,7 @@ struct BridgeConfig: Codable, Sendable, Equatable {
     let health: HealthSettings?
     let passlist: [String]?
     let blocklist: [String]?
+    let groups: [String: [String: JSONValue]]?
 
     struct AdvancedConfig: Codable, Sendable, Equatable {
         let logLevel: String?
@@ -165,7 +166,7 @@ struct HealthSettings: Codable, Sendable, Equatable {
 
 
 struct CoordinatorInfo: Codable, Sendable, Equatable {
-    let type: String
+    let type: String?
     let ieeeAddress: String?
     let meta: [String: JSONValue]?
 

@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct HomeCardContainer<Content: View>: View {
-    let tint: Color
     @ViewBuilder let content: () -> Content
 
     var body: some View {
@@ -11,10 +10,6 @@ struct HomeCardContainer<Content: View>: View {
         .padding(DesignTokens.Spacing.lg)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
-                .strokeBorder(tint.opacity(DesignTokens.Opacity.cardStroke), lineWidth: DesignTokens.Size.cardStroke)
-        )
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity), radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
     }
 }
@@ -28,7 +23,7 @@ struct HomeStatCell: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(.title2.weight(.bold))
+                .font(.title3.weight(.bold))
                 .foregroundStyle(valueColor)
                 .monospacedDigit()
             if let subtitle {
@@ -76,7 +71,7 @@ struct HomeCardAlertRow: View {
             } else {
                 label
                     .padding(.horizontal, DesignTokens.Spacing.md)
-                    .padding(.vertical, DesignTokens.Spacing.sm + 2)
+                    .padding(.vertical, DesignTokens.Spacing.sm)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(color.opacity(DesignTokens.Opacity.chipFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
             }
@@ -117,7 +112,7 @@ private struct HomeAlertButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.sm + 2)
+            .padding(.vertical, DesignTokens.Spacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 color.opacity(configuration.isPressed ? DesignTokens.Opacity.softFill : DesignTokens.Opacity.chipFill),
