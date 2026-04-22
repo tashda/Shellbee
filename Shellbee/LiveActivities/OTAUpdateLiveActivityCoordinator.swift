@@ -98,7 +98,7 @@ final class OTAUpdateLiveActivityCoordinator {
             headline: statuses.count == 1 ? "1 upgrade running" : "\(statuses.count) upgrades running",
             detail: detail,
             progress: aggregateProgress(for: statuses),
-            items: Array(statuses.prefix(3)).map {
+            items: statuses.map {
                 .init(
                     name: $0.deviceName,
                     phase: $0.phase,

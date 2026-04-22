@@ -6,25 +6,29 @@ struct OTAUpdateActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: OTAUpdateActivityAttributes.self) { context in
             OTALockScreenView(context: context)
-                .activityBackgroundTint(context.state.phase == .failed ? .red.opacity(0.12) : .blue.opacity(0.10))
+                .activityBackgroundTint(context.state.phase == .failed ? .red.opacity(0.12) : nil)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    OTAProgressRing(
-                        progress: context.state.progress,
-                        phase: context.state.phase,
-                        symbol: context.state.primarySymbol,
-                        size: 52
-                    )
-                    .padding(.leading, DesignTokens.Spacing.xs)
+                    Image(systemName: context.state.primarySymbol)
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(
+                            context.state.phase == .failed    ? AnyShapeStyle(.red) :
+                            context.state.phase == .completed ? AnyShapeStyle(.green) :
+                                                                AnyShapeStyle(.primary)
+                        )
+                        .symbolEffect(.bounce, value: context.state.phase)
+                        .padding(.leading, DesignTokens.Spacing.xs)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    OTAProgressBadge(
-                        progress: context.state.progress,
-                        count: context.state.activeCount,
-                        phase: context.state.phase
-                    )
-                    .padding(.trailing, DesignTokens.Spacing.xs)
+                    if let progress = context.state.progress {
+                        Text("\(progress)%")
+                            .font(.title2.weight(.bold))
+                            .monospacedDigit()
+                            .foregroundStyle(context.state.phase == .failed ? .red : .blue)
+                            .contentTransition(.numericText(value: Double(progress)))
+                            .padding(.trailing, DesignTokens.Spacing.xs)
+                    }
                 }
                 DynamicIslandExpandedRegion(.center) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -38,29 +42,48 @@ struct OTAUpdateActivityWidget: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(spacing: DesignTokens.Spacing.xs) {
-                        ForEach(context.state.items.prefix(2), id: \.name) { item in
-                            OTADeviceProgressRow(item: item)
-                        }
+                    if let progress = context.state.progress, context.state.phase == .active {
+                        ProgressView(value: Double(progress), total: 100)
+                            .progressViewStyle(.linear)
+                            .tint(.blue)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.85), value: progress)
+                            .padding(.horizontal, DesignTokens.Spacing.sm)
+                            .padding(.bottom, DesignTokens.Spacing.sm)
                     }
-                    .padding(.horizontal, DesignTokens.Spacing.sm)
-                    .padding(.bottom, DesignTokens.Spacing.sm)
                 }
             } compactLeading: {
-                Image(systemName: context.state.compactSymbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.blue)
-                    .symbolEffect(.variableColor.iterative, options: .repeat(.continuous), value: context.state.progress)
+                ZStack {
+                    if let progress = context.state.progress {
+                        Circle()
+                            .stroke(.white.opacity(0.2), lineWidth: 1.5)
+                        Circle()
+                            .trim(from: 0, to: Double(progress) / 100)
+                            .stroke(.white, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(.spring(response: 0.5, dampingFraction: 0.85), value: progress)
+                    }
+                    if context.state.activeCount > 1 {
+                        Text("\(context.state.activeCount)")
+                            .font(.system(size: 9, weight: .bold).monospacedDigit())
+                            .foregroundStyle(.white)
+                    } else {
+                        Image(systemName: context.state.compactSymbol)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: 20, height: 20)
             } compactTrailing: {
                 if let progress = context.state.progress {
                     Text("\(progress)%")
                         .font(.caption2.weight(.bold))
                         .monospacedDigit()
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText(value: Double(progress)))
                 } else {
                     ProgressView()
                         .controlSize(.mini)
-                        .tint(.blue)
+                        .tint(.white)
                 }
             } minimal: {
                 OTAProgressRing(
@@ -80,23 +103,29 @@ private struct OTALockScreenView: View {
     let context: ActivityViewContext<OTAUpdateActivityAttributes>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                OTAProgressRing(
-                    progress: context.state.progress,
-                    phase: context.state.phase,
-                    symbol: context.state.primarySymbol,
-                    size: 46
-                )
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+                Image(systemName: context.state.primarySymbol)
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(
+                        context.state.phase == .failed    ? AnyShapeStyle(.red) :
+                        context.state.phase == .completed ? AnyShapeStyle(.green) :
+                                                            AnyShapeStyle(.primary)
+                    )
+                    .symbolEffect(.bounce, value: context.state.phase)
+
+                VStack(alignment: .leading, spacing: 1) {
                     Text(context.state.headline)
                         .font(.headline)
+                        .foregroundStyle(.primary)
                     Text(context.state.detail)
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+
                 Spacer()
+
                 if let progress = context.state.progress {
                     Text("\(progress)%")
                         .font(.title2.weight(.bold))
@@ -110,20 +139,7 @@ private struct OTALockScreenView: View {
                 ProgressView(value: Double(progress), total: 100)
                     .progressViewStyle(.linear)
                     .tint(.blue)
-                    .animation(.easeInOut(duration: 0.4), value: progress)
-            }
-
-            if !context.state.items.isEmpty {
-                Rectangle()
-                    .fill(.primary.opacity(0.12))
-                    .frame(height: 0.5)
-                    .padding(.vertical, DesignTokens.Spacing.xs)
-
-                VStack(spacing: DesignTokens.Spacing.sm) {
-                    ForEach(context.state.items, id: \.name) { item in
-                        OTADeviceProgressRow(item: item)
-                    }
-                }
+                    .animation(.spring(response: 0.5, dampingFraction: 0.85), value: progress)
             }
         }
         .padding(DesignTokens.Spacing.lg)
@@ -158,7 +174,7 @@ struct OTAProgressRing: View {
                             style: StrokeStyle(lineWidth: size * 0.09, lineCap: .round)
                         )
                         .rotationEffect(.degrees(-90))
-                        .animation(.easeInOut(duration: 0.5), value: progress)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.85), value: fraction)
                 } else {
                     Circle()
                         .trim(from: 0.1, to: 0.85)
@@ -180,96 +196,127 @@ struct OTAProgressRing: View {
     }
 }
 
-private struct OTAProgressBadge: View {
-    let progress: Int?
-    let count: Int
-    let phase: OTAUpdateActivityAttributes.ContentState.Phase
+// MARK: - Previews
 
-    var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            if let progress {
-                Text("\(progress)%")
-                    .font(.title3.weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(phase == .failed ? .red : .blue)
-                    .contentTransition(.numericText(value: Double(progress)))
-            } else {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(.blue)
-            }
-            if count > 1 {
-                Text("\(count) devices")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+private extension OTAUpdateActivityAttributes.ContentState {
+    static let singleDevice = Self(
+        phase: .active,
+        activeCount: 1,
+        headline: "1 upgrade running",
+        detail: "Kitchen Light • 67%",
+        progress: 67,
+        items: [
+            .init(name: "Kitchen Light", phase: .updating, progress: 67, remaining: 45, categorySymbol: "lightbulb.fill"),
+        ]
+    )
+
+    static let twoDevices = Self(
+        phase: .active,
+        activeCount: 2,
+        headline: "2 upgrades running",
+        detail: "Kitchen Light • 67%",
+        progress: 45,
+        items: [
+            .init(name: "Kitchen Light",   phase: .updating,  progress: 67, remaining: 45,  categorySymbol: "lightbulb.fill"),
+            .init(name: "Front Door Lock", phase: .scheduled, progress: nil, remaining: nil, categorySymbol: "lock.fill"),
+        ]
+    )
+
+    static let fiveDevices = Self(
+        phase: .active,
+        activeCount: 5,
+        headline: "5 upgrades running",
+        detail: "Kitchen Light • 67%",
+        progress: 38,
+        items: [
+            .init(name: "Kitchen Light",    phase: .updating,  progress: 67,  remaining: 45,  categorySymbol: "lightbulb.fill"),
+            .init(name: "Living Room Plug", phase: .updating,  progress: 23,  remaining: 120, categorySymbol: "poweroutlet.type.b.fill"),
+            .init(name: "Front Door Lock",  phase: .scheduled, progress: nil, remaining: nil, categorySymbol: "lock.fill"),
+            .init(name: "Thermostat",       phase: .checking,  progress: nil, remaining: nil, categorySymbol: "thermometer"),
+            .init(name: "Garage Light",     phase: .requested, progress: nil, remaining: nil, categorySymbol: "lightbulb.fill"),
+        ]
+    )
+
+    static let manyDevices: Self = {
+        let updating: [OTAUpdateActivityAttributes.ContentState.Item] = [
+            .init(name: "Kitchen Light",    phase: .updating,  progress: 67, remaining: 45,  categorySymbol: "lightbulb.fill"),
+            .init(name: "Living Room Plug", phase: .updating,  progress: 23, remaining: 120, categorySymbol: "poweroutlet.type.b.fill"),
+            .init(name: "Bedroom Lamp",     phase: .updating,  progress: 11, remaining: 200, categorySymbol: "lightbulb.fill"),
+        ]
+        let waiting: [OTAUpdateActivityAttributes.ContentState.Item] = (1...27).map {
+            .init(name: "Device \($0)", phase: .scheduled, progress: nil, remaining: nil, categorySymbol: "cpu")
         }
-    }
+        return Self(
+            phase: .active,
+            activeCount: 30,
+            headline: "30 upgrades running",
+            detail: "Kitchen Light • 67%",
+            progress: 12,
+            items: updating + waiting
+        )
+    }()
+
+    static let completed = Self(
+        phase: .completed,
+        activeCount: 0,
+        headline: "Upgrade complete",
+        detail: "Kitchen Light",
+        progress: 100,
+        items: [
+            .init(name: "Kitchen Light", phase: .idle, progress: 100, remaining: nil, categorySymbol: "lightbulb.fill"),
+        ]
+    )
+
+    static let failed = Self(
+        phase: .failed,
+        activeCount: 0,
+        headline: "Upgrade failed",
+        detail: "Kitchen Light",
+        progress: nil,
+        items: [
+            .init(name: "Kitchen Light", phase: .available, progress: nil, remaining: nil, categorySymbol: "lightbulb.fill"),
+        ]
+    )
 }
 
-struct OTADeviceProgressRow: View {
-    let item: OTAUpdateActivityAttributes.ContentState.Item
+private let previewOTAAttributes = OTAUpdateActivityAttributes(identifier: "ota-preview")
 
-    var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: item.categorySymbol ?? "cpu")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.blue)
-                .frame(width: 18)
+#Preview("Lock Screen", as: .content, using: previewOTAAttributes) {
+    OTAUpdateActivityWidget()
+} contentStates: {
+    OTAUpdateActivityAttributes.ContentState.singleDevice
+    OTAUpdateActivityAttributes.ContentState.twoDevices
+    OTAUpdateActivityAttributes.ContentState.fiveDevices
+    OTAUpdateActivityAttributes.ContentState.manyDevices
+    OTAUpdateActivityAttributes.ContentState.completed
+    OTAUpdateActivityAttributes.ContentState.failed
+}
 
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(item.name)
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-                    Spacer()
-                    Text(rowLabel)
-                        .font(.caption2.weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(rowLabelColor)
-                        .contentTransition(.numericText())
-                }
-                if let progress = item.progress, item.phase == .updating {
-                    ProgressView(value: Double(progress), total: 100)
-                        .progressViewStyle(.linear)
-                        .tint(.blue)
-                        .animation(.easeInOut(duration: 0.4), value: progress)
-                } else {
-                    ProgressView(value: phaseIndeterminateFraction, total: 1)
-                        .progressViewStyle(.linear)
-                        .tint(.blue.opacity(0.35))
-                }
-            }
-        }
-    }
+#Preview("Compact", as: .dynamicIsland(.compact), using: previewOTAAttributes) {
+    OTAUpdateActivityWidget()
+} contentStates: {
+    OTAUpdateActivityAttributes.ContentState.singleDevice
+    OTAUpdateActivityAttributes.ContentState.fiveDevices
+    OTAUpdateActivityAttributes.ContentState.completed
+}
 
-    private var rowLabel: String {
-        switch item.phase {
-        case .requested: return "Starting…"
-        case .checking:  return "Checking"
-        case .scheduled: return "Scheduled"
-        case .updating:  return item.progress.map { "\($0)%" } ?? "…"
-        case .available: return "Pending"
-        case .idle:      return "Done"
-        }
-    }
+#Preview("Expanded", as: .dynamicIsland(.expanded), using: previewOTAAttributes) {
+    OTAUpdateActivityWidget()
+} contentStates: {
+    OTAUpdateActivityAttributes.ContentState.singleDevice
+    OTAUpdateActivityAttributes.ContentState.twoDevices
+    OTAUpdateActivityAttributes.ContentState.fiveDevices
+    OTAUpdateActivityAttributes.ContentState.manyDevices
+    OTAUpdateActivityAttributes.ContentState.completed
+    OTAUpdateActivityAttributes.ContentState.failed
+}
 
-    private var rowLabelColor: Color {
-        switch item.phase {
-        case .idle:      return .green
-        case .updating:  return .blue
-        default:         return .secondary
-        }
-    }
-
-    private var phaseIndeterminateFraction: Double {
-        switch item.phase {
-        case .requested: return 0.05
-        case .checking:  return 0.15
-        case .scheduled: return 0.25
-        default:         return 0
-        }
-    }
+#Preview("Minimal", as: .dynamicIsland(.minimal), using: previewOTAAttributes) {
+    OTAUpdateActivityWidget()
+} contentStates: {
+    OTAUpdateActivityAttributes.ContentState.singleDevice
+    OTAUpdateActivityAttributes.ContentState.fiveDevices
+    OTAUpdateActivityAttributes.ContentState.completed
 }
 
 // MARK: - ContentState helpers

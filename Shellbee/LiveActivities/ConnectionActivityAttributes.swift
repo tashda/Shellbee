@@ -12,11 +12,13 @@ nonisolated struct ConnectionActivityAttributes: ActivityAttributes, Sendable {
         }
         public var phase: Phase
         public var attempt: Int
+        public var maxAttempts: Int
         public var message: String
-        
-        public init(phase: Phase, attempt: Int, message: String) {
+
+        public init(phase: Phase, attempt: Int, maxAttempts: Int, message: String) {
             self.phase = phase
             self.attempt = attempt
+            self.maxAttempts = maxAttempts
             self.message = message
         }
     }
