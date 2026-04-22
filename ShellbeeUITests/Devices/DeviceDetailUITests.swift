@@ -166,7 +166,8 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
     // MARK: - Helpers
 
     private func openDetail(named name: String) {
-        // Search for the device to handle long lists
+        // Reveal minimized search bar and filter to the device
+        app.swipeDown()
         let search = app.searchFields.firstMatch
         if search.waitForExistence(timeout: 3) {
             search.tap()
@@ -174,16 +175,15 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
         }
 
         let cell = app.cells.containing(.staticText, identifier: name).firstMatch
-        if !cell.waitForExistence(timeout: 10) {
-            // Fallback: try any cell containing the name
-            let fallback = app.cells.matching(
-                NSPredicate(format: "label CONTAINS '\(name)'")
-            ).firstMatch
-            if fallback.waitForExistence(timeout: 5) {
-                fallback.tap()
-            } else {
-                XCTFail("Could not find device '\(name)' in the list")
+        if !cell.waitForExistence(timeout: 5) {
+            // Scroll down to load lazy cells further in the list
+            app.swipeUp()
+            if !cell.waitForExistence(timeout: 5) {
+                app.swipeUp()
             }
+        }
+        guard cell.waitForExistence(timeout: 5) else {
+            XCTFail("Could not find device '\(name)' in the list")
             return
         }
         cell.tap()

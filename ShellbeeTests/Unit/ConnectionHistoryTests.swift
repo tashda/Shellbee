@@ -6,10 +6,12 @@ final class ConnectionHistoryTests: XCTestCase {
     override func setUp() {
         super.setUp()
         UserDefaults.standard.removeObject(forKey: "connectionHistory")
+        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
     }
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "connectionHistory")
+        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
         super.tearDown()
     }
 
@@ -29,6 +31,15 @@ final class ConnectionHistoryTests: XCTestCase {
         h.add(makeConfig(host: "host", port: 8080))
         h.add(makeConfig(host: "host", port: 8080))
         XCTAssertEqual(h.connections.count, 1)
+    }
+
+    @MainActor
+    func testAddKeepsHTTPAndHTTPSEntriesDistinct() {
+        let h = ConnectionHistory()
+        h.add(makeConfig(host: "host", port: 8080, useTLS: false))
+        h.add(makeConfig(host: "host", port: 8080, useTLS: true))
+        XCTAssertEqual(h.connections.count, 2)
+        XCTAssertEqual(h.connections.first?.useTLS, true)
     }
 
     @MainActor
@@ -81,6 +92,22 @@ final class ConnectionHistoryTests: XCTestCase {
         XCTAssertEqual(h.connections.count, 1)
     }
 
+    @MainActor
+    func testRemoveAtOffsetsRemovesPersistedToken() {
+        let h = ConnectionHistory()
+        h.add(ConnectionConfig(host: "token.host", port: 8080, useTLS: false, basePath: "/", authToken: "secret"))
+
+        h.remove(at: IndexSet(integer: 0))
+
+        let reloaded = ConnectionHistory()
+        XCTAssertTrue(reloaded.connections.isEmpty)
+        XCTAssertNil(
+            ConnectionConfig.PersistedSnapshot(host: "token.host", port: 8080, useTLS: false, basePath: "/")
+                .connectionConfig
+                .authToken
+        )
+    }
+
     // MARK: - update
 
     @MainActor
@@ -104,10 +131,37 @@ final class ConnectionHistoryTests: XCTestCase {
         XCTAssertTrue(h2.connections.contains { $0.host == "persistent" })
     }
 
+    @MainActor
+    func testHistoryLoadsTokenFromKeychain() {
+        let h1 = ConnectionHistory()
+        h1.add(ConnectionConfig(host: "persistent", port: 8080, useTLS: false, basePath: "/", authToken: "secret"))
+
+        let h2 = ConnectionHistory()
+        XCTAssertEqual(h2.connections.first?.authToken, "secret")
+    }
+
+    @MainActor
+    func testHistoryMigratesLegacyEntriesToKeychain() throws {
+        let legacy = [
+            ConnectionConfig(host: "legacy", port: 8080, useTLS: false, basePath: "/", authToken: "legacy-secret")
+        ]
+        let data = try JSONEncoder().encode(legacy)
+        UserDefaults.standard.set(data, forKey: "connectionHistory")
+
+        let history = ConnectionHistory()
+        XCTAssertEqual(history.connections.first?.authToken, "legacy-secret")
+
+        let migratedData = try XCTUnwrap(UserDefaults.standard.data(forKey: "connectionHistory"))
+        let json = try JSONSerialization.jsonObject(with: migratedData) as? [[String: Any]]
+
+        XCTAssertNil(json?.first?["authToken"])
+        XCTAssertNil(json?.first?["auth_token"])
+    }
+
     // MARK: - Helpers
 
     @MainActor
-    private func makeConfig(host: String, port: Int = 8080) -> ConnectionConfig {
-        ConnectionConfig(host: host, port: port, useTLS: false, basePath: "/", authToken: nil)
+    private func makeConfig(host: String, port: Int = 8080, useTLS: Bool = false) -> ConnectionConfig {
+        ConnectionConfig(host: host, port: port, useTLS: useTLS, basePath: "/", authToken: nil)
     }
 }

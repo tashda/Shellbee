@@ -11,16 +11,25 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
 
     static let z2mHost = "localhost"
     static let z2mPort = 8080
+    static let authToken = "shellbee-integration-token"
 
     var store: AppStore!
 
     override func setUp() async throws {
         try await super.setUp()
+        await MainActor.run {
+            ConnectionConfig.clear()
+            ConnectionConfig.clearPersistedSecretsForTests()
+        }
         store = await MainActor.run { AppStore() }
         try await skipIfZ2MUnavailable()
     }
 
     override func tearDown() async throws {
+        await MainActor.run {
+            ConnectionConfig.clear()
+            ConnectionConfig.clearPersistedSecretsForTests()
+        }
         await MainActor.run { store = nil }
         try await super.tearDown()
     }
@@ -31,9 +40,9 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     func testConnectsAndReceivesBridgeInfo() async throws {
         let (client, router) = makeClientAndRouter()
         let url = try XCTUnwrap(connectionConfig().webSocketURL)
-        try await client.connect(url: url)
+        let stream = try await client.connect(url: url)
 
-        let info = try await collectFirst(from: client, router: router, timeout: 15) { event in
+        let info = try await collectFirst(stream: stream, router: router, timeout: 15) { event in
             if case .bridgeInfo(let i) = event { return i }
             return nil
         }
@@ -44,12 +53,76 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     }
 
     @MainActor
+    func testReloadedPersistedConfigConnectsAndReceivesBridgeInfo() async throws {
+        let persisted = connectionConfig()
+        persisted.save()
+
+        let reloaded = try XCTUnwrap(ConnectionConfig.load())
+        XCTAssertEqual(reloaded.authToken, Self.authToken)
+
+        let (client, router) = makeClientAndRouter()
+        let url = try XCTUnwrap(reloaded.webSocketURL)
+        let stream = try await client.connect(url: url)
+
+        let info = try await collectFirst(stream: stream, router: router, timeout: 15) { event in
+            if case .bridgeInfo(let i) = event { return i }
+            return nil
+        }
+
+        await client.disconnect()
+        XCTAssertNotNil(info)
+        XCTAssertFalse(info?.version.isEmpty ?? true)
+    }
+
+    @MainActor
+    func testConnectionWithoutTokenIsRejected() async throws {
+        let client = Z2MWebSocketClient()
+        let url = try XCTUnwrap(
+            ConnectionConfig(
+                host: Self.z2mHost,
+                port: Self.z2mPort,
+                useTLS: false,
+                basePath: "/",
+                authToken: nil
+            ).webSocketURL
+        )
+
+        let stream = try await client.connect(url: url)
+
+        let disconnected = try await collectSocketDisconnect(stream: stream, timeout: 5)
+        await client.disconnect()
+
+        XCTAssertTrue(disconnected, "Expected unauthenticated connection to be closed by the bridge")
+    }
+
+    @MainActor
+    func testConnectionWithWrongTokenIsRejected() async throws {
+        let client = Z2MWebSocketClient()
+        let url = try XCTUnwrap(
+            ConnectionConfig(
+                host: Self.z2mHost,
+                port: Self.z2mPort,
+                useTLS: false,
+                basePath: "/",
+                authToken: "wrong-token"
+            ).webSocketURL
+        )
+
+        let stream = try await client.connect(url: url)
+
+        let disconnected = try await collectSocketDisconnect(stream: stream, timeout: 5)
+        await client.disconnect()
+
+        XCTAssertTrue(disconnected, "Expected invalid-token connection to be closed by the bridge")
+    }
+
+    @MainActor
     func testReceivesBridgeDevices() async throws {
         let (client, router) = makeClientAndRouter()
         let url = try XCTUnwrap(connectionConfig().webSocketURL)
-        try await client.connect(url: url)
+        let stream = try await client.connect(url: url)
 
-        let devices = try await collectFirst(from: client, router: router, timeout: 20) { event in
+        let devices = try await collectFirst(stream: stream, router: router, timeout: 20) { event in
             if case .devices(let d) = event { return d }
             return nil
         }
@@ -64,9 +137,9 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     func testReceivesAllSeededDeviceCategories() async throws {
         let (client, router) = makeClientAndRouter()
         let url = try XCTUnwrap(connectionConfig().webSocketURL)
-        try await client.connect(url: url)
+        let stream = try await client.connect(url: url)
 
-        let devices = try await collectFirst(from: client, router: router, timeout: 30) { event in
+        let devices = try await collectFirst(stream: stream, router: router, timeout: 30) { event in
             if case .devices(let d) = event { return d }
             return nil
         }
@@ -84,9 +157,9 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     func testReceivesDeviceAvailability() async throws {
         let (client, router) = makeClientAndRouter()
         let url = try XCTUnwrap(connectionConfig().webSocketURL)
-        try await client.connect(url: url)
+        let stream = try await client.connect(url: url)
 
-        let got = try await collectFirst(from: client, router: router, timeout: 30) { event -> Bool? in
+        let got = try await collectFirst(stream: stream, router: router, timeout: 30) { event -> Bool? in
             if case .deviceAvailability = event { return true }
             return nil
         }
@@ -98,11 +171,11 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     func testReceivesDeviceStates() async throws {
         let (client, router) = makeClientAndRouter()
         let url = try XCTUnwrap(connectionConfig().webSocketURL)
-        try await client.connect(url: url)
+        let stream = try await client.connect(url: url)
 
         var count = 0
         let deadline = Date().addingTimeInterval(30)
-        for await socketEvent in await client.events {
+        for await socketEvent in stream {
             guard case .message(let data) = socketEvent else { break }
             if let event = router.route(data), case .deviceState = event {
                 count += 1
@@ -119,9 +192,9 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     func testReceivesGroups() async throws {
         let (client, router) = makeClientAndRouter()
         let url = try XCTUnwrap(connectionConfig().webSocketURL)
-        try await client.connect(url: url)
+        let stream = try await client.connect(url: url)
 
-        let groups = try await collectFirst(from: client, router: router, timeout: 20) { event in
+        let groups = try await collectFirst(stream: stream, router: router, timeout: 20) { event in
             if case .groups(let g) = event { return g }
             return nil
         }
@@ -135,12 +208,12 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     func testFullHydrationFlowPopulatesStore() async throws {
         let (client, router) = makeClientAndRouter()
         let url = try XCTUnwrap(connectionConfig().webSocketURL)
-        try await client.connect(url: url)
+        let stream = try await client.connect(url: url)
 
         var gotInfo = false, gotDevices = false, gotGroups = false
         let deadline = Date().addingTimeInterval(30)
 
-        for await socketEvent in await client.events {
+        for await socketEvent in stream {
             guard case .message(let data) = socketEvent else { break }
             if let event = router.route(data) {
                 store.apply(event)
@@ -170,7 +243,7 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     @MainActor
     private func connectionConfig() -> ConnectionConfig {
         ConnectionConfig(host: Self.z2mHost, port: Self.z2mPort,
-                         useTLS: false, basePath: "/", authToken: nil)
+                         useTLS: false, basePath: "/", authToken: Self.authToken)
     }
 
     @MainActor
@@ -180,13 +253,13 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
 
     @MainActor
     private func collectFirst<T>(
-        from client: Z2MWebSocketClient,
+        stream: AsyncStream<Z2MSocketEvent>,
         router: Z2MMessageRouter,
         timeout: TimeInterval,
         transform: (Z2MEvent) -> T?
     ) async throws -> T? {
         let deadline = Date().addingTimeInterval(timeout)
-        for await socketEvent in await client.events {
+        for await socketEvent in stream {
             guard case .message(let data) = socketEvent else { return nil }
             if let event = router.route(data), let value = transform(event) {
                 return value
@@ -194,6 +267,23 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
             if Date() > deadline { return nil }
         }
         return nil
+    }
+
+    @MainActor
+    private func collectSocketDisconnect(
+        stream: AsyncStream<Z2MSocketEvent>,
+        timeout: TimeInterval
+    ) async throws -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        for await socketEvent in stream {
+            if case .disconnected = socketEvent {
+                return true
+            }
+            if Date() > deadline {
+                return false
+            }
+        }
+        return false
     }
 
     private func skipIfZ2MUnavailable() async throws {
@@ -204,7 +294,7 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
         let client = await MainActor.run { Z2MWebSocketClient() }
         do {
             try await withThrowingTaskGroup(of: Void.self) { group in
-                group.addTask { try await client.connect(url: url) }
+                group.addTask { _ = try await client.connect(url: url) }
                 group.addTask {
                     try await Task.sleep(for: .seconds(5))
                     throw URLError(.timedOut)

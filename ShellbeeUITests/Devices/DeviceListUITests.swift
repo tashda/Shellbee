@@ -28,21 +28,21 @@ final class DeviceListUITests: ShellbeeUITestCase {
     // MARK: - Search
 
     func testSearchFiltersResults() {
+        // Reveal minimized search bar by scrolling to top
+        app.swipeDown()
         let searchBar = app.searchFields.firstMatch
         searchBar.tapWhenReady()
         searchBar.typeText("IKEA")
-        // Results should be reduced
         let count = app.cells.count
-        // All results should contain IKEA (or have it in their subtitles)
         XCTAssertGreaterThanOrEqual(count, 1)
     }
 
     func testSearchClearRestoresFull() {
+        app.swipeDown()
         let searchBar = app.searchFields.firstMatch
         searchBar.tapWhenReady()
         searchBar.typeText("xyz_no_match_xyz")
         let empty = app.cells.count == 0
-        // Clear
         searchBar.buttons["Clear text"].tap()
         let restored = app.cells.count
         XCTAssertTrue(empty || restored > 0)
@@ -118,10 +118,11 @@ final class DeviceListUITests: ShellbeeUITestCase {
         let firstCell = app.cells.firstMatch
         firstCell.assertExists()
         firstCell.tap()
-        // A detail navigation bar should appear
-        XCTAssertTrue(app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5) ||
-                      app.navigationBars.count > 1,
-                      "Device detail did not appear")
+        // After navigation, a back button labeled "Devices" appears
+        XCTAssertTrue(
+            app.buttons["Devices"].firstMatch.waitForExistence(timeout: 5),
+            "Device detail did not appear"
+        )
     }
 
     // MARK: - Swipe actions
@@ -131,10 +132,9 @@ final class DeviceListUITests: ShellbeeUITestCase {
         cell.assertExists()
         cell.swipeLeft()
         XCTAssertTrue(
-            app.buttons["Rename"].firstMatch.waitForExistence(timeout: 3),
+            app.buttons["Rename"].firstMatch.waitForExistence(timeout: 5),
             "Rename action not revealed on swipe"
         )
-        // Swipe back to dismiss
         cell.swipeRight()
     }
 
@@ -143,8 +143,8 @@ final class DeviceListUITests: ShellbeeUITestCase {
         cell.assertExists()
         cell.swipeLeft()
         XCTAssertTrue(
-            app.buttons["Remove"].firstMatch.waitForExistence(timeout: 3),
-            "Remove action not revealed on swipe"
+            app.buttons["Delete"].firstMatch.waitForExistence(timeout: 5),
+            "Delete action not revealed on swipe"
         )
         cell.swipeRight()
     }
@@ -155,12 +155,14 @@ final class DeviceListUITests: ShellbeeUITestCase {
         let cell = app.cells.firstMatch
         cell.assertExists()
         cell.swipeLeft()
-        app.buttons["Rename"].firstMatch.tapWhenReady()
+        // Rename is on the trailing swipe edge (not Remove)
+        XCTAssertTrue(app.buttons["Rename"].firstMatch.waitForExistence(timeout: 5),
+                      "Rename button not revealed after swipe")
+        app.buttons["Rename"].firstMatch.tap()
         XCTAssertTrue(
             app.textFields.firstMatch.waitForExistence(timeout: 5),
             "Rename sheet text field not found"
         )
-        // Dismiss
         app.buttons["Cancel"].firstMatch.tap()
     }
 
@@ -170,13 +172,12 @@ final class DeviceListUITests: ShellbeeUITestCase {
         let cell = app.cells.firstMatch
         cell.assertExists()
         cell.swipeLeft()
-        app.buttons["Remove"].firstMatch.tapWhenReady()
+        app.buttons["Delete"].firstMatch.tapWhenReady()
         XCTAssertTrue(
             app.sheets.firstMatch.waitForExistence(timeout: 5) ||
             app.buttons["Remove Device"].firstMatch.waitForExistence(timeout: 5),
             "Remove sheet not found"
         )
-        // Cancel without removing
         app.buttons["Cancel"].firstMatch.tap()
     }
 

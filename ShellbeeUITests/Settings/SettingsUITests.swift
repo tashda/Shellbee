@@ -24,7 +24,7 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     func testGeneralRowExists() {
         XCTAssertTrue(
-            app.cells.matching(NSPredicate(format: "label CONTAINS 'General'")).firstMatch
+            app.cells.containing(.staticText, identifier: "General").firstMatch
                 .waitForExistence(timeout: 5)
         )
     }
@@ -218,11 +218,8 @@ final class SettingsUITests: ShellbeeUITestCase {
     // MARK: - Helpers
 
     private func openSettingsScreen(_ name: String) {
-        let cell = app.cells.matching(
-            NSPredicate(format: "label CONTAINS '\(name)'")
-        ).firstMatch
+        let cell = app.cells.containing(.staticText, identifier: name).firstMatch
         if !cell.waitForExistence(timeout: 5) {
-            // Try scrolling
             app.swipeUp()
         }
         cell.tapWhenReady()

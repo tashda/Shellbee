@@ -30,12 +30,12 @@ final class HomeUITests: ShellbeeUITestCase {
     // MARK: - Permit Join
 
     func testPermitJoinToolbarButtonExists() {
-        let permitBtn = app.buttons["Permit Join"].firstMatch
+        let permitBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch
         XCTAssertTrue(permitBtn.waitForExistence(timeout: 5), "Permit Join button not in toolbar")
     }
 
     func testPermitJoinSheetOpens() {
-        app.buttons["Permit Join"].firstMatch.tapWhenReady()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
         XCTAssertTrue(
             app.buttons["Start Permit Join"].firstMatch.waitForExistence(timeout: 5),
             "Permit Join sheet did not open"
@@ -43,17 +43,21 @@ final class HomeUITests: ShellbeeUITestCase {
     }
 
     func testPermitJoinSheetHasDurationOptions() {
-        app.buttons["Permit Join"].firstMatch.tapWhenReady()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
         // Duration presets should be visible
         let oneMin = app.buttons.matching(NSPredicate(format: "label CONTAINS '1'")).firstMatch
         XCTAssertTrue(oneMin.waitForExistence(timeout: 5))
     }
 
     func testPermitJoinDismisses() {
-        app.buttons["Permit Join"].firstMatch.tapWhenReady()
-        // Swipe down to dismiss
+        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
+        XCTAssertTrue(app.navigationBars["Permit Join"].waitForExistence(timeout: 5), "Sheet did not open")
+        // Sheet has .medium and .large detents; may need two swipes to fully dismiss
         app.swipeDown()
-        XCTAssertFalse(app.buttons["Start Permit Join"].firstMatch.waitForExistence(timeout: 3))
+        if app.navigationBars["Permit Join"].waitForExistence(timeout: 2) {
+            app.swipeDown()
+        }
+        XCTAssertFalse(app.navigationBars["Permit Join"].waitForExistence(timeout: 3))
     }
 
     // MARK: - Navigation from device card stats

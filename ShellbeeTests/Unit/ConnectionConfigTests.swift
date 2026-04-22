@@ -6,10 +6,12 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
     override func setUp() {
         super.setUp()
         MainActor.assumeIsolated { ConnectionConfig.clear() }
+        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
     }
 
     override func tearDown() {
         MainActor.assumeIsolated { ConnectionConfig.clear() }
+        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
         super.tearDown()
     }
 
@@ -90,6 +92,51 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
     }
 
     @MainActor
+    func testSaveDoesNotPersistTokenInUserDefaults() throws {
+        let cfg = config(host: "stored.host", port: 9090, authToken: "token")
+        cfg.save()
+
+        let data = try XCTUnwrap(UserDefaults.standard.data(forKey: "lastSuccessfulConnectionConfig"))
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertNil(json?["authToken"])
+        XCTAssertNil(json?["auth_token"])
+    }
+
+    @MainActor
+    func testLoadMigratesLegacySavedConfigToKeychain() throws {
+        let legacy = config(host: "legacy.host", port: 8443, useTLS: true, basePath: "/z2m", authToken: "legacy-token")
+        let data = try JSONEncoder().encode(legacy)
+        UserDefaults.standard.set(data, forKey: "lastSuccessfulConnectionConfig")
+
+        let loaded = try XCTUnwrap(ConnectionConfig.load())
+        XCTAssertEqual(loaded.authToken, "legacy-token")
+
+        let migratedData = try XCTUnwrap(UserDefaults.standard.data(forKey: "lastSuccessfulConnectionConfig"))
+        let json = try JSONSerialization.jsonObject(with: migratedData) as? [String: Any]
+
+        XCTAssertNil(json?["authToken"])
+        XCTAssertNil(json?["auth_token"])
+    }
+
+    @MainActor
+    func testSecondLoadAfterLegacyMigrationStillReturnsToken() throws {
+        let legacy = config(host: "legacy.host", port: 8443, useTLS: true, basePath: "/z2m", authToken: "legacy-token")
+        let data = try JSONEncoder().encode(legacy)
+        UserDefaults.standard.set(data, forKey: "lastSuccessfulConnectionConfig")
+
+        let firstLoad = try XCTUnwrap(ConnectionConfig.load())
+        XCTAssertEqual(firstLoad.authToken, "legacy-token")
+
+        let secondLoad = try XCTUnwrap(ConnectionConfig.load())
+        XCTAssertEqual(secondLoad.authToken, "legacy-token")
+        XCTAssertEqual(secondLoad.host, legacy.host)
+        XCTAssertEqual(secondLoad.port, legacy.port)
+        XCTAssertEqual(secondLoad.basePath, legacy.basePath)
+        XCTAssertEqual(secondLoad.useTLS, legacy.useTLS)
+    }
+
+    @MainActor
     func testLoadReturnsNilAfterClear() {
         config(host: "x", port: 1).save()
         ConnectionConfig.clear()
@@ -99,6 +146,22 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
     @MainActor
     func testLoadReturnsNilWhenNeverSaved() {
         XCTAssertNil(ConnectionConfig.load())
+    }
+
+    @MainActor
+    func testClearRemovesPersistedToken() {
+        config(host: "clear.host", port: 8080, authToken: "secret").save()
+
+        ConnectionConfig.clear()
+
+        let reloaded = ConnectionConfig.PersistedSnapshot(
+            host: "clear.host",
+            port: 8080,
+            useTLS: false,
+            basePath: "/"
+        ).connectionConfig
+
+        XCTAssertNil(reloaded.authToken)
     }
 
     // MARK: - parse(from:)

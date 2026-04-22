@@ -92,13 +92,14 @@ final class LogsUITests: ShellbeeUITestCase {
 
     // MARK: - Log detail
 
-    func testTappingLogEntryOpensDetail() {
+    func testTappingLogEntryOpensDetail() throws {
         guard app.cells.firstMatch.waitForExistence(timeout: 20) else {
-            XCTSkip("No log entries visible")
+            throw XCTSkip("No log entries visible")
         }
         app.cells.firstMatch.tap()
+        // After pushing log detail, back button to "Logs" appears
         XCTAssertTrue(
-            app.navigationBars.element(boundBy: 2).waitForExistence(timeout: 5) ||
+            app.buttons["Logs"].firstMatch.waitForExistence(timeout: 5) ||
             app.sheets.firstMatch.waitForExistence(timeout: 5),
             "Log detail did not open"
         )

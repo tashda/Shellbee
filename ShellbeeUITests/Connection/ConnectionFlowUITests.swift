@@ -90,7 +90,7 @@ final class ConnectionFlowUITests: XCTestCase {
     func testDisconnectReturnsToSetupScreen() throws {
         // This test requires being connected first
         guard app.tabBars.firstMatch.waitForExistence(timeout: 30) else {
-            XCTSkip("Not connected — cannot test disconnect flow")
+            throw XCTSkip("Not connected — cannot test disconnect flow")
         }
 
         app.tapSettingsTab()
