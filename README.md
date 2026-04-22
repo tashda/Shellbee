@@ -171,4 +171,5 @@ Shellbee is under active development. The current public repository already incl
 
 ## License
 
-No license file is included yet. Until one is added, the default copyright rules apply.
+Shellbee is licensed under the GNU Affero General Public License v3.0.
+See [LICENSE](/Users/k/Development/Shellbee/LICENSE) for the full text.
