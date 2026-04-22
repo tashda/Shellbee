@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "appicon-iOS-Default-1024x1024@1x.png",
+      "filename" : "light_shellby-iOS-Default-1024x1024@1x.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "appicon-iOS-Default-1024x1024@1x 1.png",
+      "filename" : "dark_shellbee-iOS-Dark-1024x1024@1x.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +25,6 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "appicon-iOS-Default-1024x1024@1x 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
