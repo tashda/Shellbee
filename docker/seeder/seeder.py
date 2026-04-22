@@ -59,8 +59,23 @@ def pub(client, topic, payload, retain=True):
     client.publish(topic, data, retain=retain, qos=1)
 
 
+# Topics from previous fixture revisions — cleared on startup so stale
+# retained messages don't leak into a fresh client connect.
+STALE_TOPICS = [
+    "Bathroom Fan",
+    "Bathroom Fan/availability",
+]
+
+
+def clear_stale(client):
+    for topic in STALE_TOPICS:
+        client.publish(f"{Z2M_TOPIC}/{topic}", payload=b"", retain=True, qos=1)
+
+
 def seed(client):
     log.info("Seeding %d devices …", len(ALL_DEVICES) - 1)  # exclude coordinator
+
+    clear_stale(client)
 
     # bridge/info
     pub(client, f"{Z2M_TOPIC}/bridge/info", BRIDGE_INFO)

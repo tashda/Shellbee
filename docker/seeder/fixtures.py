@@ -144,7 +144,7 @@ LIGHT_COLOR_STATE = {
     "linkquality": 200
 }
 
-# ── Switch / Plug with power metering (IKEA) ──────────────────────────────
+# ── Switch / Plug with power metering (Tuya TS011F) ───────────────────────
 SWITCH_PLUG = {
     "ieee_address": "0x000b57fffec51378",
     "type": "Router",
@@ -154,9 +154,9 @@ SWITCH_PLUG = {
     "disabled": False,
     "description": None,
     "definition": {
-        "model": "E1603/E1702/E1708",
-        "vendor": "IKEA",
-        "description": "TRADFRI control outlet",
+        "model": "TS011F_plug_1",
+        "vendor": "Tuya",
+        "description": "Smart plug (with power monitoring)",
         "exposes": [
             {
                 "type": "switch",
@@ -179,13 +179,13 @@ SWITCH_PLUG = {
         "options": []
     },
     "power_source": "Mains (single phase)",
-    "model_id": "TRADFRI control outlet",
-    "manufacturer": "IKEA of Sweden",
+    "model_id": "TS011F",
+    "manufacturer": "_TZ3000_g5xawfcq",
     "interview_completed": True,
     "interviewing": False,
-    "software_build_id": "2.0.022",
+    "software_build_id": "1.0.5",
     "date_code": None,
-    "endpoints": {"1": {"inputClusters": [0, 3, 4, 5, 6, 8, 1794, 2820], "outputClusters": [], "binds": [], "configuredReportings": []}},
+    "endpoints": {"1": {"inputClusters": [0, 3, 4, 5, 6, 1794, 2820, 57344, 57345], "outputClusters": [10, 25], "binds": [], "configuredReportings": []}},
     "options": {}
 }
 
@@ -305,7 +305,7 @@ CLIMATE_STATE = {
     "linkquality": 45
 }
 
-# ── Cover (SOMFY Zigbee) ──────────────────────────────────────────────────
+# ── Cover (IKEA KADRILJ roller blind) ─────────────────────────────────────
 COVER = {
     "ieee_address": "0x0c4314fffed23456",
     "type": "EndDevice",
@@ -315,9 +315,9 @@ COVER = {
     "disabled": False,
     "description": None,
     "definition": {
-        "model": "1241752",
-        "vendor": "SOMFY",
-        "description": "Zigbee RTS cover actuator",
+        "model": "E1926",
+        "vendor": "IKEA",
+        "description": "KADRILJ roller blind",
         "exposes": [
             {
                 "type": "cover",
@@ -326,54 +326,7 @@ COVER = {
                      "access": 7, "values": ["OPEN", "CLOSE", "STOP"]},
                     {"type": "numeric", "name": "position", "label": "Position",
                      "property": "position", "access": 7, "value_min": 0, "value_max": 100,
-                     "unit": "%"},
-                    {"type": "numeric", "name": "tilt", "label": "Tilt",
-                     "property": "tilt", "access": 7, "value_min": 0, "value_max": 100,
                      "unit": "%"}
-                ]
-            },
-            {"type": "numeric", "name": "linkquality", "label": "Link quality",
-             "property": "linkquality", "access": 1, "unit": "lqi", "value_min": 0, "value_max": 255}
-        ],
-        "options": []
-    },
-    "power_source": "Mains (single phase)",
-    "model_id": "1241752",
-    "manufacturer": "SOMFY",
-    "interview_completed": True,
-    "interviewing": False,
-    "software_build_id": None,
-    "date_code": None,
-    "endpoints": {"1": {"inputClusters": [0, 1, 3, 258], "outputClusters": [], "binds": [], "configuredReportings": []}},
-    "options": {}
-}
-
-COVER_STATE = {
-    "state": "CLOSE",
-    "position": 0,
-    "tilt": 0,
-    "linkquality": 155
-}
-
-# ── Lock (Nuki Smart Lock) ────────────────────────────────────────────────
-LOCK = {
-    "ieee_address": "0x54ef441000130bed",
-    "type": "EndDevice",
-    "network_address": 10007,
-    "supported": True,
-    "friendly_name": "Front Door Lock",
-    "disabled": False,
-    "description": None,
-    "definition": {
-        "model": "nuki_2_0",
-        "vendor": "Nuki",
-        "description": "Smart lock 2.0",
-        "exposes": [
-            {
-                "type": "lock",
-                "features": [
-                    {"type": "enum", "name": "state", "label": "State", "property": "state",
-                     "access": 7, "values": ["LOCK", "UNLOCK"]}
                 ]
             },
             {"type": "numeric", "name": "battery", "label": "Battery", "property": "battery",
@@ -384,64 +337,130 @@ LOCK = {
         "options": []
     },
     "power_source": "Battery",
-    "model_id": "Nuki_Smartlock",
-    "manufacturer": "Nuki",
+    "model_id": "TRADFRI roller blind",
+    "manufacturer": "IKEA of Sweden",
     "interview_completed": True,
     "interviewing": False,
-    "software_build_id": "3.3.5",
+    "software_build_id": "2.2.009",
+    "date_code": "20190128",
+    "endpoints": {"1": {"inputClusters": [0, 1, 3, 4, 5, 32, 258, 4096, 64636], "outputClusters": [3, 4, 6, 8, 25, 258, 4096], "binds": [], "configuredReportings": []}},
+    "options": {}
+}
+
+COVER_STATE = {
+    "state": "CLOSE",
+    "position": 0,
+    "battery": 65,
+    "linkquality": 155
+}
+
+# ── Lock (Schlage BE468 Connect smart deadbolt) ──────────────────────────
+LOCK = {
+    "ieee_address": "0x54ef441000130bed",
+    "type": "EndDevice",
+    "network_address": 10007,
+    "supported": True,
+    "friendly_name": "Front Door Lock",
+    "disabled": False,
+    "description": None,
+    "definition": {
+        "model": "BE468",
+        "vendor": "Schlage",
+        "description": "Connect smart deadbolt",
+        "exposes": [
+            {
+                "type": "lock",
+                "features": [
+                    {"type": "enum", "name": "state", "label": "State", "property": "state",
+                     "access": 7, "values": ["LOCK", "UNLOCK"]},
+                    {"type": "enum", "name": "lock_state", "label": "Lock state",
+                     "property": "lock_state", "access": 1,
+                     "values": ["not_fully_locked", "locked", "unlocked"]}
+                ]
+            },
+            {"type": "numeric", "name": "battery", "label": "Battery", "property": "battery",
+             "access": 1, "unit": "%", "value_min": 0, "value_max": 100},
+            {"type": "numeric", "name": "linkquality", "label": "Link quality",
+             "property": "linkquality", "access": 1, "unit": "lqi", "value_min": 0, "value_max": 255}
+        ],
+        "options": []
+    },
+    "power_source": "Battery",
+    "model_id": "BE468",
+    "manufacturer": "Schlage",
+    "interview_completed": True,
+    "interviewing": False,
+    "software_build_id": "2.23.1",
     "date_code": None,
-    "endpoints": {"11": {"inputClusters": [0, 1, 257], "outputClusters": [], "binds": [], "configuredReportings": []}},
+    "endpoints": {"11": {"inputClusters": [0, 1, 3, 10, 257], "outputClusters": [10, 25], "binds": [], "configuredReportings": []}},
     "options": {}
 }
 
 LOCK_STATE = {
     "battery": 62,
     "state": "LOCK",
+    "lock_state": "locked",
     "linkquality": 90
 }
 
-# ── Fan (Itho Daalderop) ──────────────────────────────────────────────────
+# ── Air purifier / fan (IKEA STARKVIND) ───────────────────────────────────
 FAN = {
     "ieee_address": "0x0c4314fffeb1c2d3",
     "type": "Router",
     "network_address": 10008,
     "supported": True,
-    "friendly_name": "Bathroom Fan",
+    "friendly_name": "Living Room Air Purifier",
     "disabled": False,
     "description": None,
     "definition": {
-        "model": "RB01D",
-        "vendor": "Itho",
-        "description": "Bathroom/kitchen fan",
+        "model": "E2006",
+        "vendor": "IKEA",
+        "description": "STARKVIND air purifier",
         "exposes": [
             {
                 "type": "fan",
                 "features": [
-                    {"type": "binary", "name": "state", "label": "State", "property": "state",
+                    {"type": "binary", "name": "state", "label": "State", "property": "fan_state",
                      "access": 7, "value_on": "ON", "value_off": "OFF"},
-                    {"type": "enum", "name": "mode", "label": "Mode", "property": "mode",
-                     "access": 7, "values": ["off", "low", "medium", "high", "on", "auto", "smart"]}
+                    {"type": "enum", "name": "mode", "label": "Mode", "property": "fan_mode",
+                     "access": 7, "values": ["off", "auto", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
                 ]
             },
+            {"type": "numeric", "name": "fan_speed", "label": "Fan speed",
+             "property": "fan_speed", "access": 1, "value_min": 0, "value_max": 9},
+            {"type": "numeric", "name": "pm25", "label": "PM2.5", "property": "pm25",
+             "access": 1, "unit": "µg/m³"},
+            {"type": "enum", "name": "air_quality", "label": "Air quality",
+             "property": "air_quality", "access": 1,
+             "values": ["excellent", "good", "moderate", "poor", "unhealthy", "hazardous", "out_of_range", "unknown"]},
+            {"type": "binary", "name": "replace_filter", "label": "Replace filter",
+             "property": "replace_filter", "access": 1, "value_on": True, "value_off": False},
+            {"type": "numeric", "name": "filter_age", "label": "Filter age",
+             "property": "filter_age", "access": 1, "unit": "minutes"},
             {"type": "numeric", "name": "linkquality", "label": "Link quality",
              "property": "linkquality", "access": 1, "unit": "lqi", "value_min": 0, "value_max": 255}
         ],
         "options": []
     },
     "power_source": "Mains (single phase)",
-    "model_id": "RB01D",
-    "manufacturer": "Itho",
+    "model_id": "STARKVIND Air purifier",
+    "manufacturer": "IKEA of Sweden",
     "interview_completed": True,
     "interviewing": False,
-    "software_build_id": None,
-    "date_code": None,
-    "endpoints": {"1": {"inputClusters": [0, 202], "outputClusters": [], "binds": [], "configuredReportings": []}},
+    "software_build_id": "1.0.033",
+    "date_code": "20211125",
+    "endpoints": {"1": {"inputClusters": [0, 3, 4, 5, 514, 64599], "outputClusters": [25, 32], "binds": [], "configuredReportings": []}},
     "options": {}
 }
 
 FAN_STATE = {
-    "state": "ON",
-    "mode": "medium",
+    "fan_state": "ON",
+    "fan_mode": "auto",
+    "fan_speed": 4,
+    "pm25": 12,
+    "air_quality": "good",
+    "replace_filter": False,
+    "filter_age": 72000,
     "linkquality": 120
 }
 

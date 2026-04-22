@@ -14,24 +14,27 @@ services:
       retries: 5
     restart: unless-stopped
 
-  zigbee2mqtt:
-    image: koenkk/zigbee2mqtt:latest
+  z2m-bridge:
+    build: ./docker/z2m-ws-bridge
     container_name: shellbee-z2m
     depends_on:
       mosquitto:
         condition: service_healthy
     ports:
       - "8080:8080"
-    volumes:
-      - ./docker/zigbee2mqtt/data:/app/data
     environment:
-      - ZIGBEE2MQTT_DATA=/app/data
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - Z2M_TOPIC=zigbee2mqtt
+      - WS_PORT=8080
+      - HEALTH_PORT=8081
+      - AUTH_TOKEN=shellbee-integration-token
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081', timeout=2)"]
+      interval: 5s
+      timeout: 3s
       retries: 10
-      start_period: 15s
+      start_period: 5s
     restart: unless-stopped
 
   seeder:
@@ -40,7 +43,7 @@ services:
     depends_on:
       mosquitto:
         condition: service_healthy
-      zigbee2mqtt:
+      z2m-bridge:
         condition: service_healthy
     environment:
       - MQTT_HOST=mosquitto
