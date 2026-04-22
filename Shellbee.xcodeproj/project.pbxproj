@@ -10,15 +10,31 @@
 		0A9D45D12F96232B00DF6DF5 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A9D45D02F96232B00DF6DF5 /* WidgetKit.framework */; };
 		0A9D45D32F96232B00DF6DF5 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A9D45D22F96232B00DF6DF5 /* SwiftUI.framework */; };
 		0A9D45E22F96232C00DF6DF5 /* ShellbeeWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		36480E2BBD831170CE45D631 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 955A77328490D59BB0224D4C /* Foundation.framework */; };
+		90D3ED1BE413FB7665831231 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 955A77328490D59BB0224D4C /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		0633280C100B30492C324EB9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A9D45052F96077A00DF6DF5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A9D450C2F96077A00DF6DF5;
+			remoteInfo = Shellbee;
+		};
 		0A9D45E02F96232C00DF6DF5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0A9D45052F96077A00DF6DF5 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 0A9D45CD2F96232B00DF6DF5;
 			remoteInfo = ShellbeeWidgetsExtension;
+		};
+		2DAAB19F3A9D1F3656C43B2A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0A9D45052F96077A00DF6DF5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A9D450C2F96077A00DF6DF5;
+			remoteInfo = Shellbee;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -43,6 +59,9 @@
 		0A9D45D22F96232B00DF6DF5 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		0A9D45EE2F96238500DF6DF5 /* Shellbee.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Shellbee.entitlements; sourceTree = "<group>"; };
 		0A9D45EF2F96238500DF6DF5 /* ShellbeeWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShellbeeWidgets.entitlements; sourceTree = "<group>"; };
+		241D5FE460581AB7092E23FB /* ShellbeeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShellbeeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		946658ACC40B1E178737597C /* ShellbeeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShellbeeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		955A77328490D59BB0224D4C /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -213,6 +232,13 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		01757C5AF786843CA57E08F9 /* ShellbeeUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = ShellbeeUITests;
+			sourceTree = "<group>";
+		};
 		0A9D450F2F96077A00DF6DF5 /* Shellbee */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -227,6 +253,13 @@
 				0A9D45E72F96232C00DF6DF5 /* Exceptions for "ShellbeeWidgets" folder in "ShellbeeWidgetsExtension" target */,
 			);
 			path = ShellbeeWidgets;
+			sourceTree = "<group>";
+		};
+		7DAA7CA6F97D71F939E224BD /* ShellbeeTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = ShellbeeTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -248,6 +281,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		18EDB416DACC3BC19DD40F8D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				90D3ED1BE413FB7665831231 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F0F3C6B71B050BEABA356057 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				36480E2BBD831170CE45D631 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -260,6 +309,8 @@
 				0A9D45D42F96232B00DF6DF5 /* ShellbeeWidgets */,
 				0A9D45CF2F96232B00DF6DF5 /* Frameworks */,
 				0A9D450E2F96077A00DF6DF5 /* Products */,
+				7DAA7CA6F97D71F939E224BD /* ShellbeeTests */,
+				01757C5AF786843CA57E08F9 /* ShellbeeUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -268,6 +319,8 @@
 			children = (
 				0A9D450D2F96077A00DF6DF5 /* Shellbee.app */,
 				0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */,
+				241D5FE460581AB7092E23FB /* ShellbeeTests.xctest */,
+				946658ACC40B1E178737597C /* ShellbeeUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -277,8 +330,17 @@
 			children = (
 				0A9D45D02F96232B00DF6DF5 /* WidgetKit.framework */,
 				0A9D45D22F96232B00DF6DF5 /* SwiftUI.framework */,
+				4CBAEFF099F9298C74763984 /* iOS */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		4CBAEFF099F9298C74763984 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				955A77328490D59BB0224D4C /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -302,8 +364,6 @@
 				0A9D450F2F96077A00DF6DF5 /* Shellbee */,
 			);
 			name = Shellbee;
-			packageProductDependencies = (
-			);
 			productName = Shellbee;
 			productReference = 0A9D450D2F96077A00DF6DF5 /* Shellbee.app */;
 			productType = "com.apple.product-type.application";
@@ -325,11 +385,51 @@
 				0A9D45D42F96232B00DF6DF5 /* ShellbeeWidgets */,
 			);
 			name = ShellbeeWidgetsExtension;
-			packageProductDependencies = (
-			);
 			productName = ShellbeeWidgetsExtension;
 			productReference = 0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		BDF45631F023CB1E9F0A6F86 /* ShellbeeUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FE9B4EBB05683A9F0E86D839 /* Build configuration list for PBXNativeTarget "ShellbeeUITests" */;
+			buildPhases = (
+				1EF0BB3C9A2B0A5BECD0976B /* Sources */,
+				18EDB416DACC3BC19DD40F8D /* Frameworks */,
+				FA7F99E968DA18D66285B3E4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5BA90BB83E9F0BB972077C4A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				01757C5AF786843CA57E08F9 /* ShellbeeUITests */,
+			);
+			name = ShellbeeUITests;
+			productName = ShellbeeUITests;
+			productReference = 946658ACC40B1E178737597C /* ShellbeeUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		D49BCF06524A0226FBBDBAFC /* ShellbeeTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8FDB355BFD99047088E1A01C /* Build configuration list for PBXNativeTarget "ShellbeeTests" */;
+			buildPhases = (
+				13610DF6DC0C4E5110ADCAE8 /* Sources */,
+				F0F3C6B71B050BEABA356057 /* Frameworks */,
+				A36991D5DD54FE3B015E7B7A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C2BA906483C3DB4F59444E17 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7DAA7CA6F97D71F939E224BD /* ShellbeeTests */,
+			);
+			name = ShellbeeTests;
+			productName = ShellbeeTests;
+			productReference = 241D5FE460581AB7092E23FB /* ShellbeeTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -365,6 +465,8 @@
 			targets = (
 				0A9D450C2F96077A00DF6DF5 /* Shellbee */,
 				0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */,
+				D49BCF06524A0226FBBDBAFC /* ShellbeeTests */,
+				BDF45631F023CB1E9F0A6F86 /* ShellbeeUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -378,6 +480,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		0A9D45CC2F96232B00DF6DF5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A36991D5DD54FE3B015E7B7A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FA7F99E968DA18D66285B3E4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -401,6 +517,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		13610DF6DC0C4E5110ADCAE8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1EF0BB3C9A2B0A5BECD0976B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -409,9 +539,42 @@
 			target = 0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */;
 			targetProxy = 0A9D45E02F96232C00DF6DF5 /* PBXContainerItemProxy */;
 		};
+		5BA90BB83E9F0BB972077C4A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Shellbee;
+			target = 0A9D450C2F96077A00DF6DF5 /* Shellbee */;
+			targetProxy = 2DAAB19F3A9D1F3656C43B2A /* PBXContainerItemProxy */;
+		};
+		C2BA906483C3DB4F59444E17 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Shellbee;
+			target = 0A9D450C2F96077A00DF6DF5 /* Shellbee */;
+			targetProxy = 0633280C100B30492C324EB9 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		06C6E1FC5C8A9D7652FF09B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Shellbee.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Shellbee";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		0A9D45162F96077B00DF6DF5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -618,6 +781,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -655,6 +819,65 @@
 			};
 			name = Release;
 		};
+		29B014D5DE8964798239E40F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Shellbee;
+			};
+			name = Debug;
+		};
+		D347D015FB6A512929F601B4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Shellbee.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Shellbee";
+			};
+			name = Debug;
+		};
+		DD72CD3143197234446430BA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = JQU2HR44D8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Shellbee;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -681,6 +904,24 @@
 			buildConfigurations = (
 				0A9D45E42F96232C00DF6DF5 /* Debug */,
 				0A9D45E52F96232C00DF6DF5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8FDB355BFD99047088E1A01C /* Build configuration list for PBXNativeTarget "ShellbeeTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				06C6E1FC5C8A9D7652FF09B5 /* Release */,
+				D347D015FB6A512929F601B4 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FE9B4EBB05683A9F0E86D839 /* Build configuration list for PBXNativeTarget "ShellbeeUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DD72CD3143197234446430BA /* Release */,
+				29B014D5DE8964798239E40F /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

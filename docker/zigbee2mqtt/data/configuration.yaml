@@ -1,0 +1,23 @@
+homeassistant: false
+permit_join: false
+
+mqtt:
+  base_topic: zigbee2mqtt
+  server: mqtt://mosquitto:1883
+
+serial:
+  adapter: stub
+
+frontend:
+  port: 8080
+  host: 0.0.0.0
+
+advanced:
+  log_level: info
+  pan_id: 6754
+  ext_pan_id: [221, 221, 221, 221, 221, 221, 221, 221]
+  channel: 11
+  network_key: [1, 3, 5, 7, 9, 11, 13, 15, 0, 2, 4, 6, 8, 10, 12, 13]
+  last_seen: ISO_8601_local
+  output: json
+  availability_timeout: 0

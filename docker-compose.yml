@@ -1,0 +1,54 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: shellbee-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt:latest
+    container_name: shellbee-z2m
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./docker/zigbee2mqtt/data:/app/data
+    environment:
+      - ZIGBEE2MQTT_DATA=/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  seeder:
+    build: ./docker/seeder
+    container_name: shellbee-seeder
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      zigbee2mqtt:
+        condition: service_healthy
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - Z2M_TOPIC=zigbee2mqtt
+      - MODE=continuous
+      - SEED_INTERVAL=60
+    restart: unless-stopped
+
+volumes:
+  mosquitto-data:
