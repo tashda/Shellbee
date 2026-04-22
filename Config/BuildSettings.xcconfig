@@ -1,0 +1,23 @@
+// Checked-in defaults for public/open-source builds.
+// Keep account-specific signing values in Config/BuildSettings.local.xcconfig,
+// which is ignored by git and should be used for device builds and App Store archives.
+
+APP_DEVELOPMENT_TEAM = 
+APP_BUNDLE_ID = dev.echodb.shellbee
+APP_WIDGET_BUNDLE_SUFFIX = shellbeeWidgets
+APP_WIDGET_BUNDLE_ID = $(APP_BUNDLE_ID).$(APP_WIDGET_BUNDLE_SUFFIX)
+APP_TESTS_BUNDLE_ID = $(APP_BUNDLE_ID).tests
+APP_UI_TESTS_BUNDLE_ID = $(APP_BUNDLE_ID).uitests
+
+// Sentry DSN for crash reporting. Empty by default; set in the local
+// xcconfig to enable. The service is also disabled in DEBUG builds.
+SENTRY_DSN =
+
+// Sentry CLI credentials for the Run Script build phase that uploads
+// dSYMs so crash reports are symbolicated. All three empty by default;
+// set them in the local xcconfig to enable automatic upload.
+SENTRY_ORG =
+SENTRY_PROJECT =
+SENTRY_AUTH_TOKEN =
+
+#include? "BuildSettings.local.xcconfig"

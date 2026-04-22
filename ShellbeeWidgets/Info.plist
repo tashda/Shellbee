@@ -7,9 +7,5 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
-	<key>AppGroupIdentifier</key>
-	<string>group.dev.echodb.shellbee</string>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 </dict>
 </plist>

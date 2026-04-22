@@ -53,6 +53,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/BuildSettings.xcconfig; sourceTree = "<group>"; };
 		0A9D450D2F96077A00DF6DF5 /* Shellbee.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Shellbee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A9D45CE2F96232B00DF6DF5 /* ShellbeeWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShellbeeWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A9D45D02F96232B00DF6DF5 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -80,8 +81,12 @@
 				App/MainTabView.swift,
 				App/RootView.swift,
 				Assets.xcassets,
-				ShellbeeApp.swift,
 				ContentView.swift,
+				Core/CrashReporting/CrashReportingConsent.swift,
+				Core/CrashReporting/CrashReportScrubber.swift,
+				Core/CrashReporting/PendingCrashSheet.swift,
+				Core/CrashReporting/PendingCrashStore.swift,
+				Core/CrashReporting/SentryService.swift,
 				Core/Log/LogContext.swift,
 				Core/Log/LogMapperEngine.swift,
 				Core/Log/Z2MLogPatterns.swift,
@@ -92,6 +97,7 @@
 				Core/Models/ConnectionHistory.swift,
 				Core/Models/DeviceDoc.swift,
 				Core/Models/Group.swift,
+				Core/Models/InAppNotification.swift,
 				Core/Models/LogEntry.swift,
 				Core/Models/LogMessage.swift,
 				Core/Models/TouchlinkDevice.swift,
@@ -103,11 +109,16 @@
 				Core/Networking/Z2MTopics.swift,
 				Core/Networking/Z2MWebSocketClient.swift,
 				Core/Networking/Z2MWebSocketSessionDelegate.swift,
+				Core/Parsing/DeviceDocNormalizer.swift,
 				Core/Parsing/DocParser.swift,
+				Core/Services/BundledDocStore.swift,
 				Core/Services/DeviceDocService.swift,
+				Core/Services/DocBrowserIndex.swift,
+				Core/Services/GuideDocService.swift,
 				Core/Store/AppStore.swift,
 				Features/Bridge/PhilipsHueResetSheet.swift,
 				Features/Bridge/TouchlinkDeviceRow.swift,
+				Features/Bridge/TouchlinkGuideView.swift,
 				Features/Bridge/TouchlinkView.swift,
 				Features/Connection/ConnectionEditorView.swift,
 				Features/Connection/ConnectionFormSections.swift,
@@ -138,6 +149,7 @@
 				Features/Groups/GroupCardHeader.swift,
 				Features/Groups/GroupDetailView.swift,
 				Features/Groups/GroupDetailViewModel.swift,
+				Features/Groups/GroupIconView.swift,
 				Features/Groups/GroupListRow.swift,
 				Features/Groups/GroupListView.swift,
 				Features/Groups/GroupListViewModel.swift,
@@ -145,6 +157,7 @@
 				Features/Groups/GroupMembersSection.swift,
 				Features/Groups/GroupRowView.swift,
 				Features/Groups/GroupScenesSection.swift,
+				Features/Groups/GroupSettingsView.swift,
 				Features/Groups/RemoveGroupSheet.swift,
 				Features/Groups/RenameGroupSheet.swift,
 				Features/Home/HomeBridgeCard.swift,
@@ -157,18 +170,24 @@
 				Features/Home/PermitJoinActiveSheet.swift,
 				Features/Home/PermitJoinSheet.swift,
 				Features/Home/PermitJoinToolbarButton.swift,
+				Features/Logs/BridgeLogView.swift,
+				Features/Logs/BridgeLogViewModel.swift,
 				Features/Logs/LogDetailChangesSection.swift,
 				Features/Logs/LogDetailDevicesSection.swift,
-				Features/Logs/LogDetailSummaryBarView.swift,
 				Features/Logs/LogDetailView.swift,
 				Features/Logs/LogDeviceFilterSheet.swift,
 				Features/Logs/LogFilterMenu.swift,
 				Features/Logs/LogRowView.swift,
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
+				Features/Notifications/InAppNotificationOverlay.swift,
 				Features/Settings/AboutView.swift,
+				Features/Settings/AcknowledgementsView.swift,
 				Features/Settings/AppGeneralView.swift,
 				Features/Settings/AvailabilitySettingsView.swift,
+				Features/Settings/DeviceStatisticsView.swift,
+				Features/Settings/DocBrowserDetailView.swift,
+				Features/Settings/DocBrowserView.swift,
 				Features/Settings/FrontendSettingsView.swift,
 				Features/Settings/HealthSettingsView.swift,
 				Features/Settings/HomeAssistantSettingsView.swift,
@@ -189,6 +208,7 @@
 				Shared/ClimateControl/ClimateControlContext.swift,
 				Shared/Components/BeautifulPayloadView.swift,
 				Shared/Components/BeautifulRow.swift,
+				Shared/Components/CopyableRow.swift,
 				Shared/Components/DevicePickerRow.swift,
 				Shared/Components/Doc/DefaultDocSectionView.swift,
 				Shared/Components/Doc/DeviceInfoCardView.swift,
@@ -198,7 +218,9 @@
 				Shared/Components/Doc/DocOptionRowView.swift,
 				Shared/Components/Doc/DocSectionRegistry.swift,
 				Shared/Components/Doc/DocStepListView.swift,
+				Shared/Components/Doc/DocumentationExperienceView.swift,
 				Shared/Components/Doc/OptionsSectionView.swift,
+				Shared/Components/Doc/PairingGuideExperienceView.swift,
 				Shared/Components/Doc/PairingSectionView.swift,
 				Shared/Components/FilterChip.swift,
 				Shared/Components/MemberAvatarStack.swift,
@@ -226,6 +248,7 @@
 				Shared/SensorCard/SensorCard.swift,
 				Shared/SwitchControl/SwitchControlCard.swift,
 				Shared/SwitchControl/SwitchControlContext.swift,
+				ShellbeeApp.swift,
 			);
 			target = 0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */;
 		};
@@ -234,8 +257,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		01757C5AF786843CA57E08F9 /* ShellbeeUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = ShellbeeUITests;
 			sourceTree = "<group>";
 		};
@@ -257,8 +278,6 @@
 		};
 		7DAA7CA6F97D71F939E224BD /* ShellbeeTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = ShellbeeTests;
 			sourceTree = "<group>";
 		};
@@ -303,6 +322,7 @@
 		0A9D45042F96077A00DF6DF5 = {
 			isa = PBXGroup;
 			children = (
+				0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */,
 				0A9D45EE2F96238500DF6DF5 /* Shellbee.entitlements */,
 				0A9D45EF2F96238500DF6DF5 /* ShellbeeWidgets.entitlements */,
 				0A9D450F2F96077A00DF6DF5 /* Shellbee */,
@@ -354,6 +374,7 @@
 				0A9D450A2F96077A00DF6DF5 /* Frameworks */,
 				0A9D450B2F96077A00DF6DF5 /* Resources */,
 				0A9D45E32F96232C00DF6DF5 /* Embed Foundation Extensions */,
+				SB01D53A0000000000000001 /* Upload dSYMs to Sentry */,
 			);
 			buildRules = (
 			);
@@ -458,6 +479,9 @@
 			);
 			mainGroup = 0A9D45042F96077A00DF6DF5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0A56237F2F9984E20031D2CB /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0A9D450E2F96077A00DF6DF5 /* Products */;
 			projectDirPath = "";
@@ -501,6 +525,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		SB01D53A0000000000000001 /* Upload dSYMs to Sentry */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/upload-dsyms.sh",
+			);
+			name = "Upload dSYMs to Sentry";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/scripts/upload-dsyms.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		0A9D45092F96077A00DF6DF5 /* Sources */ = {
@@ -556,16 +603,21 @@
 /* Begin XCBuildConfiguration section */
 		06C6E1FC5C8A9D7652FF09B5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_TESTS_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -577,6 +629,7 @@
 		};
 		0A9D45162F96077B00DF6DF5 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -641,6 +694,7 @@
 		};
 		0A9D45172F96077B00DF6DF5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -698,25 +752,31 @@
 		};
 		0A9D45192F96077B00DF6DF5 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Shellbee;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -728,25 +788,36 @@
 		};
 		0A9D451A2F96077B00DF6DF5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = JQU2HR44D8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Shellbee;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Shellbee App Store";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -758,27 +829,33 @@
 		};
 		0A9D45E42F96232C00DF6DF5 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShellbeeWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Shellbee Widgets";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.shellbeeWidgets;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -790,27 +867,38 @@
 		};
 		0A9D45E52F96232C00DF6DF5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = JQU2HR44D8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShellbeeWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Shellbee Widgets";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.shellbeeWidgets;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Shellbee Widgets App Store";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -821,15 +909,20 @@
 		};
 		29B014D5DE8964798239E40F /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_UI_TESTS_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -840,16 +933,21 @@
 		};
 		D347D015FB6A512929F601B4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_TESTS_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -860,15 +958,20 @@
 		};
 		DD72CD3143197234446430BA /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A9D44FF2F96077900DF6DF5 /* Config/BuildSettings.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = JQU2HR44D8;
+				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.echodb.shellbee.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_UI_TESTS_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -927,6 +1030,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0A56237F2F9984E20031D2CB /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.11.0;
+			};
+			traits = (
+			);
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 0A9D45052F96077A00DF6DF5 /* Project object */;
 }

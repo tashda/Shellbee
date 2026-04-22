@@ -4,6 +4,9 @@
 build/
 DerivedData/
 
+# Local Xcode build overrides
+Config/BuildSettings.local.xcconfig
+
 # Xcode user state
 *.xcuserstate
 **/xcuserdata/
@@ -12,6 +15,7 @@ DerivedData/
 AGENTS.md
 CLAUDE.md
 GEMINI.md
+.claude/
 
 # Local planning and scratch docs
 CACHE_PLAN.md
@@ -21,3 +25,10 @@ SETTINGS_ARCHITECTURE.md
 
 # Local logs and diagnostics
 Z2Mlog.txt
+
+# Generated bundle hash (tracks last processed zigbee2mqtt.io commit)
+Tools/.bundle-hash
+
+# Docker test artifacts
+docker/zigbee2mqtt/data/configuration_backup*.yaml
+docker/zigbee2mqtt/data/migration-*.log

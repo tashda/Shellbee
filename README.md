@@ -161,9 +161,19 @@ Important pieces:
 ### Local Development
 
 1. Clone the repository.
-2. Open [Shellbee.xcodeproj](/Users/k/Development/Shellbee/Shellbee.xcodeproj).
-3. Build and run the `Shellbee` app target on an iPhone simulator or device.
-4. Add your Zigbee2MQTT server in the app and connect.
+2. Open `Shellbee.xcodeproj`.
+3. For simulator-only development, build and run the `Shellbee` target directly.
+4. For device builds or App Store archives, copy `Config/BuildSettings.local.example.xcconfig` to `Config/BuildSettings.local.xcconfig`.
+5. Set your own `APP_DEVELOPMENT_TEAM` and bundle identifiers in that local file.
+6. Build and run on your device, or archive with those local settings.
+7. Add your Zigbee2MQTT server in the app and connect.
+
+### Open Source And Release Setup
+
+- The public repository does not require a checked-in Apple Developer team.
+- Account-specific signing values belong only in `Config/BuildSettings.local.xcconfig`, which is gitignored.
+- The app stores Zigbee2MQTT auth tokens outside `UserDefaults`; persisted configs and history keep the token in Keychain-backed storage instead.
+- The docker test environment uses a dedicated integration token for automated tests only.
 
 ## Status
 
@@ -172,4 +182,4 @@ Shellbee is under active development. The current public repository already incl
 ## License
 
 Shellbee is licensed under the GNU Affero General Public License v3.0.
-See [LICENSE](/Users/k/Development/Shellbee/LICENSE) for the full text.
+See `LICENSE` for the full text.

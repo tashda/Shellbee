@@ -21,6 +21,34 @@
                ReferencedContainer = "container:Shellbee.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D49BCF06524A0226FBBDBAFC"
+               BuildableName = "ShellbeeTests.xctest"
+               BlueprintName = "ShellbeeTests"
+               ReferencedContainer = "container:Shellbee.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BDF45631F023CB1E9F0A6F86"
+               BuildableName = "ShellbeeUITests.xctest"
+               BlueprintName = "ShellbeeUITests"
+               ReferencedContainer = "container:Shellbee.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -29,6 +57,30 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES"
+            testExecutionOrdering = "defined">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D49BCF06524A0226FBBDBAFC"
+               BuildableName = "ShellbeeTests.xctest"
+               BlueprintName = "ShellbeeTests"
+               ReferencedContainer = "container:Shellbee.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES"
+            testExecutionOrdering = "defined">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BDF45631F023CB1E9F0A6F86"
+               BuildableName = "ShellbeeUITests.xctest"
+               BlueprintName = "ShellbeeUITests"
+               ReferencedContainer = "container:Shellbee.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

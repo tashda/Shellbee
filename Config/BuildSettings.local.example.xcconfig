@@ -1,0 +1,25 @@
+// Copy this file to Config/BuildSettings.local.xcconfig and customize it for
+// your Apple Developer account and bundle identifiers.
+//
+// Use your real production values in this local file when preparing App Store
+// archives. Do not commit the local file.
+
+APP_DEVELOPMENT_TEAM = YOURTEAMID
+APP_BUNDLE_ID = com.example.shellbee
+APP_WIDGET_BUNDLE_SUFFIX = widgets
+APP_WIDGET_BUNDLE_ID = $(APP_BUNDLE_ID).$(APP_WIDGET_BUNDLE_SUFFIX)
+APP_TESTS_BUNDLE_ID = $(APP_BUNDLE_ID).tests
+APP_UI_TESTS_BUNDLE_ID = $(APP_BUNDLE_ID).uitests
+
+// Paste the DSN from your Sentry project to enable crash reporting in
+// Release builds. Leave empty to disable.
+SENTRY_DSN =
+
+// Sentry credentials for automatic dSYM upload during Release builds.
+// SENTRY_ORG      — org slug from Sentry URL (sentry.io/organizations/<slug>)
+// SENTRY_PROJECT  — project slug from Settings → Projects
+// SENTRY_AUTH_TOKEN — Settings → Account → API → Auth Tokens, scope: project:write
+// Leave blank to skip dSYM upload (the build phase is non-fatal).
+SENTRY_ORG =
+SENTRY_PROJECT =
+SENTRY_AUTH_TOKEN =

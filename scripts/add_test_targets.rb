@@ -30,7 +30,7 @@ COMMON = {
   'SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY' => 'YES',
   'TARGETED_DEVICE_FAMILY'                     => '1,2',
   'CODE_SIGN_STYLE'                            => 'Automatic',
-  'DEVELOPMENT_TEAM'                           => 'JQU2HR44D8',
+  'DEVELOPMENT_TEAM'                           => '$(APP_DEVELOPMENT_TEAM)',
 }.freeze
 
 # ── Helper: add a PBXFileSystemSynchronizedRootGroup ─────────────────────
@@ -49,7 +49,7 @@ unit_target = project.new_target(:unit_test_bundle, 'ShellbeeTests', :ios, '26.0
 
 unit_target.build_configurations.each do |cfg|
   cfg.build_settings.merge!(COMMON)
-  cfg.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'dev.echodb.shellbee.tests'
+  cfg.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = '$(APP_TESTS_BUNDLE_ID)'
   cfg.build_settings['TEST_HOST'] =
     '$(BUILT_PRODUCTS_DIR)/Shellbee.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Shellbee'
   cfg.build_settings['BUNDLE_LOADER'] = '$(TEST_HOST)'
@@ -65,7 +65,7 @@ ui_target = project.new_target(:ui_test_bundle, 'ShellbeeUITests', :ios, '26.0')
 
 ui_target.build_configurations.each do |cfg|
   cfg.build_settings.merge!(COMMON)
-  cfg.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'dev.echodb.shellbee.uitests'
+  cfg.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = '$(APP_UI_TESTS_BUNDLE_ID)'
   cfg.build_settings['TEST_TARGET_NAME']           = 'Shellbee'
 end
 
