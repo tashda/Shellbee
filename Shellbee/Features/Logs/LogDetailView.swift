@@ -57,19 +57,13 @@ struct LogDetailView: View {
             }
 
             if viewMode == .beautiful {
-                let changes = entry.context?.stateChanges ?? []
-                if !changes.isEmpty {
-                    LogDetailChangesSection(changes: changes)
-                }
-                if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
-                    BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
-                }
+                beautifulBody
             } else {
                 jsonSection
             }
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
-        .navigationTitle(entry.category.label)
+        .navigationTitle(headerTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if entry.category != .stateChange {
@@ -133,6 +127,88 @@ struct LogDetailView: View {
                 .textSelection(.enabled)
                 .padding(.vertical, DesignTokens.Spacing.xs)
         }
+    }
+
+    private var headerTitle: String {
+        entry.category == .general ? entry.level.label : entry.category.label
+    }
+
+    @ViewBuilder
+    private var beautifulBody: some View {
+        let changes = entry.context?.stateChanges ?? []
+        let payload: [String: JSONValue] = {
+            if case .mqttPublish(_, _, let p) = entry.parsedMessageKind { return p }
+            return [:]
+        }()
+
+        if !changes.isEmpty {
+            LogDetailChangesSection(changes: changes)
+        }
+        if !payload.isEmpty {
+            BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
+        }
+        if changes.isEmpty && payload.isEmpty {
+            messageSection
+        }
+    }
+
+    private var messageSection: some View {
+        let (summary, detail) = parsedMessage
+        return Section(sectionTitle) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text(summary)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                if let detail {
+                    Text(detail)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(.vertical, DesignTokens.Spacing.xs)
+        }
+    }
+
+    private var sectionTitle: String {
+        switch entry.level {
+        case .error: "Error"
+        case .warning: "Warning"
+        default: "Message"
+        }
+    }
+
+    private var parsedMessage: (summary: String, detail: String?) {
+        let cleaned = stripNamespace(entry.message)
+
+        if case .publishFailure(let command) = entry.context?.action {
+            let summary = "Command '\(command)' failed"
+            return (summary, errorDetail(from: cleaned) ?? cleaned)
+        }
+
+        if let colon = cleaned.range(of: ": "),
+           cleaned[colon.upperBound...].contains("'") {
+            let head = String(cleaned[..<colon.lowerBound])
+            let tail = String(cleaned[colon.upperBound...])
+                .trimmingCharacters(in: CharacterSet(charactersIn: "' "))
+            if !tail.isEmpty { return (head, tail) }
+        }
+
+        return (cleaned, nil)
+    }
+
+    private func stripNamespace(_ text: String) -> String {
+        guard text.hasPrefix("z2m:") else { return text }
+        if let sp = text.range(of: " ") {
+            return String(text[sp.upperBound...])
+        }
+        return text
+    }
+
+    private func errorDetail(from text: String) -> String? {
+        guard let colon = text.range(of: ": ") else { return nil }
+        let tail = String(text[colon.upperBound...])
+        return tail.trimmingCharacters(in: CharacterSet(charactersIn: "' "))
     }
 }
 
