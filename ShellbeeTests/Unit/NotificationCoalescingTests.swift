@@ -31,15 +31,19 @@ final class NotificationCoalescingTests: XCTestCase {
         XCTAssertEqual(store.pendingNotifications.first?.subtitle, "c", "subtitle should reflect the most recent")
     }
 
-    func testCoalescesIntoCurrentlyVisibleNotification() {
-        let first = InAppNotification(level: .error, title: "Operation Failed", category: .operationFailed)
-        store.pendingNotifications.append(first)
-        let popped = store.popNotification()
-        store.currentNotification = popped
-
+    func testArrivalIDBumpsOnlyForNewBanners() {
+        let before = store.notificationArrivalID
         store.enqueueNotification(.init(level: .error, title: "Operation Failed", category: .operationFailed))
-        XCTAssertEqual(store.currentNotification?.count, 2)
-        XCTAssertEqual(store.pendingNotifications.count, 0, "should not spawn a new queued entry when one is visible")
+        let afterFirst = store.notificationArrivalID
+        XCTAssertNotEqual(before, afterFirst)
+
+        // Coalescing should NOT bump the arrival ID.
+        store.enqueueNotification(.init(level: .error, title: "Operation Failed", category: .operationFailed))
+        XCTAssertEqual(store.notificationArrivalID, afterFirst)
+
+        // A distinct banner bumps again.
+        store.enqueueNotification(.init(level: .warning, title: "Device Left Network", category: .deviceLeft))
+        XCTAssertNotEqual(store.notificationArrivalID, afterFirst)
     }
 
     func testLogEntryIDsAggregate() {

@@ -5,25 +5,46 @@ import UIKit
 
 struct InAppNotificationOverlay: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var currentNormal: InAppNotification?
-    @State private var currentFastTrack: InAppNotification?
-    @State private var isVisible = false
-    @State private var fastTrackVisible = false
     @State private var isExpanded = false
+    // Index into pendingNotifications that the user is viewing while expanded.
+    // When collapsed, always shows the newest (last). When expanded, this
+    // cursor is controlled by horizontal swipes.
+    @State private var carouselIndex: Int = 0
     @State private var autoDismissTask: Task<Void, Never>?
     @State private var fastTrackTask: Task<Void, Never>?
+    @State private var currentFastTrack: InAppNotification?
+    @State private var fastTrackVisible = false
+    @State private var lastSeenArrivalID: UUID?
+
+    private var stack: [InAppNotification] {
+        environment.store.pendingNotifications
+    }
+
+    private var displayed: InAppNotification? {
+        guard !stack.isEmpty else { return nil }
+        if isExpanded {
+            let clamped = max(0, min(carouselIndex, stack.count - 1))
+            return stack[clamped]
+        }
+        return stack.last
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if let notification = currentNormal, isVisible {
+            if let notification = displayed {
                 InAppNotificationBanner(
                     notification: notification,
                     isExpanded: $isExpanded,
-                    onDismiss: dismissNormal,
+                    stackCount: stack.count,
+                    stackPositionLabel: positionLabel,
+                    onDismiss: dismissStack,
                     onGoToLog: { goToLog(for: notification) },
                     onGoToDevice: { goToDevice(for: notification) },
-                    onCopyMessage: { copy(notification.subtitle ?? notification.title) }
+                    onCopyMessage: { copy(notification.subtitle ?? notification.title) },
+                    onSwipeNext: advanceCarousel,
+                    onSwipePrevious: reverseCarousel
                 )
+                .id(stack.count) // re-insert when stack grows, keep cross-fade
                 .transition(.asymmetric(
                     insertion: .move(edge: .bottom).combined(with: .opacity),
                     removal: .move(edge: .bottom).combined(with: .opacity)
@@ -38,49 +59,57 @@ struct InAppNotificationOverlay: View {
                     ))
             }
         }
-        .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: isVisible)
+        .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: stack.isEmpty)
         .animation(.spring(duration: 0.25), value: fastTrackVisible)
-        .onChange(of: environment.store.pendingNotifications.count) { _, count in
-            if count > 0, !isVisible { showNextNormal() }
+        .onChange(of: environment.store.notificationArrivalID) { _, newID in
+            // New (non-coalesced) normal notification arrived. Haptic once,
+            // and schedule auto-dismiss on the now-visible banner.
+            guard lastSeenArrivalID != newID else { return }
+            lastSeenArrivalID = newID
+            if let top = stack.last { playHaptic(for: top) }
+            scheduleDismissIfPossible()
         }
         .onChange(of: environment.store.fastTrackNotifications.count) { _, count in
             if count > 0, !fastTrackVisible { showNextFastTrack() }
         }
-        .onChange(of: environment.store.currentNotification?.lastUpdated) { _, _ in
-            if currentNormal != nil, let updated = environment.store.currentNotification {
-                currentNormal = updated
-                if !isExpanded { scheduleDismiss(for: updated) }
-            }
-        }
         .onChange(of: isExpanded) { _, expanded in
             if expanded {
                 autoDismissTask?.cancel()
-            } else if let note = currentNormal, isVisible {
-                scheduleDismiss(for: note)
+                carouselIndex = max(0, stack.count - 1)
+            } else {
+                scheduleDismissIfPossible()
+            }
+        }
+        .onChange(of: stack.count) { _, _ in
+            // Keep the expanded carousel pinned to the same item when new
+            // notifications arrive (the spec says new arrivals land at the
+            // end of the ring, current position unchanged).
+            if !isExpanded {
+                scheduleDismissIfPossible()
+            } else {
+                carouselIndex = min(carouselIndex, max(0, stack.count - 1))
             }
         }
     }
 
-    // MARK: - Normal lane
-
-    private func showNextNormal() {
-        guard let notification = environment.store.popNotification() else { return }
-        currentNormal = notification
-        environment.store.currentNotification = notification
-        isExpanded = false
-        isVisible = true
-        playHaptic(for: notification)
-        scheduleDismiss(for: notification)
+    private var positionLabel: String? {
+        guard isExpanded, stack.count > 1 else { return nil }
+        let clamped = max(0, min(carouselIndex, stack.count - 1))
+        // Position 1 = newest (last in the array); N = oldest (first).
+        let position = stack.count - clamped
+        return "\(position)/\(stack.count)"
     }
 
-    private func scheduleDismiss(for notification: InAppNotification) {
-        guard !isExpanded else { return }
-        let duration = dismissDuration(for: notification)
+    // MARK: - Auto-dismiss (top-of-stack only, paused when expanded)
+
+    private func scheduleDismissIfPossible() {
         autoDismissTask?.cancel()
+        guard !isExpanded, let top = stack.last else { return }
+        let duration = dismissDuration(for: top)
         autoDismissTask = Task {
             try? await Task.sleep(for: .seconds(duration))
             guard !Task.isCancelled else { return }
-            await MainActor.run { dismissNormal() }
+            await MainActor.run { dismissTop() }
         }
     }
 
@@ -93,20 +122,32 @@ struct InAppNotificationOverlay: View {
         return base + min(Double(notification.count - 1) * 0.3, 3)
     }
 
-    private func dismissNormal() {
+    private func dismissTop() {
+        guard !environment.store.pendingNotifications.isEmpty else { return }
+        environment.store.pendingNotifications.removeLast()
+        scheduleDismissIfPossible()
+    }
+
+    // Swipe-down dismisses the entire stack per user spec.
+    private func dismissStack() {
         autoDismissTask?.cancel()
         isExpanded = false
-        isVisible = false
-        environment.store.currentNotification = nil
-        Task {
-            try? await Task.sleep(for: .milliseconds(Int(DesignTokens.Duration.standardAnimation * 1000) + 50))
-            if !environment.store.pendingNotifications.isEmpty {
-                showNextNormal()
-            } else {
-                currentNormal = nil
-            }
-        }
+        environment.store.pendingNotifications.removeAll()
     }
+
+    // MARK: - Carousel navigation (expanded only)
+
+    private func advanceCarousel() {
+        guard isExpanded, stack.count > 1 else { return }
+        carouselIndex = (carouselIndex - 1 + stack.count) % stack.count
+    }
+
+    private func reverseCarousel() {
+        guard isExpanded, stack.count > 1 else { return }
+        carouselIndex = (carouselIndex + 1) % stack.count
+    }
+
+    // MARK: - Haptic
 
     private func playHaptic(for notification: InAppNotification) {
         switch notification.level {
@@ -116,17 +157,19 @@ struct InAppNotificationOverlay: View {
         }
     }
 
+    // MARK: - Actions
+
     private func goToLog(for notification: InAppNotification) {
         guard !notification.logEntryIDs.isEmpty else { return }
         environment.pendingLogSheet = LogSheetRequest(entryIDs: notification.logEntryIDs)
-        dismissNormal()
+        dismissStack()
     }
 
     private func goToDevice(for notification: InAppNotification) {
         guard let name = notification.deviceName else { return }
         environment.pendingDeviceNavigation = name
         environment.selectedTab = .devices
-        dismissNormal()
+        dismissStack()
     }
 
     private func copy(_ value: String) {
@@ -165,14 +208,18 @@ struct InAppNotificationOverlay: View {
 struct InAppNotificationBanner: View {
     let notification: InAppNotification
     @Binding var isExpanded: Bool
+    var stackCount: Int = 1
+    var stackPositionLabel: String? = nil
     let onDismiss: () -> Void
     let onGoToLog: () -> Void
     let onGoToDevice: () -> Void
     let onCopyMessage: () -> Void
+    var onSwipeNext: (() -> Void)? = nil
+    var onSwipePrevious: (() -> Void)? = nil
 
     @State private var dragOffset: CGSize = .zero
-    // Dismiss gesture is vertical-only: swipe-down dismisses in both states.
-    // (Swipe-up from collapsed expands.) See dragGesture.
+    // Vertical drag = collapse/expand/dismiss. Horizontal drag while
+    // expanded = carousel left/right. See dragGesture.
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
@@ -220,6 +267,14 @@ struct InAppNotificationBanner: View {
                             .padding(.horizontal, DesignTokens.Spacing.sm)
                             .padding(.vertical, 2)
                             .background(.secondary.opacity(DesignTokens.Opacity.subtleFill), in: Capsule())
+                    }
+                    if let stackPositionLabel {
+                        Text(stackPositionLabel)
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, DesignTokens.Spacing.sm)
+                            .padding(.vertical, 2)
+                            .background(.tint.opacity(DesignTokens.Opacity.softFill), in: Capsule())
                     }
                 }
                 if let subtitle = notification.subtitle {
@@ -288,24 +343,42 @@ struct InAppNotificationBanner: View {
     }
 
     private var dragGesture: some Gesture {
-        // Single vertical gesture in both states: swipe up to expand (when
-        // collapsed), swipe down to dismiss. Mixing axes caused a jarring
-        // cross-axis animation snap on release.
+        // Vertical: swipe up expands (from collapsed), swipe down dismisses
+        //          the entire stack (from either state).
+        // Horizontal (expanded only): carousel left/right when stack > 1.
         DragGesture(minimumDistance: 10)
             .onChanged { value in
+                let dx = value.translation.width
                 let dy = value.translation.height
-                if isExpanded {
-                    dragOffset = CGSize(width: 0, height: max(dy, 0))
+                let verticalDominant = abs(dy) > abs(dx)
+                if verticalDominant {
+                    if isExpanded {
+                        dragOffset = CGSize(width: 0, height: max(dy, 0))
+                    } else {
+                        dragOffset = CGSize(width: 0, height: dy > 0 ? dy : dy / 3)
+                    }
+                } else if isExpanded, stackCount > 1 {
+                    dragOffset = CGSize(width: dx, height: 0)
                 } else {
-                    dragOffset = CGSize(width: 0, height: dy > 0 ? dy : dy / 3)
+                    dragOffset = .zero
                 }
             }
             .onEnded { value in
+                let dx = value.translation.width
                 let dy = value.translation.height
-                if !isExpanded, dy < -30 {
-                    isExpanded = true
-                } else if dy > 60 {
-                    onDismiss()
+                let verticalDominant = abs(dy) > abs(dx)
+                if verticalDominant {
+                    if !isExpanded, dy < -30 {
+                        isExpanded = true
+                    } else if dy > 60 {
+                        onDismiss()
+                    }
+                } else if isExpanded, stackCount > 1 {
+                    if dx < -60 {
+                        onSwipeNext?()
+                    } else if dx > 60 {
+                        onSwipePrevious?()
+                    }
                 }
                 withAnimation(.spring(duration: 0.25)) { dragOffset = .zero }
             }
@@ -466,6 +539,34 @@ struct FastTrackBanner: View {
     )
 }
 
+#Preview("Stacked carousel — 1 of 12 expanded") {
+    @Previewable @State var expanded = true
+    VStack {
+        Spacer()
+        InAppNotificationBanner(
+            notification: InAppNotification(
+                level: .error,
+                title: "Operation Failed",
+                subtitle: "Publish 'zigbee2mqtt/hallway_ff_sensor/set' failed",
+                logEntryID: UUID(),
+                deviceName: "hallway_ff_sensor"
+            ),
+            isExpanded: $expanded,
+            stackCount: 12,
+            stackPositionLabel: "1/12",
+            onDismiss: {},
+            onGoToLog: {},
+            onGoToDevice: {},
+            onCopyMessage: {},
+            onSwipeNext: {},
+            onSwipePrevious: {}
+        )
+        .padding(.bottom, 80)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(.systemGroupedBackground))
+}
+
 #Preview("Fast-track — Copied") {
     VStack {
         Spacer()
@@ -493,6 +594,8 @@ private struct PreviewHost: View {
             InAppNotificationBanner(
                 notification: notification,
                 isExpanded: $isExpanded,
+                stackCount: 1,
+                stackPositionLabel: nil,
                 onDismiss: {},
                 onGoToLog: {},
                 onGoToDevice: {},

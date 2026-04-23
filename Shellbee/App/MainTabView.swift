@@ -56,6 +56,10 @@ private struct LogSheetHost: View {
                let entry = environment.store.logEntries.first(where: { $0.id == id }) {
                 LogDetailView(entry: entry)
                     .toolbar {
+                        // Spacer visually separates the sheet's Done from
+                        // LogDetailView's own formatter (curly-braces) button
+                        // so they don't read as one grouped control.
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") { dismiss() }
                         }

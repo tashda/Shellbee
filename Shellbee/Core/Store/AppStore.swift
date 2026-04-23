@@ -21,7 +21,10 @@ final class AppStore {
     var touchlinkResetInProgress = false
     var pendingNotifications: [InAppNotification] = []
     var fastTrackNotifications: [InAppNotification] = []
-    var currentNotification: InAppNotification?
+    // Bumped whenever a new (non-coalesced) normal notification is enqueued.
+    // The overlay observes this to fire the arrival haptic exactly once per
+    // new banner, independent of coalescing bumps.
+    var notificationArrivalID: UUID = UUID()
 
     // Set by AppEnvironment to route OTA check/update responses into the
     // bulk queue so it can advance to the next device.
@@ -241,17 +244,6 @@ final class AppStore {
 
         let now = Date()
 
-        if var current = currentNotification,
-           current.coalesceKey == notification.coalesceKey,
-           now.timeIntervalSince(current.lastUpdated) <= Self.coalesceWindow {
-            current.count += notification.count
-            current.logEntryIDs.append(contentsOf: notification.logEntryIDs)
-            if let sub = notification.subtitle { current.subtitle = sub }
-            current.lastUpdated = now
-            currentNotification = current
-            return
-        }
-
         if let idx = pendingNotifications.lastIndex(where: { $0.coalesceKey == notification.coalesceKey }),
            now.timeIntervalSince(pendingNotifications[idx].lastUpdated) <= Self.coalesceWindow {
             pendingNotifications[idx].count += notification.count
@@ -262,6 +254,7 @@ final class AppStore {
         }
 
         pendingNotifications.append(notification)
+        notificationArrivalID = UUID()
     }
 
     private func notification(
@@ -412,7 +405,6 @@ final class AppStore {
         operationErrors = []
         pendingNotifications = []
         fastTrackNotifications = []
-        currentNotification = nil
         deviceCheckResults = [:]
         touchlinkDevices = []
         touchlinkScanInProgress = false
