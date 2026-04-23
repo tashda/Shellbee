@@ -3,18 +3,14 @@ import SwiftUI
 struct GroupCardHeader: View {
     let group: Group
     let memberDevices: [Device]
+    var onRenameTapped: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
             avatarArea
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(group.friendlyName)
-                    .font(DesignTokens.Typography.cardHeadline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .allowsTightening(true)
+                nameView
 
                 Text("#\(group.id)")
                     .font(.system(size: DesignTokens.Size.statusBadgeFont, weight: .medium, design: .monospaced))
@@ -33,6 +29,25 @@ struct GroupCardHeader: View {
 
     private var avatarArea: some View {
         GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage)
+    }
+
+    @ViewBuilder
+    private var nameView: some View {
+        let label = Text(group.friendlyName)
+            .font(DesignTokens.Typography.cardHeadline)
+            .foregroundStyle(.primary)
+            .lineLimit(2)
+
+        if let onRenameTapped {
+            Button(action: onRenameTapped) {
+                label.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Rename group")
+            .accessibilityValue(group.friendlyName)
+        } else {
+            label
+        }
     }
 }
 

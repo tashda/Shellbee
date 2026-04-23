@@ -4,10 +4,11 @@ struct GroupCard: View {
     let group: Group
     let memberDevices: [Device]
     let state: [String: JSONValue]
+    var onRenameTapped: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            GroupCardHeader(group: group, memberDevices: memberDevices)
+            GroupCardHeader(group: group, memberDevices: memberDevices, onRenameTapped: onRenameTapped)
                 .padding(DesignTokens.Spacing.lg)
 
             Divider().opacity(DesignTokens.Opacity.subtleFill)

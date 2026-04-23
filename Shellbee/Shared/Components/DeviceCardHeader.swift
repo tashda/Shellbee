@@ -53,13 +53,7 @@ struct DeviceCardHeader: View {
 
         if let onRenameTapped {
             Button(action: onRenameTapped) {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    label
-                    Image(systemName: "pencil")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
+                label.contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Rename device")

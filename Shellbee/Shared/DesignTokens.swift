@@ -131,7 +131,7 @@ nonisolated enum DesignTokens {
     }
 
     nonisolated enum Typography {
-        static let cardHeadline: Font = .headline
+        static let cardHeadline: Font = .title3.weight(.semibold)
         static let cardSubheadline: Font = .subheadline
     }
 

@@ -9,6 +9,7 @@ struct GroupDetailView: View {
     @State private var viewModel = GroupDetailViewModel()
     @State private var showAddMembers = false
     @State private var showAddScene = false
+    @State private var showRenameSheet = false
     @State private var memberToRemove: GroupMember?
     @State private var menuDestination: GroupMenuDestination?
     let group: Group
@@ -38,7 +39,12 @@ struct GroupDetailView: View {
     var body: some View {
         List {
             Section {
-                GroupCard(group: currentGroup, memberDevices: memberDevices, state: groupState)
+                GroupCard(
+                    group: currentGroup,
+                    memberDevices: memberDevices,
+                    state: groupState,
+                    onRenameTapped: { showRenameSheet = true }
+                )
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
@@ -99,6 +105,15 @@ struct GroupDetailView: View {
         .sheet(isPresented: $showAddScene) {
             AddSceneSheet { name in
                 viewModel.addScene(name: name, in: currentGroup, environment: environment)
+            }
+        }
+        .sheet(isPresented: $showRenameSheet) {
+            RenameGroupSheet(group: currentGroup, memberDevices: memberDevices) { newName in
+                environment.send(topic: Z2MTopics.Request.groupRename, payload: .object([
+                    "from": .string(currentGroup.friendlyName),
+                    "to": .string(newName)
+                ]))
+                Haptics.impact(.medium)
             }
         }
         .alert(
