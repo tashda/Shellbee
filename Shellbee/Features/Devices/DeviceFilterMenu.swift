@@ -86,7 +86,7 @@ struct DeviceFilterMenu: View {
 
             if viewModel.hasActiveFilter {
                 Divider()
-                Button {
+                Button(role: .destructive) {
                     viewModel.statusFilter = .all
                     viewModel.categoryFilter = nil
                     viewModel.vendorFilter = nil
