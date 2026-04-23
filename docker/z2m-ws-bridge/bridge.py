@@ -121,10 +121,13 @@ def _request_path(ws: WebSocketServerProtocol) -> str:
     return ""
 
 async def ws_handler(ws: WebSocketServerProtocol):
+    req_path = _request_path(ws)
+    print(f"[WS] connect path={req_path!r}", flush=True)
     if AUTH_TOKEN:
-        query = parse_qs(urlparse(_request_path(ws)).query)
+        query = parse_qs(urlparse(req_path).query)
         token = query.get("token", [None])[0]
         if token != AUTH_TOKEN:
+            print(f"[WS] reject: token={token!r}", flush=True)
             await ws.close(code=1008, reason="Invalid token")
             return
 

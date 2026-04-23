@@ -3,9 +3,10 @@ import XCTest
 extension XCUIApplication {
     /// Launches the app pointed at the Docker Z2M stack on localhost:8080.
     func launchForTesting() {
-        launchEnvironment["UI_TEST_Z2M_HOST"] = "localhost"
-        launchEnvironment["UI_TEST_Z2M_PORT"] = "8080"
-        launchEnvironment["UI_TEST_MODE"]     = "1"
+        launchEnvironment["UI_TEST_Z2M_HOST"]  = "localhost"
+        launchEnvironment["UI_TEST_Z2M_PORT"]  = "8080"
+        launchEnvironment["UI_TEST_Z2M_TOKEN"] = "shellbee-integration-token"
+        launchEnvironment["UI_TEST_MODE"]      = "1"
         launch()
     }
 
