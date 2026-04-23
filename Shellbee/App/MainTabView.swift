@@ -56,18 +56,18 @@ private struct LogSheetHost: View {
                let entry = environment.store.logEntries.first(where: { $0.id == id }) {
                 LogDetailView(entry: entry)
                     .toolbar {
-                        // Spacer visually separates the sheet's Done from
-                        // LogDetailView's own formatter (curly-braces) button
-                        // so they don't read as one grouped control.
-                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                        ToolbarItem(placement: .topBarTrailing) {
+                        // .confirmationAction lands on the trailing side as
+                        // a distinct semantic slot, so Done sits on the far
+                        // right separate from LogDetailView's own formatter
+                        // (curly-braces) button which uses .topBarTrailing.
+                        ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { dismiss() }
                         }
                     }
             } else {
                 LogsView(initialEntryFilter: Set(request.entryIDs))
                     .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
+                        ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { dismiss() }
                         }
                     }
