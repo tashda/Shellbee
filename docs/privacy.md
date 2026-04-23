@@ -1,3 +1,9 @@
+---
+layout: default
+title: Shellbee Privacy Policy
+description: Privacy policy for Shellbee, a native iOS app for Zigbee2MQTT.
+---
+
 # Privacy Policy for Shellbee
 
 _Last updated: 2026-04-22_
@@ -117,4 +123,4 @@ If this policy changes, the updated version will be published in the app's GitHu
 
 For privacy questions about Shellbee, contact:
 
-**kenneth@echodb.dev**
+**[kenneth@echodb.dev](mailto:kenneth@echodb.dev?subject=Shellbee%20Privacy)**
