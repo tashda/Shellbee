@@ -84,6 +84,8 @@ struct DeviceDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            logsSection
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
         .navigationTitle(device.friendlyName)
@@ -141,6 +143,35 @@ struct DeviceDetailView: View {
             Button("Cancel", role: .cancel) { pendingDeviceAlert = nil }
         } message: { alert in
             Text(alert.message)
+        }
+    }
+
+    private static let recentLogLimit = 5
+
+    @ViewBuilder
+    private var logsSection: some View {
+        let deviceEntries = environment.store.logEntries.filter { $0.deviceName == device.friendlyName }
+        let recent = Array(deviceEntries.prefix(Self.recentLogLimit))
+
+        Section("Logs") {
+            if deviceEntries.isEmpty {
+                Text("No logs for this device yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(recent) { entry in
+                    NavigationLink {
+                        LogDetailView(entry: entry)
+                    } label: {
+                        LogRowView(entry: entry)
+                    }
+                }
+                NavigationLink {
+                    DeviceLogsView(device: device)
+                } label: {
+                    Label("See All Logs", systemImage: "list.bullet")
+                }
+            }
         }
     }
 

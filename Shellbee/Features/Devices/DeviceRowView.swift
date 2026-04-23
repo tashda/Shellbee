@@ -5,6 +5,7 @@ struct DeviceRowView: View {
     let state: [String: JSONValue]
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
+    var checkResult: AppStore.DeviceCheckResult? = nil
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
@@ -44,6 +45,8 @@ struct DeviceRowView: View {
             Text(otaPhaseLabel(otaStatus))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.blue)
+        } else if let checkResult {
+            checkResultLabel(checkResult)
         } else if !isAvailable {
             Text("Offline")
                 .font(.caption.weight(.medium))
@@ -64,6 +67,27 @@ struct DeviceRowView: View {
             }
             .font(.caption.weight(.medium))
             .imageScale(.small)
+        }
+    }
+
+    @ViewBuilder
+    private func checkResultLabel(_ result: AppStore.DeviceCheckResult) -> some View {
+        switch result {
+        case .noUpdate:
+            Label("No update", systemImage: "checkmark.circle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
+        case .updateFound:
+            Label("Update found", systemImage: "arrow.up.circle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.blue)
+                .labelStyle(.titleAndIcon)
+        case .failed:
+            Label("Error", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+                .labelStyle(.titleAndIcon)
         }
     }
 

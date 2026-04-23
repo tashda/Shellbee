@@ -15,6 +15,7 @@ struct InAppNotification: Identifiable, Equatable {
     var count: Int
     var lastUpdated: Date
     let priority: Priority
+    let category: NotificationCategory?
 
     init(
         level: LogLevel,
@@ -22,7 +23,8 @@ struct InAppNotification: Identifiable, Equatable {
         subtitle: String? = nil,
         logEntryID: UUID? = nil,
         deviceName: String? = nil,
-        priority: Priority = .normal
+        priority: Priority = .normal,
+        category: NotificationCategory? = nil
     ) {
         self.id = UUID()
         self.level = level
@@ -33,6 +35,7 @@ struct InAppNotification: Identifiable, Equatable {
         self.count = 1
         self.lastUpdated = .now
         self.priority = priority
+        self.category = category
     }
 
     var coalesceKey: String { "\(level.rawValue)|\(title)" }

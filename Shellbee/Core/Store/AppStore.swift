@@ -23,6 +23,24 @@ final class AppStore {
     var fastTrackNotifications: [InAppNotification] = []
     var currentNotification: InAppNotification?
 
+    // Set by AppEnvironment to route OTA check/update responses into the
+    // bulk queue so it can advance to the next device.
+    var otaResponseForwarding: ((_ friendlyName: String, _ success: Bool, _ kind: OTABulkOperationQueue.Kind) -> Void)?
+
+    // Set by AppEnvironment to filter out notifications the user disabled
+    // in Settings → App → Notifications. Returns true to allow.
+    var notificationFilter: ((InAppNotification) -> Bool)?
+
+    // Transient per-device check results rendered briefly in the row after
+    // "Checking" resolves. Cleared automatically after a short interval.
+    var deviceCheckResults: [String: DeviceCheckResult] = [:]
+
+    enum DeviceCheckResult: Equatable {
+        case noUpdate
+        case updateFound
+        case failed
+    }
+
     static let logLimit = 1000
     static let coalesceWindow: TimeInterval = 1.5
 
@@ -160,7 +178,8 @@ final class AppStore {
                 level: .error,
                 title: "Operation Failed",
                 subtitle: stripped(String(error.message.prefix(100))),
-                logEntryID: entry.id
+                logEntryID: entry.id,
+                category: .operationFailed
             ))
 
         case .unknown:
@@ -183,11 +202,42 @@ final class AppStore {
         return fastTrackNotifications.removeFirst()
     }
 
+    func enqueueOTABulkSummary(_ summary: OTABulkOperationQueue.CompletionSummary) {
+        let noun = summary.kind == .check ? "Checked" : "Updated"
+        let level: LogLevel = summary.failed > 0 ? .warning : .info
+        let title: String
+        if summary.wasCancelled {
+            title = summary.kind == .check ? "Check Cancelled" : "Updates Cancelled"
+        } else if summary.failed > 0 {
+            title = "\(noun) \(summary.total) Devices"
+        } else {
+            title = "\(noun) \(summary.total) Devices"
+        }
+        var parts: [String] = []
+        if summary.succeeded > 0 {
+            parts.append("\(summary.succeeded) succeeded")
+        }
+        if summary.failed > 0 {
+            parts.append("\(summary.failed) failed")
+        }
+        let subtitle = parts.isEmpty ? nil : parts.joined(separator: ", ")
+        enqueueNotification(InAppNotification(
+            level: level,
+            title: title,
+            subtitle: subtitle,
+            category: .otaBulkSummary
+        ))
+    }
+
     func enqueueNotification(_ notification: InAppNotification) {
+        // Fast-track bypasses the filter — these are transient confirmations
+        // (e.g. "Copied to Clipboard") driven by the user's own action.
         if notification.priority == .fastTrack {
             fastTrackNotifications.append(notification)
             return
         }
+
+        if let filter = notificationFilter, !filter(notification) { return }
 
         let now = Date()
 
@@ -221,26 +271,26 @@ final class AppStore {
         let truncated = stripped(String(message.prefix(100)))
         switch action {
         case .bindSuccess:
-            return InAppNotification(level: .info, title: "Bind Successful", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .info, title: "Bind Successful", subtitle: deviceName, logEntryID: id, deviceName: deviceName, category: .bindSuccess)
         case .bindFailure:
-            return InAppNotification(level: .error, title: "Bind Failed", subtitle: deviceName ?? truncated, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .error, title: "Bind Failed", subtitle: deviceName ?? truncated, logEntryID: id, deviceName: deviceName, category: .bindFailure)
         case .unbind:
-            return InAppNotification(level: .info, title: "Unbound", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .info, title: "Unbound", subtitle: deviceName, logEntryID: id, deviceName: deviceName, category: .unbind)
         case .groupAdd:
-            return InAppNotification(level: .info, title: "Added to Group", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .info, title: "Added to Group", subtitle: deviceName, logEntryID: id, deviceName: deviceName, category: .groupAdd)
         case .groupRemove:
-            return InAppNotification(level: .info, title: "Removed from Group", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .info, title: "Removed from Group", subtitle: deviceName, logEntryID: id, deviceName: deviceName, category: .groupRemove)
         case .publishFailure(let command):
             let detail = command.isEmpty ? truncated : command
-            return InAppNotification(level: .error, title: "Command Failed", subtitle: detail, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .error, title: "Command Failed", subtitle: detail, logEntryID: id, deviceName: deviceName, category: .publishFailure)
         case .requestFailure:
-            return InAppNotification(level: .error, title: "Request Failed", subtitle: truncated, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .error, title: "Request Failed", subtitle: truncated, logEntryID: id, deviceName: deviceName, category: .requestFailure)
         case .otaFinished:
-            return InAppNotification(level: .info, title: "Update Installed", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .info, title: "Update Installed", subtitle: deviceName, logEntryID: id, deviceName: deviceName, category: .otaUpdateInstalled)
         case .reportingConfigure:
-            return InAppNotification(level: .info, title: "Reporting Configured", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .info, title: "Reporting Configured", subtitle: deviceName, logEntryID: id, deviceName: deviceName, category: .reportingConfigure)
         case .general where level == .error:
-            return InAppNotification(level: .error, title: "Error", subtitle: truncated, logEntryID: id, deviceName: deviceName)
+            return InAppNotification(level: .error, title: "Error", subtitle: truncated, logEntryID: id, deviceName: deviceName, category: .genericError)
         default:
             return nil
         }
@@ -259,16 +309,16 @@ final class AppStore {
     private static func notification(from event: BridgeDeviceEvent, entry: LogEntry) -> InAppNotification? {
         switch event.type {
         case "device_leave":
-            return InAppNotification(level: .warning, title: "Device Left Network", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
+            return InAppNotification(level: .warning, title: "Device Left Network", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName, category: .deviceLeft)
         case "device_interview":
             let status = event.data.object?["status"]?.stringValue ?? "unknown"
             switch status {
             case "started":
-                return InAppNotification(level: .info, title: "Interviewing Device", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
+                return InAppNotification(level: .info, title: "Interviewing Device", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName, category: .interviewStarted)
             case "successful":
-                return InAppNotification(level: .info, title: "Interview Successful", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
+                return InAppNotification(level: .info, title: "Interview Successful", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName, category: .interviewSuccessful)
             case "failed":
-                return InAppNotification(level: .error, title: "Interview Failed", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
+                return InAppNotification(level: .error, title: "Interview Failed", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName, category: .interviewFailed)
             default:
                 return nil
             }
@@ -363,6 +413,7 @@ final class AppStore {
         pendingNotifications = []
         fastTrackNotifications = []
         currentNotification = nil
+        deviceCheckResults = [:]
         touchlinkDevices = []
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false
@@ -393,7 +444,6 @@ final class AppStore {
         case .idle:
             otaUpdates.removeValue(forKey: deviceName)
             if previous?.isActive == true, activeOTAUpdates.isEmpty {
-                Haptics.notification(.success)
                 OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: true)
                 return
             }
@@ -403,10 +453,12 @@ final class AppStore {
     }
 
     private func handleOTAResponse(_ response: DeviceOTAUpdateResponse) {
+        if let deviceName = response.deviceName {
+            otaResponseForwarding?(deviceName, response.isSuccess, .update)
+        }
         guard !response.isSuccess else { return }
         guard let deviceName = response.deviceName else { return }
 
-        Haptics.notification(.error)
         otaUpdates.removeValue(forKey: deviceName)
 
         if activeOTAUpdates.isEmpty {
@@ -418,11 +470,11 @@ final class AppStore {
 
     private func handleOTACheckResponse(_ response: DeviceOTAUpdateResponse) {
         guard let deviceName = response.deviceName else { return }
-        
-        // If it failed or no update was found, we want to clear the 'checking' status after a delay
-        // so the user can see it finished.
+
+        otaResponseForwarding?(deviceName, response.isSuccess, .check)
+
         if !response.isSuccess {
-            Haptics.notification(.warning)
+            flashCheckResult(.failed, for: deviceName)
             Task {
                 try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivitySuccess))
                 await MainActor.run {
@@ -432,11 +484,38 @@ final class AppStore {
                 }
             }
         } else {
-            Haptics.notification(.success)
-            // Success means it might have found an update. 
-            // The next device state update will carry the 'available' status.
             if otaUpdates[deviceName]?.phase == .checking {
                 otaUpdates.removeValue(forKey: deviceName)
+            }
+            // The subsequent deviceState event decides whether an update was
+            // found. Look at current state: if hasUpdateAvailable, "Found
+            // update"; otherwise "No update" (off by default as a
+            // notification, but always shown as a transient row chip).
+            let hasUpdate = state(for: deviceName).hasUpdateAvailable
+            if hasUpdate {
+                flashCheckResult(.updateFound, for: deviceName)
+            } else {
+                flashCheckResult(.noUpdate, for: deviceName)
+                enqueueNotification(InAppNotification(
+                    level: .info,
+                    title: "No Update Available",
+                    subtitle: deviceName,
+                    deviceName: deviceName,
+                    category: .otaNoUpdate
+                ))
+            }
+        }
+    }
+
+    private func flashCheckResult(_ result: DeviceCheckResult, for deviceName: String) {
+        deviceCheckResults[deviceName] = result
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run {
+                guard let self else { return }
+                if self.deviceCheckResults[deviceName] == result {
+                    self.deviceCheckResults.removeValue(forKey: deviceName)
+                }
             }
         }
     }

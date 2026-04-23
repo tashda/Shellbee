@@ -6,6 +6,8 @@ final class AppEnvironment {
     let discovery = Z2MDiscoveryService()
     let history = ConnectionHistory()
     let session: ConnectionSessionController
+    let otaBulkQueue: OTABulkOperationQueue
+    let notificationPreferences = NotificationPreferences()
     var selectedTab: AppTab = .home
     var pendingDeviceFilter: DeviceQuickFilter?
     var pendingLogEntryIDs: [UUID]?
@@ -13,7 +15,27 @@ final class AppEnvironment {
     private var hasStarted = false
 
     init() {
-        session = ConnectionSessionController(store: store, history: history)
+        let store = self.store
+        let session = ConnectionSessionController(store: store, history: history)
+        self.session = session
+        let queue = OTABulkOperationQueue(
+            sender: { [session] topic, payload in
+                session.send(topic: topic, payload: payload)
+            },
+            onCompletion: { [weak store] summary in
+                store?.enqueueOTABulkSummary(summary)
+            }
+        )
+        self.otaBulkQueue = queue
+        store.otaResponseForwarding = { [weak queue] name, success, kind in
+            queue?.handleResponse(friendlyName: name, success: success, kind: kind)
+        }
+        let prefs = notificationPreferences
+        store.notificationFilter = { [weak store] notification in
+            guard let category = notification.category else { return true }
+            let bridgeLevel = store?.bridgeInfo?.logLevel
+            return prefs.isEnabled(category, bridgeLogLevel: bridgeLevel)
+        }
     }
 
     var connectionState: ConnectionSessionController.State {

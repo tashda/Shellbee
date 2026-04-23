@@ -5,6 +5,7 @@ struct DeviceListRow: View {
     let state: [String: JSONValue]
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
+    var checkResult: AppStore.DeviceCheckResult? = nil
     let onRename: () -> Void
     let onRemove: () -> Void
     let onReconfigure: () -> Void
@@ -12,16 +13,22 @@ struct DeviceListRow: View {
     let onUpdate: (() -> Void)?
     let onCheckUpdate: () -> Void
 
+    private var isCheckingOrUpdating: Bool {
+        otaStatus?.isActive == true
+    }
+
     var body: some View {
         NavigationLink(value: device) {
-            DeviceRowView(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus)
+            DeviceRowView(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus, checkResult: checkResult)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button(action: onCheckUpdate) {
-                Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
+            if !isCheckingOrUpdating {
+                Button(action: onCheckUpdate) {
+                    Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
+                }
+                .tint(.blue)
             }
-            .tint(.blue)
-            if let onUpdate {
+            if let onUpdate, !isCheckingOrUpdating {
                 Button(action: onUpdate) {
                     Label("Update", systemImage: "arrow.up.circle")
                 }

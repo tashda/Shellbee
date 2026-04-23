@@ -158,6 +158,9 @@ struct SettingsView: View {
             NavigationLink { AppGeneralView() } label: {
                 settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
             }
+            NavigationLink { AppNotificationSettingsView() } label: {
+                settingsLabel(title: "Notifications", systemImage: "bell.badge.fill", color: .red)
+            }
             NavigationLink { AppPerformanceView() } label: {
                 settingsLabel(title: "Performance", systemImage: "speedometer", color: .blue)
             }
