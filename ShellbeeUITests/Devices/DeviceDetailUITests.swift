@@ -166,17 +166,17 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
     // MARK: - Helpers
 
     private func openDetail(named name: String) {
-        // Reveal minimized search bar and filter to the device
-        app.swipeDown()
-        let search = app.searchFields.firstMatch
-        if search.waitForExistence(timeout: 3) {
-            search.tap()
+        // With `.searchToolbarBehavior(.minimize)` the search field only
+        // exists after tapping the Search icon in the nav bar. Use that
+        // to narrow the list down to the target device rather than
+        // scrolling through 30+ rows.
+        let search = app.revealSearchField()
+        if search.exists {
             search.clearAndType(name)
         }
 
         let cell = app.cells.containing(.staticText, identifier: name).firstMatch
         if !cell.waitForExistence(timeout: 5) {
-            // Scroll down to load lazy cells further in the list
             app.swipeUp()
             if !cell.waitForExistence(timeout: 5) {
                 app.swipeUp()

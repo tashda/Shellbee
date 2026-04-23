@@ -18,6 +18,26 @@ extension XCUIApplication {
     func tapDevicesTab()  { tabBar.buttons["Devices"].tap() }
     func tapGroupsTab()   { tabBar.buttons["Groups"].tap() }
     func tapSettingsTab() { tabBar.buttons["Settings"].tap() }
+
+    /// Reveal the minimized search bar on lists that use
+    /// `.searchToolbarBehavior(.minimize)`. The search field only exists in
+    /// the view hierarchy after the user taps the magnifying-glass icon in
+    /// the navigation bar — scrolling does not reveal it.
+    ///
+    /// Returns the search field if it became available within the timeout.
+    @discardableResult
+    func revealSearchField(timeout: TimeInterval = 5) -> XCUIElement {
+        let field = searchFields.firstMatch
+        if field.waitForExistence(timeout: 1) { return field }
+
+        // The .minimize search icon is exposed as a Button labeled "Search".
+        let searchButton = navigationBars.buttons["Search"].firstMatch
+        if searchButton.waitForExistence(timeout: timeout) {
+            searchButton.tap()
+        }
+        _ = field.waitForExistence(timeout: timeout)
+        return field
+    }
 }
 
 extension XCUIElement {

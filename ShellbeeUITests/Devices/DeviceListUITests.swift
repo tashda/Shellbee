@@ -27,20 +27,24 @@ final class DeviceListUITests: ShellbeeUITestCase {
 
     // MARK: - Search
 
+    // Behavior: typing a query that matches a known vendor in the search
+    // field filters the visible rows down. Using any vendor substring that
+    // appears in at least one fixture ("IKEA" shows ~6 devices) should keep
+    // one or more cells visible.
     func testSearchFiltersResults() {
-        // Reveal minimized search bar by scrolling to top
-        app.swipeDown()
-        let searchBar = app.searchFields.firstMatch
-        searchBar.tapWhenReady()
+        let searchBar = app.revealSearchField()
+        XCTAssertTrue(searchBar.exists, "Search field did not appear after tapping the Search toolbar button")
         searchBar.typeText("IKEA")
-        let count = app.cells.count
-        XCTAssertGreaterThanOrEqual(count, 1)
+        XCTAssertGreaterThanOrEqual(app.cells.count, 1)
     }
 
+    // Behavior: an unmatched query hides all rows; clearing the search via
+    // the built-in clear button restores the full list. Some iOS builds skip
+    // rendering zero-row state — accept either "went empty first" or
+    // "restored non-empty list" as proof the clear button worked.
     func testSearchClearRestoresFull() {
-        app.swipeDown()
-        let searchBar = app.searchFields.firstMatch
-        searchBar.tapWhenReady()
+        let searchBar = app.revealSearchField()
+        XCTAssertTrue(searchBar.exists, "Search field did not appear after tapping the Search toolbar button")
         searchBar.typeText("xyz_no_match_xyz")
         let empty = app.cells.count == 0
         searchBar.buttons["Clear text"].tap()
