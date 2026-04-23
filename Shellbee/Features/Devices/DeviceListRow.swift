@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct DeviceListRow: View {
     let device: Device
@@ -13,8 +16,30 @@ struct DeviceListRow: View {
     let onUpdate: (() -> Void)?
     let onCheckUpdate: () -> Void
 
-    private var isCheckingOrUpdating: Bool {
-        otaStatus?.isActive == true
+    private var supportsOTA: Bool {
+        device.definition?.supportsOTA == true
+    }
+
+    private var rejectionMessage: (text: String, icon: String)? {
+        if !supportsOTA {
+            return ("OTA not supported", "xmark.circle")
+        }
+        if otaStatus?.phase == .checking {
+            return ("Checking", "arrow.trianglehead.2.clockwise")
+        }
+        if otaStatus?.isActive == true {
+            return ("Updating", "arrow.up.circle")
+        }
+        if checkResult == .noUpdate {
+            return ("No update found", "checkmark.circle")
+        }
+        return nil
+    }
+
+    private func rejectSwipe() {
+        #if canImport(UIKit)
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        #endif
     }
 
     var body: some View {
@@ -22,17 +47,22 @@ struct DeviceListRow: View {
             DeviceRowView(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus, checkResult: checkResult)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            if !isCheckingOrUpdating {
+            if let rejection = rejectionMessage {
+                Button(action: rejectSwipe) {
+                    Label(rejection.text, systemImage: rejection.icon)
+                }
+                .tint(.gray)
+            } else {
                 Button(action: onCheckUpdate) {
                     Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
                 }
                 .tint(.blue)
-            }
-            if let onUpdate, !isCheckingOrUpdating {
-                Button(action: onUpdate) {
-                    Label("Update", systemImage: "arrow.up.circle")
+                if let onUpdate {
+                    Button(action: onUpdate) {
+                        Label("Update", systemImage: "arrow.up.circle")
+                    }
+                    .tint(.green)
                 }
-                .tint(.green)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
