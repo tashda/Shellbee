@@ -221,26 +221,26 @@ final class AppStore {
         let truncated = stripped(String(message.prefix(100)))
         switch action {
         case .bindSuccess:
-            return InAppNotification(level: .info, title: "Bind Successful", subtitle: deviceName, logEntryID: id)
+            return InAppNotification(level: .info, title: "Bind Successful", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
         case .bindFailure:
-            return InAppNotification(level: .error, title: "Bind Failed", subtitle: deviceName ?? truncated, logEntryID: id)
+            return InAppNotification(level: .error, title: "Bind Failed", subtitle: deviceName ?? truncated, logEntryID: id, deviceName: deviceName)
         case .unbind:
-            return InAppNotification(level: .info, title: "Unbound", subtitle: deviceName, logEntryID: id)
+            return InAppNotification(level: .info, title: "Unbound", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
         case .groupAdd:
-            return InAppNotification(level: .info, title: "Added to Group", subtitle: deviceName, logEntryID: id)
+            return InAppNotification(level: .info, title: "Added to Group", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
         case .groupRemove:
-            return InAppNotification(level: .info, title: "Removed from Group", subtitle: deviceName, logEntryID: id)
+            return InAppNotification(level: .info, title: "Removed from Group", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
         case .publishFailure(let command):
             let detail = command.isEmpty ? truncated : command
-            return InAppNotification(level: .error, title: "Command Failed", subtitle: detail, logEntryID: id)
+            return InAppNotification(level: .error, title: "Command Failed", subtitle: detail, logEntryID: id, deviceName: deviceName)
         case .requestFailure:
-            return InAppNotification(level: .error, title: "Request Failed", subtitle: truncated, logEntryID: id)
+            return InAppNotification(level: .error, title: "Request Failed", subtitle: truncated, logEntryID: id, deviceName: deviceName)
         case .otaFinished:
-            return InAppNotification(level: .info, title: "Update Installed", subtitle: deviceName, logEntryID: id)
+            return InAppNotification(level: .info, title: "Update Installed", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
         case .reportingConfigure:
-            return InAppNotification(level: .info, title: "Reporting Configured", subtitle: deviceName, logEntryID: id)
+            return InAppNotification(level: .info, title: "Reporting Configured", subtitle: deviceName, logEntryID: id, deviceName: deviceName)
         case .general where level == .error:
-            return InAppNotification(level: .error, title: "Error", subtitle: truncated, logEntryID: id)
+            return InAppNotification(level: .error, title: "Error", subtitle: truncated, logEntryID: id, deviceName: deviceName)
         default:
             return nil
         }
@@ -259,10 +259,19 @@ final class AppStore {
     private static func notification(from event: BridgeDeviceEvent, entry: LogEntry) -> InAppNotification? {
         switch event.type {
         case "device_leave":
-            return InAppNotification(level: .warning, title: "Device Left Network", subtitle: entry.deviceName, logEntryID: entry.id)
+            return InAppNotification(level: .warning, title: "Device Left Network", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
         case "device_interview":
-            guard let data = event.data.object, data["status"]?.stringValue == "failed" else { return nil }
-            return InAppNotification(level: .error, title: "Interview Failed", subtitle: entry.deviceName, logEntryID: entry.id)
+            let status = event.data.object?["status"]?.stringValue ?? "unknown"
+            switch status {
+            case "started":
+                return InAppNotification(level: .info, title: "Interviewing Device", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
+            case "successful":
+                return InAppNotification(level: .info, title: "Interview Successful", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
+            case "failed":
+                return InAppNotification(level: .error, title: "Interview Failed", subtitle: entry.deviceName, logEntryID: entry.id, deviceName: entry.deviceName)
+            default:
+                return nil
+            }
         default:
             return nil
         }

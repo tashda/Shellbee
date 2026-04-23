@@ -21,6 +21,7 @@ struct InAppNotificationOverlay: View {
                     isExpanded: $isExpanded,
                     onDismiss: dismissNormal,
                     onGoToLog: { goToLog(for: notification) },
+                    onGoToDevice: { goToDevice(for: notification) },
                     onCopyMessage: { copy(notification.subtitle ?? notification.title) }
                 )
                 .transition(.asymmetric(
@@ -123,6 +124,13 @@ struct InAppNotificationOverlay: View {
         dismissNormal()
     }
 
+    private func goToDevice(for notification: InAppNotification) {
+        guard let name = notification.deviceName else { return }
+        environment.pendingDeviceNavigation = name
+        environment.selectedTab = .devices
+        dismissNormal()
+    }
+
     private func copy(_ value: String) {
         UIPasteboard.general.string = value
         environment.store.enqueueNotification(
@@ -161,6 +169,7 @@ struct InAppNotificationBanner: View {
     @Binding var isExpanded: Bool
     let onDismiss: () -> Void
     let onGoToLog: () -> Void
+    let onGoToDevice: () -> Void
     let onCopyMessage: () -> Void
 
     @State private var dragOffset: CGSize = .zero
@@ -245,18 +254,32 @@ struct InAppNotificationBanner: View {
 
     private var expandedBody: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            if !notification.logEntryIDs.isEmpty {
+            if notification.deviceName != nil {
+                Button(action: onGoToDevice) {
+                    Label("Go to Device", systemImage: "sensor.tag.radiowaves.forward.fill")
+                }
+                .buttonStyle(.glassProminent)
+                .controlSize(.small)
+            } else if !notification.logEntryIDs.isEmpty {
                 Button(action: onGoToLog) {
                     Label("Go to Log", systemImage: "list.bullet.rectangle.portrait")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
+                .controlSize(.small)
+            }
+
+            if notification.deviceName != nil, !notification.logEntryIDs.isEmpty {
+                Button(action: onGoToLog) {
+                    Label("Log", systemImage: "list.bullet.rectangle.portrait")
+                }
+                .buttonStyle(.glass)
                 .controlSize(.small)
             }
 
             Button(action: onCopyMessage) {
                 Label("Copy", systemImage: "doc.on.doc")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             .controlSize(.small)
 
             Spacer(minLength: 0)
@@ -408,6 +431,44 @@ struct FastTrackBanner: View {
     )
 }
 
+#Preview("Interview started — collapsed") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .info,
+            title: "Interviewing Device",
+            subtitle: "kitchen_motion_sensor",
+            logEntryID: UUID(),
+            deviceName: "kitchen_motion_sensor"
+        )
+    )
+}
+
+#Preview("Interview successful — expanded") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .info,
+            title: "Interview Successful",
+            subtitle: "kitchen_motion_sensor",
+            logEntryID: UUID(),
+            deviceName: "kitchen_motion_sensor"
+        ),
+        expanded: true
+    )
+}
+
+#Preview("Interview failed — expanded") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .error,
+            title: "Interview Failed",
+            subtitle: "attic_thermostat",
+            logEntryID: UUID(),
+            deviceName: "attic_thermostat"
+        ),
+        expanded: true
+    )
+}
+
 #Preview("Info — no logEntry (Go to Log hidden)") {
     PreviewHost(
         notification: InAppNotification(
@@ -448,6 +509,7 @@ private struct PreviewHost: View {
                 isExpanded: $isExpanded,
                 onDismiss: {},
                 onGoToLog: {},
+                onGoToDevice: {},
                 onCopyMessage: {}
             )
             .padding(.bottom, 80)

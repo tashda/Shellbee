@@ -11,6 +11,7 @@ struct InAppNotification: Identifiable, Equatable {
     let title: String
     var subtitle: String?
     var logEntryIDs: [UUID]
+    var deviceName: String?
     var count: Int
     var lastUpdated: Date
     let priority: Priority
@@ -20,6 +21,7 @@ struct InAppNotification: Identifiable, Equatable {
         title: String,
         subtitle: String? = nil,
         logEntryID: UUID? = nil,
+        deviceName: String? = nil,
         priority: Priority = .normal
     ) {
         self.id = UUID()
@@ -27,6 +29,7 @@ struct InAppNotification: Identifiable, Equatable {
         self.title = title
         self.subtitle = subtitle
         self.logEntryIDs = logEntryID.map { [$0] } ?? []
+        self.deviceName = deviceName
         self.count = 1
         self.lastUpdated = .now
         self.priority = priority

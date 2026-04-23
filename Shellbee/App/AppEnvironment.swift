@@ -9,6 +9,7 @@ final class AppEnvironment {
     var selectedTab: AppTab = .home
     var pendingDeviceFilter: DeviceQuickFilter?
     var pendingLogEntryIDs: [UUID]?
+    var pendingDeviceNavigation: String?
     private var hasStarted = false
 
     init() {

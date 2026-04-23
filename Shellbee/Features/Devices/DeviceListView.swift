@@ -72,16 +72,30 @@ struct DeviceListView: View {
                 }
             }
             .onAppear {
-                guard let filter = environment.pendingDeviceFilter else { return }
-                navigationPath = NavigationPath()
-                viewModel.applyQuickFilter(filter)
-                environment.pendingDeviceFilter = nil
+                if let filter = environment.pendingDeviceFilter {
+                    navigationPath = NavigationPath()
+                    viewModel.applyQuickFilter(filter)
+                    environment.pendingDeviceFilter = nil
+                }
+                if let name = environment.pendingDeviceNavigation,
+                   let device = environment.store.device(named: name) {
+                    navigationPath = NavigationPath()
+                    navigationPath.append(device)
+                    environment.pendingDeviceNavigation = nil
+                }
             }
             .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
                 guard let filter = newFilter else { return }
                 navigationPath = NavigationPath()
                 viewModel.applyQuickFilter(filter)
                 environment.pendingDeviceFilter = nil
+            }
+            .onChange(of: environment.pendingDeviceNavigation) { _, newName in
+                guard let name = newName,
+                      let device = environment.store.device(named: name) else { return }
+                navigationPath = NavigationPath()
+                navigationPath.append(device)
+                environment.pendingDeviceNavigation = nil
             }
         }
         .sheet(item: $deviceToRename) { device in
