@@ -68,6 +68,15 @@ extension XCUIElement {
         }
         typeText(text)
     }
+
+    /// A far-travel leading swipe that reliably reveals List trailing swipe
+    /// actions even when `allowsFullSwipe: false`. The stock `swipeLeft()`
+    /// on iOS 26 is too short to expose multiple swipe buttons.
+    func swipeLeftFar() {
+        let start = coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
+        let end   = coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
 }
 
 /// Returns true when running under UI test automation.

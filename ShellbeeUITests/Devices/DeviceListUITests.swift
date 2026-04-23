@@ -131,10 +131,14 @@ final class DeviceListUITests: ShellbeeUITestCase {
 
     // MARK: - Swipe actions
 
+    // Behavior: a long trailing swipe on a device row reveals the
+    // destructive+orange Rename button on that row's trailing swipe menu.
+    // The default `swipeLeft()` travels too short a distance in iOS 26
+    // to expose buttons when `allowsFullSwipe: false` is set.
     func testSwipeRevealRenameAction() {
-        let cell = app.cells.firstMatch
+        let cell = namedDeviceCell("Living Room Light")
         cell.assertExists()
-        cell.swipeLeft()
+        cell.swipeLeftFar()
         XCTAssertTrue(
             app.buttons["Rename"].firstMatch.waitForExistence(timeout: 5),
             "Rename action not revealed on swipe"
@@ -142,10 +146,12 @@ final class DeviceListUITests: ShellbeeUITestCase {
         cell.swipeRight()
     }
 
+    // Behavior: long trailing swipe exposes the destructive Delete button
+    // alongside Rename/Config/Interview.
     func testSwipeRevealRemoveAction() {
-        let cell = app.cells.firstMatch
+        let cell = namedDeviceCell("Living Room Light")
         cell.assertExists()
-        cell.swipeLeft()
+        cell.swipeLeftFar()
         XCTAssertTrue(
             app.buttons["Delete"].firstMatch.waitForExistence(timeout: 5),
             "Delete action not revealed on swipe"
@@ -155,11 +161,13 @@ final class DeviceListUITests: ShellbeeUITestCase {
 
     // MARK: - Rename flow
 
+    // Behavior: swiping a row exposes Rename; tapping it opens the Rename
+    // sheet with a prefilled text field for the new name. Dismiss via the
+    // drag indicator (no Cancel button by design); no rename should occur.
     func testRenameSheetOpens() {
-        let cell = app.cells.firstMatch
+        let cell = namedDeviceCell("Living Room Light")
         cell.assertExists()
-        cell.swipeLeft()
-        // Rename is on the trailing swipe edge (not Remove)
+        cell.swipeLeftFar()
         XCTAssertTrue(app.buttons["Rename"].firstMatch.waitForExistence(timeout: 5),
                       "Rename button not revealed after swipe")
         app.buttons["Rename"].firstMatch.tap()
@@ -167,25 +175,44 @@ final class DeviceListUITests: ShellbeeUITestCase {
             app.textFields.firstMatch.waitForExistence(timeout: 5),
             "Rename sheet text field not found"
         )
-        app.buttons["Cancel"].firstMatch.tap()
+        // Dismiss by swiping the sheet down.
+        app.swipeDown(velocity: .fast)
     }
 
     // MARK: - Remove flow
 
+    // Behavior: swiping a row and tapping Delete opens the RemoveDeviceSheet
+    // which shows a final confirmation Remove button. Sheet dismisses via
+    // drag indicator (no Cancel button by design).
     func testRemoveSheetOpens() {
-        let cell = app.cells.firstMatch
+        let cell = namedDeviceCell("Living Room Light")
         cell.assertExists()
-        cell.swipeLeft()
-        app.buttons["Delete"].firstMatch.tapWhenReady()
+        cell.swipeLeftFar()
+        XCTAssertTrue(app.buttons["Delete"].firstMatch.waitForExistence(timeout: 5),
+                      "Delete button not revealed after swipe")
+        app.buttons["Delete"].firstMatch.tap()
         XCTAssertTrue(
-            app.sheets.firstMatch.waitForExistence(timeout: 5) ||
             app.buttons["Remove Device"].firstMatch.waitForExistence(timeout: 5),
-            "Remove sheet not found"
+            "Remove Device confirmation button not shown"
         )
-        app.buttons["Cancel"].firstMatch.tap()
+        // Dismiss without removing by swiping down.
+        app.swipeDown(velocity: .fast)
     }
 
     // MARK: - Pull to refresh
+
+    // Scroll the list into view (if needed) and return the cell whose
+    // visible name text matches `name`. Grouped-by-category puts the first
+    // cell under a section header; using a deterministic device avoids
+    // swiping a section header and getting no response.
+    private func namedDeviceCell(_ name: String) -> XCUIElement {
+        let cell = app.cells.containing(.staticText, identifier: name).firstMatch
+        if !cell.waitForExistence(timeout: 5) {
+            app.swipeUp()
+            if !cell.waitForExistence(timeout: 5) { app.swipeUp() }
+        }
+        return cell
+    }
 
     func testPullToRefresh() {
         let firstCell = app.cells.firstMatch
