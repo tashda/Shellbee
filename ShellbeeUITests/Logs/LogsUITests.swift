@@ -5,13 +5,18 @@ final class LogsUITests: ShellbeeUITestCase {
     override func setUp() {
         super.setUp()
         waitForMainTab()
-        // Navigate to Logs via Settings tab
+        // Navigate to Logs via Settings tab. LogsView wraps itself in a
+        // nested NavigationStack, so we wait for its "Logs" navigation
+        // title rather than for a second navigation bar.
         app.tapSettingsTab()
         let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
-        if logsRow.waitForExistence(timeout: 5) {
-            logsRow.tap()
-        }
-        _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 10)
+        XCTAssertTrue(logsRow.waitForExistence(timeout: 5),
+                      "Logs row not found in Settings")
+        logsRow.tap()
+        XCTAssertTrue(
+            app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 10),
+            "Logs view did not appear"
+        )
     }
 
     // MARK: - Log list
@@ -92,16 +97,22 @@ final class LogsUITests: ShellbeeUITestCase {
 
     // MARK: - Log detail
 
+    // Behavior: tapping a row in the Activity log pushes LogDetailView,
+    // whose nav bar title describes the event (e.g. a device name). We
+    // assert that a NEW navigation bar appeared — i.e. the Logs root bar
+    // no longer has large-title mode, or a back button named "Logs" exists.
+    //
+    // Activity entries appear once state-change diffs arrive; the engine
+    // drifts device states every 10s, so we wait for a row to appear.
     func testTappingLogEntryOpensDetail() throws {
-        guard app.cells.firstMatch.waitForExistence(timeout: 20) else {
-            throw XCTSkip("No log entries visible")
+        guard app.cells.firstMatch.waitForExistence(timeout: 30) else {
+            throw XCTSkip("No activity log entries visible within the drift window")
         }
         app.cells.firstMatch.tap()
-        // After pushing log detail, back button to "Logs" appears
+        // After push, a Logs back button appears in the nav bar.
         XCTAssertTrue(
-            app.buttons["Logs"].firstMatch.waitForExistence(timeout: 5) ||
-            app.sheets.firstMatch.waitForExistence(timeout: 5),
-            "Log detail did not open"
+            app.navigationBars.buttons["Logs"].firstMatch.waitForExistence(timeout: 5),
+            "LogDetailView did not open — expected a 'Logs' back button"
         )
     }
 }

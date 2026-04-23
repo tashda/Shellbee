@@ -835,6 +835,10 @@ def drift_tick(client) -> None:
                 continue
             _drift_once(name)
         _publish_state(client, name)
+    # Emit a live bridge log on every tick so the app's Bridge Log view is
+    # populated the moment a test arrives. Real z2m emits debug log lines
+    # for message activity; matching that shape keeps the engine faithful.
+    _emit_log(client, "debug", f"drift tick: published {len(names)} device states")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────

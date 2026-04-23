@@ -50,7 +50,7 @@ services:
       - MQTT_PORT=1883
       - Z2M_TOPIC=zigbee2mqtt
       - MODE=continuous
-      - SEED_INTERVAL=60
+      - SEED_INTERVAL=10
     restart: unless-stopped
 
 volumes:
