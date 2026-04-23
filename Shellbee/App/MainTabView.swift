@@ -56,19 +56,23 @@ private struct LogSheetHost: View {
                let entry = environment.store.logEntries.first(where: { $0.id == id }) {
                 LogDetailView(entry: entry)
                     .toolbar {
-                        // .confirmationAction lands on the trailing side as
-                        // a distinct semantic slot, so Done sits on the far
-                        // right separate from LogDetailView's own formatter
-                        // (curly-braces) button which uses .topBarTrailing.
-                        ToolbarItem(placement: .confirmationAction) {
+                        // Declaration order on .topBarTrailing goes
+                        // right-to-left from the edge. Done first (rightmost),
+                        // then a fixed spacer, then LogDetailView's own
+                        // curly-braces sits to the left. iOS 26 renders the
+                        // spacer as a gap between liquid-glass bubbles.
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") { dismiss() }
+                                .fontWeight(.semibold)
                         }
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
                     }
             } else {
                 LogsView(initialEntryFilter: Set(request.entryIDs))
                     .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") { dismiss() }
+                                .fontWeight(.semibold)
                         }
                     }
             }
