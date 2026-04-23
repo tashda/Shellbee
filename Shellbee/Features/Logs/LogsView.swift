@@ -5,6 +5,7 @@ struct LogsView: View {
     @State private var mode: LogMode = .activity
     @State private var activityVM = LogsViewModel()
     @State private var bridgeVM = BridgeLogViewModel()
+    @State private var autoOpenedEntry: LogEntry?
     let initialEntryFilter: Set<UUID>?
 
     init(initialEntryFilter: Set<UUID>? = nil) {
@@ -31,7 +32,16 @@ struct LogsView: View {
             .onAppear {
                 if let filter = initialEntryFilter, activityVM.entryIDFilter == nil {
                     activityVM.entryIDFilter = filter
+                    // Single-entry filter: open the log detail directly instead of
+                    // showing a one-row filtered list.
+                    if filter.count == 1, let id = filter.first,
+                       let entry = environment.store.logEntries.first(where: { $0.id == id }) {
+                        autoOpenedEntry = entry
+                    }
                 }
+            }
+            .navigationDestination(item: $autoOpenedEntry) { entry in
+                LogDetailView(entry: entry)
             }
             .searchToolbarBehavior(.minimize)
             .toolbar {

@@ -173,6 +173,8 @@ struct InAppNotificationBanner: View {
     let onCopyMessage: () -> Void
 
     @State private var dragOffset: CGSize = .zero
+    // Dismiss gesture is vertical-only: swipe-down dismisses in both states.
+    // (Swipe-up from collapsed expands.) See dragGesture.
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
@@ -256,13 +258,13 @@ struct InAppNotificationBanner: View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             if notification.deviceName != nil {
                 Button(action: onGoToDevice) {
-                    Label("Go to Device", systemImage: "sensor.tag.radiowaves.forward.fill")
+                    Label("Device", systemImage: "sensor.tag.radiowaves.forward.fill")
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.small)
             } else if !notification.logEntryIDs.isEmpty {
                 Button(action: onGoToLog) {
-                    Label("Go to Log", systemImage: "list.bullet.rectangle.portrait")
+                    Label("Log", systemImage: "list.bullet.rectangle.portrait")
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.small)
@@ -288,38 +290,24 @@ struct InAppNotificationBanner: View {
     }
 
     private var dragGesture: some Gesture {
+        // Single vertical gesture in both states: swipe up to expand (when
+        // collapsed), swipe down to dismiss. Mixing axes caused a jarring
+        // cross-axis animation snap on release.
         DragGesture(minimumDistance: 10)
             .onChanged { value in
-                let dx = value.translation.width
                 let dy = value.translation.height
                 if isExpanded {
-                    // Expanded: allow horizontal drag (swipe-right to dismiss)
-                    // and downward drag (collapse/dismiss).
-                    dragOffset = CGSize(
-                        width: max(dx, 0),
-                        height: max(dy, 0)
-                    )
+                    dragOffset = CGSize(width: 0, height: max(dy, 0))
                 } else {
-                    // Collapsed: downward drag to dismiss, upward to peek-expand.
                     dragOffset = CGSize(width: 0, height: dy > 0 ? dy : dy / 3)
                 }
             }
             .onEnded { value in
-                let dx = value.translation.width
                 let dy = value.translation.height
-
-                if isExpanded {
-                    if dx > 80 {
-                        onDismiss()
-                    } else if dy > 60 {
-                        isExpanded = false
-                    }
-                } else {
-                    if dy < -30 {
-                        isExpanded = true
-                    } else if dy > 60 {
-                        onDismiss()
-                    }
+                if !isExpanded, dy < -30 {
+                    isExpanded = true
+                } else if dy > 60 {
+                    onDismiss()
                 }
                 withAnimation(.spring(duration: 0.25)) { dragOffset = .zero }
             }

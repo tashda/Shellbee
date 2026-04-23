@@ -4,7 +4,7 @@ struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
-    @State private var path: [SettingsDestination] = []
+    @State private var path = NavigationPath()
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -34,13 +34,13 @@ struct SettingsView: View {
             }
             .onChange(of: environment.pendingLogEntryIDs) { _, newValue in
                 guard let ids = newValue else { return }
-                path.append(.logs(entryIDs: ids))
                 environment.pendingLogEntryIDs = nil
+                pushLogsResettingPath(ids)
             }
             .onAppear {
                 if let ids = environment.pendingLogEntryIDs {
-                    path.append(.logs(entryIDs: ids))
                     environment.pendingLogEntryIDs = nil
+                    pushLogsResettingPath(ids)
                 }
             }
             .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
@@ -158,6 +158,9 @@ struct SettingsView: View {
             NavigationLink { AppGeneralView() } label: {
                 settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
             }
+            NavigationLink { AppPerformanceView() } label: {
+                settingsLabel(title: "Performance", systemImage: "speedometer", color: .blue)
+            }
             NavigationLink { AboutView() } label: {
                 settingsLabel(title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             }
@@ -176,6 +179,18 @@ struct SettingsView: View {
             Button("Disconnect", role: .destructive) {
                 showingDisconnectConfirmation = true
             }
+        }
+    }
+
+    // Pop to root, then push on the next runloop. Replacing and appending in
+    // the same pass produced a blank push that immediately popped back to
+    // Settings when the stack already contained a NavigationLink push.
+    private func pushLogsResettingPath(_ ids: [UUID]) {
+        if !path.isEmpty {
+            path.removeLast(path.count)
+        }
+        Task { @MainActor in
+            path.append(SettingsDestination.logs(entryIDs: ids))
         }
     }
 

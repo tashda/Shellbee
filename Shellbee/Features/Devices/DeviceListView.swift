@@ -79,9 +79,8 @@ struct DeviceListView: View {
                 }
                 if let name = environment.pendingDeviceNavigation,
                    let device = environment.store.device(named: name) {
-                    navigationPath = NavigationPath()
-                    navigationPath.append(device)
                     environment.pendingDeviceNavigation = nil
+                    pushDeviceResettingPath(device)
                 }
             }
             .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
@@ -93,9 +92,8 @@ struct DeviceListView: View {
             .onChange(of: environment.pendingDeviceNavigation) { _, newName in
                 guard let name = newName,
                       let device = environment.store.device(named: name) else { return }
-                navigationPath = NavigationPath()
-                navigationPath.append(device)
                 environment.pendingDeviceNavigation = nil
+                pushDeviceResettingPath(device)
             }
         }
         .sheet(item: $deviceToRename) { device in
@@ -180,6 +178,18 @@ struct DeviceListView: View {
             }
         }
         .accessibilityLabel("Firmware updates")
+    }
+
+    // Pop to root then push on the next runloop. Replacing and appending the
+    // path in the same cycle raised AnyNavigationPath.comparisonTypeMismatch
+    // when the stack already contained a Device entry.
+    private func pushDeviceResettingPath(_ device: Device) {
+        if !navigationPath.isEmpty {
+            navigationPath.removeLast(navigationPath.count)
+        }
+        Task { @MainActor in
+            navigationPath.append(device)
+        }
     }
 
     // MARK: - Row builder
