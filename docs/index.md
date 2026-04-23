@@ -60,7 +60,11 @@ Yes, as long as your Zigbee2MQTT bridge is reachable from the device — typical
 
 ### Does Shellbee collect any personal data?
 
-No. Shellbee communicates directly with the Zigbee2MQTT bridge you configure. It does not include analytics, tracking, or third-party SDKs. See our [Privacy Policy](privacy.html) for details.
+Shellbee communicates directly with the Zigbee2MQTT bridge you configure. It contains no advertising SDKs, no analytics, no tracking, and no developer-operated backend for app data.
+
+The one exception is **optional, opt-in crash reporting** via [Sentry](https://sentry.io). Crash reports are **off by default** and are never sent without your explicit permission. URLs, IP addresses, and auth tokens are scrubbed from reports before they are sent. You can decline individual reports, always share, or never share anything — and change your choice at any time in **Settings → Feedback**.
+
+See the [Privacy Policy](privacy.html) for the full list of what is and is not included in a crash report.
 
 ### Which devices and features are supported?
 
