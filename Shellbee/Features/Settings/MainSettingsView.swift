@@ -16,6 +16,7 @@ struct MainSettingsView: View {
     @State private var logDirectoriesToKeep: Int = 10
 
     @State private var showingDiscardAlert = false
+    @State private var logLevelHighlighted = false
 
     private var hasChanges: Bool {
         guard let info = environment.store.bridgeInfo else { return false }
@@ -44,6 +45,11 @@ struct MainSettingsView: View {
                         Text(level.label).tag(level)
                     }
                 }
+                .listRowBackground(
+                    logLevelHighlighted
+                        ? Color.accentColor.opacity(0.25)
+                        : Color(.secondarySystemGroupedBackground)
+                )
             } header: {
                 Text("Logging")
             } footer: {
@@ -123,6 +129,17 @@ struct MainSettingsView: View {
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
         .task { loadFromStore() }
+        .task {
+            // Flash the Log Level row briefly when arriving here from the
+            // Notifications settings link. Matches the transient-highlight
+            // pattern Apple's Settings uses when jumping between panes.
+            guard environment.pendingSettingsHighlight == .logLevel else { return }
+            environment.pendingSettingsHighlight = nil
+            try? await Task.sleep(for: .milliseconds(350))
+            withAnimation(.easeInOut(duration: 0.25)) { logLevelHighlighted = true }
+            try? await Task.sleep(for: .milliseconds(900))
+            withAnimation(.easeInOut(duration: 0.6)) { logLevelHighlighted = false }
+        }
     }
 
     private func loadFromStore() {

@@ -102,6 +102,7 @@
 				Core/Models/LogMessage.swift,
 				Core/Models/LogSheetRequest.swift,
 				Core/Models/NotificationCategory.swift,
+				Core/Models/SettingsHighlight.swift,
 				Core/Models/TouchlinkDevice.swift,
 				Core/Networking/ConnectionConfig.swift,
 				Core/Networking/OTABulkOperationQueue.swift,

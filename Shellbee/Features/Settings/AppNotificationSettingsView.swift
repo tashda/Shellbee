@@ -7,28 +7,39 @@ struct AppNotificationSettingsView: View {
         environment.store.bridgeInfo?.logLevel
     }
 
+    private var displayedLevel: String {
+        bridgeLogLevel ?? "info"
+    }
+
+    private var visibleCategories: [NotificationCategory] {
+        let currentLevel = NotificationCategory.DefaultLevel(z2mLogLevel: displayedLevel) ?? .info
+        return NotificationCategory.allCases.filter { category in
+            switch category.defaultMinimumLogLevel {
+            case .optIn:
+                // Surface opt-in categories only when the bridge is in its
+                // most verbose mode — otherwise the user has no signal this
+                // category exists.
+                return currentLevel == .debug
+            default:
+                return category.defaultMinimumLogLevel <= currentLevel
+            }
+        }
+    }
+
+    private var visibleSections: [NotificationCategory.Section] {
+        NotificationCategory.Section.allCases.filter { section in
+            visibleCategories.contains(where: { $0.section == section })
+        }
+    }
+
     var body: some View {
         Form {
-            Section {
-                Text(summaryText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text("About")
-            } footer: {
-                Text("Defaults follow the Z2M bridge log level. Lowering the bridge level to error silences the chatty categories; raising it to debug enables more. Individual toggles here override the default.")
-            }
+            aboutSection
 
-            ForEach(NotificationCategory.Section.allCases, id: \.self) { section in
+            ForEach(visibleSections, id: \.self) { section in
                 Section(section.title) {
-                    let categories = NotificationCategory.allCases.filter { $0.section == section }
-                    ForEach(categories, id: \.self) { category in
-                        Toggle(isOn: binding(for: category)) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(category.displayName)
-                                defaultHint(for: category)
-                            }
-                        }
+                    ForEach(visibleCategories.filter { $0.section == section }, id: \.self) { category in
+                        Toggle(category.displayName, isOn: binding(for: category))
                     }
                 }
             }
@@ -45,34 +56,31 @@ struct AppNotificationSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var summaryText: String {
-        let level = bridgeLogLevel ?? "info"
-        if environment.notificationPreferences.hasCustomSelection {
-            return "Showing your custom selection. Bridge log level is \(level)."
-        }
-        return "Following the Z2M bridge log level (\(level))."
-    }
-
     @ViewBuilder
-    private func defaultHint(for category: NotificationCategory) -> some View {
-        let isOnByDefault = !environment.notificationPreferences.hasCustomSelection
-            && environment.notificationPreferences.isEnabled(category, bridgeLogLevel: bridgeLogLevel)
-        let hint: String = switch category.defaultMinimumLogLevel {
-        case .error: "Always on"
-        case .warning: "Default at warning or higher"
-        case .info: "Default at info or higher"
-        case .debug: "Default at debug only"
-        case .optIn: "Off by default"
-        }
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Text(hint)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            if isOnByDefault {
-                Text("· on now")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+    private var aboutSection: some View {
+        Section {
+            NavigationLink {
+                MainSettingsView()
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                        Text("Bridge Log Level")
+                            .foregroundStyle(.primary)
+                        Text("Which notifications appear follows this level. Tap to change it.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(displayedLevel.capitalized)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
             }
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    environment.pendingSettingsHighlight = .logLevel
+                }
+            )
         }
     }
 
