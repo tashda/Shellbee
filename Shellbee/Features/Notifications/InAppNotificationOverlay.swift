@@ -10,11 +10,14 @@ struct InAppNotificationOverlay: View {
     // When collapsed, always shows the newest (last). When expanded, this
     // cursor is controlled by horizontal swipes.
     @State private var carouselIndex: Int = 0
+    @State private var carouselDirection: CarouselDirection = .forward
     @State private var autoDismissTask: Task<Void, Never>?
     @State private var fastTrackTask: Task<Void, Never>?
     @State private var currentFastTrack: InAppNotification?
     @State private var fastTrackVisible = false
     @State private var lastSeenArrivalID: UUID?
+
+    private enum CarouselDirection { case forward, backward }
 
     private var stack: [InAppNotification] {
         environment.store.pendingNotifications
@@ -44,11 +47,11 @@ struct InAppNotificationOverlay: View {
                     onSwipeNext: advanceCarousel,
                     onSwipePrevious: reverseCarousel
                 )
-                .id(stack.count) // re-insert when stack grows, keep cross-fade
-                .transition(.asymmetric(
-                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                    removal: .move(edge: .bottom).combined(with: .opacity)
-                ))
+                // Identity changes with the viewed notification so SwiftUI
+                // runs the transition between distinct banners rather than
+                // mutating the existing view in place.
+                .id(notification.id)
+                .transition(bannerTransition)
             }
 
             if let fast = currentFastTrack, fastTrackVisible {
@@ -60,6 +63,7 @@ struct InAppNotificationOverlay: View {
             }
         }
         .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: stack.isEmpty)
+        .animation(.spring(duration: 0.3, bounce: 0.1), value: displayed?.id)
         .animation(.spring(duration: 0.25), value: fastTrackVisible)
         .onChange(of: environment.store.notificationArrivalID) { _, newID in
             // New (non-coalesced) normal notification arrived. Haptic once,
@@ -89,6 +93,32 @@ struct InAppNotificationOverlay: View {
             } else {
                 carouselIndex = min(carouselIndex, max(0, stack.count - 1))
             }
+        }
+    }
+
+    private var bannerTransition: AnyTransition {
+        // Carousel transitions only matter when the user is navigating
+        // between stack slots (expanded). Arrival/dismiss uses move+opacity
+        // from the bottom edge to match the insertion from below the tab bar.
+        let isCarousel = isExpanded && stack.count > 1
+        guard isCarousel else {
+            return .asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .move(edge: .bottom).combined(with: .opacity)
+            )
+        }
+        switch carouselDirection {
+        case .forward:
+            // Swiping content left (viewing next): old slides left, new comes from right.
+            return .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .move(edge: .leading).combined(with: .opacity)
+            )
+        case .backward:
+            return .asymmetric(
+                insertion: .move(edge: .leading).combined(with: .opacity),
+                removal: .move(edge: .trailing).combined(with: .opacity)
+            )
         }
     }
 
@@ -139,11 +169,13 @@ struct InAppNotificationOverlay: View {
 
     private func advanceCarousel() {
         guard isExpanded, stack.count > 1 else { return }
+        carouselDirection = .forward
         carouselIndex = (carouselIndex - 1 + stack.count) % stack.count
     }
 
     private func reverseCarousel() {
         guard isExpanded, stack.count > 1 else { return }
+        carouselDirection = .backward
         carouselIndex = (carouselIndex + 1) % stack.count
     }
 
@@ -260,7 +292,7 @@ struct InAppNotificationBanner: View {
                     Text(notification.title)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.primary)
-                    if notification.count > 1 {
+                    if notification.count > 1, stackPositionLabel == nil {
                         Text("× \(notification.count)")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
@@ -367,6 +399,7 @@ struct InAppNotificationBanner: View {
                 let dx = value.translation.width
                 let dy = value.translation.height
                 let verticalDominant = abs(dy) > abs(dx)
+                var committedSwipe = false
                 if verticalDominant {
                     if !isExpanded, dy < -30 {
                         isExpanded = true
@@ -376,11 +409,21 @@ struct InAppNotificationBanner: View {
                 } else if isExpanded, stackCount > 1 {
                     if dx < -60 {
                         onSwipeNext?()
+                        committedSwipe = true
                     } else if dx > 60 {
                         onSwipePrevious?()
+                        committedSwipe = true
                     }
                 }
-                withAnimation(.spring(duration: 0.25)) { dragOffset = .zero }
+                // On a committed carousel swipe, the outgoing banner is now a
+                // removed view — its position doesn't matter. Drop offset
+                // without animating so the slide-out transition takes over
+                // cleanly instead of the finger-follow offset snapping back.
+                if committedSwipe {
+                    dragOffset = .zero
+                } else {
+                    withAnimation(.spring(duration: 0.25)) { dragOffset = .zero }
+                }
             }
     }
 }
