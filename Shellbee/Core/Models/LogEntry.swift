@@ -113,7 +113,7 @@ struct LogEntry: Identifiable, Sendable, Hashable {
         if let name = deviceName { return name }
         if case .mqttPublish(let device, _, _) = parsedMessageKind { return device }
         if let ns = namespace { return ns }
-        return String(message.prefix(60))
+        return String(Self.stripZ2MPrefix(message).prefix(60))
     }
 
     var summarySubtitle: String {
@@ -132,7 +132,15 @@ struct LogEntry: Identifiable, Sendable, Hashable {
             let suffix = extra > 0 ? ", +\(extra) more" : ""
             return pairs.joined(separator: ", ") + suffix
         }
-        return message
+        return Self.stripZ2MPrefix(message)
+    }
+
+    static func stripZ2MPrefix(_ text: String) -> String {
+        guard text.hasPrefix("z2m:") else { return text }
+        if let spaceRange = text.range(of: " ") {
+            return String(text[spaceRange.upperBound...])
+        }
+        return text
     }
 
     private func formatPair(_ pair: (key: String, value: JSONValue)) -> String {

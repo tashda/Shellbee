@@ -145,7 +145,6 @@ final class AppStore {
             touchlinkScanInProgress = false
             touchlinkIdentifyInProgress = false
             touchlinkResetInProgress = false
-            Haptics.notification(.error)
             operationErrors.insert(error, at: 0)
             let entry = LogEntry(
                 id: UUID(),

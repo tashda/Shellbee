@@ -9,6 +9,7 @@ struct InAppNotificationOverlay: View {
     @State private var currentFastTrack: InAppNotification?
     @State private var isVisible = false
     @State private var fastTrackVisible = false
+    @State private var isExpanded = false
     @State private var autoDismissTask: Task<Void, Never>?
     @State private var fastTrackTask: Task<Void, Never>?
 
@@ -17,6 +18,7 @@ struct InAppNotificationOverlay: View {
             if let notification = currentNormal, isVisible {
                 InAppNotificationBanner(
                     notification: notification,
+                    isExpanded: $isExpanded,
                     onDismiss: dismissNormal,
                     onGoToLog: { goToLog(for: notification) },
                     onCopyMessage: { copy(notification.subtitle ?? notification.title) }
@@ -43,12 +45,18 @@ struct InAppNotificationOverlay: View {
         .onChange(of: environment.store.fastTrackNotifications.count) { _, count in
             if count > 0, !fastTrackVisible { showNextFastTrack() }
         }
-        .onChange(of: environment.store.currentNotification?.count) { _, newCount in
+        .onChange(of: environment.store.currentNotification?.lastUpdated) { _, _ in
             if currentNormal != nil, let updated = environment.store.currentNotification {
                 currentNormal = updated
-                extendDismissTimer(for: updated)
+                if !isExpanded { scheduleDismiss(for: updated) }
             }
-            _ = newCount
+        }
+        .onChange(of: isExpanded) { _, expanded in
+            if expanded {
+                autoDismissTask?.cancel()
+            } else if let note = currentNormal, isVisible {
+                scheduleDismiss(for: note)
+            }
         }
     }
 
@@ -58,11 +66,14 @@ struct InAppNotificationOverlay: View {
         guard let notification = environment.store.popNotification() else { return }
         currentNormal = notification
         environment.store.currentNotification = notification
+        isExpanded = false
         isVisible = true
+        playHaptic(for: notification)
         scheduleDismiss(for: notification)
     }
 
     private func scheduleDismiss(for notification: InAppNotification) {
+        guard !isExpanded else { return }
         let duration = dismissDuration(for: notification)
         autoDismissTask?.cancel()
         autoDismissTask = Task {
@@ -72,22 +83,18 @@ struct InAppNotificationOverlay: View {
         }
     }
 
-    private func extendDismissTimer(for notification: InAppNotification) {
-        scheduleDismiss(for: notification)
-    }
-
     private func dismissDuration(for notification: InAppNotification) -> Double {
         let base: Double = switch notification.level {
         case .error: 6
         case .warning: 5
         default: 3
         }
-        // Extra time when coalesced so the user can read the pile-up.
         return base + min(Double(notification.count - 1) * 0.3, 3)
     }
 
     private func dismissNormal() {
         autoDismissTask?.cancel()
+        isExpanded = false
         isVisible = false
         environment.store.currentNotification = nil
         Task {
@@ -97,6 +104,14 @@ struct InAppNotificationOverlay: View {
             } else {
                 currentNormal = nil
             }
+        }
+    }
+
+    private func playHaptic(for notification: InAppNotification) {
+        switch notification.level {
+        case .error: Haptics.notification(.error)
+        case .warning: Haptics.notification(.warning)
+        default: break
         }
     }
 
@@ -141,19 +156,14 @@ struct InAppNotificationOverlay: View {
 
 // MARK: - Main banner
 
-private struct InAppNotificationBanner: View {
+struct InAppNotificationBanner: View {
     let notification: InAppNotification
+    @Binding var isExpanded: Bool
     let onDismiss: () -> Void
     let onGoToLog: () -> Void
     let onCopyMessage: () -> Void
 
-    @State private var isExpanded = false
-    @State private var dragOffset: CGFloat = 0
-
-    // iOS 26 floating tab bar uses a continuous capsule shape; Apple HIG recommends
-    // matching floating elements to the tab bar silhouette (Human Interface
-    // Guidelines — Tab bars, "Floating accessories").
-    private var shape: some Shape { Capsule(style: .continuous) }
+    @State private var dragOffset: CGSize = .zero
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
@@ -161,16 +171,23 @@ private struct InAppNotificationBanner: View {
             if isExpanded { expandedBody }
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.vertical, isExpanded ? DesignTokens.Spacing.md : DesignTokens.Spacing.md)
+        .padding(.vertical, DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(in: isExpanded ? AnyShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous)) : AnyShape(shape))
+        // iOS 26 floating tab bar uses a continuous capsule; per Apple HIG
+        // (Tab bars — floating accessories), floating UI above the tab bar
+        // should match its silhouette. Expanded uses a rounded rect for body room.
+        .glassEffect(
+            in: isExpanded
+                ? AnyShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
+                : AnyShape(Capsule(style: .continuous))
+        )
         .shadow(
             color: .black.opacity(DesignTokens.Shadow.floatingOpacity),
             radius: DesignTokens.Shadow.floatingRadius,
             y: -DesignTokens.Shadow.floatingY
         )
         .padding(.horizontal, DesignTokens.Spacing.lg)
-        .offset(y: dragOffset)
+        .offset(x: dragOffset.width, y: dragOffset.height)
         .gesture(dragGesture)
         .animation(.spring(duration: 0.25), value: isExpanded)
     }
@@ -231,22 +248,16 @@ private struct InAppNotificationBanner: View {
             if !notification.logEntryIDs.isEmpty {
                 Button(action: onGoToLog) {
                     Label("Go to Log", systemImage: "list.bullet.rectangle.portrait")
-                        .font(.footnote.weight(.semibold))
-                        .padding(.horizontal, DesignTokens.Spacing.md)
-                        .padding(.vertical, DesignTokens.Spacing.sm)
-                        .background(.tint.opacity(DesignTokens.Opacity.softFill), in: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
 
             Button(action: onCopyMessage) {
                 Label("Copy", systemImage: "doc.on.doc")
-                    .font(.footnote.weight(.semibold))
-                    .padding(.horizontal, DesignTokens.Spacing.md)
-                    .padding(.vertical, DesignTokens.Spacing.sm)
-                    .background(.secondary.opacity(DesignTokens.Opacity.subtleFill), in: Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
 
             Spacer(minLength: 0)
         }
@@ -256,31 +267,45 @@ private struct InAppNotificationBanner: View {
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 10)
             .onChanged { value in
-                if value.translation.height > 0 {
-                    dragOffset = value.translation.height
-                } else if isExpanded {
-                    dragOffset = value.translation.height / 3
+                let dx = value.translation.width
+                let dy = value.translation.height
+                if isExpanded {
+                    // Expanded: allow horizontal drag (swipe-right to dismiss)
+                    // and downward drag (collapse/dismiss).
+                    dragOffset = CGSize(
+                        width: max(dx, 0),
+                        height: max(dy, 0)
+                    )
+                } else {
+                    // Collapsed: downward drag to dismiss, upward to peek-expand.
+                    dragOffset = CGSize(width: 0, height: dy > 0 ? dy : dy / 3)
                 }
             }
             .onEnded { value in
+                let dx = value.translation.width
                 let dy = value.translation.height
-                if dy < -30, !isExpanded {
-                    isExpanded = true
-                } else if dy > 60 {
-                    if isExpanded {
+
+                if isExpanded {
+                    if dx > 80 {
+                        onDismiss()
+                    } else if dy > 60 {
                         isExpanded = false
-                    } else {
+                    }
+                } else {
+                    if dy < -30 {
+                        isExpanded = true
+                    } else if dy > 60 {
                         onDismiss()
                     }
                 }
-                withAnimation(.spring(duration: 0.25)) { dragOffset = 0 }
+                withAnimation(.spring(duration: 0.25)) { dragOffset = .zero }
             }
     }
 }
 
 // MARK: - Fast-track banner
 
-private struct FastTrackBanner: View {
+struct FastTrackBanner: View {
     let notification: InAppNotification
 
     var body: some View {
@@ -300,5 +325,135 @@ private struct FastTrackBanner: View {
             radius: DesignTokens.Shadow.floatingRadius,
             y: -DesignTokens.Shadow.floatingY
         )
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Info — collapsed") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .info,
+            title: "Bind Successful",
+            subtitle: "hallway_motion_sensor → living_room_light",
+            logEntryID: UUID()
+        )
+    )
+}
+
+#Preview("Error — collapsed") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .error,
+            title: "Operation Failed",
+            subtitle: "Publish 'zigbee2mqtt/hallway_ff_sensor/set' failed because the device is offline and no response was received within the timeout window.",
+            logEntryID: UUID()
+        )
+    )
+}
+
+#Preview("Warning — collapsed") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .warning,
+            title: "Device Left Network",
+            subtitle: "bedroom_thermostat",
+            logEntryID: UUID()
+        )
+    )
+}
+
+#Preview("Error — expanded") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .error,
+            title: "Operation Failed",
+            subtitle: "Publish 'zigbee2mqtt/hallway_ff_sensor/set' failed because the device is offline and no response was received within the timeout window.",
+            logEntryID: UUID()
+        ),
+        expanded: true
+    )
+}
+
+#Preview("Coalesced burst (× 12)") {
+    PreviewHost(
+        notification: {
+            var n = InAppNotification(
+                level: .error,
+                title: "Operation Failed",
+                subtitle: "Interview of 'sensor_12' failed",
+                logEntryID: UUID()
+            )
+            n.count = 12
+            n.logEntryIDs = (0..<12).map { _ in UUID() }
+            return n
+        }()
+    )
+}
+
+#Preview("Coalesced — expanded") {
+    PreviewHost(
+        notification: {
+            var n = InAppNotification(
+                level: .warning,
+                title: "Interview Failed",
+                subtitle: "Most recent: 'attic_sensor_3'",
+                logEntryID: UUID()
+            )
+            n.count = 4
+            n.logEntryIDs = (0..<4).map { _ in UUID() }
+            return n
+        }(),
+        expanded: true
+    )
+}
+
+#Preview("Info — no logEntry (Go to Log hidden)") {
+    PreviewHost(
+        notification: InAppNotification(
+            level: .info,
+            title: "Reporting Configured",
+            subtitle: "living_room_light"
+        ),
+        expanded: true
+    )
+}
+
+#Preview("Fast-track — Copied") {
+    VStack {
+        Spacer()
+        FastTrackBanner(
+            notification: InAppNotification(
+                level: .info,
+                title: "Copied to Clipboard",
+                priority: .fastTrack
+            )
+        )
+        .padding(.bottom, 80)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(.systemGroupedBackground))
+}
+
+private struct PreviewHost: View {
+    let notification: InAppNotification
+    var expanded: Bool = false
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack {
+            Spacer()
+            InAppNotificationBanner(
+                notification: notification,
+                isExpanded: $isExpanded,
+                onDismiss: {},
+                onGoToLog: {},
+                onCopyMessage: {}
+            )
+            .padding(.bottom, 80)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
+        .onAppear { isExpanded = expanded }
     }
 }
