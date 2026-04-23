@@ -116,12 +116,19 @@ struct DeviceDocCapability: Sendable, Identifiable {
 
 enum DeviceDocNormalizer {
     static nonisolated func normalize(parsed: ParsedDeviceDoc, device: Device) -> NormalizedDeviceDoc {
+        // The Z2M device definition is authoritative for connected devices, but catalog
+        // browser entries stub this to false. Fall back to detecting OTA support from the
+        // canonical "This device supports OTA updates" phrase in the parsed markdown so
+        // the hero chip isn't contradicted by the Advanced section below it.
+        let definitionSupportsOTA = device.definition?.supportsOTA ?? false
+        let supportsOTA = definitionSupportsOTA || detectSupportsOTA(in: parsed.sections)
+
         let identity = DeviceDocIdentity(
             vendor: device.definition?.vendor ?? device.manufacturer ?? "Unknown Vendor",
             model: device.definition?.model ?? device.modelId ?? "Unknown Model",
             description: device.definition?.description ?? device.description ?? "",
             imageURL: device.imageURL,
-            supportsOTA: device.definition?.supportsOTA ?? false,
+            supportsOTA: supportsOTA,
             exposesSummary: exposesSummary(device.definition?.exposes ?? [])
         )
 
@@ -145,6 +152,7 @@ enum DeviceDocNormalizer {
             if normalizedTitle == "options" {
                 options.append(contentsOf: collectOptions(in: section.blocks))
                 let residual = filterOutOptions(from: section.blocks)
+                    .filter { !isBoilerplateConfigurationLink($0) }
                 if !residual.isEmpty {
                     miscSections.append(DocSection(title: section.title, level: section.level, blocks: residual))
                 }
@@ -223,6 +231,31 @@ enum DeviceDocNormalizer {
                 return []
             }
         }
+    }
+
+    /// True when the block is the generic "How to use device type specific configuration"
+    /// link that almost every Z2M device page emits under its Options section.
+    /// It's a link to the Z2M configuration guide with no device-specific content.
+    private static nonisolated func isBoilerplateConfigurationLink(_ block: DocBlock) -> Bool {
+        let spans: [InlineSpan]
+        switch block {
+        case .paragraph(let s), .note(let s): spans = s
+        default: return false
+        }
+        let text = plainText(spans)
+        if text.contains("device type specific configuration") { return true }
+        let hasOnlyLink = spans.allSatisfy { span in
+            if case .link = span { return true }
+            if case .text(let t) = span, t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+            return false
+        }
+        let targetsConfigGuide = spans.contains { span in
+            if case .link(_, let url) = span {
+                return url.contains("devices-groups.md") || url.contains("specific-device-options")
+            }
+            return false
+        }
+        return hasOnlyLink && targetsConfigGuide
     }
 
     private static nonisolated func filterOutOptions(from blocks: [DocBlock]) -> [DocBlock] {
@@ -532,6 +565,43 @@ enum DeviceDocNormalizer {
             .filter { !$0.isEmpty }
         guard !labels.isEmpty else { return nil }
         return Array(labels.prefix(5)).joined(separator: ", ")
+    }
+
+    /// Detects OTA support from the canonical Z2M doc phrasing. Z2M device pages emit
+    /// "This device supports OTA updates" for OTA-capable devices; absence of an OTA
+    /// section (or a negation) means unsupported.
+    private static nonisolated func detectSupportsOTA(in sections: [DocSection]) -> Bool {
+        for section in sections {
+            let lowercasedTitle = section.title.lowercased()
+            guard lowercasedTitle.contains("ota") else { continue }
+            let body = aggregateText(section.blocks).lowercased()
+            if body.contains("does not support ota") || body.contains("no ota") {
+                return false
+            }
+            if body.contains("supports ota") {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static nonisolated func aggregateText(_ blocks: [DocBlock]) -> String {
+        blocks.map { block -> String in
+            switch block {
+            case .paragraph(let spans), .note(let spans):
+                return plainText(spans)
+            case .bulletList(let items):
+                return items.map(plainText).joined(separator: " ")
+            case .stepList(let steps):
+                return steps.map { plainText($0.spans) }.joined(separator: " ")
+            case .subsection(_, let inner):
+                return aggregateText(inner)
+            case .codeBlock(let s):
+                return s
+            case .table, .optionsList:
+                return ""
+            }
+        }.joined(separator: " ")
     }
 
     private static nonisolated func isAdvancedTitle(_ title: String) -> Bool {

@@ -1,13 +1,29 @@
 import SwiftUI
 
+// Environment key injected by doc views so in-app shellbee-doc:// links that land on
+// device-scoped screens (Bind, Reporting, etc.) know which device to open.
+// Nil means catalog mode (Device Library) — device-scoped links fall back to an info sheet.
+private struct DocContextDeviceKey: EnvironmentKey {
+    static let defaultValue: Device? = nil
+}
+
+extension EnvironmentValues {
+    var docContextDevice: Device? {
+        get { self[DocContextDeviceKey.self] }
+        set { self[DocContextDeviceKey.self] = newValue }
+    }
+}
+
 // Renders [InlineSpan] as a Text backed by AttributedString.
 // Uses InlinePresentationIntent for semantic formatting (bold, italic, code)
 // so the parent's .font() modifier controls size while formatting is preserved.
-// Links are tappable — they open in the default browser via the .link attribute.
+// Links are tappable — shellbee-doc:// links sheet-present an in-app destination;
+// everything else opens in the default browser via the .link attribute.
 struct DocInlineTextView: View {
     let spans: [InlineSpan]
     let sourcePath: String?
     @State private var presentedDestination: InAppDocumentationDestination?
+    @Environment(\.docContextDevice) private var contextDevice: Device?
 
     init(spans: [InlineSpan], sourcePath: String? = nil) {
         self.spans = spans
@@ -25,19 +41,49 @@ struct DocInlineTextView: View {
             })
             .sheet(item: $presentedDestination) { destination in
                 NavigationStack {
-                    switch destination {
-                    case .touchlinkGuide:
-                        TouchlinkGuideView()
-                            .toolbar {
-                                ToolbarItem(placement: .primaryAction) {
-                                    Button("Done") {
-                                        presentedDestination = nil
-                                    }
-                                }
+                    destinationView(for: destination)
+                        .toolbar {
+                            ToolbarItem(placement: .primaryAction) {
+                                Button("Done") { presentedDestination = nil }
                             }
-                    }
+                        }
                 }
             }
+    }
+
+    @ViewBuilder
+    private func destinationView(for destination: InAppDocumentationDestination) -> some View {
+        switch destination {
+        case .touchlinkGuide:
+            TouchlinkGuideView()
+        case .deviceBind:
+            if let device = contextDevice {
+                DeviceBindView(device: device)
+            } else {
+                InAppLinkUnavailableView(destination: destination)
+            }
+        case .deviceReporting:
+            if let device = contextDevice {
+                DeviceReportingView(device: device)
+            } else {
+                InAppLinkUnavailableView(destination: destination)
+            }
+        case .deviceSettings:
+            if let device = contextDevice {
+                DeviceSettingsView(device: device)
+            } else {
+                InAppLinkUnavailableView(destination: destination)
+            }
+        case .deviceInfo:
+            // No standalone Info screen — fall back to the device detail view.
+            if let device = contextDevice {
+                DeviceDetailView(device: device)
+            } else {
+                InAppLinkUnavailableView(destination: destination)
+            }
+        case .settingsAdvanced, .settingsMQTT:
+            InAppLinkUnavailableView(destination: destination)
+        }
     }
 
     private var attributedString: AttributedString {
@@ -71,6 +117,56 @@ struct DocInlineTextView: View {
                 a.link = DocLinkResolver.resolvedURL(for: urlString, sourcePath: sourcePath)
                 result += a
             }
+        }
+    }
+}
+
+/// Shown when a device-scoped in-app link is tapped from a context without a device
+/// (e.g., the Device Library), or when the target isn't reachable from a sheet.
+private struct InAppLinkUnavailableView: View {
+    let destination: InAppDocumentationDestination
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(title, systemImage: systemImage)
+        } description: {
+            Text(message)
+        }
+    }
+
+    private var title: String {
+        switch destination {
+        case .deviceBind: return "Bind"
+        case .deviceReporting: return "Reporting"
+        case .deviceSettings: return "Device Settings"
+        case .deviceInfo: return "Device Info"
+        case .settingsAdvanced: return "Advanced Settings"
+        case .settingsMQTT: return "MQTT Settings"
+        case .touchlinkGuide: return "Touchlink Guide"
+        }
+    }
+
+    private var systemImage: String {
+        switch destination {
+        case .deviceBind: return "link"
+        case .deviceReporting: return "waveform"
+        case .deviceSettings, .settingsAdvanced: return "slider.horizontal.3"
+        case .deviceInfo: return "info.circle"
+        case .settingsMQTT: return "antenna.radiowaves.left.and.right"
+        case .touchlinkGuide: return "wand.and.rays"
+        }
+    }
+
+    private var message: String {
+        switch destination {
+        case .deviceBind, .deviceReporting, .deviceSettings, .deviceInfo:
+            return "Open this device from the Devices tab to access this screen."
+        case .settingsAdvanced:
+            return "Open Settings › Advanced from the Settings tab."
+        case .settingsMQTT:
+            return "Open Settings › MQTT from the Settings tab."
+        case .touchlinkGuide:
+            return "Open Settings › Tools › Touchlink."
         }
     }
 }

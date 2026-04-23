@@ -18,6 +18,17 @@ struct DocBrowserDetailView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(entry.model)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if documentation?.normalized.pairing != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showPairingGuide = true
+                    } label: {
+                        Label("Pairing Guide", systemImage: "personalhotspot")
+                    }
+                }
+            }
+        }
         .task { await loadDoc() }
         .sheet(isPresented: $showPairingGuide) {
             if let documentation {

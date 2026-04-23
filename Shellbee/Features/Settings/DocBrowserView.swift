@@ -159,11 +159,11 @@ private struct DocEntryRow: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                if showVendor, !entry.description.isEmpty {
+                if !entry.description.isEmpty {
                     Text(entry.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
             }
             Spacer(minLength: 0)

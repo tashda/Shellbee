@@ -91,7 +91,7 @@ actor DeviceDocService {
 
         // Check the bundled snapshot before hitting the network.
         if let markdown = await BundledDocStore.shared.markdown(for: model) {
-            let parsed = DocParser.parse(markdown)
+            let parsed = FrontendReferenceRewriter.rewrite(DocParser.parse(markdown))
             let normalized = DeviceDocNormalizer.normalize(parsed: parsed, device: device)
             let documentation = DeviceDocumentation(sourcePath: "devices/\(sanitized).md", parsed: parsed, normalized: normalized)
             cache[key] = documentation
@@ -115,7 +115,7 @@ actor DeviceDocService {
             guard status == 200 else {
                 throw DeviceDocError.notFound
             }
-            let parsed = DocParser.parse(String(data: data, encoding: .utf8) ?? "")
+            let parsed = FrontendReferenceRewriter.rewrite(DocParser.parse(String(data: data, encoding: .utf8) ?? ""))
             let normalized = DeviceDocNormalizer.normalize(parsed: parsed, device: device)
             let documentation = DeviceDocumentation(
                 sourcePath: "devices/\(sanitized).md",

@@ -2,8 +2,23 @@ import Foundation
 
 enum InAppDocumentationDestination: String, Identifiable {
     case touchlinkGuide
+    case deviceBind
+    case deviceReporting
+    case deviceSettings
+    case deviceInfo
+    case settingsAdvanced
+    case settingsMQTT
 
     var id: String { rawValue }
+
+    /// True when this destination requires a specific device in context
+    /// (i.e. it lands on a device-scoped screen like Bind/Reporting).
+    var requiresDevice: Bool {
+        switch self {
+        case .deviceBind, .deviceReporting, .deviceSettings, .deviceInfo: return true
+        case .touchlinkGuide, .settingsAdvanced, .settingsMQTT: return false
+        }
+    }
 }
 
 enum DocLinkResolver {
@@ -29,10 +44,16 @@ enum DocLinkResolver {
 
     static func destination(for url: URL) -> InAppDocumentationDestination? {
         guard url.scheme == inAppScheme else { return nil }
-        if url.host == "guide", url.path == "/touchlink" {
-            return .touchlinkGuide
+        switch (url.host, url.path) {
+        case ("guide", "/touchlink"): return .touchlinkGuide
+        case ("device", "/bind"): return .deviceBind
+        case ("device", "/reporting"): return .deviceReporting
+        case ("device", "/settings"): return .deviceSettings
+        case ("device", "/info"): return .deviceInfo
+        case ("settings", "/advanced"): return .settingsAdvanced
+        case ("settings", "/mqtt"): return .settingsMQTT
+        default: return nil
         }
-        return nil
     }
 
     private static func destination(forResolvedURL resolvedURL: URL) -> InAppDocumentationDestination? {

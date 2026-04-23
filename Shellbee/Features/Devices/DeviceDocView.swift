@@ -15,9 +15,21 @@ struct DeviceDocView: View {
         ScrollView {
             content
         }
+        .environment(\.docContextDevice, device)
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Documentation")
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if documentation?.normalized.pairing != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showPairingGuide = true
+                    } label: {
+                        Label("Pairing Guide", systemImage: "personalhotspot")
+                    }
+                }
+            }
+        }
         .task { await loadDoc() }
         .sheet(isPresented: $showPairingGuide) {
             if let documentation {

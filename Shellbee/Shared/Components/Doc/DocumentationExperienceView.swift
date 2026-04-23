@@ -7,10 +7,34 @@ struct DocumentationExperienceView: View {
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            DocumentationHeroCard(identity: documentation.normalized.identity, device: device)
+            DocHeroCard(
+                device: device,
+                eyebrow: documentation.normalized.identity.vendor,
+                title: documentation.normalized.identity.model,
+                description: documentation.normalized.identity.description.isEmpty ? [] : [.text(documentation.normalized.identity.description)],
+                sourcePath: documentation.sourcePath
+            ) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                    HStack(spacing: DesignTokens.Spacing.sm) {
+                        DocHeroChip(
+                            label: documentation.normalized.identity.supportsOTA ? "OTA Supported" : "OTA Not Supported",
+                            tint: documentation.normalized.identity.supportsOTA ? .blue : .secondary
+                        )
+                        if device.type != .unknown {
+                            DocHeroChip(label: device.type.chipLabel, tint: device.type.chipTint)
+                        }
+                        if let powerSource = device.powerSource, !powerSource.isEmpty {
+                            DocHeroChip(label: powerSource, tint: .orange)
+                        }
+                        Spacer(minLength: 0)
+                    }
 
-            DocumentationGroupCard(title: "At a Glance", systemImage: "sparkles.rectangle.stack") {
-                DocumentationAtGlanceView(identity: documentation.normalized.identity)
+                    if let exposesSummary = documentation.normalized.identity.exposesSummary, !exposesSummary.isEmpty {
+                        Text(exposesSummary)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             if let pairing = documentation.normalized.pairing {
@@ -46,121 +70,6 @@ struct DocumentationExperienceView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.lg)
-    }
-}
-
-private struct DocumentationHeroCard: View {
-    let identity: DeviceDocIdentity
-    let device: Device
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
-                heroImage
-
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                    Text(identity.vendor.uppercased())
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text(identity.model)
-                        .font(.title2.weight(.bold))
-
-                    if !identity.description.isEmpty {
-                        Text(identity.description)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.md)
-            }
-
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                HeroChip(label: identity.supportsOTA ? "OTA Supported" : "OTA Not Supported", tint: identity.supportsOTA ? .blue : .secondary)
-                HeroChip(label: device.type.chipLabel, tint: device.type.chipTint)
-                if let powerSource = device.powerSource, !powerSource.isEmpty {
-                    HeroChip(label: powerSource, tint: .orange)
-                }
-            }
-
-            if let exposesSummary = identity.exposesSummary, !exposesSummary.isEmpty {
-                Text(exposesSummary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.accentColor.opacity(0.18),
-                    Color.blue.opacity(0.08),
-                    Color(.secondarySystemGroupedBackground)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous)
-        )
-    }
-
-    private var heroImage: some View {
-        DeviceImageView(device: device, isAvailable: true, size: DesignTokens.Size.deviceActionSheetImage * 1.4)
-            .frame(width: DesignTokens.Size.deviceActionSheetImage * 1.5, height: DesignTokens.Size.deviceActionSheetImage * 1.5)
-            .background(
-                RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
-                    .fill(Color(.tertiarySystemFill))
-            )
-    }
-}
-
-private struct HeroChip: View {
-    let label: String
-    let tint: Color
-
-    var body: some View {
-        Text(label)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Size.compactChipVerticalPadding)
-            .background(tint.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
-            .foregroundStyle(tint)
-    }
-}
-
-private struct DocumentationAtGlanceView: View {
-    let identity: DeviceDocIdentity
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            AtGlanceRow(label: "Vendor", value: identity.vendor)
-            AtGlanceRow(label: "Model", value: identity.model)
-            if !identity.description.isEmpty {
-                AtGlanceRow(label: "Description", value: identity.description)
-            }
-            AtGlanceRow(label: "OTA Updates", value: identity.supportsOTA ? "Supported" : "Not supported")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct AtGlanceRow: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.body.weight(.medium))
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

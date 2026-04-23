@@ -9,7 +9,14 @@ struct PairingGuideExperienceView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                PairingHeroCard(device: device, identity: identity, pairing: pairing, sourcePath: sourcePath)
+                DocHeroCard<EmptyView>(
+                    device: device,
+                    eyebrow: identity.vendor,
+                    title: "Pair \(identity.model)",
+                    description: pairing?.summary ?? [.text("Review the available device notes and steps below to pair this device with Zigbee2MQTT.")],
+                    sourcePath: sourcePath,
+                    gradient: DocHeroCard<EmptyView>.pairingGradient
+                )
 
                 if let pairing {
                     if !pairing.prerequisites.isEmpty {
@@ -89,50 +96,6 @@ struct PairingGuideExperienceView: View {
     }
 }
 
-private struct PairingHeroCard: View {
-    let device: Device
-    let identity: DeviceDocIdentity
-    let pairing: DevicePairingGuide?
-    let sourcePath: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
-                DeviceImageView(device: device, isAvailable: true, size: DesignTokens.Size.deviceActionSheetImage * 1.2)
-                    .frame(width: DesignTokens.Size.deviceActionSheetImage * 1.35, height: DesignTokens.Size.deviceActionSheetImage * 1.35)
-                    .background(
-                        RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
-                            .fill(Color(.tertiarySystemFill))
-                    )
-
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                    Text("Pair \(identity.model)")
-                        .font(.title2.weight(.bold))
-                    Text(identity.vendor)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    PairingInlineTextView(spans: pairing?.summary ?? [.text("Review the available device notes and steps below to pair this device with Zigbee2MQTT.")], sourcePath: sourcePath)
-                        .font(.body)
-                }
-            }
-        }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.blue.opacity(0.18),
-                    Color.cyan.opacity(0.10),
-                    Color(.secondarySystemGroupedBackground)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous)
-        )
-    }
-}
-
 private struct PairingGuideSection<Content: View>: View {
     let title: String
     let systemImage: String
@@ -145,6 +108,7 @@ private struct PairingGuideSection<Content: View>: View {
             content()
         }
         .padding(DesignTokens.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
     }
 }
