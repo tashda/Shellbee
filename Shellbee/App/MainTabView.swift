@@ -25,6 +25,12 @@ struct MainTabView: View {
                 .safeAreaPadding(.bottom)
                 .padding(.bottom, 58)
         }
+        .sheet(item: Binding(
+            get: { environment.pendingLogSheet },
+            set: { environment.pendingLogSheet = $0 }
+        )) { request in
+            LogSheetHost(request: request)
+        }
         .onAppear {
             tabSelection = environment.selectedTab
         }
@@ -36,6 +42,34 @@ struct MainTabView: View {
         }
     }
 
+}
+
+private struct LogSheetHost: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.dismiss) private var dismiss
+    let request: LogSheetRequest
+
+    var body: some View {
+        NavigationStack {
+            if request.isSingle,
+               let id = request.entryIDs.first,
+               let entry = environment.store.logEntries.first(where: { $0.id == id }) {
+                LogDetailView(entry: entry)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { dismiss() }
+                        }
+                    }
+            } else {
+                LogsView(initialEntryFilter: Set(request.entryIDs))
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Done") { dismiss() }
+                        }
+                    }
+            }
+        }
+    }
 }
 
 #Preview { MainTabView().environment(AppEnvironment()) }

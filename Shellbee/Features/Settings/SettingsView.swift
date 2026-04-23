@@ -4,10 +4,9 @@ struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
-    @State private var path = NavigationPath()
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             Form {
                 if environment.store.bridgeInfo?.restartRequired == true {
                     restartRequiredNotice
@@ -26,23 +25,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationDestination(for: SettingsDestination.self) { destination in
-                switch destination {
-                case .logs(let entryIDs):
-                    LogsView(initialEntryFilter: entryIDs.isEmpty ? nil : Set(entryIDs))
-                }
-            }
-            .onChange(of: environment.pendingLogEntryIDs) { _, newValue in
-                guard let ids = newValue else { return }
-                environment.pendingLogEntryIDs = nil
-                pushLogsResettingPath(ids)
-            }
-            .onAppear {
-                if let ids = environment.pendingLogEntryIDs {
-                    environment.pendingLogEntryIDs = nil
-                    pushLogsResettingPath(ids)
-                }
-            }
             .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
                 Button("Restart", role: .destructive) { environment.restartBridge() }
                 Button("Cancel", role: .cancel) {}
@@ -185,18 +167,6 @@ struct SettingsView: View {
         }
     }
 
-    // Pop to root, then push on the next runloop. Replacing and appending in
-    // the same pass produced a blank push that immediately popped back to
-    // Settings when the stack already contained a NavigationLink push.
-    private func pushLogsResettingPath(_ ids: [UUID]) {
-        if !path.isEmpty {
-            path.removeLast(path.count)
-        }
-        Task { @MainActor in
-            path.append(SettingsDestination.logs(entryIDs: ids))
-        }
-    }
-
     private func settingsLabel(title: String, systemImage: String, color: Color) -> some View {
         Label {
             Text(title)
@@ -233,10 +203,6 @@ struct SettingsView: View {
             .buttonStyle(.plain)
         }
     }
-}
-
-enum SettingsDestination: Hashable {
-    case logs(entryIDs: [UUID])
 }
 
 #Preview {

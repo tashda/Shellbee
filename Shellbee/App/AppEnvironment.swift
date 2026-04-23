@@ -10,7 +10,7 @@ final class AppEnvironment {
     let notificationPreferences = NotificationPreferences()
     var selectedTab: AppTab = .home
     var pendingDeviceFilter: DeviceQuickFilter?
-    var pendingLogEntryIDs: [UUID]?
+    var pendingLogSheet: LogSheetRequest?
     var pendingDeviceNavigation: String?
     private var hasStarted = false
 

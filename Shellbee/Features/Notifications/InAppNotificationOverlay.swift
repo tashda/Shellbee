@@ -117,10 +117,8 @@ struct InAppNotificationOverlay: View {
     }
 
     private func goToLog(for notification: InAppNotification) {
-        if !notification.logEntryIDs.isEmpty {
-            environment.pendingLogEntryIDs = notification.logEntryIDs
-        }
-        environment.selectedTab = .settings
+        guard !notification.logEntryIDs.isEmpty else { return }
+        environment.pendingLogSheet = LogSheetRequest(entryIDs: notification.logEntryIDs)
         dismissNormal()
     }
 
