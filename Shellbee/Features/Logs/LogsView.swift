@@ -5,6 +5,11 @@ struct LogsView: View {
     @State private var mode: LogMode = .activity
     @State private var activityVM = LogsViewModel()
     @State private var bridgeVM = BridgeLogViewModel()
+    let initialEntryFilter: Set<UUID>?
+
+    init(initialEntryFilter: Set<UUID>? = nil) {
+        self.initialEntryFilter = initialEntryFilter
+    }
 
     enum LogMode: String, CaseIterable, Hashable {
         case activity = "Activity"
@@ -23,6 +28,11 @@ struct LogsView: View {
             .navigationTitle("Logs")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: searchBinding, prompt: searchPrompt)
+            .onAppear {
+                if let filter = initialEntryFilter, activityVM.entryIDFilter == nil {
+                    activityVM.entryIDFilter = filter
+                }
+            }
             .searchToolbarBehavior(.minimize)
             .toolbar {
                 ToolbarItem(placement: .principal) {

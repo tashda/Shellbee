@@ -8,6 +8,7 @@ final class AppEnvironment {
     let session: ConnectionSessionController
     var selectedTab: AppTab = .home
     var pendingDeviceFilter: DeviceQuickFilter?
+    var pendingLogEntryIDs: [UUID]?
     private var hasStarted = false
 
     init() {

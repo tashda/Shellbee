@@ -7,13 +7,18 @@ final class LogsViewModel {
     var selectedCategory: LogCategory? = nil
     var selectedNamespace: String? = nil
     var selectedDevices: Set<String> = []
+    var entryIDFilter: Set<UUID>? = nil
 
     var hasActiveFilter: Bool {
-        selectedLevel != nil || selectedCategory != nil || selectedNamespace != nil || !selectedDevices.isEmpty
+        selectedLevel != nil || selectedCategory != nil || selectedNamespace != nil || !selectedDevices.isEmpty || entryIDFilter != nil
     }
 
     func filteredEntries(store: AppStore) -> [LogEntry] {
         var entries = store.logEntries
+
+        if let ids = entryIDFilter {
+            entries = entries.filter { ids.contains($0.id) }
+        }
 
         if !searchText.isEmpty {
             let q = searchText.lowercased()
@@ -58,6 +63,7 @@ final class LogsViewModel {
         selectedCategory = nil
         selectedNamespace = nil
         selectedDevices = []
+        entryIDFilter = nil
         searchText = ""
     }
 }

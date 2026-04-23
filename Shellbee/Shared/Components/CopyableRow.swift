@@ -8,8 +8,8 @@ struct CopyableRow: View {
     var body: some View {
         Button {
             UIPasteboard.general.string = value
-            environment.store.pendingNotifications.append(
-                InAppNotification(level: .info, title: "Copied to Clipboard", subtitle: value)
+            environment.store.enqueueNotification(
+                InAppNotification(level: .info, title: "Copied to Clipboard", priority: .fastTrack)
             )
         } label: {
             LabeledContent(label, value: value)

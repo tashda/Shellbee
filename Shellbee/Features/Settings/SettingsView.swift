@@ -4,9 +4,10 @@ struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
+    @State private var path: [SettingsDestination] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Form {
                 if environment.store.bridgeInfo?.restartRequired == true {
                     restartRequiredNotice
@@ -25,6 +26,23 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationDestination(for: SettingsDestination.self) { destination in
+                switch destination {
+                case .logs(let entryIDs):
+                    LogsView(initialEntryFilter: entryIDs.isEmpty ? nil : Set(entryIDs))
+                }
+            }
+            .onChange(of: environment.pendingLogEntryIDs) { _, newValue in
+                guard let ids = newValue else { return }
+                path.append(.logs(entryIDs: ids))
+                environment.pendingLogEntryIDs = nil
+            }
+            .onAppear {
+                if let ids = environment.pendingLogEntryIDs {
+                    path.append(.logs(entryIDs: ids))
+                    environment.pendingLogEntryIDs = nil
+                }
+            }
             .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
                 Button("Restart", role: .destructive) { environment.restartBridge() }
                 Button("Cancel", role: .cancel) {}
@@ -197,6 +215,10 @@ struct SettingsView: View {
             .buttonStyle(.plain)
         }
     }
+}
+
+enum SettingsDestination: Hashable {
+    case logs(entryIDs: [UUID])
 }
 
 #Preview {

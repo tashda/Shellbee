@@ -20,8 +20,11 @@ final class AppStore {
     var touchlinkIdentifyInProgress = false
     var touchlinkResetInProgress = false
     var pendingNotifications: [InAppNotification] = []
+    var fastTrackNotifications: [InAppNotification] = []
+    var currentNotification: InAppNotification?
 
     static let logLimit = 1000
+    static let coalesceWindow: TimeInterval = 1.5
 
     func apply(_ event: Z2MEvent) {
         switch event {
@@ -176,7 +179,39 @@ final class AppStore {
         return pendingNotifications.removeFirst()
     }
 
-    private func enqueueNotification(_ notification: InAppNotification) {
+    func popFastTrackNotification() -> InAppNotification? {
+        guard !fastTrackNotifications.isEmpty else { return nil }
+        return fastTrackNotifications.removeFirst()
+    }
+
+    func enqueueNotification(_ notification: InAppNotification) {
+        if notification.priority == .fastTrack {
+            fastTrackNotifications.append(notification)
+            return
+        }
+
+        let now = Date()
+
+        if var current = currentNotification,
+           current.coalesceKey == notification.coalesceKey,
+           now.timeIntervalSince(current.lastUpdated) <= Self.coalesceWindow {
+            current.count += notification.count
+            current.logEntryIDs.append(contentsOf: notification.logEntryIDs)
+            if let sub = notification.subtitle { current.subtitle = sub }
+            current.lastUpdated = now
+            currentNotification = current
+            return
+        }
+
+        if let idx = pendingNotifications.lastIndex(where: { $0.coalesceKey == notification.coalesceKey }),
+           now.timeIntervalSince(pendingNotifications[idx].lastUpdated) <= Self.coalesceWindow {
+            pendingNotifications[idx].count += notification.count
+            pendingNotifications[idx].logEntryIDs.append(contentsOf: notification.logEntryIDs)
+            if let sub = notification.subtitle { pendingNotifications[idx].subtitle = sub }
+            pendingNotifications[idx].lastUpdated = now
+            return
+        }
+
         pendingNotifications.append(notification)
     }
 
@@ -318,6 +353,8 @@ final class AppStore {
         logEntries = []
         operationErrors = []
         pendingNotifications = []
+        fastTrackNotifications = []
+        currentNotification = nil
         touchlinkDevices = []
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false
