@@ -39,19 +39,6 @@ struct DeviceDetailView: View {
                 .listRowBackground(Color.clear)
             }
 
-            if let otaStatus, otaStatus.isActive {
-                Section("Upgrade Status") {
-                    LabeledContent("Phase", value: otaStatus.phase.rawValue.capitalized)
-                    if let progress = otaStatus.progress {
-                        LabeledContent("Progress") {
-                            ProgressView(value: progress, total: 100)
-                                .frame(width: 100)
-                            Text("\(Int(progress))%")
-                        }
-                    }
-                }
-            }
-
             if device.definition != nil {
                 Section("Documentation") {
                     NavigationLink {
@@ -176,7 +163,12 @@ struct DeviceDetailView: View {
     }
 
     private var deviceConfigMenu: some View {
-        Menu {
+        let state = environment.store.state(for: device.friendlyName)
+        let otaActive = environment.store.otaStatus(for: device.friendlyName)?.isActive == true
+        let supportsOTA = device.definition?.supportsOTA == true
+        let hasUpdateAvailable = state.hasUpdateAvailable
+
+        return Menu {
             Button { menuDestination = .settings } label: {
                 Label("Device Settings", systemImage: "slider.horizontal.3")
             }
@@ -185,6 +177,17 @@ struct DeviceDetailView: View {
             }
             Button { menuDestination = .reporting } label: {
                 Label("Reporting", systemImage: "waveform")
+            }
+            if supportsOTA && !otaActive {
+                Divider()
+                Button { checkForUpdate() } label: {
+                    Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
+                }
+                if hasUpdateAvailable {
+                    Button { updateFirmware() } label: {
+                        Label("Update", systemImage: "arrow.up.circle")
+                    }
+                }
             }
             Divider()
             Button { pendingDeviceAlert = .interview(device) } label: {
@@ -202,6 +205,23 @@ struct DeviceDetailView: View {
         }
     }
 
+    private func checkForUpdate() {
+        Haptics.impact(.light)
+        environment.store.startOTACheck(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTACheck,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
+    private func updateFirmware() {
+        Haptics.impact(.medium)
+        environment.store.startOTAUpdate(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTAUpdate,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
 }
 
 #Preview {
