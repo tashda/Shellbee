@@ -6,7 +6,7 @@ import UIKit
 struct InAppNotificationOverlay: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var isExpanded = false
-    // Index into pendingNotifications that the user is viewing while expanded.
+    // Index into notification pages that the user is viewing while expanded.
     // When collapsed, always shows the newest (last). When expanded, this
     // cursor is controlled by horizontal swipes.
     @State private var carouselIndex: Int = 0
@@ -16,42 +16,64 @@ struct InAppNotificationOverlay: View {
     @State private var currentFastTrack: InAppNotification?
     @State private var fastTrackVisible = false
     @State private var lastSeenArrivalID: UUID?
+    @State private var removalStyle: BannerRemovalStyle = .automatic
 
     private enum CarouselDirection { case forward, backward }
+    private enum BannerRemovalStyle { case automatic, vertical }
+
+    private struct NotificationPage: Identifiable, Equatable {
+        let notification: InAppNotification
+        let occurrence: InAppNotificationOccurrence
+
+        var id: String { "\(notification.id.uuidString)-\(occurrence.id.uuidString)" }
+
+        var bannerNotification: InAppNotification {
+            notification.displaying(occurrence)
+        }
+    }
 
     private var stack: [InAppNotification] {
         environment.store.pendingNotifications
     }
 
-    private var displayed: InAppNotification? {
-        guard !stack.isEmpty else { return nil }
-        if isExpanded {
-            let clamped = max(0, min(carouselIndex, stack.count - 1))
-            return stack[clamped]
+    private var pages: [NotificationPage] {
+        stack.flatMap { notification in
+            notification.occurrences.map {
+                NotificationPage(notification: notification, occurrence: $0)
+            }
         }
-        return stack.last
+    }
+
+    private var displayedPage: NotificationPage? {
+        guard !pages.isEmpty else { return nil }
+        if isExpanded {
+            let clamped = max(0, min(carouselIndex, pages.count - 1))
+            return pages[clamped]
+        }
+        return pages.last
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if let notification = displayed {
+            if let page = displayedPage {
                 InAppNotificationBanner(
-                    notification: notification,
+                    notification: page.bannerNotification,
                     isExpanded: $isExpanded,
-                    stackCount: stack.count,
+                    stackCount: pages.count,
                     stackPositionLabel: positionLabel,
                     onDismiss: dismissStack,
-                    onGoToLog: { goToLog(for: notification) },
-                    onGoToDevice: { goToDevice(for: notification) },
-                    onCopyMessage: { copy(notification.subtitle ?? notification.title) },
+                    onGoToLog: { goToLog(for: page) },
+                    onGoToDevice: { goToDevice(for: page) },
+                    onCopyMessage: { copy(page.occurrence.subtitle ?? page.notification.title) },
                     onSwipeNext: advanceCarousel,
                     onSwipePrevious: reverseCarousel
                 )
                 // Identity changes with the viewed notification so SwiftUI
                 // runs the transition between distinct banners rather than
                 // mutating the existing view in place.
-                .id(notification.id)
+                .id(bannerIdentity(for: page))
                 .transition(bannerTransition)
+                .zIndex(1)
             }
 
             if let fast = currentFastTrack, fastTrackVisible {
@@ -63,7 +85,7 @@ struct InAppNotificationOverlay: View {
             }
         }
         .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: stack.isEmpty)
-        .animation(.spring(duration: 0.3, bounce: 0.1), value: displayed?.id)
+        .animation(Self.carouselAnimation, value: displayedPage.map { bannerIdentity(for: $0) })
         .animation(.spring(duration: 0.25), value: fastTrackVisible)
         .onChange(of: environment.store.notificationArrivalID) { _, newID in
             // New (non-coalesced) normal notification arrived. Haptic once,
@@ -79,28 +101,42 @@ struct InAppNotificationOverlay: View {
         .onChange(of: isExpanded) { _, expanded in
             if expanded {
                 autoDismissTask?.cancel()
-                carouselIndex = max(0, stack.count - 1)
+                carouselIndex = max(0, pages.count - 1)
             } else {
                 scheduleDismissIfPossible()
             }
         }
-        .onChange(of: stack.count) { _, _ in
+        .onChange(of: pages.count) { _, _ in
             // Keep the expanded carousel pinned to the same item when new
             // notifications arrive (the spec says new arrivals land at the
             // end of the ring, current position unchanged).
             if !isExpanded {
                 scheduleDismissIfPossible()
             } else {
-                carouselIndex = min(carouselIndex, max(0, stack.count - 1))
+                carouselIndex = min(carouselIndex, max(0, pages.count - 1))
             }
         }
     }
 
+    private static var carouselAnimation: Animation {
+        .interactiveSpring(response: 0.24, dampingFraction: 0.88, blendDuration: 0.04)
+    }
+
+    private func bannerIdentity(for page: NotificationPage) -> String {
+        isExpanded ? page.id : page.notification.id.uuidString
+    }
+
     private var bannerTransition: AnyTransition {
+        if removalStyle == .vertical {
+            return .asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .move(edge: .bottom).combined(with: .opacity)
+            )
+        }
         // Carousel transitions only matter when the user is navigating
         // between stack slots (expanded). Arrival/dismiss uses move+opacity
         // from the bottom edge to match the insertion from below the tab bar.
-        let isCarousel = isExpanded && stack.count > 1
+        let isCarousel = isExpanded && pages.count > 1
         guard isCarousel else {
             return .asymmetric(
                 insertion: .move(edge: .bottom).combined(with: .opacity),
@@ -111,23 +147,23 @@ struct InAppNotificationOverlay: View {
         case .forward:
             // Swiping content left (viewing next): old slides left, new comes from right.
             return .asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .leading).combined(with: .opacity)
+                insertion: .move(edge: .trailing),
+                removal: .move(edge: .leading)
             )
         case .backward:
             return .asymmetric(
-                insertion: .move(edge: .leading).combined(with: .opacity),
-                removal: .move(edge: .trailing).combined(with: .opacity)
+                insertion: .move(edge: .leading),
+                removal: .move(edge: .trailing)
             )
         }
     }
 
     private var positionLabel: String? {
-        guard isExpanded, stack.count > 1 else { return nil }
-        let clamped = max(0, min(carouselIndex, stack.count - 1))
+        guard isExpanded, pages.count > 1 else { return nil }
+        let clamped = max(0, min(carouselIndex, pages.count - 1))
         // Position 1 = newest (last in the array); N = oldest (first).
-        let position = stack.count - clamped
-        return "\(position)/\(stack.count)"
+        let position = pages.count - clamped
+        return "\(position)/\(pages.count)"
     }
 
     // MARK: - Auto-dismiss (top-of-stack only, paused when expanded)
@@ -154,29 +190,37 @@ struct InAppNotificationOverlay: View {
 
     private func dismissTop() {
         guard !environment.store.pendingNotifications.isEmpty else { return }
+        removalStyle = .vertical
         environment.store.pendingNotifications.removeLast()
         scheduleDismissIfPossible()
+        resetRemovalStyleSoon()
     }
 
     // Swipe-down dismisses the entire stack per user spec.
     private func dismissStack() {
         autoDismissTask?.cancel()
+        removalStyle = .vertical
         isExpanded = false
         environment.store.pendingNotifications.removeAll()
+        resetRemovalStyleSoon()
     }
 
     // MARK: - Carousel navigation (expanded only)
 
     private func advanceCarousel() {
-        guard isExpanded, stack.count > 1 else { return }
-        carouselDirection = .forward
-        carouselIndex = (carouselIndex - 1 + stack.count) % stack.count
+        guard isExpanded, pages.count > 1 else { return }
+        withAnimation(Self.carouselAnimation) {
+            carouselDirection = .forward
+            carouselIndex = (carouselIndex - 1 + pages.count) % pages.count
+        }
     }
 
     private func reverseCarousel() {
-        guard isExpanded, stack.count > 1 else { return }
-        carouselDirection = .backward
-        carouselIndex = (carouselIndex + 1) % stack.count
+        guard isExpanded, pages.count > 1 else { return }
+        withAnimation(Self.carouselAnimation) {
+            carouselDirection = .backward
+            carouselIndex = (carouselIndex + 1) % pages.count
+        }
     }
 
     // MARK: - Haptic
@@ -191,14 +235,14 @@ struct InAppNotificationOverlay: View {
 
     // MARK: - Actions
 
-    private func goToLog(for notification: InAppNotification) {
-        guard !notification.logEntryIDs.isEmpty else { return }
-        environment.pendingLogSheet = LogSheetRequest(entryIDs: notification.logEntryIDs)
+    private func goToLog(for page: NotificationPage) {
+        guard !page.notification.logEntryIDs.isEmpty else { return }
+        environment.pendingLogSheet = LogSheetRequest(entryIDs: page.notification.logEntryIDs)
         dismissStack()
     }
 
-    private func goToDevice(for notification: InAppNotification) {
-        guard let name = notification.deviceName else { return }
+    private func goToDevice(for page: NotificationPage) {
+        guard let name = page.occurrence.deviceName else { return }
         environment.pendingDeviceNavigation = name
         environment.selectedTab = .devices
         dismissStack()
@@ -231,6 +275,13 @@ struct InAppNotificationOverlay: View {
                     }
                 }
             }
+        }
+    }
+
+    private func resetRemovalStyleSoon() {
+        Task { @MainActor in
+            await Task.yield()
+            removalStyle = .automatic
         }
     }
 }
@@ -276,8 +327,19 @@ struct InAppNotificationBanner: View {
         )
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .offset(x: dragOffset.width, y: dragOffset.height)
-        .gesture(dragGesture)
-        .animation(.spring(duration: 0.25), value: isExpanded)
+        .contentShape(bannerHitShape)
+        .highPriorityGesture(dragGesture, including: .all)
+        .animation(Self.settleAnimation, value: isExpanded)
+    }
+
+    private static var settleAnimation: Animation {
+        .interactiveSpring(response: 0.24, dampingFraction: 0.9, blendDuration: 0.04)
+    }
+
+    private var bannerHitShape: AnyShape {
+        isExpanded
+            ? AnyShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
+            : AnyShape(Capsule(style: .continuous))
     }
 
     private var header: some View {
@@ -378,7 +440,7 @@ struct InAppNotificationBanner: View {
         // Vertical: swipe up expands (from collapsed), swipe down dismisses
         //          the entire stack (from either state).
         // Horizontal (expanded only): carousel left/right when stack > 1.
-        DragGesture(minimumDistance: 10)
+        DragGesture(minimumDistance: DesignTokens.Spacing.sm)
             .onChanged { value in
                 let dx = value.translation.width
                 let dy = value.translation.height
@@ -422,7 +484,7 @@ struct InAppNotificationBanner: View {
                 if committedSwipe {
                     dragOffset = .zero
                 } else {
-                    withAnimation(.spring(duration: 0.25)) { dragOffset = .zero }
+                    withAnimation(Self.settleAnimation) { dragOffset = .zero }
                 }
             }
     }

@@ -4,6 +4,12 @@ struct MainSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
 
+    let highlight: SettingsHighlight?
+
+    init(highlight: SettingsHighlight? = nil) {
+        self.highlight = highlight
+    }
+
     @State private var logLevel: BridgeSettings.LogLevel = .info
     @State private var lastSeen: BridgeSettings.LastSeenFormat = .disabled
     @State private var elapsed: Bool = false
@@ -133,8 +139,7 @@ struct MainSettingsView: View {
             // Flash the Log Level row briefly when arriving here from the
             // Notifications settings link. Matches the transient-highlight
             // pattern Apple's Settings uses when jumping between panes.
-            guard environment.pendingSettingsHighlight == .logLevel else { return }
-            environment.pendingSettingsHighlight = nil
+            guard highlight == .logLevel else { return }
             try? await Task.sleep(for: .milliseconds(350))
             withAnimation(.easeInOut(duration: 0.25)) { logLevelHighlighted = true }
             try? await Task.sleep(for: .milliseconds(900))

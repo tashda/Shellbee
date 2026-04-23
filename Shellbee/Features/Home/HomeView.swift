@@ -10,6 +10,10 @@ struct HomeView: View {
     @State private var permitJoinDuration: Int = 0
     @State private var permitJoinTargetName: String?
 
+    @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
+    @State private var showingAllLogs = false
+    @State private var layout = HomeLayoutStore()
+
     private var snapshot: HomeSnapshot {
         HomeSnapshot(
             devices: environment.store.devices,
@@ -32,21 +36,72 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: DesignTokens.Spacing.md) {
-                    HomeBridgeCard(
-                        snapshot: snapshot,
-                        health: environment.store.bridgeHealth,
-                        serverName: environment.connectionConfig?.name,
-                        connectionState: environment.connectionState,
-                        onRestart: { showingRestartAlert = true }
-                    )
-                    HomeDevicesCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
-                    HomeMeshCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
+            List {
+                Section {
+                    ForEach(layout.visibleOrder) { id in
+                        HomeCardSlot(
+                            card: id,
+                            isEditing: layout.isEditing,
+                            onHide: {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    layout.hide(id)
+                                }
+                            },
+                            onEnterEdit: {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    layout.isEditing = true
+                                }
+                            }
+                        ) {
+                            cardView(for: id)
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(
+                            top: DesignTokens.Spacing.sm,
+                            leading: DesignTokens.Spacing.lg,
+                            bottom: DesignTokens.Spacing.sm,
+                            trailing: DesignTokens.Spacing.lg
+                        ))
+                    }
+                    .onMove { source, destination in
+                        layout.move(from: source, to: destination)
+                    }
                 }
-                .padding(DesignTokens.Spacing.lg)
+
+                if layout.isEditing && !layout.hidden.isEmpty {
+                    Section {
+                        HomeAddCardsSection(
+                            hidden: HomeCardID.allCases.filter { layout.hidden.contains($0) }
+                        ) { card in
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                layout.show(card)
+                            }
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(
+                            top: DesignTokens.Spacing.md,
+                            leading: DesignTokens.Spacing.lg,
+                            bottom: DesignTokens.Spacing.lg,
+                            trailing: DesignTokens.Spacing.lg
+                        ))
+                    }
+                }
+
+                if layout.visibleOrder.isEmpty {
+                    emptyLayoutState
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
             }
-            .background(Color(.systemGroupedBackground))
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.editMode, .constant(layout.isEditing ? .active : .inactive))
+            .background(HomeBackgroundGradient().ignoresSafeArea())
+            .navigationDestination(isPresented: $showingAllLogs) {
+                LogsView()
+            }
             .task(id: environment.store.isConnected) {
                 guard environment.store.isConnected else { return }
                 environment.send(topic: Z2MTopics.Request.healthCheck, payload: .object([:]))
@@ -54,12 +109,23 @@ struct HomeView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    PermitJoinToolbarButton(isActive: snapshot.isPermitJoinActive) {
-                        if snapshot.isPermitJoinActive {
-                            isPermitJoinActivePresented = true
-                        } else {
-                            isPermitJoinConfigPresented = true
+                if layout.isEditing {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                layout.isEditing = false
+                            }
+                        }
+                        .fontWeight(.semibold)
+                    }
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        PermitJoinToolbarButton(isActive: snapshot.isPermitJoinActive) {
+                            if snapshot.isPermitJoinActive {
+                                isPermitJoinActivePresented = true
+                            } else {
+                                isPermitJoinConfigPresented = true
+                            }
                         }
                     }
                 }
@@ -89,6 +155,58 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func cardView(for id: HomeCardID) -> some View {
+        switch id {
+        case .bridge:
+            HomeBridgeCard(
+                snapshot: snapshot,
+                health: environment.store.bridgeHealth,
+                serverName: environment.connectionConfig?.name,
+                connectionState: environment.connectionState,
+                onRestart: { showingRestartAlert = true }
+            )
+        case .devices:
+            HomeDevicesCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
+        case .groups:
+            HomeGroupsCard(count: environment.store.groups.count) {
+                environment.selectedTab = .groups
+            }
+        case .mesh:
+            HomeMeshCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
+        case .recentEvents:
+            HomeLogsCard(
+                entries: Array(environment.store.logEntries.prefix(recentEventsCount)),
+                onOpenEntry: { entry in
+                    environment.pendingLogSheet = LogSheetRequest(entryIDs: [entry.id])
+                },
+                onOpenAll: { showingAllLogs = true }
+            )
+        }
+    }
+
+    private var emptyLayoutState: some View {
+        VStack(spacing: DesignTokens.Spacing.md) {
+            Image(systemName: "square.grid.2x2")
+                .font(.largeTitle)
+                .foregroundStyle(.tertiary)
+            Text("No cards shown")
+                .font(.headline)
+            Text("All cards have been hidden.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button("Edit Home") {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    layout.isEditing = true
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top, DesignTokens.Spacing.sm)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DesignTokens.Spacing.xxl)
     }
 
     private func startPermitJoin(duration: Int, deviceName: String?) {

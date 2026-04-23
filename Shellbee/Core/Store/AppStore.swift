@@ -248,6 +248,7 @@ final class AppStore {
            now.timeIntervalSince(pendingNotifications[idx].lastUpdated) <= Self.coalesceWindow {
             pendingNotifications[idx].count += notification.count
             pendingNotifications[idx].logEntryIDs.append(contentsOf: notification.logEntryIDs)
+            pendingNotifications[idx].occurrences.append(contentsOf: notification.occurrences)
             if let sub = notification.subtitle { pendingNotifications[idx].subtitle = sub }
             pendingNotifications[idx].lastUpdated = now
             return

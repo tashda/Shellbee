@@ -11,11 +11,10 @@ struct HomeDevicesCard: View {
     var body: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                Text("Devices")
-                    .font(.headline)
+                HomeCardTitle(symbol: "sensor.tag.radiowaves.forward.fill", title: "Devices", tint: .orange)
                 statsRow
                 if hasAlerts {
-                    VStack(spacing: DesignTokens.Spacing.sm) { alertRows }
+                    HomeCardAlertList { alertRows }
                 }
             }
         }

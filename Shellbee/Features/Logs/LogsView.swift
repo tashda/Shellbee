@@ -7,9 +7,17 @@ struct LogsView: View {
     @State private var bridgeVM = BridgeLogViewModel()
     @State private var autoOpenedEntry: LogEntry?
     let initialEntryFilter: Set<UUID>?
+    private let notificationSheetStyle: Bool
+    private let onDone: (() -> Void)?
 
-    init(initialEntryFilter: Set<UUID>? = nil) {
+    init(
+        initialEntryFilter: Set<UUID>? = nil,
+        notificationSheetStyle: Bool = false,
+        onDone: (() -> Void)? = nil
+    ) {
         self.initialEntryFilter = initialEntryFilter
+        self.notificationSheetStyle = notificationSheetStyle
+        self.onDone = onDone
     }
 
     enum LogMode: String, CaseIterable, Hashable {
@@ -19,53 +27,58 @@ struct LogsView: View {
 
     var body: some View {
         NavigationStack {
-            TabView(selection: $mode) {
+            if notificationSheetStyle {
                 ActivityLogContent(viewModel: activityVM)
-                    .tag(LogMode.activity)
-                BridgeLogView(viewModel: bridgeVM)
-                    .tag(LogMode.log)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .navigationTitle("Logs")
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: searchBinding, prompt: searchPrompt)
-            .onAppear {
-                if let filter = initialEntryFilter, activityVM.entryIDFilter == nil {
-                    activityVM.entryIDFilter = filter
-                    // Single-entry filter: open the log detail directly instead of
-                    // showing a one-row filtered list.
-                    if filter.count == 1, let id = filter.first,
-                       let entry = environment.store.logEntries.first(where: { $0.id == id }) {
-                        autoOpenedEntry = entry
+                    .navigationTitle("Logs")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .onAppear { applyInitialFilter(autoOpenSingle: false) }
+                    .toolbar {
+                        if let onDone {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done", action: onDone)
+                                    .fontWeight(.semibold)
+                            }
+                        }
                     }
+            } else {
+                TabView(selection: $mode) {
+                    ActivityLogContent(viewModel: activityVM)
+                        .tag(LogMode.activity)
+                    BridgeLogView(viewModel: bridgeVM)
+                        .tag(LogMode.log)
                 }
-            }
-            .navigationDestination(item: $autoOpenedEntry) { entry in
-                LogDetailView(entry: entry)
-            }
-            .searchToolbarBehavior(.minimize)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("Mode", selection: $mode) {
-                        ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .navigationTitle("Logs")
+                .navigationBarTitleDisplayMode(.inline)
+                .searchable(text: searchBinding, prompt: searchPrompt)
+                .onAppear { applyInitialFilter(autoOpenSingle: true) }
+                .navigationDestination(item: $autoOpenedEntry) { entry in
+                    LogDetailView(entry: entry)
+                }
+                .searchToolbarBehavior(.minimize)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Picker("Mode", selection: $mode) {
+                            ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .fixedSize()
                     }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                }
-                if mode == .activity {
+                    if mode == .activity {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            LogFilterMenu(viewModel: activityVM, store: environment.store)
+                        }
+                    } else {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            BridgeLevelFilterMenu(viewModel: bridgeVM)
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
-                        LogFilterMenu(viewModel: activityVM, store: environment.store)
-                    }
-                } else {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        BridgeLevelFilterMenu(viewModel: bridgeVM)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(role: .destructive) {
-                        environment.store.clearLogs()
-                    } label: {
-                        Image(systemName: "trash")
+                        Button(role: .destructive) {
+                            environment.store.clearLogs()
+                        } label: {
+                            Image(systemName: "trash")
+                        }
                     }
                 }
             }
@@ -81,6 +94,14 @@ struct LogsView: View {
 
     private var searchPrompt: String {
         mode == .activity ? "Search logs" : "Search messages"
+    }
+
+    private func applyInitialFilter(autoOpenSingle: Bool) {
+        guard let filter = initialEntryFilter, activityVM.entryIDFilter == nil else { return }
+        activityVM.entryIDFilter = filter
+        guard autoOpenSingle, filter.count == 1, let id = filter.first,
+              let entry = environment.store.logEntries.first(where: { $0.id == id }) else { return }
+        autoOpenedEntry = entry
     }
 }
 

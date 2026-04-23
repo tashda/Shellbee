@@ -12,7 +12,6 @@ final class AppEnvironment {
     var pendingDeviceFilter: DeviceQuickFilter?
     var pendingLogSheet: LogSheetRequest?
     var pendingDeviceNavigation: String?
-    var pendingSettingsHighlight: SettingsHighlight?
     private var hasStarted = false
 
     init() {

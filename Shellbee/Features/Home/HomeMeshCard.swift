@@ -14,36 +14,24 @@ struct HomeMeshCard: View {
                 header
                 statsRow
                 if hasAlerts {
-                    VStack(spacing: DesignTokens.Spacing.sm) { alertRows }
+                    HomeCardAlertList { alertRows }
                 }
             }
         }
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Mesh")
-                    .font(.headline)
-                if let coordinator = snapshot.coordinatorType {
-                    Text(coordinator)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
+        HStack(alignment: .center) {
+            HomeCardTitle(symbol: "point.3.connected.trianglepath.dotted", title: "Mesh", tint: .indigo)
             Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                if let channel = snapshot.networkChannel {
-                    Text("ch \(channel)")
-                        .font(.system(.subheadline, design: .monospaced).weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                if let panID = snapshot.panIDText {
-                    Text(panID)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                }
+            NavigationLink {
+                MeshDetailView(snapshot: snapshot)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
+            .buttonStyle(.plain)
         }
     }
 

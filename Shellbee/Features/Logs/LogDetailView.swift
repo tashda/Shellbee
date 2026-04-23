@@ -4,8 +4,14 @@ struct LogDetailView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewMode: ViewMode = .beautiful
     let entry: LogEntry
+    private let doneAction: (() -> Void)?
 
     enum ViewMode { case beautiful, json }
+
+    init(entry: LogEntry, doneAction: (() -> Void)? = nil) {
+        self.entry = entry
+        self.doneAction = doneAction
+    }
 
     private var displayDevices: [(ref: LogContext.DeviceRef, device: Device)] {
         let refs: [LogContext.DeviceRef]
@@ -66,17 +72,32 @@ struct LogDetailView: View {
         .navigationTitle(headerTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if entry.category != .stateChange {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        viewMode = viewMode == .json ? .beautiful : .json
-                    } label: {
-                        Image(systemName: "curlybraces")
+            if let doneAction {
+                if entry.category != .stateChange {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        formatButton
                     }
-                    .tint(viewMode == .json ? .accentColor : .secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: doneAction)
+                        .fontWeight(.semibold)
+                }
+            } else if entry.category != .stateChange {
+                ToolbarItem(placement: .topBarTrailing) {
+                    formatButton
                 }
             }
         }
+    }
+
+    private var formatButton: some View {
+        Button {
+            viewMode = viewMode == .json ? .beautiful : .json
+        } label: {
+            Image(systemName: "curlybraces")
+        }
+        .tint(viewMode == .json ? .accentColor : .secondary)
+        .accessibilityLabel("Format")
     }
 
     @ViewBuilder

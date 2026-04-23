@@ -29,6 +29,7 @@ final class NotificationCoalescingTests: XCTestCase {
         XCTAssertEqual(store.pendingNotifications.count, 1)
         XCTAssertEqual(store.pendingNotifications.first?.count, 3)
         XCTAssertEqual(store.pendingNotifications.first?.subtitle, "c", "subtitle should reflect the most recent")
+        XCTAssertEqual(store.pendingNotifications.first?.occurrences.map(\.subtitle), ["a", "b", "c"])
     }
 
     func testArrivalIDBumpsOnlyForNewBanners() {
@@ -52,6 +53,7 @@ final class NotificationCoalescingTests: XCTestCase {
         store.enqueueNotification(.init(level: .error, title: "Operation Failed", logEntryID: id1, category: .operationFailed))
         store.enqueueNotification(.init(level: .error, title: "Operation Failed", logEntryID: id2, category: .operationFailed))
         XCTAssertEqual(store.pendingNotifications.first?.logEntryIDs, [id1, id2])
+        XCTAssertEqual(store.pendingNotifications.first?.occurrences.flatMap(\.logEntryIDs), [id1, id2])
     }
 
     func testFastTrackDoesNotCoalesce() {

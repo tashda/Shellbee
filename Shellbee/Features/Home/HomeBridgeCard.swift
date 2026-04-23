@@ -55,7 +55,7 @@ struct HomeBridgeCard: View {
                 }
                 statusRow
                 if hasAlerts {
-                    VStack(spacing: DesignTokens.Spacing.sm) { alertRows }
+                    HomeCardAlertList { alertRows }
                 }
             }
         }
@@ -65,41 +65,18 @@ struct HomeBridgeCard: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(headerDotColor)
-                    .frame(width: DesignTokens.Size.statusDotHero, height: DesignTokens.Size.statusDotHero)
-                Text(headerTitle)
-                    .font(.headline)
-                    .lineLimit(1)
-                if isReconnecting {
-                    HStack(spacing: 4) {
-                        ProgressView().controlSize(.mini)
-                        Text("Reconnecting (\(reconnectAttempt))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
+            HomeCardTitle(symbol: "antenna.radiowaves.left.and.right", title: headerTitle, tint: .teal)
+                .lineLimit(1)
+            if isReconnecting {
+                HStack(spacing: 4) {
+                    ProgressView().controlSize(.mini)
+                    Text("Reconnecting (\(reconnectAttempt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             Spacer()
-            versionBadge
-        }
-    }
-
-    @ViewBuilder
-    private var versionBadge: some View {
-        if let version = snapshot.bridgeVersion,
-           let url = URL(string: "https://github.com/Koenkk/zigbee2mqtt/releases/tag/\(version)") {
-            Link(destination: url) {
-                Text("v\(version)")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(updateAvailable ? Color.orange : Color.secondary)
-            }
-        } else if let version = snapshot.bridgeVersion {
-            Text("v\(version)")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
         }
     }
 
@@ -125,26 +102,33 @@ struct HomeBridgeCard: View {
         }
     }
 
-private var statusRow: some View {
-        HStack(spacing: DesignTokens.Spacing.lg) {
-            statusDot(connected: snapshot.isConnected, label: "WebSocket")
-            if let mqtt = health?.mqtt, let connected = mqtt.connected {
-                statusDot(connected: connected, label: "MQTT")
-            }
-            if !hasAlerts {
-                statusDot(connected: true, label: "Healthy")
+    private var mqttDown: Bool {
+        if let connected = health?.mqtt?.connected { return !connected }
+        return false
+    }
+
+    private var statusRow: some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            if !snapshot.isConnected {
+                statusLine(symbol: "exclamationmark.triangle.fill", tint: .red, text: "WebSocket disconnected")
+            } else if mqttDown {
+                statusLine(symbol: "exclamationmark.triangle.fill", tint: .orange, text: "MQTT disconnected")
+            } else if !hasAlerts {
+                statusLine(symbol: "checkmark.seal.fill", tint: .green, text: "Connected and healthy")
+            } else {
+                statusLine(symbol: "checkmark.seal.fill", tint: .green, text: "Connected")
             }
             Spacer()
         }
     }
 
-    private func statusDot(connected: Bool, label: String) -> some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Circle()
-                .fill(connected ? Color.green : Color.red)
-                .frame(width: DesignTokens.Size.statusDotInline, height: DesignTokens.Size.statusDotInline)
-            Text(label)
-                .font(.caption)
+    private func statusLine(symbol: String, tint: Color, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(tint)
+            Text(text)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }

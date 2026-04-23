@@ -60,27 +60,10 @@ struct AppNotificationSettingsView: View {
     private var aboutSection: some View {
         Section {
             NavigationLink {
-                MainSettingsView()
+                MainSettingsView(highlight: .logLevel)
             } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                        Text("Bridge Log Level")
-                            .foregroundStyle(.primary)
-                        Text("Which notifications appear follows this level. Tap to change it.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text(displayedLevel.capitalized)
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
+                LabeledContent("Bridge Log Level", value: displayedLevel.capitalized)
             }
-            .simultaneousGesture(
-                TapGesture().onEnded {
-                    environment.pendingSettingsHighlight = .logLevel
-                }
-            )
         }
     }
 

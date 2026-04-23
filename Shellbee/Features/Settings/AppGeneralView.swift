@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppGeneralView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
+    @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
     @State private var consent = CrashReportingConsent.shared
 
     var body: some View {
@@ -13,6 +14,18 @@ struct AppGeneralView: View {
                     Text("Dark").tag(AppearanceMode.dark)
                 }
                 .pickerStyle(.automatic)
+            }
+
+            Section {
+                Picker("Recent Events on Home", selection: $recentEventsCount) {
+                    ForEach(HomeSettings.recentEventsOptions, id: \.self) { n in
+                        Text("\(n)").tag(n)
+                    }
+                }
+            } header: {
+                Text("Home")
+            } footer: {
+                Text("Number of recent events shown on the Home page.")
             }
 
             Section {

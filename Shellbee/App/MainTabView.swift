@@ -50,32 +50,18 @@ private struct LogSheetHost: View {
     let request: LogSheetRequest
 
     var body: some View {
-        NavigationStack {
-            if request.isSingle,
-               let id = request.entryIDs.first,
-               let entry = environment.store.logEntries.first(where: { $0.id == id }) {
-                LogDetailView(entry: entry)
-                    .toolbar {
-                        // Declaration order on .topBarTrailing goes
-                        // right-to-left from the edge. Done first (rightmost),
-                        // then a fixed spacer, then LogDetailView's own
-                        // curly-braces sits to the left. iOS 26 renders the
-                        // spacer as a gap between liquid-glass bubbles.
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { dismiss() }
-                                .fontWeight(.semibold)
-                        }
-                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                    }
-            } else {
-                LogsView(initialEntryFilter: Set(request.entryIDs))
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { dismiss() }
-                                .fontWeight(.semibold)
-                        }
-                    }
+        if request.isSingle,
+           let id = request.entryIDs.first,
+           let entry = environment.store.logEntries.first(where: { $0.id == id }) {
+            NavigationStack {
+                LogDetailView(entry: entry, doneAction: { dismiss() })
             }
+        } else {
+            LogsView(
+                initialEntryFilter: Set(request.entryIDs),
+                notificationSheetStyle: true,
+                onDone: { dismiss() }
+            )
         }
     }
 }
