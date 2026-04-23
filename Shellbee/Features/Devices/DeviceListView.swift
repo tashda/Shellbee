@@ -7,6 +7,17 @@ struct DeviceListView: View {
     @State private var deviceToRename: Device?
     @State private var deviceToRemove: Device?
     @State private var pendingDeviceAlert: PendingDeviceAlert?
+    @State private var showUpdateAllConfirm = false
+
+    private var otaCapableDevices: [Device] {
+        environment.store.devices.filter { $0.definition?.supportsOTA == true }
+    }
+
+    private var devicesWithUpdateAvailable: [Device] {
+        environment.store.devices.filter {
+            environment.store.state(for: $0.friendlyName).hasUpdateAvailable
+        }
+    }
 
     private var isGrouped: Bool {
         viewModel.groupByCategory && !viewModel.hasActiveFilter && viewModel.searchText.isEmpty
@@ -44,6 +55,7 @@ struct DeviceListView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     DeviceFilterMenu(viewModel: viewModel, store: environment.store)
+                    firmwareMenu
                     sortMenu
                 }
             }
@@ -105,6 +117,55 @@ struct DeviceListView: View {
         } message: { alert in
             Text(alert.message)
         }
+        .confirmationDialog(
+            "Update \(devicesWithUpdateAvailable.count) device\(devicesWithUpdateAvailable.count == 1 ? "" : "s")?",
+            isPresented: $showUpdateAllConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Update All", role: .destructive) {
+                for device in devicesWithUpdateAvailable {
+                    viewModel.updateDevice(device, environment: environment)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Firmware updates run sequentially and can take several minutes per device. Devices may be briefly unresponsive during their update.")
+        }
+    }
+
+    // MARK: - Firmware menu
+
+    private var firmwareMenu: some View {
+        let otaCount = otaCapableDevices.count
+        let updateCount = devicesWithUpdateAvailable.count
+        return Menu {
+            Button {
+                for device in otaCapableDevices {
+                    viewModel.checkDeviceUpdate(device, environment: environment)
+                }
+            } label: {
+                Label("Check All for Updates\(otaCount > 0 ? " (\(otaCount))" : "")", systemImage: "arrow.trianglehead.2.clockwise")
+            }
+            .disabled(otaCount == 0)
+
+            Button {
+                showUpdateAllConfirm = true
+            } label: {
+                Label("Update All Available\(updateCount > 0 ? " (\(updateCount))" : "")", systemImage: "arrow.up.circle")
+            }
+            .disabled(updateCount == 0)
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "arrow.up.circle")
+                if updateCount > 0 {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                        .offset(x: 4, y: -2)
+                }
+            }
+        }
+        .accessibilityLabel("Firmware updates")
     }
 
     // MARK: - Row builder

@@ -5,6 +5,7 @@ struct DeviceCardHeader: View {
     let state: [String: JSONValue]
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
+    var onRenameTapped: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -18,12 +19,7 @@ struct DeviceCardHeader: View {
                 )
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                    Text(device.friendlyName)
-                        .font(DesignTokens.Typography.cardHeadline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .allowsTightening(true)
+                    nameView
 
                     Text(vendor)
                         .font(DesignTokens.Typography.cardSubheadline)
@@ -43,6 +39,33 @@ struct DeviceCardHeader: View {
             DeviceCardLastSeen(lastSeen: state.lastSeen)
                 .frame(width: DesignTokens.Size.headerLastSeenWidth, alignment: .trailing)
                 .offset(y: DesignTokens.Spacing.md)
+        }
+    }
+
+    @ViewBuilder
+    private var nameView: some View {
+        let label = Text(device.friendlyName)
+            .font(DesignTokens.Typography.cardHeadline)
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .allowsTightening(true)
+
+        if let onRenameTapped {
+            Button(action: onRenameTapped) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    label
+                    Image(systemName: "pencil")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Rename device")
+            .accessibilityValue(device.friendlyName)
+        } else {
+            label
         }
     }
 

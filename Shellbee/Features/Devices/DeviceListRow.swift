@@ -17,16 +17,15 @@ struct DeviceListRow: View {
             DeviceRowView(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button(action: onCheckUpdate) {
+                Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
+            }
+            .tint(.blue)
             if let onUpdate {
                 Button(action: onUpdate) {
                     Label("Update", systemImage: "arrow.up.circle")
                 }
-                .tint(.blue)
-            } else {
-                Button(action: onCheckUpdate) {
-                    Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
-                }
-                .tint(.blue)
+                .tint(.green)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -45,12 +44,6 @@ struct DeviceListRow: View {
                 Label("Interview", systemImage: "questionmark.circle")
             }
             .tint(.purple)
-            if let onUpdate {
-                Button(action: onUpdate) {
-                    Label("Update", systemImage: "arrow.up.circle")
-                }
-                .tint(.blue)
-            }
         }
         .contextMenu {
             Button(action: onRename) {

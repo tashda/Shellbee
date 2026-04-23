@@ -9,6 +9,9 @@ struct DeviceDetailView: View {
     let device: Device
     @State private var showPairingSheet = false
     @State private var menuDestination: DeviceMenuDestination?
+    @State private var pendingDeviceAlert: PendingDeviceAlert?
+    @State private var showRemoveSheet = false
+    @State private var showRenameSheet = false
 
     var body: some View {
         let state = environment.store.state(for: device.friendlyName)
@@ -17,7 +20,13 @@ struct DeviceDetailView: View {
 
         List {
             Section {
-                DeviceCard(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus)
+                DeviceCard(
+                    device: device,
+                    state: state,
+                    isAvailable: isAvailable,
+                    otaStatus: otaStatus,
+                    onRenameTapped: { showRenameSheet = true }
+                )
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
@@ -94,6 +103,45 @@ struct DeviceDetailView: View {
         .sheet(isPresented: $showPairingSheet) {
             DevicePairingSheet(device: device)
         }
+        .sheet(isPresented: $showRenameSheet) {
+            RenameDeviceSheet(device: device) { newName, updateHA in
+                environment.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
+                    "from": .string(device.friendlyName),
+                    "to": .string(newName),
+                    "homeassistant_rename": .bool(updateHA)
+                ]))
+            }
+        }
+        .sheet(isPresented: $showRemoveSheet) {
+            RemoveDeviceSheet(device: device) { force, block in
+                environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
+                    "id": .string(device.friendlyName),
+                    "force": .bool(force),
+                    "block": .bool(block)
+                ]))
+            }
+        }
+        .alert(
+            pendingDeviceAlert?.title ?? "",
+            isPresented: Binding(
+                get: { pendingDeviceAlert != nil },
+                set: { if !$0 { pendingDeviceAlert = nil } }
+            ),
+            presenting: pendingDeviceAlert
+        ) { alert in
+            Button(alert.confirmTitle, role: alert.role) {
+                switch alert {
+                case .reconfigure(let device):
+                    environment.send(topic: Z2MTopics.Request.deviceConfigure, payload: .object(["id": .string(device.friendlyName)]))
+                case .interview(let device):
+                    environment.send(topic: Z2MTopics.Request.deviceInterview, payload: .object(["id": .string(device.friendlyName)]))
+                }
+                pendingDeviceAlert = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeviceAlert = nil }
+        } message: { alert in
+            Text(alert.message)
+        }
     }
 
     private var deviceConfigMenu: some View {
@@ -107,10 +155,22 @@ struct DeviceDetailView: View {
             Button { menuDestination = .reporting } label: {
                 Label("Reporting", systemImage: "waveform")
             }
+            Divider()
+            Button { pendingDeviceAlert = .interview(device) } label: {
+                Label("Interview", systemImage: "questionmark.circle")
+            }
+            Button { pendingDeviceAlert = .reconfigure(device) } label: {
+                Label("Reconfigure", systemImage: "gearshape.fill")
+            }
+            Divider()
+            Button(role: .destructive) { showRemoveSheet = true } label: {
+                Label("Remove Device", systemImage: "trash")
+            }
         } label: {
             Image(systemName: "ellipsis")
         }
     }
+
 }
 
 #Preview {
