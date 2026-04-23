@@ -42,22 +42,37 @@ final class HomeUITests: ShellbeeUITestCase {
         )
     }
 
+    // Behavior: the Permit Join sheet has a Duration section with a
+    // Preset picker and a Target section. The picker's label renders as
+    // a static text "Preset"; tapping the Preset row opens a menu with
+    // the preset options (1 min / 2 min / 3 min / ~4 min / Custom).
     func testPermitJoinSheetHasDurationOptions() {
         app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
-        // Duration presets should be visible
-        let oneMin = app.buttons.matching(NSPredicate(format: "label CONTAINS '1'")).firstMatch
-        XCTAssertTrue(oneMin.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Permit Join"].waitForExistence(timeout: 5),
+                      "Permit Join sheet did not open")
+        // "Duration" section header + "Preset" picker label are always
+        // visible regardless of current preset selection.
+        XCTAssertTrue(app.staticTexts["Duration"].firstMatch.waitForExistence(timeout: 3),
+                      "Duration section header missing")
+        XCTAssertTrue(app.staticTexts["Preset"].firstMatch.waitForExistence(timeout: 3),
+                      "Preset picker label missing")
     }
 
+    // Behavior: the Permit Join sheet dismisses via its drag indicator.
+    // XCUIApplication.swipeDown on the root triggers the sheet's drag
+    // gesture; medium+large detent sheets may need two swipes.
     func testPermitJoinDismisses() {
         app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
-        XCTAssertTrue(app.navigationBars["Permit Join"].waitForExistence(timeout: 5), "Sheet did not open")
-        // Sheet has .medium and .large detents; may need two swipes to fully dismiss
-        app.swipeDown()
-        if app.navigationBars["Permit Join"].waitForExistence(timeout: 2) {
-            app.swipeDown()
+        let nav = app.navigationBars["Permit Join"]
+        XCTAssertTrue(nav.waitForExistence(timeout: 5), "Sheet did not open")
+        // The Permit Join button in the Home toolbar stays in the tree —
+        // dismissal is proven by the sheet's navigation bar disappearing.
+        for _ in 0..<4 {
+            if !nav.exists { break }
+            app.swipeDown(velocity: .fast)
+            _ = nav.waitForNonExistence(timeout: 1)
         }
-        XCTAssertFalse(app.navigationBars["Permit Join"].waitForExistence(timeout: 3))
+        XCTAssertFalse(nav.exists, "Permit Join sheet did not dismiss")
     }
 
     // MARK: - Navigation from device card stats
