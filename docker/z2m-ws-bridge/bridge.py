@@ -41,11 +41,23 @@ loop: asyncio.AbstractEventLoop | None = None
 
 # ── MQTT callbacks ────────────────────────────────────────────────────────
 
+def _is_client_command(topic: str) -> bool:
+    """Command topics flow client → bridge; real z2m never echoes these back
+    to WS subscribers, and doing so confuses the app's topic router."""
+    return (
+        topic.endswith("/set")
+        or topic.endswith("/get")
+        or topic.startswith("bridge/request/")
+    )
+
+
 def _make_envelope(full_topic: str, payload_bytes: bytes) -> str | None:
     """Return a JSON string ready for the WebSocket, or None to skip."""
     if not full_topic.startswith(BASE_TOPIC + "/"):
         return None
     topic = full_topic[len(BASE_TOPIC) + 1:]
+    if _is_client_command(topic):
+        return None
     try:
         payload = json.loads(payload_bytes) if payload_bytes else None
     except (json.JSONDecodeError, UnicodeDecodeError):
