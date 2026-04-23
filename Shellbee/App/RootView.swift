@@ -29,26 +29,15 @@ struct RootView: View {
             // Start the environment (auto-connect if config exists)
             await environment.start()
             
-            // Wait for a minimum time for the splash to be "beautiful"
-            // and also wait for connection if we have a config
-            let startTime = Date()
-            let minimumSplashDuration: TimeInterval = 1.8
-            
             if environment.connectionConfig != nil {
-                // We are auto-connecting, wait for result or timeout
+                let startTime = Date()
                 while Date().timeIntervalSince(startTime) < 5.0 {
                     if environment.hasBeenConnected { break }
                     if case .failed = environment.connectionState { break }
                     try? await Task.sleep(for: .milliseconds(100))
                 }
             }
-            
-            // Ensure minimum duration
-            let elapsed = Date().timeIntervalSince(startTime)
-            if elapsed < minimumSplashDuration {
-                try? await Task.sleep(for: .seconds(minimumSplashDuration - elapsed))
-            }
-            
+
             withAnimation {
                 isInitializing = false
             }
