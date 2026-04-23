@@ -12,7 +12,7 @@ struct ConnectionHistorySection: View {
                     } label: {
                         HStack(spacing: DesignTokens.Spacing.md) {
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                                Text(config.host)
+                                Text(config.displayName)
                                     .font(.headline)
                                     .foregroundStyle(.primary)
                                 Text(config.displayURL)
@@ -34,6 +34,7 @@ struct ConnectionHistorySection: View {
                             }
                         }
                         .padding(.vertical, DesignTokens.Spacing.xs)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -49,6 +50,19 @@ struct ConnectionHistorySection: View {
                             Label("Edit", systemImage: "pencil")
                         }
                         .tint(.blue)
+                    }
+                    .contextMenu {
+                        Button {
+                            viewModel.presentEditor(for: config)
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+
+                        Button(role: .destructive) {
+                            viewModel.deleteConnection(config)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     }
                 }
             }
@@ -89,6 +103,7 @@ struct ConnectionDiscoverySection: View {
                             Image(systemName: "plus.circle.fill")
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -109,13 +124,15 @@ struct ConnectionServerSection: View {
 
     var body: some View {
         Section {
+            SettingsTextField("Name", text: $draft.name, placeholder: "Optional — e.g. Home")
+
             Picker("Protocol", selection: $draft.useTLS) {
                 Text("HTTP").tag(false)
                 Text("HTTPS").tag(true)
             }
             .pickerStyle(.automatic)
 
-            SettingsTextField("Host", text: $draft.host, placeholder: "192.168.1.110")
+            SettingsTextField("Host", text: $draft.host, placeholder: "zigbee2mqtt.local")
 
             SettingsTextField("Port", text: $draft.port, placeholder: "8080")
                 .keyboardType(.numberPad)

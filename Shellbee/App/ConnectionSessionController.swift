@@ -25,7 +25,7 @@ final class ConnectionSessionController {
 
     private var sessionTask: Task<Void, Never>?
 
-    static let maxReconnectAttempts = 5
+    static let maxReconnectAttempts = Int.max
     private static let baseReconnectDelay: Double = 1
     private static let maxReconnectDelay: Double = 30
 
@@ -132,6 +132,11 @@ final class ConnectionSessionController {
             topic: Z2MTopics.Request.info,
             payload: .object(["include_device_information": .bool(true)])
         )
+        // Pull a fresh health snapshot so the Home card has stats immediately
+        // after a (re)connect instead of waiting ~10 min for the periodic publish.
+        send(topic: Z2MTopics.Request.healthCheck, payload: .string(""))
+        send(topic: Z2MTopics.Request.devices, payload: .string(""))
+        send(topic: Z2MTopics.Request.groups, payload: .string(""))
     }
 
     private func monitorConnection(config: ConnectionConfig, events: AsyncStream<Z2MSocketEvent>) async {
@@ -157,13 +162,11 @@ final class ConnectionSessionController {
         var attempt = 1
         var delay = Self.baseReconnectDelay
         let coordinator = ConnectionLiveActivityCoordinator.shared
-        let host = config.host
+        let label = config.displayName
 
-        coordinator.show(host: host, phase: .reconnecting, attempt: 1, maxAttempts: Self.maxReconnectAttempts)
+        coordinator.show(host: label, phase: .reconnecting, attempt: 1, maxAttempts: 0)
 
-        while attempt <= Self.maxReconnectAttempts {
-            if Task.isCancelled { return nil }
-
+        while !Task.isCancelled {
             connectionState = .reconnecting(attempt: attempt)
 
             try? await Task.sleep(for: .seconds(delay))
@@ -178,14 +181,11 @@ final class ConnectionSessionController {
             } catch {
                 attempt += 1
                 delay = min(delay * 2, Self.maxReconnectDelay)
-                if attempt <= Self.maxReconnectAttempts {
-                    coordinator.update(phase: .reconnecting, attempt: attempt, maxAttempts: Self.maxReconnectAttempts)
-                }
+                coordinator.update(phase: .reconnecting, attempt: attempt, maxAttempts: 0)
             }
         }
 
-        coordinator.finish(.failed, displayFor: 4)
-        await handleFailure(reason.isEmpty ? "Connection lost." : reason)
+        _ = reason
         return nil
     }
 

@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-struct ConnectionConfig: Codable, Sendable, Equatable, Hashable {
+struct ConnectionConfig: Codable, Sendable {
     private static let savedConfigKey = "lastSuccessfulConnectionConfig"
     private static let legacySavedConfigKey = "connectionConfig"
 
@@ -10,8 +10,32 @@ struct ConnectionConfig: Codable, Sendable, Equatable, Hashable {
     var useTLS: Bool
     var basePath: String
     var authToken: String?
+    var name: String? = nil
 
     static let defaultPort = 8080
+
+    var displayName: String {
+        if let name, !name.isEmpty { return name }
+        return host
+    }
+}
+
+extension ConnectionConfig: Equatable, Hashable {
+    static func == (lhs: ConnectionConfig, rhs: ConnectionConfig) -> Bool {
+        lhs.host == rhs.host
+            && lhs.port == rhs.port
+            && lhs.useTLS == rhs.useTLS
+            && lhs.basePath == rhs.basePath
+            && lhs.authToken == rhs.authToken
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(host)
+        hasher.combine(port)
+        hasher.combine(useTLS)
+        hasher.combine(basePath)
+        hasher.combine(authToken)
+    }
 
     var webSocketURL: URL? {
         var components = URLComponents()
@@ -46,7 +70,7 @@ extension ConnectionConfig {
         let useTLS = url.scheme == "https" || url.scheme == "wss"
         let port = url.port ?? (useTLS ? 443 : Self.defaultPort)
         let path = url.path.isEmpty ? "/" : url.path
-        return ConnectionConfig(host: host, port: port, useTLS: useTLS, basePath: path, authToken: nil)
+        return ConnectionConfig(host: host, port: port, useTLS: useTLS, basePath: path, authToken: nil, name: nil)
     }
 
     static func load() -> ConnectionConfig? {
@@ -82,7 +106,7 @@ extension ConnectionConfig {
     }
 
     var persistedSnapshot: PersistedSnapshot {
-        PersistedSnapshot(host: host, port: port, useTLS: useTLS, basePath: basePath)
+        PersistedSnapshot(host: host, port: port, useTLS: useTLS, basePath: basePath, name: name)
     }
 
     static func persistToken(for config: ConnectionConfig) {
@@ -122,14 +146,24 @@ extension ConnectionConfig {
         let port: Int
         let useTLS: Bool
         let basePath: String
+        let name: String?
+
+        init(host: String, port: Int, useTLS: Bool, basePath: String, name: String? = nil) {
+            self.host = host
+            self.port = port
+            self.useTLS = useTLS
+            self.basePath = basePath
+            self.name = name
+        }
 
         var connectionConfig: ConnectionConfig {
-            let config = ConnectionConfig(
+            let lookup = ConnectionConfig(
                 host: host,
                 port: port,
                 useTLS: useTLS,
                 basePath: basePath,
-                authToken: nil
+                authToken: nil,
+                name: nil
             )
 
             return ConnectionConfig(
@@ -137,7 +171,8 @@ extension ConnectionConfig {
                 port: port,
                 useTLS: useTLS,
                 basePath: basePath,
-                authToken: ConnectionTokenKeychain.shared.token(for: config.secretLookupKey)
+                authToken: ConnectionTokenKeychain.shared.token(for: lookup.secretLookupKey),
+                name: name
             )
         }
     }

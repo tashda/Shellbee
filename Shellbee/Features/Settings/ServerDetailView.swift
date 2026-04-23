@@ -13,6 +13,9 @@ struct ServerDetailView: View {
         Form {
             if let config {
                 Section {
+                    if let name = config.name, !name.isEmpty {
+                        CopyableRow(label: "Name", value: name)
+                    }
                     CopyableRow(label: "Host", value: config.host)
                     CopyableRow(label: "Port", value: String(config.port))
                     CopyableRow(label: "URL", value: config.displayURL)

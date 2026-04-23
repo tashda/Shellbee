@@ -3,6 +3,7 @@ import Foundation
 @Observable
 final class ConnectionViewModel {
     var isEditorPresented = false
+    var name = ""
     var host = ""
     var port = "8080"
     var useTLS = false
@@ -91,6 +92,7 @@ final class ConnectionViewModel {
 
     func presentNewServer(prefilledHost: String? = nil) {
         editingConnection = nil
+        name = ""
         host = prefilledHost ?? ""
         port = "8080"
         useTLS = false
@@ -107,6 +109,7 @@ final class ConnectionViewModel {
 
     func makeEditorDraft() -> ConnectionEditorDraft {
         ConnectionEditorDraft(
+            name: name,
             host: host,
             port: port,
             useTLS: useTLS,
@@ -139,6 +142,7 @@ final class ConnectionViewModel {
 
     @discardableResult
     func connect(using draft: ConnectionEditorDraft) -> Bool {
+        name = draft.name
         host = draft.host
         port = draft.port
         useTLS = draft.useTLS
@@ -156,12 +160,14 @@ final class ConnectionViewModel {
     }
 
     func buildConfig() -> ConnectionConfig {
-        ConnectionConfig(
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        return ConnectionConfig(
             host: host.trimmingCharacters(in: .whitespaces),
             port: Int(port) ?? ConnectionConfig.defaultPort,
             useTLS: useTLS,
             basePath: basePath.isEmpty ? "/" : basePath,
-            authToken: authToken.isEmpty ? nil : authToken
+            authToken: authToken.isEmpty ? nil : authToken,
+            name: trimmedName.isEmpty ? nil : trimmedName
         )
     }
 
@@ -187,6 +193,7 @@ final class ConnectionViewModel {
     }
 
     private func apply(_ config: ConnectionConfig) {
+        name = config.name ?? ""
         host = config.host
         port = String(config.port)
         useTLS = config.useTLS

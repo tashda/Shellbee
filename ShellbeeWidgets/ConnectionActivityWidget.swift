@@ -47,7 +47,7 @@ struct ConnectionActivityWidget: Widget {
             } compactTrailing: {
                 switch context.state.phase {
                 case .reconnecting:
-                    Text("\(context.state.attempt)/\(context.state.maxAttempts)")
+                    Text(context.state.maxAttempts > 0 ? "\(context.state.attempt)/\(context.state.maxAttempts)" : "\(context.state.attempt)")
                         .font(.caption2.weight(.bold))
                         .monospacedDigit()
                         .foregroundStyle(context.state.phase.accentColor)
@@ -102,7 +102,7 @@ private struct ConnectionLockScreenView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 if context.state.phase == .reconnecting {
-                    Text("Attempt \(context.state.attempt) of \(context.state.maxAttempts)")
+                    Text(context.state.maxAttempts > 0 ? "Attempt \(context.state.attempt) of \(context.state.maxAttempts)" : "Attempt \(context.state.attempt)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -111,7 +111,7 @@ private struct ConnectionLockScreenView: View {
             Spacer()
 
             if context.state.phase == .reconnecting {
-                Text("\(context.state.attempt)/\(context.state.maxAttempts)")
+                Text(context.state.maxAttempts > 0 ? "\(context.state.attempt)/\(context.state.maxAttempts)" : "\(context.state.attempt)")
                     .font(.title2.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(context.state.phase.accentColor)
@@ -131,7 +131,7 @@ private struct ConnectionProgressBadge: View {
         VStack(alignment: .trailing, spacing: 2) {
             switch state.phase {
             case .reconnecting:
-                Text("\(state.attempt)/\(state.maxAttempts)")
+                Text(state.maxAttempts > 0 ? "\(state.attempt)/\(state.maxAttempts)" : "\(state.attempt)")
                     .font(.title3.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(state.phase.accentColor)

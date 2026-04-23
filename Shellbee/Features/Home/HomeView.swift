@@ -34,7 +34,13 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: DesignTokens.Spacing.md) {
-                    HomeBridgeCard(snapshot: snapshot, health: environment.store.bridgeHealth, onRestart: { showingRestartAlert = true })
+                    HomeBridgeCard(
+                        snapshot: snapshot,
+                        health: environment.store.bridgeHealth,
+                        serverName: environment.connectionConfig?.name,
+                        connectionState: environment.connectionState,
+                        onRestart: { showingRestartAlert = true }
+                    )
                     HomeDevicesCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
                     HomeMeshCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
                 }

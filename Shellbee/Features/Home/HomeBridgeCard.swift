@@ -3,7 +3,29 @@ import SwiftUI
 struct HomeBridgeCard: View {
     let snapshot: HomeSnapshot
     let health: BridgeHealth?
+    var serverName: String? = nil
+    var connectionState: ConnectionSessionController.State = .idle
     let onRestart: () -> Void
+
+    private var isReconnecting: Bool {
+        if case .reconnecting = connectionState { return true }
+        return false
+    }
+
+    private var reconnectAttempt: Int {
+        if case .reconnecting(let n) = connectionState { return n }
+        return 0
+    }
+
+    private var headerTitle: String {
+        if let serverName, !serverName.isEmpty { return serverName }
+        return "Zigbee2MQTT"
+    }
+
+    private var headerDotColor: Color {
+        if isReconnecting { return .orange }
+        return snapshot.isBridgeOnline ? .green : .red
+    }
 
     @State private var latestVersion: String? = nil
     @State private var lastVersionFetch: Date? = nil
@@ -46,10 +68,19 @@ struct HomeBridgeCard: View {
         HStack(alignment: .center) {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(snapshot.isBridgeOnline ? Color.green : Color.red)
+                    .fill(headerDotColor)
                     .frame(width: DesignTokens.Size.statusDotHero, height: DesignTokens.Size.statusDotHero)
-                Text("Zigbee2MQTT")
+                Text(headerTitle)
                     .font(.headline)
+                    .lineLimit(1)
+                if isReconnecting {
+                    HStack(spacing: 4) {
+                        ProgressView().controlSize(.mini)
+                        Text("Reconnecting (\(reconnectAttempt))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             Spacer()
             versionBadge

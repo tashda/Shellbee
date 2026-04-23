@@ -108,4 +108,17 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
         guard webSocketTask === expectedTask else { return }
         resolveOpen(.failure(Z2MError.requestFailed("Connection closed before opening.")))
     }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: Error?
+    ) {
+        guard task === expectedTask else { return }
+        if let error {
+            resolveOpen(.failure(Z2MError.requestFailed(Z2MError.interpret(error))))
+        } else {
+            resolveOpen(.failure(Z2MError.requestFailed("Connection ended before opening.")))
+        }
+    }
 }

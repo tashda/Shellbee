@@ -46,7 +46,7 @@ struct SettingsView: View {
         Section {
             NavigationLink { ServerDetailView() } label: {
                 settingsLabel(title: "Server", systemImage: "wifi", color: serverIconColor)
-                    .badge(environment.connectionConfig?.host ?? "Not configured")
+                    .badge(environment.connectionConfig?.displayName ?? "Not configured")
             }
         } header: {
             Text("Connection")

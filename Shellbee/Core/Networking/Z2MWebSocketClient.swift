@@ -17,8 +17,11 @@ actor Z2MWebSocketClient {
 
     init() {
         delegate = Z2MWebSocketSessionDelegate()
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = Self.connectionTimeout
+        config.waitsForConnectivity = false
         session = URLSession(
-            configuration: .default,
+            configuration: config,
             delegate: delegate,
             delegateQueue: nil
         )
