@@ -91,7 +91,6 @@ final class LogsUITests: ShellbeeUITestCase {
                 confirm.tap()
             }
             // List should be empty or near-empty
-            Thread.sleep(forTimeInterval: 1)
         }
     }
 
@@ -105,7 +104,7 @@ final class LogsUITests: ShellbeeUITestCase {
     // Activity entries appear once state-change diffs arrive; the engine
     // drifts device states every 10s, so we wait for a row to appear.
     func testTappingLogEntryOpensDetail() throws {
-        guard app.cells.firstMatch.waitForExistence(timeout: 30) else {
+        guard app.cells.firstMatch.waitForExistence(timeout: 15) else {
             throw XCTSkip("No activity log entries visible within the drift window")
         }
         app.cells.firstMatch.tap()

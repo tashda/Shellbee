@@ -8,7 +8,7 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
         super.setUp()
         waitForMainTab()
         app.tapDevicesTab()
-        _ = app.cells.firstMatch.waitForExistence(timeout: 20)
+        _ = app.cells.firstMatch.waitForExistence(timeout: 10)
     }
 
     // MARK: - Light (CT + brightness) — "Living Room Light"

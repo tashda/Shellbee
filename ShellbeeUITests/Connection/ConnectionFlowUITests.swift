@@ -63,7 +63,7 @@ final class ConnectionFlowUITests: XCTestCase {
         tokenField.typeText("shellbee-integration-token")
 
         app.buttons["Connect"].firstMatch.tapWhenReady()
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30),
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 15),
                       "Main tab bar never appeared after connecting")
     }
 
@@ -96,7 +96,7 @@ final class ConnectionFlowUITests: XCTestCase {
 
     func testDisconnectReturnsToSetupScreen() throws {
         // This test requires being connected first
-        guard app.tabBars.firstMatch.waitForExistence(timeout: 30) else {
+        guard app.tabBars.firstMatch.waitForExistence(timeout: 15) else {
             throw XCTSkip("Not connected — cannot test disconnect flow")
         }
 

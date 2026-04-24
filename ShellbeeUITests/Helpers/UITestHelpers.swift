@@ -108,7 +108,7 @@ class ShellbeeUITestCase: XCTestCase {
         // If the app connected successfully the main tab bar should appear.
         // If not, we get stuck on the connection setup screen.
         let tabBar = app.tabBars.firstMatch
-        if !tabBar.waitForExistence(timeout: 30) {
+        if !tabBar.waitForExistence(timeout: 15) {
             // Try to detect whether we're on a connection setup screen
             let isSetup = app.buttons["Connect"].waitForExistence(timeout: 3)
             if isSetup {
@@ -119,7 +119,7 @@ class ShellbeeUITestCase: XCTestCase {
 
     // MARK: - Convenience
 
-    func waitForMainTab(timeout: TimeInterval = 30) {
+    func waitForMainTab(timeout: TimeInterval = 15) {
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: timeout),
                       "Main tab bar never appeared — is the Docker stack running?")
     }

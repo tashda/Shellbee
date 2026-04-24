@@ -7,7 +7,7 @@ final class DeviceListUITests: ShellbeeUITestCase {
         waitForMainTab()
         app.tapDevicesTab()
         // Wait for device list to load
-        _ = app.cells.firstMatch.waitForExistence(timeout: 20)
+        _ = app.cells.firstMatch.waitForExistence(timeout: 10)
     }
 
     // MARK: - List appearance
@@ -19,7 +19,7 @@ final class DeviceListUITests: ShellbeeUITestCase {
 
     func testAllNineDeviceCategoriesPresent() {
         // Wait for full list
-        _ = app.cells.firstMatch.waitForExistence(timeout: 20)
+        _ = app.cells.firstMatch.waitForExistence(timeout: 10)
         let cellCount = app.cells.count
         XCTAssertGreaterThanOrEqual(cellCount, 9,
                                     "Expected at least 9 seeded devices, found \(cellCount)")
