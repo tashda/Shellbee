@@ -1,0 +1,142 @@
+name: CI (Fast)
+
+# Lightweight gate that runs on every PR push and every push to main.
+# Builds the app and runs unit tests only. UI tests are intentionally
+# excluded here — see ci-full.yml for the complete suite.
+#
+# Typical duration: 5-8 min.
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docker/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - '.gitignore'
+      - 'PRIVACY.md'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docker/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - '.gitignore'
+      - 'PRIVACY.md'
+
+concurrency:
+  group: ci-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-unit-test:
+    name: Build & Unit Tests
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    env:
+      SCHEME: Shellbee
+      UNIT_TEST_TARGET: ShellbeeTests
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          echo "Selecting $LATEST"
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[]
+                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
+                       | .value[]
+                       | select(.isAvailable and (.name | startswith("iPhone")))]
+                     | sort_by(.name) | reverse | .[0].udid')
+          if [ -z "$DEVICE_ID" ] || [ "$DEVICE_ID" = "null" ]; then
+            echo "No iPhone simulator available on this runner" >&2
+            exit 1
+          fi
+          NAME=$(xcrun simctl list devices --json \
+            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
+          echo "Using: $NAME ($DEVICE_ID)"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Shellbee.xcodeproj \
+            -scheme "$SCHEME" \
+            -derivedDataPath "$DERIVED_DATA"
+
+      - name: Build for testing
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project Shellbee.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | tee build.log
+
+      - name: Run unit tests
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project Shellbee.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED_DATA" \
+            -only-testing:"$UNIT_TEST_TARGET" \
+            -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | tee test.log
+
+      - name: Summarize results
+        if: always()
+        env:
+          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
+        run: |
+          XCRESULT="$DERIVED_DATA/UnitTests.xcresult"
+          {
+            echo "## CI (Fast) — Unit Tests"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Simulator | $DEVICE_NAME |"
+            echo "| Xcode | $(xcodebuild -version | head -n1) |"
+            echo "| Scheme | $SCHEME |"
+            echo "| Target | $UNIT_TEST_TARGET |"
+            echo
+            if [ -d "$XCRESULT" ]; then
+              SUMMARY=$(xcrun xcresulttool get --path "$XCRESULT" --format json 2>/dev/null \
+                | jq -r '.metrics | "Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)"' 2>/dev/null || echo "Results bundle present but could not be parsed.")
+              echo "**$SUMMARY**"
+            else
+              echo "_No result bundle produced (build may have failed before tests ran)._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload logs and result bundle on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-fast-logs
+          path: |
+            build.log
+            test.log
+            ${{ env.DERIVED_DATA }}/UnitTests.xcresult
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,0 +1,241 @@
+name: CI (Full)
+
+# Complete suite: unit tests + UI tests. Runs in three situations:
+#   1. Every push to main (catches regressions introduced by merges)
+#   2. Nightly at 03:00 UTC (catches environmental / flaky issues)
+#   3. On-demand: manually from the Actions tab, or by labeling a PR
+#      with `run-ui-tests` when you want extra confidence before merge
+#
+# Typical duration: 15-25 min. Not required for PR merge — see ci-fast.yml
+# for the required check.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docker/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - '.gitignore'
+      - 'PRIVACY.md'
+  schedule:
+    # 03:00 UTC daily. Cron syntax: minute hour day month day-of-week.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running the full suite?'
+        required: false
+        default: 'Manual run'
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: ci-full-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Guard: when triggered by `pull_request: labeled`, only run if the label
+  # is exactly `run-ui-tests`. Without this, every label add would trigger.
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ui-tests'
+    steps:
+      - run: echo "Proceeding. Trigger: ${{ github.event_name }}"
+
+  unit-tests:
+    name: Unit Tests
+    needs: gate
+    runs-on: macos-15
+    timeout-minutes: 25
+
+    env:
+      SCHEME: Shellbee
+      TEST_TARGET: ShellbeeTests
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[]
+                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
+                       | .value[]
+                       | select(.isAvailable and (.name | startswith("iPhone")))]
+                     | sort_by(.name) | reverse | .[0].udid')
+          NAME=$(xcrun simctl list devices --json \
+            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -derivedDataPath "$DERIVED_DATA"
+
+      - name: Build for testing
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | tee build-unit.log
+
+      - name: Run unit tests
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            -only-testing:"$TEST_TARGET" \
+            -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | tee test-unit.log
+
+      - name: Summarize
+        if: always()
+        env:
+          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
+        run: |
+          {
+            echo "## Unit Tests"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Simulator | $DEVICE_NAME |"
+            echo "| Target | $TEST_TARGET |"
+            echo
+            if [ -d "$DERIVED_DATA/UnitTests.xcresult" ]; then
+              xcrun xcresulttool get --path "$DERIVED_DATA/UnitTests.xcresult" --format json 2>/dev/null \
+                | jq -r '.metrics | "**Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)**"' \
+                || echo "_Result bundle present but could not be parsed._"
+            else
+              echo "_No result bundle produced._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-full-unit-logs
+          path: |
+            build-unit.log
+            test-unit.log
+            ${{ env.DERIVED_DATA }}/UnitTests.xcresult
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ui-tests:
+    name: UI Tests
+    needs: gate
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    env:
+      SCHEME: Shellbee
+      TEST_TARGET: ShellbeeUITests
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[]
+                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
+                       | .value[]
+                       | select(.isAvailable and (.name | startswith("iPhone")))]
+                     | sort_by(.name) | reverse | .[0].udid')
+          NAME=$(xcrun simctl list devices --json \
+            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -derivedDataPath "$DERIVED_DATA"
+
+      - name: Build for testing
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | tee build-ui.log
+
+      - name: Run UI tests (2 parallel workers)
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            -only-testing:"$TEST_TARGET" \
+            -parallel-testing-enabled YES \
+            -parallel-testing-worker-count 2 \
+            -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | tee test-ui.log
+
+      - name: Summarize
+        if: always()
+        env:
+          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
+        run: |
+          {
+            echo "## UI Tests"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Simulator | $DEVICE_NAME |"
+            echo "| Target | $TEST_TARGET |"
+            echo "| Workers | 2 parallel |"
+            echo
+            if [ -d "$DERIVED_DATA/UITests.xcresult" ]; then
+              xcrun xcresulttool get --path "$DERIVED_DATA/UITests.xcresult" --format json 2>/dev/null \
+                | jq -r '.metrics | "**Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)**"' \
+                || echo "_Result bundle present but could not be parsed._"
+            else
+              echo "_No result bundle produced._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-full-ui-logs
+          path: |
+            build-ui.log
+            test-ui.log
+            ${{ env.DERIVED_DATA }}/UITests.xcresult
+          if-no-files-found: ignore
+          retention-days: 14
