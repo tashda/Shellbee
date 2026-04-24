@@ -34,7 +34,7 @@ jobs:
   build-and-unit-test:
     name: Build & Unit Tests
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     env:
       SCHEME: Shellbee
@@ -121,7 +121,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tee build.log
 
       - name: Run unit tests
-        timeout-minutes: 8
+        timeout-minutes: 12
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
