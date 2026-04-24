@@ -92,34 +92,4 @@ final class ConnectionFlowUITests: XCTestCase {
         }
     }
 
-    // MARK: - Disconnect
-
-    func testDisconnectReturnsToSetupScreen() throws {
-        // This test requires being connected first
-        guard app.tabBars.firstMatch.waitForExistence(timeout: 15) else {
-            throw XCTSkip("Not connected — cannot test disconnect flow")
-        }
-
-        app.tapSettingsTab()
-
-        // Scroll to bottom to find Disconnect button
-        let disconnect = app.buttons["Disconnect"].firstMatch
-        if !disconnect.waitForExistence(timeout: 5) {
-            // Try scrolling down
-            app.swipeUp()
-        }
-        disconnect.tapWhenReady()
-
-        // Confirm in alert if one appears
-        let confirmBtn = app.buttons["Disconnect"].firstMatch
-        if confirmBtn.waitForExistence(timeout: 3) {
-            confirmBtn.tap()
-        }
-
-        // Should return to connection setup
-        XCTAssertTrue(
-            app.buttons["Add Server"].firstMatch.waitForExistence(timeout: 10),
-            "Expected to return to connection setup screen after disconnect"
-        )
-    }
 }

@@ -733,6 +733,7 @@ def on_connect(client, userdata, flags, reason_code, properties):
     client.subscribe(f"{Z2M_TOPIC}/+/set")
     client.subscribe(f"{Z2M_TOPIC}/+/get")
     client.subscribe(f"{Z2M_TOPIC}/bridge/request/#")
+    client.subscribe(f"{Z2M_TOPIC}/_engine/client_connected")
 
 
 def on_message(client, userdata, msg):
@@ -752,6 +753,14 @@ def on_message(client, userdata, msg):
         if state == "online":
             _z2m_online = True
             log.info("Zigbee2MQTT bridge online")
+        return
+
+    if sub == "_engine/client_connected":
+        # Fire a drift tick shortly after a new WS client connects so the
+        # app's Activity log has at least one state-diff entry ready by
+        # the time it reaches the Logs view. Delay long enough for the
+        # retained-message replay to finish ingesting in the client.
+        threading.Timer(1.0, lambda: drift_tick(client)).start()
         return
 
     if sub.endswith("/set"):

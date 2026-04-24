@@ -43,11 +43,14 @@ loop: asyncio.AbstractEventLoop | None = None
 
 def _is_client_command(topic: str) -> bool:
     """Command topics flow client → bridge; real z2m never echoes these back
-    to WS subscribers, and doing so confuses the app's topic router."""
+    to WS subscribers, and doing so confuses the app's topic router.
+    The `_engine/` prefix is an internal signal channel between bridge and
+    engine (e.g. "a new WS client connected") and must also be hidden."""
     return (
         topic.endswith("/set")
         or topic.endswith("/get")
         or topic.startswith("bridge/request/")
+        or topic.startswith("_engine/")
     )
 
 
@@ -133,6 +136,18 @@ async def ws_handler(ws: WebSocketServerProtocol):
 
     async with clients_lock:
         clients.add(ws)
+
+    # Signal the engine that a fresh WS client is online so it can emit
+    # an immediate state diff — guarantees the app's Activity log has
+    # entries within a couple of seconds rather than waiting for the
+    # next drift tick. The `_engine/` prefix is filtered from client
+    # broadcasts by `_is_client_command`.
+    try:
+        mqtt_client.publish(
+            f"{BASE_TOPIC}/_engine/client_connected", b"{}", qos=0, retain=False
+        )
+    except Exception as e:
+        print(f"[WS] failed to signal engine of new client: {e}", flush=True)
 
     # Send all retained messages immediately
     with retained_lock:
