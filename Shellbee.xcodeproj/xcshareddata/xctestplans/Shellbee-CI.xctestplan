@@ -1,0 +1,40 @@
+{
+  "configurations" : [
+    {
+      "id" : "C04F8A25-4CF5-499B-B01A-858C8A78488C",
+      "name" : "CI (Fast)",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "maximumTestExecutionTimeAllowance" : 60,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Shellbee.xcodeproj",
+      "identifier" : "0A9D450C2F96077A00DF6DF5",
+      "name" : "Shellbee"
+    },
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "skippedTests" : [
+        "ConnectionConfigTests\/testSaveAndLoad()",
+        "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
+        "ConnectionHistoryTests",
+        "HomeLayoutStoreTests",
+        "NotificationPreferencesTests",
+        "Z2MIntegrationTests"
+      ],
+      "target" : {
+        "containerPath" : "container:Shellbee.xcodeproj",
+        "identifier" : "D49BCF06524A0226FBBDBAFC",
+        "name" : "ShellbeeTests"
+      }
+    }
+  ],
+  "version" : 1
+}

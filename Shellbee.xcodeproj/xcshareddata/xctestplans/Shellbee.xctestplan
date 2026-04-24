@@ -1,0 +1,38 @@
+{
+  "configurations" : [
+    {
+      "id" : "267D1EFD-1168-4ABA-A15C-BCBA62BC68D6",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Shellbee.xcodeproj",
+      "identifier" : "0A9D450C2F96077A00DF6DF5",
+      "name" : "Shellbee"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Shellbee.xcodeproj",
+        "identifier" : "D49BCF06524A0226FBBDBAFC",
+        "name" : "ShellbeeTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Shellbee.xcodeproj",
+        "identifier" : "BDF45631F023CB1E9F0A6F86",
+        "name" : "ShellbeeUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

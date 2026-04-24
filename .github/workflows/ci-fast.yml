@@ -38,10 +38,10 @@ jobs:
 
     env:
       SCHEME: Shellbee
-      UNIT_TEST_TARGET: ShellbeeTests
-      # Integration tests live in ShellbeeTests/Integration and need the docker
-      # z2m bridge. They're skipped entirely in Fast CI — Full CI runs them.
-      SKIP_TEST_CLASS: ShellbeeTests/Z2MIntegrationTests
+      # Which tests run is defined by the test plan, not the workflow.
+      # See Shellbee.xcodeproj/xcshareddata/xctestplans/README.md for the
+      # rationale behind the current skip list.
+      TEST_PLAN: Shellbee-CI
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
@@ -116,6 +116,7 @@ jobs:
           xcodebuild build-for-testing \
             -project Shellbee.xcodeproj \
             -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" \
             -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO | tee build.log
@@ -134,14 +135,10 @@ jobs:
             xcodebuild test-without-building \
               -project Shellbee.xcodeproj \
               -scheme "$SCHEME" \
+              -testPlan "$TEST_PLAN" \
               -destination "$DESTINATION" \
               -derivedDataPath "$DERIVED_DATA" \
-              -only-testing:"$UNIT_TEST_TARGET" \
-              -skip-testing:"$SKIP_TEST_CLASS" \
-              -test-timeouts-enabled YES \
-              -maximum-test-execution-time-allowance 60 \
               -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
-              -verbose \
               CODE_SIGNING_ALLOWED=NO | tee test.log
 
       - name: Summarize results

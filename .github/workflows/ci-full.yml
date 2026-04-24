@@ -55,6 +55,7 @@ jobs:
 
     env:
       SCHEME: Shellbee
+      TEST_PLAN: Shellbee
       TEST_TARGET: ShellbeeTests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
@@ -129,6 +130,7 @@ jobs:
           set -o pipefail
           xcodebuild build-for-testing \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO | tee build-unit.log
 
@@ -140,10 +142,9 @@ jobs:
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
-            -test-timeouts-enabled YES \
-            -maximum-test-execution-time-allowance 120 \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-unit.log
 
@@ -197,6 +198,7 @@ jobs:
 
     env:
       SCHEME: Shellbee
+      TEST_PLAN: Shellbee
       TEST_TARGET: ShellbeeUITests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
@@ -267,6 +269,7 @@ jobs:
           set -o pipefail
           xcodebuild build-for-testing \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO | tee build-ui.log
 
@@ -278,12 +281,11 @@ jobs:
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
             -parallel-testing-enabled YES \
             -parallel-testing-worker-count 2 \
-            -test-timeouts-enabled YES \
-            -maximum-test-execution-time-allowance 120 \
             -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-ui.log
 
