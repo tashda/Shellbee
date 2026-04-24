@@ -74,28 +74,32 @@ jobs:
           echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
           echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Pre-boot simulator
-        timeout-minutes: 3
+      - name: Boot simulator and wait for readiness
+        timeout-minutes: 4
         run: |
-          # xcodebuild's implicit boot has been known to hang indefinitely on
-          # cold GitHub runners. Boot explicitly and wait with our own timeout
-          # so a flaky runner fails fast instead of burning the job budget.
+          # `simctl bootstatus -b` boots (if not already) and BLOCKS until the
+          # device is actually ready (springboard up, services responding) —
+          # not just "Booted" state. Previous runs used a plain state-check
+          # loop, which returned too early and caused xcodebuild to hang
+          # waiting for a not-yet-ready simulator.
           DEVICE_ID="${{ steps.sim.outputs.device_id }}"
-          xcrun simctl boot "$DEVICE_ID" || true
-          # Wait up to 2 min for the device to reach Booted state.
-          for i in $(seq 1 60); do
-            STATE=$(xcrun simctl list devices --json | jq -r \
-              --arg id "$DEVICE_ID" \
-              '[.devices | to_entries[].value[] | select(.udid==$id)][0].state')
-            if [ "$STATE" = "Booted" ]; then
-              echo "Simulator booted after ${i}x2s"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Simulator did not reach Booted state" >&2
-          xcrun simctl list devices
-          exit 1
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          echo "Simulator is fully ready."
+
+      - name: Start simulator log stream
+        run: |
+          # If xcodebuild hangs again, this log tells us what the host app or
+          # test runner is actually doing on the device. Written to a file we
+          # upload on failure.
+          DEVICE_ID="${{ steps.sim.outputs.device_id }}"
+          mkdir -p "$DERIVED_DATA"
+          xcrun simctl spawn "$DEVICE_ID" log stream \
+            --level=info \
+            --predicate 'process == "Shellbee" OR process == "xctest" OR subsystem == "com.apple.dt.XCTest"' \
+            > "$DERIVED_DATA/simulator.log" 2>&1 &
+          echo $! > "$DERIVED_DATA/simulator-log.pid"
+          sleep 1
+          echo "Log stream PID: $(cat "$DERIVED_DATA/simulator-log.pid")"
 
       - name: Resolve Swift packages
         run: |
@@ -122,17 +126,23 @@ jobs:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
           set -o pipefail
-          xcodebuild test-without-building \
-            -project Shellbee.xcodeproj \
-            -scheme "$SCHEME" \
-            -destination "$DESTINATION" \
-            -derivedDataPath "$DERIVED_DATA" \
-            -only-testing:"$UNIT_TEST_TARGET" \
-            -skip-testing:"$SKIP_TEST_CLASS" \
-            -test-timeouts-enabled YES \
-            -maximum-test-execution-time-allowance 60 \
-            -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test.log
+          # `script` forces line-buffered output so the Actions log shows
+          # progress in real time instead of a 2-minute silence followed by
+          # a flood. -verbose tells us which phase xcodebuild is in
+          # (install / launch / attach-runner / run-tests) if it hangs.
+          script -q /dev/null \
+            xcodebuild test-without-building \
+              -project Shellbee.xcodeproj \
+              -scheme "$SCHEME" \
+              -destination "$DESTINATION" \
+              -derivedDataPath "$DERIVED_DATA" \
+              -only-testing:"$UNIT_TEST_TARGET" \
+              -skip-testing:"$SKIP_TEST_CLASS" \
+              -test-timeouts-enabled YES \
+              -maximum-test-execution-time-allowance 60 \
+              -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
+              -verbose \
+              CODE_SIGNING_ALLOWED=NO | tee test.log
 
       - name: Summarize results
         if: always()
@@ -159,6 +169,14 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Stop simulator log stream
+        if: always()
+        run: |
+          PID_FILE="$DERIVED_DATA/simulator-log.pid"
+          if [ -f "$PID_FILE" ]; then
+            kill "$(cat "$PID_FILE")" 2>/dev/null || true
+          fi
+
       - name: Upload logs and result bundle on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -168,5 +186,6 @@ jobs:
             build.log
             test.log
             ${{ env.DERIVED_DATA }}/UnitTests.xcresult
+            ${{ env.DERIVED_DATA }}/simulator.log
           if-no-files-found: ignore
           retention-days: 7
