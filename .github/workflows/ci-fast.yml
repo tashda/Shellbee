@@ -34,11 +34,14 @@ jobs:
   build-and-unit-test:
     name: Build & Unit Tests
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     env:
       SCHEME: Shellbee
       UNIT_TEST_TARGET: ShellbeeTests
+      # Integration tests live in ShellbeeTests/Integration and need the docker
+      # z2m bridge. They're skipped entirely in Fast CI — Full CI runs them.
+      SKIP_TEST_CLASS: ShellbeeTests/Z2MIntegrationTests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
@@ -71,6 +74,29 @@ jobs:
           echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
           echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Pre-boot simulator
+        timeout-minutes: 3
+        run: |
+          # xcodebuild's implicit boot has been known to hang indefinitely on
+          # cold GitHub runners. Boot explicitly and wait with our own timeout
+          # so a flaky runner fails fast instead of burning the job budget.
+          DEVICE_ID="${{ steps.sim.outputs.device_id }}"
+          xcrun simctl boot "$DEVICE_ID" || true
+          # Wait up to 2 min for the device to reach Booted state.
+          for i in $(seq 1 60); do
+            STATE=$(xcrun simctl list devices --json | jq -r \
+              --arg id "$DEVICE_ID" \
+              '[.devices | to_entries[].value[] | select(.udid==$id)][0].state')
+            if [ "$STATE" = "Booted" ]; then
+              echo "Simulator booted after ${i}x2s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Simulator did not reach Booted state" >&2
+          xcrun simctl list devices
+          exit 1
+
       - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
@@ -91,6 +117,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tee build.log
 
       - name: Run unit tests
+        timeout-minutes: 8
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
@@ -101,6 +128,9 @@ jobs:
             -destination "$DESTINATION" \
             -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$UNIT_TEST_TARGET" \
+            -skip-testing:"$SKIP_TEST_CLASS" \
+            -test-timeouts-enabled YES \
+            -maximum-test-execution-time-allowance 60 \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test.log
 
