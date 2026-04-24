@@ -130,7 +130,7 @@ struct MQTTSettingsView: View {
         } message: {
             Text("Applying these changes with an empty password may remove existing credentials from the server. Do you want to proceed?")
         }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func applyChanges() {
@@ -175,7 +175,7 @@ struct MQTTSettingsView: View {
             "maximum_packet_size": .int(maximumPacketSize),
             "qos": .int(qos)
         ]
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["mqtt": .object(mqtt)]))
+        environment.sendBridgeOptions(["mqtt": .object(mqtt)])
     }
 }
 

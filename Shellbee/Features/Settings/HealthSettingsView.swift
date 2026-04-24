@@ -44,7 +44,7 @@ struct HealthSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
@@ -58,7 +58,7 @@ struct HealthSettingsView: View {
             "interval": .int(interval),
             "reset_on_check": .bool(resetOnCheck)
         ]
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["health": .object(health)]))
+        environment.sendBridgeOptions(["health": .object(health)])
     }
 }
 

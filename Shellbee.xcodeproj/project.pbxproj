@@ -209,6 +209,8 @@
 				Features/Settings/FrontendSettingsView.swift,
 				Features/Settings/HealthSettingsView.swift,
 				Features/Settings/HomeAssistantSettingsView.swift,
+				Features/Settings/LoggingBasicView.swift,
+				Features/Settings/LoggingHubView.swift,
 				Features/Settings/LoggingSettingsView.swift,
 				Features/Settings/MainSettingsView.swift,
 				Features/Settings/MQTTSettingsView.swift,

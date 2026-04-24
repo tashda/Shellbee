@@ -13,16 +13,17 @@ struct DeviceReportingView: View {
         ConfiguredReporting.parse(from: currentDevice.endpoints ?? [:])
     }
 
-    private var availableClusters: [String] {
-        var clusters: Set<String> = []
-        for (_, value) in currentDevice.endpoints ?? [:] {
-            if let obj = value.object,
-               let clustersObj = obj["clusters"]?.object,
-               let arr = clustersObj["input"]?.array {
-                clusters.formUnion(arr.compactMap(\.stringValue))
-            }
+    private var endpointClusters: [(endpoint: Int, clusters: [String])] {
+        var result: [(Int, [String])] = []
+        for (key, value) in currentDevice.endpoints ?? [:] {
+            guard let ep = Int(key),
+                  let obj = value.object,
+                  let clustersObj = obj["clusters"]?.object,
+                  let arr = clustersObj["input"]?.array else { continue }
+            let clusters = arr.compactMap(\.stringValue).sorted()
+            result.append((ep, clusters))
         }
-        return clusters.sorted()
+        return result.sorted { $0.0 < $1.0 }
     }
 
     var body: some View {
@@ -51,7 +52,7 @@ struct DeviceReportingView: View {
         .sheet(isPresented: $showAddSheet) {
             AddReportingSheet(
                 device: currentDevice,
-                availableClusters: availableClusters
+                endpointClusters: endpointClusters
             ) { config in
                 sendReportingConfig(config)
             }
@@ -63,6 +64,7 @@ struct DeviceReportingView: View {
             topic: Z2MTopics.Request.deviceReportingConfigure,
             payload: .object([
                 "id": .string(currentDevice.friendlyName),
+                "endpoint": .int(config.endpoint),
                 "cluster": .string(config.cluster),
                 "attribute": .string(config.attribute),
                 "minimum_report_interval": .int(config.minInterval),
@@ -105,6 +107,7 @@ struct ConfiguredReporting: Identifiable {
 }
 
 struct ReportingConfig {
+    var endpoint: Int
     var cluster: String
     var attribute: String
     var minInterval: Int

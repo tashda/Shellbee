@@ -25,6 +25,7 @@ struct DeviceDetailView: View {
                     state: state,
                     isAvailable: isAvailable,
                     otaStatus: otaStatus,
+                    lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                     onRenameTapped: { showRenameSheet = true }
                 )
                     .listRowInsets(EdgeInsets())

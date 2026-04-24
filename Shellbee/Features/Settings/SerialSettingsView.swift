@@ -83,7 +83,7 @@ struct SerialSettingsView: View {
         } message: {
             Text("Changing adapter settings requires a bridge restart.")
         }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
@@ -101,7 +101,7 @@ struct SerialSettingsView: View {
             "baudrate": .int(baudrate)
         ]
         if !adapter.isEmpty { serial["adapter"] = .string(adapter) }
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["serial": .object(serial)]))
+        environment.sendBridgeOptions(["serial": .object(serial)])
     }
 }
 

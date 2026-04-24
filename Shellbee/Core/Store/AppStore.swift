@@ -125,16 +125,14 @@ final class AppStore {
             }
 
         case .bridgeResponse(_, let payload):
-            if let data = payload.object?["data"] {
-                let restartRequired = data.object?["restart_required"]?.boolValue
-                let config = data.decode(BridgeConfig.self)
-                
-                if let info = bridgeInfo {
-                    bridgeInfo = info.copyUpdating(
-                        restartRequired: restartRequired,
-                        config: config
-                    )
-                }
+            // The options/info responses carry only `{restart_required}` (and
+            // echo the request on error). The full config is delivered via the
+            // separate `bridge/info` topic, so don't try to decode config here
+            // — doing so would overwrite the real config with all-nils.
+            guard payload.object?["status"]?.stringValue == "ok" else { break }
+            if let restartRequired = payload.object?["data"]?.object?["restart_required"]?.boolValue,
+               let info = bridgeInfo {
+                bridgeInfo = info.copyUpdating(restartRequired: restartRequired)
             }
 
         case .bridgeHealth(let health):

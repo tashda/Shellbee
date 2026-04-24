@@ -4,13 +4,6 @@ struct MainSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
 
-    let highlight: SettingsHighlight?
-
-    init(highlight: SettingsHighlight? = nil) {
-        self.highlight = highlight
-    }
-
-    @State private var logLevel: BridgeSettings.LogLevel = .info
     @State private var lastSeen: BridgeSettings.LastSeenFormat = .disabled
     @State private var elapsed: Bool = false
     @State private var cacheState: Bool = true
@@ -18,25 +11,19 @@ struct MainSettingsView: View {
     @State private var cacheStateSendOnStartup: Bool = true
     @State private var output: BridgeSettings.OutputFormat = .json
     @State private var timestampFormat: String = "YYYY-MM-DD HH:mm:ss"
-    @State private var logRotation: Bool = true
-    @State private var logDirectoriesToKeep: Int = 10
 
     @State private var showingDiscardAlert = false
-    @State private var logLevelHighlighted = false
 
     private var hasChanges: Bool {
         guard let info = environment.store.bridgeInfo else { return false }
         let advanced = info.config?.advanced
-        return logLevel.rawValue != info.logLevel
-            || lastSeen.rawValue != (advanced?.lastSeen ?? "disable")
+        return lastSeen.rawValue != (advanced?.lastSeen ?? "disable")
             || elapsed != (advanced?.elapsed ?? false)
             || cacheState != (advanced?.cacheState ?? true)
             || cacheStatePersistent != (advanced?.cacheStatePersistent ?? true)
             || cacheStateSendOnStartup != (advanced?.cacheStateSendOnStartup ?? true)
             || output.rawValue != (advanced?.output ?? "json")
             || timestampFormat != (advanced?.timestampFormat ?? "YYYY-MM-DD HH:mm:ss")
-            || logRotation != (advanced?.logRotation ?? true)
-            || logDirectoriesToKeep != (advanced?.logDirectoriesToKeep ?? 10)
     }
 
     private var serverOutputIsAttributeOnly: Bool {
@@ -45,32 +32,6 @@ struct MainSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Picker("Log Level", selection: $logLevel) {
-                    ForEach(BridgeSettings.LogLevel.allCases, id: \.self) { level in
-                        Text(level.label).tag(level)
-                    }
-                }
-                .listRowBackground(
-                    logLevelHighlighted
-                        ? Color.accentColor.opacity(0.25)
-                        : Color(.secondarySystemGroupedBackground)
-                )
-            } header: {
-                Text("Logging")
-            } footer: {
-                Text("Controls how verbose the bridge logs are.")
-            }
-
-            Section {
-                Toggle("Log Rotation", isOn: $logRotation)
-                InlineIntField("Directories to Keep", value: $logDirectoriesToKeep, range: 1...50)
-            } header: {
-                Text("Log Files")
-            } footer: {
-                Text("Log rotation deletes old log directories automatically. Adjust how many to keep on disk.")
-            }
-
             Section {
                 Picker("Last Seen Format", selection: $lastSeen) {
                     ForEach(BridgeSettings.LastSeenFormat.allCases, id: \.self) { format in
@@ -134,22 +95,11 @@ struct MainSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
-        .task {
-            // Flash the Log Level row briefly when arriving here from the
-            // Notifications settings link. Matches the transient-highlight
-            // pattern Apple's Settings uses when jumping between panes.
-            guard highlight == .logLevel else { return }
-            try? await Task.sleep(for: .milliseconds(350))
-            withAnimation(.easeInOut(duration: 0.25)) { logLevelHighlighted = true }
-            try? await Task.sleep(for: .milliseconds(900))
-            withAnimation(.easeInOut(duration: 0.6)) { logLevelHighlighted = false }
-        }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
         guard let info = environment.store.bridgeInfo else { return }
-        logLevel = BridgeSettings.LogLevel(rawValue: info.logLevel) ?? .info
         let advanced = info.config?.advanced
         lastSeen = BridgeSettings.LastSeenFormat(rawValue: advanced?.lastSeen ?? "disable") ?? .disabled
         elapsed = advanced?.elapsed ?? false
@@ -158,24 +108,37 @@ struct MainSettingsView: View {
         cacheStateSendOnStartup = advanced?.cacheStateSendOnStartup ?? true
         output = BridgeSettings.OutputFormat(rawValue: advanced?.output ?? "json") ?? .json
         timestampFormat = advanced?.timestampFormat ?? "YYYY-MM-DD HH:mm:ss"
-        logRotation = advanced?.logRotation ?? true
-        logDirectoriesToKeep = advanced?.logDirectoriesToKeep ?? 10
     }
 
     private func applyChanges() {
-        let advanced: [String: JSONValue] = [
-            "log_level": .string(logLevel.rawValue),
-            "last_seen": .string(lastSeen.rawValue),
-            "elapsed": .bool(elapsed),
-            "cache_state": .bool(cacheState),
-            "cache_state_persistent": .bool(cacheStatePersistent),
-            "cache_state_send_on_startup": .bool(cacheStateSendOnStartup),
-            "output": .string(output.rawValue),
-            "timestamp_format": .string(timestampFormat),
-            "log_rotation": .bool(logRotation),
-            "log_directories_to_keep": .int(logDirectoriesToKeep)
-        ]
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["advanced": .object(advanced)]))
+        guard let info = environment.store.bridgeInfo else { return }
+        let advanced = info.config?.advanced
+        var changes: [String: JSONValue] = [:]
+
+        if lastSeen.rawValue != (advanced?.lastSeen ?? "disable") {
+            changes["last_seen"] = .string(lastSeen.rawValue)
+        }
+        if elapsed != (advanced?.elapsed ?? false) {
+            changes["elapsed"] = .bool(elapsed)
+        }
+        if cacheState != (advanced?.cacheState ?? true) {
+            changes["cache_state"] = .bool(cacheState)
+        }
+        if cacheStatePersistent != (advanced?.cacheStatePersistent ?? true) {
+            changes["cache_state_persistent"] = .bool(cacheStatePersistent)
+        }
+        if cacheStateSendOnStartup != (advanced?.cacheStateSendOnStartup ?? true) {
+            changes["cache_state_send_on_startup"] = .bool(cacheStateSendOnStartup)
+        }
+        if output.rawValue != (advanced?.output ?? "json") {
+            changes["output"] = .string(output.rawValue)
+        }
+        if timestampFormat != (advanced?.timestampFormat ?? "YYYY-MM-DD HH:mm:ss") {
+            changes["timestamp_format"] = .string(timestampFormat)
+        }
+
+        guard !changes.isEmpty else { return }
+        environment.sendBridgeOptions(["advanced": .object(changes)])
     }
 }
 

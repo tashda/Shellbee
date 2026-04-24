@@ -85,7 +85,6 @@ struct DeviceBindView: View {
             payload["clusters"] = .array(clusters.map { .string($0) })
         }
         environment.send(topic: Z2MTopics.Request.deviceBind, payload: .object(payload))
-        refreshDevices()
     }
 
     private func unbind(_ binding: ParsedBinding) {
@@ -98,11 +97,6 @@ struct DeviceBindView: View {
                 "clusters": .array([.string(binding.cluster)])
             ])
         )
-        refreshDevices()
-    }
-
-    private func refreshDevices() {
-        environment.send(topic: Z2MTopics.Request.devices, payload: .object([:]))
     }
 
     private func resolveTarget(_ binding: ParsedBinding) -> String {

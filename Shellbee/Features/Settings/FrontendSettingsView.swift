@@ -98,7 +98,7 @@ struct FrontendSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
@@ -127,7 +127,7 @@ struct FrontendSettingsView: View {
         if !authToken.isEmpty { frontend["auth_token"] = .string(authToken) }
         if !sslCert.isEmpty { frontend["ssl_cert"] = .string(sslCert) }
         if !sslKey.isEmpty { frontend["ssl_key"] = .string(sslKey) }
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["frontend": .object(frontend)]))
+        environment.sendBridgeOptions(["frontend": .object(frontend)])
         authToken = ""; sslCert = ""; sslKey = ""
     }
 }

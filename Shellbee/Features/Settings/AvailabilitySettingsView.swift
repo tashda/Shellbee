@@ -70,7 +70,7 @@ struct AvailabilitySettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
@@ -99,7 +99,7 @@ struct AvailabilitySettingsView: View {
                 "passive": .object(["timeout": .int(passiveTimeout)])
             ])
         ]
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(payload))
+        environment.sendBridgeOptions(payload)
     }
 }
 

@@ -79,11 +79,9 @@ struct SettingsView: View {
 
     private var loggingSection: some View {
         Section {
-            NavigationLink { LoggingSettingsView() } label: {
-                settingsLabel(title: "Logging Details", systemImage: "doc.text.magnifyingglass", color: .gray)
+            NavigationLink { LoggingHubView() } label: {
+                settingsLabel(title: "Logging", systemImage: "doc.text.magnifyingglass", color: .gray)
             }
-        } header: {
-            Text("Logging")
         }
     }
 
