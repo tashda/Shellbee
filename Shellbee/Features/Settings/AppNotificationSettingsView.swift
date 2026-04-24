@@ -59,11 +59,9 @@ struct AppNotificationSettingsView: View {
     @ViewBuilder
     private var aboutSection: some View {
         Section {
-            NavigationLink {
-                LoggingBasicView(highlight: .logLevel)
-            } label: {
-                LabeledContent("Bridge Log Level", value: displayedLevel.capitalized)
-            }
+            LabeledContent("Bridge Log Level", value: displayedLevel.capitalized)
+        } footer: {
+            Text("Change in Settings → Logging.")
         }
     }
 

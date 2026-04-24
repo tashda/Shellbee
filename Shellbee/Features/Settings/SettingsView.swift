@@ -13,11 +13,11 @@ struct SettingsView: View {
                 }
 
                 connectionSection
-                toolsSection
                 bridgeConfigSection
                 loggingSection
                 integrationsSection
                 networkSection
+                toolsSection
                 applicationSection
 
                 if environment.connectionState.isConnected || environment.hasBeenConnected {
@@ -79,19 +79,40 @@ struct SettingsView: View {
 
     private var loggingSection: some View {
         Section {
-            NavigationLink { LoggingHubView() } label: {
-                settingsLabel(title: "Logging", systemImage: "doc.text.magnifyingglass", color: .gray)
+            Picker(selection: logLevelBinding) {
+                ForEach(BridgeSettings.LogLevel.allCases, id: \.self) { level in
+                    Text(level.label).tag(level)
+                }
+            } label: {
+                settingsLabel(title: "Logging Level", systemImage: "slider.horizontal.below.square.filled.and.square", color: .gray)
             }
+            NavigationLink { LogsView() } label: {
+                settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
+            }
+            NavigationLink { LogOutputView() } label: {
+                settingsLabel(title: "Log Output", systemImage: "doc.text.magnifyingglass", color: Color(.systemGray2))
+            }
+        } header: {
+            Text("Logging")
         }
+    }
+
+    private var logLevelBinding: Binding<BridgeSettings.LogLevel> {
+        Binding(
+            get: {
+                BridgeSettings.LogLevel(rawValue: environment.store.bridgeInfo?.logLevel ?? "info") ?? .info
+            },
+            set: { newValue in
+                guard newValue.rawValue != environment.store.bridgeInfo?.logLevel else { return }
+                environment.sendBridgeOptions(["advanced": .object(["log_level": .string(newValue.rawValue)])])
+            }
+        )
     }
 
     private var toolsSection: some View {
         Section {
             NavigationLink { DocBrowserView() } label: {
                 settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
-            }
-            NavigationLink { LogsView() } label: {
-                settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
             }
             NavigationLink { TouchlinkView() } label: {
                 settingsLabel(title: "Touchlink", systemImage: "dot.radiowaves.left.and.right", color: .teal)
