@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions:
+  contents: write
+
+jobs:
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          {
+            echo "## ${TAG}"
+            echo
+            if [ -n "$PREV" ]; then
+              echo "Changes since ${PREV}:"
+              echo
+              git log --pretty=format:'- %s (%h)' "${PREV}..${TAG}"
+            else
+              echo "Initial release."
+            fi
+          } > notes.md
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            $PRERELEASE_FLAG
+
+  # App Store upload is intentionally left as a scaffold. Wire this in once
+  # you have decided on fastlane / xcodebuild archive + altool / Xcode Cloud.
+  # Required secrets (add under repo Settings > Secrets and variables > Actions):
+  #   APP_STORE_CONNECT_API_KEY_ID
+  #   APP_STORE_CONNECT_API_KEY_ISSUER_ID
+  #   APP_STORE_CONNECT_API_KEY_P8   (base64-encoded .p8 contents)
+  #   MATCH_PASSWORD                 (if using fastlane match)
+  #
+  # app-store-upload:
+  #   name: Upload to App Store Connect
+  #   needs: github-release
+  #   runs-on: macos-15
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Archive and upload
+  #       run: |
+  #         # TODO: archive Shellbee scheme, export signed .ipa, upload via
+  #         # xcrun altool or fastlane pilot. Decide on the approach first.
