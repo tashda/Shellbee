@@ -18,17 +18,39 @@ jobs:
 
     env:
       SCHEME: Shellbee
-      DESTINATION: 'platform=iOS Simulator,name=iPhone 17 Pro Max,OS=latest'
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.1.app || sudo xcode-select -s /Applications/Xcode.app
+      - name: Select latest Xcode
+        run: |
+          # Pick the newest Xcode the runner image ships with. Hard-coding a
+          # version tends to rot because GitHub images churn.
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          echo "Selecting $LATEST"
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Select simulator
+        id: sim
+        run: |
+          # Pick the newest available iPhone simulator the runner has installed.
+          # Hard-coding a device name (e.g. "iPhone 17 Pro Max") fails whenever
+          # the runner image lags behind local Xcode.
+          xcrun simctl list devices available
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[]
+                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
+                       | .value[]
+                       | select(.isAvailable and (.name | startswith("iPhone")))]
+                     | sort_by(.name) | reverse | .[0].udid')
+          if [ -z "$DEVICE_ID" ] || [ "$DEVICE_ID" = "null" ]; then
+            echo "No iPhone simulator available on this runner" >&2
+            exit 1
+          fi
+          echo "Selected simulator: $DEVICE_ID"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
 
       - name: Resolve Swift packages
         run: |
@@ -38,6 +60,8 @@ jobs:
             -derivedDataPath "$DERIVED_DATA"
 
       - name: Build for testing
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
           set -o pipefail
           xcodebuild build-for-testing \
@@ -48,6 +72,8 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tee build.log
 
       - name: Test
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
           set -o pipefail
           xcodebuild test-without-building \
