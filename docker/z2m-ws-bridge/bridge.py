@@ -41,11 +41,23 @@ loop: asyncio.AbstractEventLoop | None = None
 
 # ── MQTT callbacks ────────────────────────────────────────────────────────
 
+def _is_client_command(topic: str) -> bool:
+    """Command topics flow client → bridge; real z2m never echoes these back
+    to WS subscribers, and doing so confuses the app's topic router."""
+    return (
+        topic.endswith("/set")
+        or topic.endswith("/get")
+        or topic.startswith("bridge/request/")
+    )
+
+
 def _make_envelope(full_topic: str, payload_bytes: bytes) -> str | None:
     """Return a JSON string ready for the WebSocket, or None to skip."""
     if not full_topic.startswith(BASE_TOPIC + "/"):
         return None
     topic = full_topic[len(BASE_TOPIC) + 1:]
+    if _is_client_command(topic):
+        return None
     try:
         payload = json.loads(payload_bytes) if payload_bytes else None
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -109,10 +121,13 @@ def _request_path(ws: WebSocketServerProtocol) -> str:
     return ""
 
 async def ws_handler(ws: WebSocketServerProtocol):
+    req_path = _request_path(ws)
+    print(f"[WS] connect path={req_path!r}", flush=True)
     if AUTH_TOKEN:
-        query = parse_qs(urlparse(_request_path(ws)).query)
+        query = parse_qs(urlparse(req_path).query)
         token = query.get("token", [None])[0]
         if token != AUTH_TOKEN:
+            print(f"[WS] reject: token={token!r}", flush=True)
             await ws.close(code=1008, reason="Invalid token")
             return
 

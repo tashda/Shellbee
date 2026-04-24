@@ -3,9 +3,10 @@ import XCTest
 extension XCUIApplication {
     /// Launches the app pointed at the Docker Z2M stack on localhost:8080.
     func launchForTesting() {
-        launchEnvironment["UI_TEST_Z2M_HOST"] = "localhost"
-        launchEnvironment["UI_TEST_Z2M_PORT"] = "8080"
-        launchEnvironment["UI_TEST_MODE"]     = "1"
+        launchEnvironment["UI_TEST_Z2M_HOST"]  = "localhost"
+        launchEnvironment["UI_TEST_Z2M_PORT"]  = "8080"
+        launchEnvironment["UI_TEST_Z2M_TOKEN"] = "shellbee-integration-token"
+        launchEnvironment["UI_TEST_MODE"]      = "1"
         launch()
     }
 
@@ -17,6 +18,26 @@ extension XCUIApplication {
     func tapDevicesTab()  { tabBar.buttons["Devices"].tap() }
     func tapGroupsTab()   { tabBar.buttons["Groups"].tap() }
     func tapSettingsTab() { tabBar.buttons["Settings"].tap() }
+
+    /// Reveal the minimized search bar on lists that use
+    /// `.searchToolbarBehavior(.minimize)`. The search field only exists in
+    /// the view hierarchy after the user taps the magnifying-glass icon in
+    /// the navigation bar — scrolling does not reveal it.
+    ///
+    /// Returns the search field if it became available within the timeout.
+    @discardableResult
+    func revealSearchField(timeout: TimeInterval = 5) -> XCUIElement {
+        let field = searchFields.firstMatch
+        if field.waitForExistence(timeout: 1) { return field }
+
+        // The .minimize search icon is exposed as a Button labeled "Search".
+        let searchButton = navigationBars.buttons["Search"].firstMatch
+        if searchButton.waitForExistence(timeout: timeout) {
+            searchButton.tap()
+        }
+        _ = field.waitForExistence(timeout: timeout)
+        return field
+    }
 }
 
 extension XCUIElement {
@@ -46,6 +67,15 @@ extension XCUIElement {
             typeText(del)
         }
         typeText(text)
+    }
+
+    /// A far-travel leading swipe that reliably reveals List trailing swipe
+    /// actions even when `allowsFullSwipe: false`. The stock `swipeLeft()`
+    /// on iOS 26 is too short to expose multiple swipe buttons.
+    func swipeLeftFar() {
+        let start = coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
+        let end   = coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 }
 
@@ -78,7 +108,7 @@ class ShellbeeUITestCase: XCTestCase {
         // If the app connected successfully the main tab bar should appear.
         // If not, we get stuck on the connection setup screen.
         let tabBar = app.tabBars.firstMatch
-        if !tabBar.waitForExistence(timeout: 30) {
+        if !tabBar.waitForExistence(timeout: 15) {
             // Try to detect whether we're on a connection setup screen
             let isSetup = app.buttons["Connect"].waitForExistence(timeout: 3)
             if isSetup {
@@ -89,7 +119,7 @@ class ShellbeeUITestCase: XCTestCase {
 
     // MARK: - Convenience
 
-    func waitForMainTab(timeout: TimeInterval = 30) {
+    func waitForMainTab(timeout: TimeInterval = 15) {
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: timeout),
                       "Main tab bar never appeared — is the Docker stack running?")
     }

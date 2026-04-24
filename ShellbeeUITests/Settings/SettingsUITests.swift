@@ -31,38 +31,58 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     // MARK: - Server detail
 
+    // Behavior: tapping the Server row pushes the ServerDetailView
+    // (navigationTitle "Server"). SettingsView's nav stack is the only
+    // visible one, so we assert the pushed nav bar title.
     func testServerDetailOpens() {
         app.cells.containing(.staticText, identifier: "Server").firstMatch.tapWhenReady()
         XCTAssertTrue(
-            app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5),
+            app.navigationBars["Server"].firstMatch.waitForExistence(timeout: 5),
             "Server detail did not open"
         )
     }
 
     // MARK: - General bridge settings
 
+    // Behavior: tapping the first "General" row navigates to bridge-wide
+    // general settings (MainSettingsView) — the Log Level section is
+    // the hallmark of that pane.
     func testGeneralSettingsOpens() {
-        let cell = app.cells.matching(NSPredicate(format: "label CONTAINS 'General'")).firstMatch
-        cell.tapWhenReady()
+        openSettingsScreen("General")
         XCTAssertTrue(
-            app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+            app.navigationBars["General"].firstMatch.waitForExistence(timeout: 5),
+            "General settings pane did not open"
         )
     }
 
+    // Behavior: General settings exposes a Log Level picker for the bridge.
+    // The picker label is rendered as a StaticText row; match against
+    // staticTexts rather than the enclosing cell because iOS 26 Form
+    // rows nest differently.
     func testGeneralSettingsHasLogLevelPicker() {
         openSettingsScreen("General")
+        XCTAssertTrue(app.navigationBars["General"].firstMatch.waitForExistence(timeout: 5),
+                      "General pane did not open")
         XCTAssertTrue(
-            app.cells.matching(NSPredicate(format: "label CONTAINS 'Log Level'")).firstMatch
-                .waitForExistence(timeout: 5)
+            app.staticTexts["Log Level"].firstMatch.waitForExistence(timeout: 5),
+            "Log Level picker not found in General settings"
         )
     }
 
+    // Behavior: Apply sits in the confirmationAction slot of the toolbar
+    // and is DISABLED until there is a pending change. Cancel does not
+    // appear in the toolbar at all until there are pending changes.
     func testGeneralSettingsApplyAndCancel() {
         openSettingsScreen("General")
-        let applyBtn = app.buttons["Apply"].firstMatch
-        let cancelBtn = app.buttons["Cancel"].firstMatch
-        XCTAssertTrue(applyBtn.waitForExistence(timeout: 5) || cancelBtn.waitForExistence(timeout: 5))
-        cancelBtn.tapWhenReady()
+        XCTAssertTrue(app.navigationBars["General"].firstMatch.waitForExistence(timeout: 5),
+                      "General pane did not open")
+        let apply = app.buttons["Apply"].firstMatch
+        XCTAssertTrue(apply.waitForExistence(timeout: 3),
+                      "Apply button should render in the nav bar (disabled)")
+        XCTAssertFalse(apply.isEnabled,
+                       "Apply should be disabled with no pending changes")
+        XCTAssertFalse(app.buttons["Cancel"].firstMatch.waitForExistence(timeout: 1),
+                       "Cancel toolbar button should only appear after making a change")
     }
 
     // MARK: - MQTT settings
@@ -70,7 +90,8 @@ final class SettingsUITests: ShellbeeUITestCase {
     func testMQTTSettingsOpens() {
         openSettingsScreen("MQTT")
         XCTAssertTrue(
-            app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+            app.navigationBars["MQTT"].firstMatch.waitForExistence(timeout: 5),
+            "MQTT settings did not open"
         )
     }
 
@@ -85,7 +106,8 @@ final class SettingsUITests: ShellbeeUITestCase {
     func testAdapterSettingsOpens() {
         openSettingsScreen("Adapter")
         XCTAssertTrue(
-            app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+            app.navigationBars["Adapter"].firstMatch.waitForExistence(timeout: 5),
+            "Adapter settings did not open"
         )
     }
 
@@ -94,7 +116,8 @@ final class SettingsUITests: ShellbeeUITestCase {
     func testHomeAssistantSettingsOpens() {
         openSettingsScreen("Home Assistant")
         XCTAssertTrue(
-            app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+            app.navigationBars["Home Assistant"].firstMatch.waitForExistence(timeout: 5),
+            "Home Assistant settings did not open"
         )
     }
 
@@ -157,14 +180,19 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     // MARK: - Logs
 
+    // Behavior: tapping the "Logs" row in Settings pushes LogsView.
+    // The Settings nav stack is the only one visible (LogsView's nested
+    // NavigationStack renders into the same nav bar), so we assert that
+    // the Logs title is on screen.
     func testLogsNavigationFromSettings() {
         let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
-        if logsRow.waitForExistence(timeout: 5) {
-            logsRow.tap()
-            XCTAssertTrue(
-                app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
-            )
-        }
+        XCTAssertTrue(logsRow.waitForExistence(timeout: 5),
+                      "Logs row not found in Settings")
+        logsRow.tap()
+        XCTAssertTrue(
+            app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 5),
+            "Logs view did not open after tapping Logs row"
+        )
     }
 
     // MARK: - Touchlink

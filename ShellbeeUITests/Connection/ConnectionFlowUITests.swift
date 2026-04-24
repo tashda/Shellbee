@@ -34,44 +34,51 @@ final class ConnectionFlowUITests: XCTestCase {
 
     // MARK: - Add server and connect
 
+    // Behavior: from the empty setup screen, Add Server opens the editor;
+    // filling in localhost:8080 + the mock bridge's auth token and tapping
+    // Connect should establish a session and show the main tab bar.
     func testAddServerAndConnect() throws {
-        // Skip if already connected
         if app.tabBars.firstMatch.waitForExistence(timeout: 2) {
             XCTSkip("Already connected — test only valid on fresh install")
         }
 
         app.buttons["Add Server"].firstMatch.tapWhenReady()
 
-        // Fill in host
-        let hostField = app.textFields.matching(identifier: "Host").firstMatch
+        // SettingsTextField renders TextFields whose accessibility label is
+        // the row label ("Host"/"Port"), not an identifier. Match by cell
+        // containing the label and target its text field directly.
+        let hostCell = app.cells.containing(.staticText, identifier: "Host").firstMatch
+        XCTAssertTrue(hostCell.waitForExistence(timeout: 5), "Host row missing in editor")
+        let hostField = hostCell.textFields.firstMatch
         hostField.tapWhenReady()
-        hostField.clearAndType("localhost")
+        hostField.typeText("localhost")
 
-        // Port should default to 8080 — verify or set it
-        let portField = app.textFields.matching(identifier: "Port").firstMatch
-        if portField.exists {
-            portField.clearAndType("8080")
-        }
+        // Port defaults to "8080" — leave it, or override if the default
+        // placeholder is shown instead.
+        // Token field is a SecureField with placeholder "Optional".
+        let tokenCell = app.cells.containing(.staticText, identifier: "Token").firstMatch
+        XCTAssertTrue(tokenCell.waitForExistence(timeout: 3), "Token row missing in editor")
+        let tokenField = tokenCell.secureTextFields.firstMatch
+        tokenField.tapWhenReady()
+        tokenField.typeText("shellbee-integration-token")
 
-        // Tap Connect
         app.buttons["Connect"].firstMatch.tapWhenReady()
-
-        // Main tab bar should appear (within 30s while Z2M connects)
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30),
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 15),
                       "Main tab bar never appeared after connecting")
     }
 
     // MARK: - Connection editor
 
+    // Behavior: the connection editor exposes a Protocol chooser (HTTP /
+    // HTTPS). With `.pickerStyle(.automatic)` inside a Form, iOS renders
+    // it as a menu button whose accessibility label is "Protocol".
     func testConnectionEditorShowsProtocolPicker() throws {
         if app.tabBars.firstMatch.waitForExistence(timeout: 2) { XCTSkip("Already connected") }
         app.buttons["Add Server"].firstMatch.tapWhenReady()
-        // Protocol picker should be present
-        XCTAssertTrue(
-            app.segmentedControls.firstMatch.waitForExistence(timeout: 5) ||
-            app.pickers["Protocol"].waitForExistence(timeout: 5),
-            "Protocol picker not found in editor"
-        )
+        let matches = app.staticTexts["Protocol"].firstMatch.waitForExistence(timeout: 5)
+            || app.buttons["Protocol"].firstMatch.waitForExistence(timeout: 1)
+            || app.segmentedControls.firstMatch.waitForExistence(timeout: 1)
+        XCTAssertTrue(matches, "Protocol picker not found in connection editor")
     }
 
     // MARK: - Saved connections
@@ -89,7 +96,7 @@ final class ConnectionFlowUITests: XCTestCase {
 
     func testDisconnectReturnsToSetupScreen() throws {
         // This test requires being connected first
-        guard app.tabBars.firstMatch.waitForExistence(timeout: 30) else {
+        guard app.tabBars.firstMatch.waitForExistence(timeout: 15) else {
             throw XCTSkip("Not connected — cannot test disconnect flow")
         }
 

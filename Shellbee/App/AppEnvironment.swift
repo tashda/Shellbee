@@ -122,7 +122,8 @@ final class AppEnvironment {
             if let host = env["UI_TEST_Z2M_HOST"],
                let portStr = env["UI_TEST_Z2M_PORT"],
                let port = Int(portStr) {
-                connect(config: ConnectionConfig(host: host, port: port, useTLS: false, basePath: "/", authToken: nil))
+                let token = env["UI_TEST_Z2M_TOKEN"].flatMap { $0.isEmpty ? nil : $0 }
+                connect(config: ConnectionConfig(host: host, port: port, useTLS: false, basePath: "/", authToken: token))
                 return
             }
         }

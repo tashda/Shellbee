@@ -76,4 +76,68 @@ final class NotificationCoalescingTests: XCTestCase {
         store.enqueueNotification(.init(level: .info, title: "Copied to Clipboard", priority: .fastTrack))
         XCTAssertEqual(store.fastTrackNotifications.count, 1)
     }
+
+    // Behavior: when multiple OTA progress notifications arrive for
+    // different devices under the same title, each becomes a separate
+    // occurrence on the coalesced banner. The overlay's carousel uses
+    // `occurrences` to page through device-specific subtitles and log
+    // references; duplicated log IDs would cause the detail sheet to
+    // open the wrong entry.
+    func testOTAOccurrencesTrackDistinctDeviceEntries() {
+        let kitchenLog = UUID()
+        let bedroomLog = UUID()
+
+        store.enqueueNotification(.init(
+            level: .info,
+            title: "OTA update finished",
+            subtitle: "Kitchen Plug",
+            logEntryID: kitchenLog,
+            deviceName: "Kitchen Plug",
+            category: .otaUpdateInstalled
+        ))
+        store.enqueueNotification(.init(
+            level: .info,
+            title: "OTA update finished",
+            subtitle: "Bedroom Hue",
+            logEntryID: bedroomLog,
+            deviceName: "Bedroom Hue",
+            category: .otaUpdateInstalled
+        ))
+
+        XCTAssertEqual(store.pendingNotifications.count, 1, "Same title should coalesce")
+        let notif = store.pendingNotifications.first!
+        XCTAssertEqual(notif.count, 2)
+        XCTAssertEqual(notif.occurrences.map(\.deviceName), ["Kitchen Plug", "Bedroom Hue"])
+        XCTAssertEqual(notif.occurrences.map(\.subtitle), ["Kitchen Plug", "Bedroom Hue"])
+        XCTAssertEqual(notif.occurrences.flatMap(\.logEntryIDs), [kitchenLog, bedroomLog])
+        XCTAssertEqual(notif.logEntryIDs, [kitchenLog, bedroomLog])
+    }
+
+    // Behavior: the `displaying(occurrence:)` helper returns a copy of
+    // the coalesced notification with the given occurrence's subtitle
+    // and deviceName, leaving the aggregated count/ID and log ID list
+    // intact. The overlay uses this when swiping through pages.
+    func testDisplayingOccurrenceSwapsSubtitleAndDevice() {
+        store.enqueueNotification(.init(
+            level: .info, title: "OTA update finished",
+            subtitle: "Kitchen Plug", deviceName: "Kitchen Plug",
+            category: .otaUpdateInstalled
+        ))
+        store.enqueueNotification(.init(
+            level: .info, title: "OTA update finished",
+            subtitle: "Bedroom Hue", deviceName: "Bedroom Hue",
+            category: .otaUpdateInstalled
+        ))
+
+        let banner = store.pendingNotifications.first!
+        let viewingFirst = banner.displaying(banner.occurrences[0])
+        XCTAssertEqual(viewingFirst.subtitle, "Kitchen Plug")
+        XCTAssertEqual(viewingFirst.deviceName, "Kitchen Plug")
+        XCTAssertEqual(viewingFirst.count, 2,
+                       "Occurrence display should keep the aggregated count")
+
+        let viewingSecond = banner.displaying(banner.occurrences[1])
+        XCTAssertEqual(viewingSecond.subtitle, "Bedroom Hue")
+        XCTAssertEqual(viewingSecond.deviceName, "Bedroom Hue")
+    }
 }
