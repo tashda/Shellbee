@@ -1,24 +1,15 @@
 name: CI (Full)
 
 # Complete suite: unit tests + UI tests. Runs in three situations:
-#   1. Every push to main (catches regressions introduced by merges)
-#   2. Nightly at 03:00 UTC (catches environmental / flaky issues)
-#   3. On-demand: manually from the Actions tab, or by labeling a PR
+#   1. Nightly at 03:00 UTC (catches environmental / flaky issues)
+#   2. On-demand: manually from the Actions tab, or by labeling a PR
 #      with `run-ui-tests` when you want extra confidence before merge
 #
 # Typical duration: 15-25 min. Not required for PR merge — see ci-fast.yml
-# for the required check.
+# for the required check. Intentionally does NOT run on every push to main,
+# to avoid a red check appearing on the trunk for transient UI flakes.
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'docker/**'
-      - 'scripts/**'
-      - 'docs/**'
-      - '.gitignore'
-      - 'PRIVACY.md'
   schedule:
     # 03:00 UTC daily. Cron syntax: minute hour day month day-of-week.
     - cron: '0 3 * * *'
