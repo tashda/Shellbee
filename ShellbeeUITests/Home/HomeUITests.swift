@@ -100,6 +100,37 @@ final class HomeUITests: ShellbeeUITestCase {
         // Not a hard failure — Z2M may not have sent bridge/info yet
     }
 
+    // MARK: - New card slots (Groups / Logs / Mesh detail)
+
+    // Behavior: the Recent Events card has a "Show All" button that
+    // pushes the Logs screen. This is a shortcut for "all recent logs".
+    func testRecentEventsShowAllOpensLogs() {
+        let showAll = app.buttons["Show All"].firstMatch
+        XCTAssertTrue(showAll.waitForExistence(timeout: 10),
+                      "Recent Events card missing Show All button")
+        showAll.tap()
+        XCTAssertTrue(
+            app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 5),
+            "Show All should push the Logs view"
+        )
+    }
+
+    // Behavior: the Mesh card header has a chevron NavigationLink that
+    // opens MeshDetailView (navigation title "Mesh"). SwiftUI surfaces
+    // that chevron as a Button with accessibility label "Forward".
+    func testTappingMeshCardOpensMeshDetail() {
+        XCTAssertTrue(app.staticTexts["Mesh"].firstMatch.waitForExistence(timeout: 10),
+                      "Mesh card not rendered")
+        let forward = app.buttons["Forward"].firstMatch
+        XCTAssertTrue(forward.waitForExistence(timeout: 5),
+                      "Mesh card chevron not reachable")
+        forward.tap()
+        XCTAssertTrue(
+            app.navigationBars["Mesh"].firstMatch.waitForExistence(timeout: 5),
+            "Mesh chevron should push MeshDetailView"
+        )
+    }
+
     func testRestartAlertAppears() {
         let restartBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Restart'")).firstMatch
         guard restartBtn.waitForExistence(timeout: 5) else { return }

@@ -114,33 +114,134 @@ final class DeviceDocNormalizerTests: XCTestCase {
         XCTAssertEqual(normalized.quality, .fullyNormalized)
     }
 
-    func testLocalCorpusParsesAndNormalizesWithoutEmptyScreen() throws {
-        let root = URL(fileURLWithPath: "/Users/k/Tools/ReferenceProjects/zigbee2mqtt.io/docs/devices", isDirectory: true)
-        guard FileManager.default.fileExists(atPath: root.path) else {
-            throw XCTSkip("Local Zigbee2MQTT docs corpus not available")
-        }
-
-        let files = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
-            .filter { $0.pathExtension == "md" }
-
-        XCTAssertFalse(files.isEmpty)
-
-        for url in files {
-            let raw = try String(contentsOf: url, encoding: .utf8)
-            let parsed = DocParser.parse(raw)
-            let model = url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: "/")
-            let device = DeviceFixture.light(model: model)
+    // Behavior: for a diverse set of real upstream z2m device docs —
+    // lights, sensors, switches, covers, remotes, locks — the parser +
+    // normalizer chain must always produce SOME renderable content
+    // (pairing guide, capabilities, options, or note sections). A device
+    // with parsed sections but no renderable output would show an empty
+    // screen in the Doc Browser.
+    //
+    // The samples are kept inline instead of reading from the reference
+    // corpus on disk: the iOS simulator cannot access `/Users/…` on the
+    // host, so a path-based test always skipped in CI.
+    func testDiverseCuratedDocsParseAndNormalize() {
+        for sample in Self.curatedDocSamples {
+            let parsed = DocParser.parse(sample.markdown)
+            let device = DeviceFixture.light(model: sample.model)
             let normalized = DeviceDocNormalizer.normalize(parsed: parsed, device: device)
 
-            if !parsed.sections.isEmpty {
-                let hasRenderedContent =
-                    normalized.pairing != nil
-                    || !normalized.capabilities.isEmpty
-                    || !normalized.options.isEmpty
-                    || !normalized.notesSections.isEmpty
-                    || !normalized.additionalSections.isEmpty
-                XCTAssertTrue(hasRenderedContent, "Expected content for \(url.lastPathComponent)")
-            }
+            XCTAssertFalse(parsed.sections.isEmpty,
+                           "Parser produced no sections for \(sample.model)")
+
+            let hasRenderedContent =
+                normalized.pairing != nil
+                || !normalized.capabilities.isEmpty
+                || !normalized.options.isEmpty
+                || !normalized.notesSections.isEmpty
+                || !normalized.additionalSections.isEmpty
+            XCTAssertTrue(hasRenderedContent,
+                          "Normalizer produced no renderable content for \(sample.model)")
         }
     }
+
+    private struct DocSample {
+        let model: String
+        let markdown: String
+    }
+
+    // Curated slices of real z2m device docs — one per major category.
+    private static let curatedDocSamples: [DocSample] = [
+        DocSample(model: "LED1545G12", markdown: """
+        # IKEA LED1545G12
+
+        ## Notes
+
+        ### Pairing
+        Factory reset the light bulb.
+        After resetting the bulb will automatically connect.
+
+        While pairing, keep the bulb close to the coordinator (adapter).
+
+        ## OTA updates
+        This device supports OTA updates.
+
+        ## Options
+        *[How to use device type specific configuration](../guide/configuration/devices-groups.md#specific-device-options)*
+
+        * `transition`: Controls the transition time. The value must be a number with a minimum value of `0`
+        """),
+        DocSample(model: "WSDCGQ11LM", markdown: """
+        # Aqara WSDCGQ11LM
+
+        ## Notes
+
+        ### Battery Type
+        Uses a CR2032 battery
+
+        ### Pairing
+        Press and hold the reset button on the device for +- 5 seconds.
+        After this, the device will automatically join.
+
+        ### Troubleshooting: device stops sending messages
+        Since Xiaomi devices do not fully comply to the Zigbee standard, it sometimes happens that they disconnect.
+
+        ## Options
+        * `temperature_calibration`: Calibrates the temperature value. The value must be a number.
+        """),
+        DocSample(model: "E1926", markdown: """
+        # IKEA E1926
+
+        ## Notes
+
+        ### Pairing
+        Press both buttons on the blind for 5 seconds until a white light turns on.
+        The device is now awake and ready to pair for 2 minutes.
+
+        ### End Position
+        The roller blind maximum extension can be set by moving the blind to the desired position.
+
+        ## OTA updates
+        This device supports OTA updates.
+
+        ## Options
+        * `invert_cover`: Inverts the cover position. The value must be `true` or `false`
+        """),
+        DocSample(model: "TS011F_1", markdown: """
+        # Tuya TS011F_1
+
+        ## Options
+        * `state_action`: State actions will also be published as 'action' when true. The value must be `true` or `false`
+
+        ## Exposes
+
+        ### Switch
+        The current state of this switch is in the published state under the `state` property.
+        """),
+        DocSample(model: "E1743", markdown: """
+        # IKEA E1743
+
+        ## Notes
+
+        ### Pairing
+        Press the pair button 4 times in a row with about 1 second delay between the presses.
+        A red light will now start blinking.
+
+        ### Battery replacement
+        Uses a CR2032 battery.
+
+        ## OTA updates
+        This device supports OTA updates.
+        """),
+        DocSample(model: "BE468", markdown: """
+        # Schlage BE468
+
+        ## Notes
+
+        ### Pairing
+        Tap "Schlage" button 4 times within 6 seconds to enter pairing mode.
+
+        ### Adding user codes
+        Send a JSON message to `zigbee2mqtt/FRIENDLY_NAME/set/pin_code` with the payload `{"user": 0, "pin_code": 1234}`.
+        """),
+    ]
 }
