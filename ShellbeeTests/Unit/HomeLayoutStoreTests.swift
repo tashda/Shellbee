@@ -10,14 +10,14 @@ final class HomeLayoutStoreTests: XCTestCase {
         "homeLayoutInitialized",
     ]
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         Self.keys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         Self.keys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
-        super.tearDown()
+        try await super.tearDown()
     }
 
     // Behavior: on first launch the Home layout initializes with all

@@ -1,0 +1,4 @@
+# Every change requires review from the repo owner until more maintainers
+# are added. Keep this file small; add granular ownership only when multiple
+# humans start maintaining the repo.
+*       @tashda

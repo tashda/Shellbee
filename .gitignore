@@ -23,6 +23,9 @@ PLAN.md
 REFINEMENT_PLAN.md
 SETTINGS_ARCHITECTURE.md
 
+# Local developer scripts (per-developer worktree/build helpers)
+scripts/
+
 # Local logs and diagnostics
 Z2Mlog.txt
 

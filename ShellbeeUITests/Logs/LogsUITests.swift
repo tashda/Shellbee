@@ -97,18 +97,36 @@ final class LogsUITests: ShellbeeUITestCase {
     // MARK: - Log detail
 
     // Behavior: tapping a row in the Activity log pushes LogDetailView,
-    // whose nav bar title describes the event (e.g. a device name). We
-    // assert that a NEW navigation bar appeared — i.e. the Logs root bar
-    // no longer has large-title mode, or a back button named "Logs" exists.
-    //
-    // Activity entries appear once state-change diffs arrive; the engine
-    // drifts device states every 10s, so we wait for a row to appear.
-    func testTappingLogEntryOpensDetail() throws {
-        guard app.cells.firstMatch.waitForExistence(timeout: 15) else {
-            throw XCTSkip("No activity log entries visible within the drift window")
-        }
+    // which adds a "Logs" back button to the nav bar. Activity entries
+    // come from state-change diffs — to make this deterministic (drift
+    // timing is not reliable inside the 15s window), the test toggles
+    // Kitchen Plug's switch on the Devices tab first, guaranteeing a
+    // diff, then returns to the Logs tab (whose navigation stack was
+    // preserved from setUp) and asserts on the tap.
+    func testTappingLogEntryOpensDetail() {
+        app.tapDevicesTab()
+        let plug = app.cells.containing(.staticText, identifier: "Kitchen Plug").firstMatch
+        XCTAssertTrue(plug.waitForExistence(timeout: 10),
+                      "Kitchen Plug not in the device list")
+        plug.tap()
+        XCTAssertTrue(app.navigationBars["Kitchen Plug"].waitForExistence(timeout: 5),
+                      "Kitchen Plug detail did not open")
+        let toggle = app.switches.firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5),
+                      "Kitchen Plug toggle not found")
+        toggle.tap()
+
+        // Switch back to Settings; its nav stack still has Logs pushed
+        // on top from setUp, so the Logs view is already visible.
+        app.tapSettingsTab()
+        XCTAssertTrue(app.navigationBars["Logs"].waitForExistence(timeout: 5),
+                      "Logs view should still be on the Settings nav stack")
+
+        XCTAssertTrue(
+            app.cells.firstMatch.waitForExistence(timeout: 10),
+            "Activity log is empty after triggering a device state change"
+        )
         app.cells.firstMatch.tap()
-        // After push, a Logs back button appears in the nav bar.
         XCTAssertTrue(
             app.navigationBars.buttons["Logs"].firstMatch.waitForExistence(timeout: 5),
             "LogDetailView did not open — expected a 'Logs' back button"
