@@ -51,11 +51,13 @@ jobs:
       - name: Cache SwiftPM dependencies
         uses: actions/cache@v4
         with:
+          # Only cache the source checkouts and SwiftPM's global cache — not
+          # the artifacts directory. Artifacts contain prebuilt xcframeworks
+          # that xcodebuild re-validates on every run (~2 min), which negated
+          # the cache win when we included them.
           path: |
-            ${{ github.workspace }}/DerivedData/SourcePackages
+            ${{ github.workspace }}/DerivedData/SourcePackages/checkouts
             ~/Library/Caches/org.swift.swiftpm
-          # Invalidate when Package.resolved changes (deps added/updated)
-          # or when the Xcode version changes (forces rebuild of binaries).
           key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
             spm-${{ runner.os }}-
