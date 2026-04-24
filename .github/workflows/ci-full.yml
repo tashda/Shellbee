@@ -43,7 +43,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ui-tests'
     steps:
-      - run: echo "Proceeding. Trigger: ${{ github.event_name }}"
+      - name: Gate passed
+        run: |
+          echo "Trigger: ${{ github.event_name }}"
 
   unit-tests:
     name: Unit Tests
