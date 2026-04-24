@@ -5,13 +5,14 @@ struct DeviceCard: View {
     let state: [String: JSONValue]
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
+    var lastSeenEnabled: Bool = true
     var onRenameTapped: (() -> Void)? = nil
 
     private var isUpdating: Bool { otaStatus?.isActive == true }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DeviceCardHeader(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus, onRenameTapped: onRenameTapped)
+            DeviceCardHeader(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus, lastSeenEnabled: lastSeenEnabled, onRenameTapped: onRenameTapped)
                 .padding(DesignTokens.Spacing.lg)
                 .opacity(isUpdating ? 0.75 : 1)
 

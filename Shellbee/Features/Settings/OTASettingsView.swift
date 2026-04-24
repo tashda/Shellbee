@@ -73,7 +73,7 @@ struct OTASettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
@@ -95,7 +95,7 @@ struct OTASettingsView: View {
             "default_maximum_data_size": .int(defaultMaximumDataSize)
         ]
         if !overrideIndexLocation.isEmpty { ota["zigbee_ota_override_index_location"] = .string(overrideIndexLocation) }
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["ota": .object(ota)]))
+        environment.sendBridgeOptions(["ota": .object(ota)])
     }
 }
 

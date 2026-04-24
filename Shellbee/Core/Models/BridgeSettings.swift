@@ -40,14 +40,24 @@ struct BridgeSettings: Codable, Sendable, Equatable {
 
 extension BridgeSettings {
     enum LogLevel: String, Codable, Sendable, CaseIterable {
-        case debug, info, warn, error
+        case debug, info, warning, error
 
         var label: String {
             switch self {
             case .debug: return "Debug"
             case .info: return "Info"
-            case .warn: return "Warning"
+            case .warning: return "Warning"
             case .error: return "Error"
+            }
+        }
+
+        init?(rawValue: String) {
+            switch rawValue.lowercased() {
+            case "debug": self = .debug
+            case "info": self = .info
+            case "warning", "warn": self = .warning
+            case "error": self = .error
+            default: return nil
             }
         }
     }

@@ -60,6 +60,13 @@ struct Z2MMessageRouter: Sendable {
             return .deviceOTACheckResponse(response)
 
         case Z2MTopics.bridgeResponseOptions, Z2MTopics.bridgeResponseInfo:
+            if let obj = raw.payload.object,
+               obj["status"]?.stringValue == "error",
+               let errorMsg = obj["error"]?.stringValue {
+                return .operationError(Z2MOperationError(
+                    id: UUID(), topic: raw.topic, message: errorMsg, timestamp: .now
+                ))
+            }
             return .bridgeResponse(topic: raw.topic, data: raw.payload)
 
         case Z2MTopics.bridgeResponseTouchlinkScan:

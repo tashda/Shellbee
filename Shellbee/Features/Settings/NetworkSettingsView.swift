@@ -33,13 +33,13 @@ struct NetworkSettingsView: View {
             }
 
             Section {
-                numericField("Transmit Power (dBm)", text: $transmitPower, placeholder: "Default")
-                numericField("Adapter Concurrent (threads)", text: $adapterConcurrent, placeholder: "Default")
-                numericField("Adapter Message Delay (ms)", text: $adapterDelay, placeholder: "Default")
+                numericField("Transmit Power", text: $transmitPower, placeholder: "Default", unit: "dBm")
+                numericField("Concurrency", text: $adapterConcurrent, placeholder: "Default", unit: "threads")
+                numericField("Message Delay", text: $adapterDelay, placeholder: "Default", unit: "ms")
             } header: {
                 Text("Hardware Tuning")
             } footer: {
-                Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrent and delay affect how fast commands are sent to the adapter.")
+                Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrency and message delay affect how fast commands are sent to the adapter.")
             }
         }
         .navigationTitle("Network & Hardware")
@@ -56,15 +56,19 @@ struct NetworkSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
-    private func numericField(_ label: String, text: Binding<String>, placeholder: String) -> some View {
+    private func numericField(_ label: String, text: Binding<String>, placeholder: String, unit: String) -> some View {
         LabeledContent(label) {
-            TextField(placeholder, text: text)
-                .multilineTextAlignment(.trailing)
-                .keyboardType(.numbersAndPunctuation)
-                .autocorrectionDisabled()
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                TextField(placeholder, text: text)
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(.numbersAndPunctuation)
+                    .autocorrectionDisabled()
+                Text(unit)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -84,7 +88,7 @@ struct NetworkSettingsView: View {
         if let v = Int(transmitPower) { advanced["transmit_power"] = .int(v) }
         if let v = Int(adapterConcurrent) { advanced["adapter_concurrent"] = .int(v) }
         if let v = Int(adapterDelay) { advanced["adapter_delay"] = .int(v) }
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["advanced": .object(advanced)]))
+        environment.sendBridgeOptions(["advanced": .object(advanced)])
     }
 }
 

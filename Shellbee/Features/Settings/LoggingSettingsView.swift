@@ -79,7 +79,7 @@ struct LoggingSettingsView: View {
                 Text("Regular expression to suppress debug messages from matching namespaces. Leave empty to log all namespaces.")
             }
         }
-        .navigationTitle("Log Output")
+        .navigationTitle("Advanced")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if hasChanges {
@@ -93,7 +93,7 @@ struct LoggingSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
@@ -118,7 +118,7 @@ struct LoggingSettingsView: View {
         ]
         if !logDirectory.isEmpty { advanced["log_directory"] = .string(logDirectory) }
         if !logDebugNamespaceIgnore.isEmpty { advanced["log_debug_namespace_ignore"] = .string(logDebugNamespaceIgnore) }
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(["advanced": .object(advanced)]))
+        environment.sendBridgeOptions(["advanced": .object(advanced)])
     }
 }
 

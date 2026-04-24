@@ -95,6 +95,12 @@ final class AppEnvironment {
         session.send(topic: topic, payload: payload)
     }
 
+    /// Sends a `bridge/request/options` request with the payload wrapped in
+    /// the `{"options": {...}}` envelope that z2m requires.
+    func sendBridgeOptions(_ options: [String: JSONValue]) {
+        send(topic: Z2MTopics.Request.options, payload: .object(["options": .object(options)]))
+    }
+
     func sendDeviceState(_ friendlyName: String, payload: JSONValue) {
         send(topic: Z2MTopics.deviceSet(friendlyName), payload: payload)
     }

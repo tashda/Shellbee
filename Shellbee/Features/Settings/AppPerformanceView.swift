@@ -10,11 +10,13 @@ struct AppPerformanceView: View {
                 InlineIntField(
                     "Concurrent Requests",
                     value: $concurrency,
+                    unit: "requests",
                     range: OTABulkOperationQueue.concurrencyRange
                 )
                 InlineIntField(
                     "Device Timeout",
                     value: $checkTimeout,
+                    unit: "s",
                     range: OTABulkOperationQueue.checkTimeoutRange
                 )
             } header: {

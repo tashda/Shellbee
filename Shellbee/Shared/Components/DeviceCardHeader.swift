@@ -5,6 +5,10 @@ struct DeviceCardHeader: View {
     let state: [String: JSONValue]
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
+    /// When false, the last-seen label is suppressed entirely — used when
+    /// z2m's `advanced.last_seen` is set to `disable`, since any retained
+    /// value would be stale.
+    var lastSeenEnabled: Bool = true
     var onRenameTapped: (() -> Void)? = nil
 
     var body: some View {
@@ -36,7 +40,7 @@ struct DeviceCardHeader: View {
             }
             .padding(.trailing, DesignTokens.Size.headerLastSeenWidth)
 
-            DeviceCardLastSeen(lastSeen: state.lastSeen)
+            DeviceCardLastSeen(lastSeen: lastSeenEnabled ? state.lastSeen : nil)
                 .frame(width: DesignTokens.Size.headerLastSeenWidth, alignment: .trailing)
                 .offset(y: DesignTokens.Spacing.md)
         }

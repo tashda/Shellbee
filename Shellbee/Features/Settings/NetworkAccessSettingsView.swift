@@ -104,7 +104,7 @@ struct NetworkAccessSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .task { loadFromStore() }
+        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func addPasslistEntry() {
@@ -132,7 +132,7 @@ struct NetworkAccessSettingsView: View {
             "passlist": .array(passlistEntries.map { .string($0) }),
             "blocklist": .array(blocklistEntries.map { .string($0) })
         ]
-        environment.send(topic: Z2MTopics.Request.options, payload: .object(payload))
+        environment.sendBridgeOptions(payload)
     }
 }
 

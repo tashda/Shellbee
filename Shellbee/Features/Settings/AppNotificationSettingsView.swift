@@ -60,7 +60,7 @@ struct AppNotificationSettingsView: View {
     private var aboutSection: some View {
         Section {
             NavigationLink {
-                MainSettingsView(highlight: .logLevel)
+                LoggingBasicView(highlight: .logLevel)
             } label: {
                 LabeledContent("Bridge Log Level", value: displayedLevel.capitalized)
             }
