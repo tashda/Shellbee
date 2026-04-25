@@ -8,21 +8,17 @@ struct PermitJoinActiveSheet: View {
     let targetName: String?
     let onStop: () -> Void
 
-    @State private var pulseOpacity = 1.0
-
     var body: some View {
         NavigationStack {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let remaining = remainingSeconds(at: context.date)
                 VStack(spacing: 0) {
                     Spacer()
-                    activeIndicator
-                    countdownDisplay(remaining: remaining)
-                        .padding(.top, DesignTokens.Spacing.xl)
+                    countdownRing(remaining: remaining)
                     Text("Via \(targetName ?? "all devices")")
                         .font(.footnote)
-                        .foregroundStyle(.tertiary)
-                        .padding(.top, DesignTokens.Spacing.sm)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, DesignTokens.Spacing.xl)
                     Spacer()
                     stopButton
                         .padding(.bottom, DesignTokens.Spacing.xl)
@@ -36,22 +32,17 @@ struct PermitJoinActiveSheet: View {
         .presentationDragIndicator(.visible)
     }
 
-    private var activeIndicator: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
+    private func countdownRing(remaining: Int?) -> some View {
+        ZStack {
             Circle()
-                .fill(Color.green)
-                .frame(width: DesignTokens.Size.statusDotHero, height: DesignTokens.Size.statusDotHero)
-                .opacity(pulseOpacity)
-                .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulseOpacity)
-                .onAppear { pulseOpacity = 0.25 }
-            Text("Active")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.green)
-        }
-    }
+                .stroke(Color.green.opacity(0.15), lineWidth: 8)
 
-    private func countdownDisplay(remaining: Int?) -> some View {
-        VStack(spacing: DesignTokens.Spacing.xs) {
+            Circle()
+                .trim(from: 0, to: progress(remaining: remaining))
+                .stroke(Color.green, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 1), value: remaining)
+
             if let remaining {
                 Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
                     .font(.system(size: 64, weight: .thin).monospacedDigit())
@@ -63,10 +54,13 @@ struct PermitJoinActiveSheet: View {
                     .foregroundStyle(.green)
                     .symbolEffect(.pulse)
             }
-            Text("Time remaining")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
         }
+        .frame(width: 220, height: 220)
+    }
+
+    private func progress(remaining: Int?) -> CGFloat {
+        guard let remaining, totalDuration > 0 else { return 1 }
+        return CGFloat(remaining) / CGFloat(totalDuration)
     }
 
     private var stopButton: some View {
@@ -78,7 +72,8 @@ struct PermitJoinActiveSheet: View {
                 .fontWeight(.semibold)
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
         .controlSize(.large)
     }
 

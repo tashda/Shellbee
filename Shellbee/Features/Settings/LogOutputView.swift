@@ -1,9 +1,11 @@
 import SwiftUI
 
-struct LoggingSettingsView: View {
+struct LogOutputView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
 
+    @State private var logRotation: Bool = true
+    @State private var logDirectoriesToKeep: Int = 10
     @State private var logOutputConsole: Bool = true
     @State private var logOutputFile: Bool = true
     @State private var logOutputSyslog: Bool = false
@@ -18,8 +20,9 @@ struct LoggingSettingsView: View {
     private var hasChanges: Bool {
         let adv = environment.store.bridgeInfo?.config?.advanced
         let stored = Set(adv?.logOutput ?? ["console", "file"])
-        let current = currentLogOutput
-        return current != stored
+        return currentLogOutput != stored
+            || logRotation != (adv?.logRotation ?? true)
+            || logDirectoriesToKeep != (adv?.logDirectoriesToKeep ?? 10)
             || logDirectory != (adv?.logDirectory ?? "")
             || logFile != (adv?.logFile ?? "log.log")
             || logConsoleJson != (adv?.logConsoleJson ?? false)
@@ -57,6 +60,15 @@ struct LoggingSettingsView: View {
                 } footer: {
                     Text("Creates a 'current' symlink in the log directory pointing to the most recent log folder.")
                 }
+
+                Section {
+                    Toggle("Log Rotation", isOn: $logRotation)
+                    InlineIntField("Directories to Keep", value: $logDirectoriesToKeep, range: 5...1000)
+                } header: {
+                    Text("Log Files")
+                } footer: {
+                    Text("Log rotation deletes old log directories automatically. Adjust how many to keep on disk.")
+                }
             }
 
             Section {
@@ -79,7 +91,7 @@ struct LoggingSettingsView: View {
                 Text("Regular expression to suppress debug messages from matching namespaces. Leave empty to log all namespaces.")
             }
         }
-        .navigationTitle("Advanced")
+        .navigationTitle("Log Output")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if hasChanges {
@@ -102,6 +114,8 @@ struct LoggingSettingsView: View {
         logOutputConsole = outputs.contains("console")
         logOutputFile = outputs.contains("file")
         logOutputSyslog = outputs.contains("syslog")
+        logRotation = adv?.logRotation ?? true
+        logDirectoriesToKeep = adv?.logDirectoriesToKeep ?? 10
         logDirectory = adv?.logDirectory ?? ""
         logFile = adv?.logFile ?? "log.log"
         logConsoleJson = adv?.logConsoleJson ?? false
@@ -112,6 +126,8 @@ struct LoggingSettingsView: View {
     private func applyChanges() {
         var advanced: [String: JSONValue] = [
             "log_output": .array(currentLogOutput.sorted().map { .string($0) }),
+            "log_rotation": .bool(logRotation),
+            "log_directories_to_keep": .int(logDirectoriesToKeep),
             "log_file": .string(logFile),
             "log_console_json": .bool(logConsoleJson),
             "log_symlink_current": .bool(logSymlinkCurrent)
@@ -124,6 +140,6 @@ struct LoggingSettingsView: View {
 
 #Preview {
     NavigationStack {
-        LoggingSettingsView().environment(AppEnvironment())
+        LogOutputView().environment(AppEnvironment())
     }
 }
