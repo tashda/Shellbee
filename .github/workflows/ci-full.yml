@@ -26,6 +26,12 @@ concurrency:
   group: ci-full-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  # actions: write lets the 'Cancel run on failure' step call the API to
+  # cancel the workflow run when one job fails, freeing the sibling runner.
+  actions: write
+
 jobs:
   # Guard: when triggered by `pull_request: labeled`, only run if the label
   # is exactly `run-ui-tests`. Without this, every label add would trigger.
@@ -86,23 +92,16 @@ jobs:
           echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
           echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Pre-boot simulator
-        timeout-minutes: 3
+      - name: Boot simulator and wait for readiness
+        timeout-minutes: 4
         run: |
+          # `simctl bootstatus -b` boots (if not already) and BLOCKS until the
+          # device is actually ready (springboard up, services responding) —
+          # not just "Booted" state. The previous state-check loop returned
+          # too early, leaving xcodebuild waiting on a not-yet-ready simulator
+          # which silently hung for the full 30-minute test timeout.
           DEVICE_ID="${{ steps.sim.outputs.device_id }}"
-          xcrun simctl boot "$DEVICE_ID" || true
-          for i in $(seq 1 60); do
-            STATE=$(xcrun simctl list devices --json | jq -r \
-              --arg id "$DEVICE_ID" \
-              '[.devices | to_entries[].value[] | select(.udid==$id)][0].state')
-            if [ "$STATE" = "Booted" ]; then
-              echo "Simulator booted after ${i}x2s"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Simulator did not reach Booted state" >&2
-          exit 1
+          xcrun simctl bootstatus "$DEVICE_ID" -b
 
       - name: Resolve Swift packages
         run: |
@@ -247,23 +246,16 @@ jobs:
           echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
           echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Pre-boot simulator
-        timeout-minutes: 3
+      - name: Boot simulator and wait for readiness
+        timeout-minutes: 4
         run: |
+          # `simctl bootstatus -b` boots (if not already) and BLOCKS until the
+          # device is actually ready (springboard up, services responding) —
+          # not just "Booted" state. The previous state-check loop returned
+          # too early, leaving xcodebuild waiting on a not-yet-ready simulator
+          # which silently hung for the full 30-minute test timeout.
           DEVICE_ID="${{ steps.sim.outputs.device_id }}"
-          xcrun simctl boot "$DEVICE_ID" || true
-          for i in $(seq 1 60); do
-            STATE=$(xcrun simctl list devices --json | jq -r \
-              --arg id "$DEVICE_ID" \
-              '[.devices | to_entries[].value[] | select(.udid==$id)][0].state')
-            if [ "$STATE" = "Booted" ]; then
-              echo "Simulator booted after ${i}x2s"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Simulator did not reach Booted state" >&2
-          exit 1
+          xcrun simctl bootstatus "$DEVICE_ID" -b
 
       - name: Start mock Z2M bridge (native)
         run: ./.github/scripts/start-mock-bridge.sh
