@@ -129,6 +129,40 @@ struct Expose: Codable, Sendable, Equatable {
         case valueOn = "value_on"
         case valueOff = "value_off"
     }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decode(String.self, forKey: .type)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        label = try c.decodeIfPresent(String.self, forKey: .label)
+        description = try c.decodeIfPresent(String.self, forKey: .description)
+        access = try c.decodeIfPresent(Int.self, forKey: .access)
+        property = try c.decodeIfPresent(String.self, forKey: .property)
+        endpoint = try c.decodeIfPresent(String.self, forKey: .endpoint)
+        features = try c.decodeIfPresent([Expose].self, forKey: .features)
+        options = try c.decodeIfPresent([Expose].self, forKey: .options)
+        unit = try c.decodeIfPresent(String.self, forKey: .unit)
+        valueMin = try c.decodeIfPresent(Double.self, forKey: .valueMin)
+        valueMax = try c.decodeIfPresent(Double.self, forKey: .valueMax)
+        valueStep = try c.decodeIfPresent(Double.self, forKey: .valueStep)
+        valueOn = try c.decodeIfPresent(JSONValue.self, forKey: .valueOn)
+        valueOff = try c.decodeIfPresent(JSONValue.self, forKey: .valueOff)
+        presets = try c.decodeIfPresent([ExposePreset].self, forKey: .presets)
+        // Real z2m sends enum `values` as strings most of the time, but some
+        // device definitions (e.g. Eurotronic SPZB0001 trv_mode) use numbers
+        // or booleans. Stringify so consumers can keep treating values as
+        // labels.
+        if let raw = try c.decodeIfPresent([JSONValue].self, forKey: .values) {
+            values = raw.map { v in
+                if let s = v.stringValue { return s }
+                if let n = v.numberValue { return n.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(n)) : String(n) }
+                if let b = v.boolValue { return b ? "true" : "false" }
+                return ""
+            }
+        } else {
+            values = nil
+        }
+    }
 }
 
 struct ExposePreset: Codable, Sendable, Equatable {

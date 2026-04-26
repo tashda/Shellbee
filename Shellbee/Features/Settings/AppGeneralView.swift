@@ -3,6 +3,9 @@ import SwiftUI
 struct AppGeneralView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
+    @AppStorage(ConnectionSessionController.connectionLiveActivityEnabledKey) private var connectionLiveActivityEnabled: Bool = true
+    @AppStorage(ConnectionSessionController.otaLiveActivityEnabledKey) private var otaLiveActivityEnabled: Bool = true
+    @AppStorage(ConnectionSessionController.maxReconnectAttemptsKey) private var maxReconnectAttempts: Int = ConnectionSessionController.defaultMaxReconnectAttempts
     @State private var consent = CrashReportingConsent.shared
 
     var body: some View {
@@ -26,6 +29,21 @@ struct AppGeneralView: View {
                 Text("Home")
             } footer: {
                 Text("Number of recent events shown on the Home page.")
+            }
+
+            Section {
+                Toggle("Connection Live Activity", isOn: $connectionLiveActivityEnabled)
+                Toggle("OTA Live Activity", isOn: $otaLiveActivityEnabled)
+                InlineIntField(
+                    "Reconnect Attempts",
+                    value: $maxReconnectAttempts,
+                    unit: "attempts",
+                    range: ConnectionSessionController.maxReconnectAttemptsRange
+                )
+            } header: {
+                Text("Connection")
+            } footer: {
+                Text("Live Activities show connection and OTA progress on the Lock Screen and Dynamic Island. The reconnect limit caps how many times Shellbee retries before giving up; opening the app always tries again immediately.")
             }
 
             Section {

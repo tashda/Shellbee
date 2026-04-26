@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isInitializing = true
     @State private var pendingCrash: PendingCrash?
 
@@ -44,6 +45,22 @@ struct RootView: View {
 
             if let crash = PendingCrashStore.load() {
                 pendingCrash = crash
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Reconnect only if the user had an established session that
+            // dropped while backgrounded. `hasBeenConnected` is cleared by
+            // explicit disconnect / forget-server, so we don't undo a
+            // user-initiated disconnect on the next foreground.
+            guard phase == .active,
+                  environment.hasBeenConnected,
+                  environment.connectionConfig != nil
+            else { return }
+            switch environment.connectionState {
+            case .lost, .failed, .idle:
+                environment.retryFromLost()
+            case .connecting, .connected, .reconnecting:
+                break
             }
         }
     }

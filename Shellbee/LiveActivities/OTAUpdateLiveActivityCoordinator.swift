@@ -13,7 +13,15 @@ final class OTAUpdateLiveActivityCoordinator {
 
     private init() {}
 
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: ConnectionSessionController.otaLiveActivityEnabledKey) as? Bool ?? true
+    }
+
     func sync(with statuses: [OTAUpdateStatus], devices: [Device] = []) {
+        guard Self.isEnabled else {
+            if isVisible { clearAll() }
+            return
+        }
         let activeStatuses = statuses
             .filter(\.isActive)
             .sorted { lhs, rhs in

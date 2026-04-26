@@ -54,7 +54,7 @@ final class AppEnvironment {
         session.errorMessage
     }
 
-    static let maxReconnectAttempts = ConnectionSessionController.maxReconnectAttempts
+    static var maxReconnectAttempts: Int { ConnectionSessionController.configuredMaxReconnectAttempts }
 
     func connect(config: ConnectionConfig) {
         selectedTab = .home

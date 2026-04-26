@@ -25,9 +25,25 @@ final class ConnectionSessionController {
 
     private var sessionTask: Task<Void, Never>?
 
-    static let maxReconnectAttempts = Int.max
+    // User-configurable preference keys read via UserDefaults (mirrored in
+     // AppGeneralView via @AppStorage). Defaults: 3 reconnect attempts, both
+     // live activities on.
+    static let maxReconnectAttemptsKey = "connectionMaxReconnectAttempts"
+    static let connectionLiveActivityEnabledKey = "connectionLiveActivityEnabled"
+    static let otaLiveActivityEnabledKey = "otaLiveActivityEnabled"
+    static let defaultMaxReconnectAttempts: Int = 3
+    static let maxReconnectAttemptsRange: ClosedRange<Int> = 1...20
     private static let baseReconnectDelay: Double = 1
     private static let maxReconnectDelay: Double = 30
+
+    static var configuredMaxReconnectAttempts: Int {
+        let stored = UserDefaults.standard.integer(forKey: maxReconnectAttemptsKey)
+        return stored > 0 ? stored : defaultMaxReconnectAttempts
+    }
+
+    static var connectionLiveActivityEnabled: Bool {
+        UserDefaults.standard.object(forKey: connectionLiveActivityEnabledKey) as? Bool ?? true
+    }
 
     init(store: AppStore, history: ConnectionHistory) {
         self.store = store
@@ -163,10 +179,22 @@ final class ConnectionSessionController {
         var delay = Self.baseReconnectDelay
         let coordinator = ConnectionLiveActivityCoordinator.shared
         let label = config.displayName
+        let maxAttempts = Self.configuredMaxReconnectAttempts
+        let liveActivityEnabled = Self.connectionLiveActivityEnabled
 
-        coordinator.show(host: label, phase: .reconnecting, attempt: 1, maxAttempts: 0)
+        if liveActivityEnabled {
+            coordinator.show(host: label, phase: .reconnecting, attempt: 1, maxAttempts: maxAttempts)
+        }
 
         while !Task.isCancelled {
+            if attempt > maxAttempts {
+                if liveActivityEnabled {
+                    coordinator.finish(.failed, displayFor: 3)
+                }
+                await handleFailure(reason.isEmpty ? "Connection lost" : reason)
+                return nil
+            }
+
             connectionState = .reconnecting(attempt: attempt)
 
             try? await Task.sleep(for: .seconds(delay))
@@ -174,18 +202,21 @@ final class ConnectionSessionController {
 
             do {
                 let events = try await establishConnection(config: config)
-                coordinator.finish(.connected, displayFor: 2.5)
+                if liveActivityEnabled {
+                    coordinator.finish(.connected, displayFor: 2.5)
+                }
                 return events
             } catch is CancellationError {
                 return nil
             } catch {
                 attempt += 1
                 delay = min(delay * 2, Self.maxReconnectDelay)
-                coordinator.update(phase: .reconnecting, attempt: attempt, maxAttempts: 0)
+                if liveActivityEnabled {
+                    coordinator.update(phase: .reconnecting, attempt: attempt, maxAttempts: maxAttempts)
+                }
             }
         }
 
-        _ = reason
         return nil
     }
 

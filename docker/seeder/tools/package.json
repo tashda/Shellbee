@@ -1,0 +1,13 @@
+{
+  "name": "zhc-dump",
+  "version": "1.0.0",
+  "description": "Generates models.json from zigbee-herdsman-converters for the seeder.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dump": "node dump_models.cjs > ../models.json"
+  },
+  "dependencies": {
+    "zigbee-herdsman-converters": "^26.39.1"
+  }
+}
