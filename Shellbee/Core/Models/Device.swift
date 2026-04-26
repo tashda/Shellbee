@@ -124,7 +124,7 @@ struct Expose: Codable, Sendable, Equatable {
     // The custom init(from:) below suppresses Swift's synthesized
     // memberwise initializer, so we restore it explicitly for tests and
     // fixture builders that construct exposes in code.
-    init(
+    nonisolated init(
         type: String,
         name: String?,
         label: String?,
