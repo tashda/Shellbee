@@ -121,6 +121,47 @@ struct Expose: Codable, Sendable, Equatable {
     nonisolated var isReadable: Bool { (access ?? 0) & 0x01 != 0 }
     nonisolated var isWritable: Bool { (access ?? 0) & 0x02 != 0 }
 
+    // The custom init(from:) below suppresses Swift's synthesized
+    // memberwise initializer, so we restore it explicitly for tests and
+    // fixture builders that construct exposes in code.
+    init(
+        type: String,
+        name: String?,
+        label: String?,
+        description: String?,
+        access: Int?,
+        property: String?,
+        endpoint: String?,
+        features: [Expose]?,
+        options: [Expose]?,
+        unit: String?,
+        valueMin: Double?,
+        valueMax: Double?,
+        valueStep: Double?,
+        values: [String]?,
+        valueOn: JSONValue?,
+        valueOff: JSONValue?,
+        presets: [ExposePreset]?
+    ) {
+        self.type = type
+        self.name = name
+        self.label = label
+        self.description = description
+        self.access = access
+        self.property = property
+        self.endpoint = endpoint
+        self.features = features
+        self.options = options
+        self.unit = unit
+        self.valueMin = valueMin
+        self.valueMax = valueMax
+        self.valueStep = valueStep
+        self.values = values
+        self.valueOn = valueOn
+        self.valueOff = valueOff
+        self.presets = presets
+    }
+
     enum CodingKeys: String, CodingKey {
         case type, name, label, description, access, property, endpoint, features, options, unit, values, presets
         case valueMin = "value_min"
