@@ -18,6 +18,7 @@ enum Z2MEvent: Sendable {
     case touchlinkScanResult([TouchlinkDevice])
     case touchlinkIdentifyDone
     case touchlinkFactoryResetDone
+    case deviceRenameResponse(from: String, to: String, ok: Bool, error: String?)
     case unknown(topic: String)
 }
 

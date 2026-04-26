@@ -80,6 +80,17 @@ struct Z2MMessageRouter: Sendable {
         case Z2MTopics.bridgeResponseTouchlinkFactoryReset:
             return .touchlinkFactoryResetDone
 
+        case Z2MTopics.bridgeResponseDeviceRename:
+            let obj = raw.payload.object
+            let data = obj?["data"]?.object
+            guard let from = data?["from"]?.stringValue,
+                  let to = data?["to"]?.stringValue else {
+                return .bridgeResponse(topic: raw.topic, data: raw.payload)
+            }
+            let ok = obj?["status"]?.stringValue == "ok"
+            let error = obj?["error"]?.stringValue
+            return .deviceRenameResponse(from: from, to: to, ok: ok, error: error)
+
         case Z2MTopics.bridgeHealth:
             guard let health = raw.decode(BridgeHealth.self) else { return nil }
             return .bridgeHealth(health)

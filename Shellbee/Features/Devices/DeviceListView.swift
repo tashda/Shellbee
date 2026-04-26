@@ -16,6 +16,18 @@ struct DeviceListView: View {
         NavigationStack(path: $navigationPath) {
             List {
                 if isGrouped {
+                    if viewModel.showRecents {
+                        let recents = viewModel.recentDevices(store: environment.store)
+                        if !recents.isEmpty {
+                            Section {
+                                ForEach(recents, id: \.ieeeAddress) { device in
+                                    deviceRow(for: device)
+                                }
+                            } header: {
+                                Text("Recently Added")
+                            }
+                        }
+                    }
                     let grouped = viewModel.categorizedDevices(store: environment.store)
                     ForEach(grouped, id: \.0) { (category, devices) in
                         Section {
@@ -162,6 +174,9 @@ struct DeviceListView: View {
         Menu {
             Toggle(isOn: $viewModel.groupByCategory) {
                 Label("Group by Type", systemImage: "square.grid.2x2")
+            }
+            Toggle(isOn: $viewModel.showRecents) {
+                Label("Show Recents", systemImage: "sparkles")
             }
 
             Divider()

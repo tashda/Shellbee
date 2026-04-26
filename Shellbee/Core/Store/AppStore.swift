@@ -11,6 +11,14 @@ final class AppStore {
     var isConnected = false
     var deviceStates: [String: [String: JSONValue]] = [:]
     var deviceAvailability: [String: Bool] = [:]
+    // First-seen timestamps keyed by ieeeAddress. Drives the "Recently Added"
+    // section in the device list and is persisted across launches so the
+    // 30-minute window keeps counting while the app is closed.
+    var deviceFirstSeen: [String: Date] = [:]
+    // Optimistic renames awaiting bridge confirmation. Used to roll back if z2m
+    // returns status="error" for the rename request.
+    private var pendingRenames: [(from: String, to: String)] = []
+    private static let firstSeenStoreKey = "AppStore.deviceFirstSeen"
     var otaUpdates: [String: OTAUpdateStatus] = [:]
     var logEntries: [LogEntry] = []
     var rawLogEntries: [LogEntry] = []
@@ -47,6 +55,28 @@ final class AppStore {
     static let logLimit = 1000
     static let coalesceWindow: TimeInterval = 1.5
 
+    init() {
+        if let raw = UserDefaults.standard.dictionary(forKey: Self.firstSeenStoreKey) as? [String: Double] {
+            deviceFirstSeen = raw.mapValues { Date(timeIntervalSince1970: $0) }
+        }
+    }
+
+    private func persistFirstSeen() {
+        let raw = deviceFirstSeen.mapValues { $0.timeIntervalSince1970 }
+        UserDefaults.standard.set(raw, forKey: Self.firstSeenStoreKey)
+    }
+
+    private func recordFirstSeen(ieee: String, overwrite: Bool = false) {
+        if !overwrite, deviceFirstSeen[ieee] != nil { return }
+        deviceFirstSeen[ieee] = Date()
+        persistFirstSeen()
+    }
+
+    private func removeFirstSeen(ieee: String) {
+        guard deviceFirstSeen.removeValue(forKey: ieee) != nil else { return }
+        persistFirstSeen()
+    }
+
     func apply(_ event: Z2MEvent) {
         switch event {
         case .bridgeInfo(let info):
@@ -54,6 +84,17 @@ final class AppStore {
         case .bridgeState(let state):
             bridgeOnline = state == "online"
         case .devices(let list):
+            // Backfill first-seen for any device we've never recorded.
+            // Covers the case where a device joined while the app was closed
+            // and we missed the bridge/event device_joined message — when it
+            // shows up in interview state on the first snapshot, treat it as
+            // freshly added.
+            for device in list where device.type != .coordinator {
+                guard deviceFirstSeen[device.ieeeAddress] == nil else { continue }
+                if device.interviewing || !device.interviewCompleted {
+                    recordFirstSeen(ieee: device.ieeeAddress)
+                }
+            }
             devices = list
         case .groups(let list):
             groups = list
@@ -90,6 +131,17 @@ final class AppStore {
                 insertLogEntry(entry)
                 if let note = Self.notification(from: event, entry: entry) {
                     enqueueNotification(note)
+                }
+            }
+            if let ieee = event.data.object?["ieee_address"]?.stringValue {
+                switch event.type {
+                case "device_joined":
+                    // Restart the 30-min window on (re)join.
+                    recordFirstSeen(ieee: ieee, overwrite: true)
+                case "device_leave":
+                    removeFirstSeen(ieee: ieee)
+                default:
+                    break
                 }
             }
         case .deviceState(let name, let state):
@@ -159,6 +211,22 @@ final class AppStore {
 
         case .touchlinkFactoryResetDone:
             touchlinkResetInProgress = false
+
+        case .deviceRenameResponse(let from, let to, let ok, let errorMessage):
+            if let pendingIdx = pendingRenames.firstIndex(where: { $0.from == from && $0.to == to }) {
+                pendingRenames.remove(at: pendingIdx)
+            }
+            if !ok {
+                revertOptimisticRename(from: from, to: to)
+                let message = errorMessage ?? "Failed to rename '\(from)' to '\(to)'"
+                let error = Z2MOperationError(
+                    id: UUID(),
+                    topic: Z2MTopics.bridgeResponseDeviceRename,
+                    message: message,
+                    timestamp: .now
+                )
+                apply(.operationError(error))
+            }
 
         case .operationError(let error):
             touchlinkScanInProgress = false
@@ -367,6 +435,40 @@ final class AppStore {
         deviceAvailability[friendlyName] ?? false
     }
 
+    // Apply a rename to local state immediately so the UI updates without
+    // waiting for the bridge/devices snapshot (which can lag 3-10s after a
+    // bridge/request/device/rename). Migrates availability and state keys so
+    // the renamed device doesn't flicker through "offline".
+    func optimisticRename(from: String, to: String) {
+        guard from != to, !to.isEmpty else { return }
+        guard let idx = devices.firstIndex(where: { $0.friendlyName == from }) else { return }
+        var device = devices[idx]
+        device.friendlyName = to
+        devices[idx] = device
+
+        if let availability = deviceAvailability.removeValue(forKey: from) {
+            deviceAvailability[to] = availability
+        }
+        if let state = deviceStates.removeValue(forKey: from) {
+            deviceStates[to] = state
+        }
+        pendingRenames.append((from: from, to: to))
+    }
+
+    private func revertOptimisticRename(from: String, to: String) {
+        guard let idx = devices.firstIndex(where: { $0.friendlyName == to }) else { return }
+        var device = devices[idx]
+        device.friendlyName = from
+        devices[idx] = device
+
+        if let availability = deviceAvailability.removeValue(forKey: to) {
+            deviceAvailability[from] = availability
+        }
+        if let state = deviceStates.removeValue(forKey: to) {
+            deviceStates[from] = state
+        }
+    }
+
     func otaStatus(for friendlyName: String) -> OTAUpdateStatus? {
         otaUpdates[friendlyName] ?? state(for: friendlyName).otaUpdateStatus(for: friendlyName)
     }
@@ -399,6 +501,9 @@ final class AppStore {
         isConnected = false
         deviceStates = [:]
         deviceAvailability = [:]
+        pendingRenames = []
+        deviceFirstSeen = [:]
+        UserDefaults.standard.removeObject(forKey: Self.firstSeenStoreKey)
         otaUpdates = [:]
         logEntries = []
         operationErrors = []

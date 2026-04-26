@@ -95,11 +95,7 @@ struct DeviceDetailView: View {
         }
         .sheet(isPresented: $showRenameSheet) {
             RenameDeviceSheet(device: device) { newName, updateHA in
-                environment.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
-                    "from": .string(device.friendlyName),
-                    "to": .string(newName),
-                    "homeassistant_rename": .bool(updateHA)
-                ]))
+                environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
             }
         }
         .sheet(isPresented: $showRemoveSheet) {

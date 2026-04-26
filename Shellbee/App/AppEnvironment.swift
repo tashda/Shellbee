@@ -105,6 +105,20 @@ final class AppEnvironment {
         send(topic: Z2MTopics.deviceSet(friendlyName), payload: payload)
     }
 
+    /// Renames a device with an optimistic local update so the UI changes
+    /// immediately. If the bridge rejects the rename, AppStore reverts the
+    /// change when `bridge/response/device/rename` arrives with status="error".
+    func renameDevice(from: String, to: String, homeassistantRename: Bool) {
+        let trimmed = to.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != from else { return }
+        store.optimisticRename(from: from, to: trimmed)
+        send(topic: Z2MTopics.Request.deviceRename, payload: .object([
+            "from": .string(from),
+            "to": .string(trimmed),
+            "homeassistant_rename": .bool(homeassistantRename)
+        ]))
+    }
+
     func showDevices(filter: DeviceQuickFilter) {
         pendingDeviceFilter = filter
         selectedTab = .devices

@@ -39,9 +39,18 @@ struct DeviceRowView: View {
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
+    private var isInterviewing: Bool {
+        device.interviewing || !device.interviewCompleted
+    }
+
     @ViewBuilder
     private var rightDetailView: some View {
-        if let otaStatus, otaStatus.isActive {
+        if isInterviewing {
+            Label("Interviewing", systemImage: "waveform.path.ecg")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.purple)
+                .labelStyle(.titleAndIcon)
+        } else if let otaStatus, otaStatus.isActive {
             Text(otaPhaseLabel(otaStatus))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.blue)
