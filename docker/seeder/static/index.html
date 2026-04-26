@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shellbee Test Center</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #1f232c; --border: #2a2f3a;
+    --text: #e6e9ef; --muted: #8b93a4; --accent: #ffb000; --accent-hover: #ffc233;
+    --ok: #4ade80; --err: #f87171; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--border);
+           display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 12px; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px;
+         max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  section p.desc { margin: 0 0 12px; font-size: 12px; color: var(--muted); }
+  label { display: block; font-size: 11px; color: var(--muted); margin: 8px 0 4px;
+          text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; font: inherit;
+  }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+             min-height: 60px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  button {
+    margin-top: 12px; padding: 8px 14px; background: var(--accent); color: #1a1a1a;
+    border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: var(--accent-hover); }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  button.danger { background: #3a1f24; color: var(--err); border: 1px solid #5a2a30; }
+  #log { position: sticky; top: 60px; max-height: 80vh; overflow-y: auto;
+         font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  #log .entry { padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: pre-wrap; }
+  #log .ok { color: var(--ok); }
+  #log .err { color: var(--err); }
+  #log .meta { color: var(--muted); font-size: 11px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--panel2);
+          color: var(--muted); font-size: 11px; margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Shellbee Test Center</h1>
+  <span class="meta" id="header-meta">connecting…</span>
+  <span style="flex:1"></span>
+  <button class="secondary" onclick="refreshState()">Refresh</button>
+</header>
+
+<main>
+
+<section>
+  <h2>Add new device <span class="pill" id="device-count">…</span></h2>
+  <p class="desc">Simulates pairing: emits <code>device_joined</code> → <code>device_interview started</code>
+    → (delay) → <code>device_interview successful</code>, then publishes initial state &amp; availability.</p>
+  <div class="row">
+    <div><label>Friendly name</label><input id="join-name" placeholder="auto"></div>
+    <div><label>IEEE address</label><input id="join-ieee" placeholder="auto"></div>
+  </div>
+  <label>Model</label>
+  <select id="join-model"><option value="">(default: ZNCZ02LM plug)</option></select>
+  <div class="row">
+    <div><label>Interview delay (ms)</label><input id="join-ms" type="number" value="2500"></div>
+    <div><label>Outcome</label>
+      <select id="join-fail"><option value="false">successful</option><option value="true">failed</option></select>
+    </div>
+  </div>
+  <button onclick="postScenario('device/join', {
+    name: v('join-name') || null, ieee: v('join-ieee') || null,
+    model: v('join-model') || null,
+    interview_ms: +v('join-ms'), fail: v('join-fail') === 'true'
+  })">Run join</button>
+</section>
+
+<section>
+  <h2>Remove / leave</h2>
+  <p class="desc">Emits <code>device_leave</code> and clears retained topics for the device.</p>
+  <label>Device</label><select id="leave-name"></select>
+  <button class="danger" onclick="postScenario('device/leave', { name: v('leave-name') })">Run leave</button>
+  <button class="secondary" onclick="postScenario('device/announce', { name: v('leave-name') })">Just announce</button>
+</section>
+
+<section>
+  <h2>OTA update</h2>
+  <p class="desc">Marks firmware <code>available</code>, then drives the progress bar 0 → 100% before publishing the success envelope.</p>
+  <label>Device</label><select id="ota-name"></select>
+  <button onclick="postScenario('ota/run', { name: v('ota-name') })">Run full OTA</button>
+  <button class="secondary" onclick="postScenario('ota/check', { name: v('ota-name') })">Check only</button>
+</section>
+
+<section>
+  <h2>Device spam</h2>
+  <p class="desc">Burst of state messages from one device. Tests Activity log throughput &amp; UI coalescing.</p>
+  <label>Device</label><select id="spam-name"></select>
+  <div class="row3">
+    <div><label>Count</label><input id="spam-count" type="number" value="50"></div>
+    <div><label>Interval (ms)</label><input id="spam-int" type="number" value="50"></div>
+    <div><label>Field (optional)</label><input id="spam-field" placeholder="auto-drift"></div>
+  </div>
+  <button onclick="postScenario('device/spam', {
+    name: v('spam-name'), count: +v('spam-count'),
+    interval_ms: +v('spam-int'), field: v('spam-field') || null
+  })">Run spam</button>
+</section>
+
+<section>
+  <h2>Availability</h2>
+  <p class="desc">Force a device online/offline, or flap repeatedly to test offline banners.</p>
+  <label>Device</label><select id="avail-name"></select>
+  <div class="row">
+    <div><label>State</label>
+      <select id="avail-state"><option>online</option><option>offline</option></select>
+    </div>
+    <div><label>Flap interval (ms)</label><input id="flap-int" type="number" value="500"></div>
+  </div>
+  <label>Flap count</label><input id="flap-count" type="number" value="6">
+  <button onclick="postScenario('availability', { name: v('avail-name'), state: v('avail-state') })">Set state</button>
+  <button class="secondary" onclick="postScenario('availability/flap', {
+    name: v('avail-name'), count: +v('flap-count'), interval_ms: +v('flap-int')
+  })">Flap</button>
+</section>
+
+<section>
+  <h2>Bridge</h2>
+  <p class="desc">Permit join, take the bridge offline/online, or inject log lines.</p>
+  <div class="row">
+    <div><label>Permit join</label>
+      <select id="pj-value"><option value="true">enabled</option><option value="false">disabled</option></select>
+    </div>
+    <div><label>Permit join time (s)</label><input id="pj-time" type="number" value="60"></div>
+  </div>
+  <button onclick="postScenario('permit_join', { value: v('pj-value') === 'true', time: +v('pj-time') })">Set permit_join</button>
+
+  <label style="margin-top:14px">Bridge offline cycle (ms offline)</label>
+  <input id="cycle-ms" type="number" value="3000">
+  <button class="secondary" onclick="postScenario('bridge/cycle', { offline_ms: +v('cycle-ms') })">Cycle bridge</button>
+
+  <label style="margin-top:14px">Inject log</label>
+  <div class="row3">
+    <div><label>Level</label>
+      <select id="log-level"><option>info</option><option>warning</option><option>error</option><option>debug</option></select>
+    </div>
+    <div><label>Count</label><input id="log-count" type="number" value="1"></div>
+    <div><label>Interval (ms)</label><input id="log-int" type="number" value="0"></div>
+  </div>
+  <input id="log-msg" placeholder="message" value="hello from test center">
+  <button class="secondary" onclick="postScenario('bridge/log', {
+    level: v('log-level'), message: v('log-msg'),
+    count: +v('log-count'), interval_ms: +v('log-int')
+  })">Emit log</button>
+</section>
+
+<section>
+  <h2>Group fan-out</h2>
+  <p class="desc">Apply a <code>/set</code> payload to every member of a group (real z2m optimistic mode).</p>
+  <label>Group</label><select id="group-name"></select>
+  <label>Payload (JSON)</label>
+  <textarea id="group-payload">{"state": "ON", "brightness": 200}</textarea>
+  <button onclick="runGroupFanout()">Fan out</button>
+</section>
+
+<section>
+  <h2>Reset</h2>
+  <p class="desc">Wipe runtime state and re-seed from fixtures. Use to recover from a wild test.</p>
+  <button class="danger" onclick="postScenario('reset', {})">Reset engine</button>
+</section>
+
+<section style="grid-column: 1 / -1;">
+  <h2>Activity</h2>
+  <div id="log"></div>
+</section>
+
+</main>
+
+<script>
+const v = id => document.getElementById(id).value.trim();
+const log = document.getElementById('log');
+
+function logEntry(text, cls = '') {
+  const div = document.createElement('div');
+  div.className = 'entry ' + cls;
+  const t = new Date().toLocaleTimeString();
+  div.innerHTML = `<span class="meta">${t}</span>  ${text}`;
+  log.prepend(div);
+  while (log.childElementCount > 200) log.removeChild(log.lastChild);
+}
+
+async function postScenario(path, body) {
+  logEntry(`POST ${path} ${JSON.stringify(body)}`);
+  try {
+    const r = await fetch(`/api/scenarios/${path}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (r.ok) logEntry(`← ${JSON.stringify(data)}`, 'ok');
+    else logEntry(`✗ ${r.status} ${JSON.stringify(data)}`, 'err');
+  } catch (e) {
+    logEntry(`✗ ${e}`, 'err');
+  }
+  setTimeout(refreshState, 250);
+}
+
+async function runGroupFanout() {
+  let payload;
+  try { payload = JSON.parse(v('group-payload')); }
+  catch (e) { return logEntry(`✗ invalid JSON: ${e}`, 'err'); }
+  postScenario('group/fanout', { group: v('group-name'), payload });
+}
+
+async function refreshState() {
+  try {
+    const r = await fetch('/api/state');
+    const data = await r.json();
+    document.getElementById('header-meta').textContent =
+      `bridge ${data.bridge.version} · ${data.devices.length} devices · ${data.groups.length} groups · permit_join=${data.bridge.permit_join}`;
+    document.getElementById('device-count').textContent = `${data.devices.length} devices`;
+
+    const names = data.devices.map(d => d.friendly_name).sort();
+    for (const id of ['leave-name', 'ota-name', 'spam-name', 'avail-name']) {
+      const sel = document.getElementById(id);
+      const cur = sel.value;
+      sel.innerHTML = names.map(n => `<option ${n === cur ? 'selected' : ''}>${n}</option>`).join('');
+    }
+    const groups = data.groups.map(g => g.friendly_name).sort();
+    const gsel = document.getElementById('group-name');
+    const gcur = gsel.value;
+    gsel.innerHTML = groups.map(n => `<option ${n === gcur ? 'selected' : ''}>${n}</option>`).join('');
+  } catch (e) {
+    document.getElementById('header-meta').textContent = `disconnected: ${e}`;
+  }
+}
+
+async function loadModels() {
+  try {
+    const r = await fetch('/api/models');
+    const data = await r.json();
+    const sel = document.getElementById('join-model');
+    const opts = data.map(m => `<option value="${m.model}">${m.vendor} — ${m.model}</option>`);
+    sel.insertAdjacentHTML('beforeend', opts.join(''));
+  } catch {}
+}
+
+refreshState();
+loadModels();
+setInterval(refreshState, 5000);
+</script>
+</body>
+</html>

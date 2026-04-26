@@ -783,6 +783,7 @@ def handle_request(client, subpath: str, payload: Any) -> None:
 # ── MQTT wiring ────────────────────────────────────────────────────────────
 
 _z2m_online = False
+_client: mqtt.Client | None = None  # set in main() once connected; used by control.py
 
 
 def on_connect(client, userdata, flags, reason_code, properties):
@@ -911,11 +912,13 @@ def drift_tick(client) -> None:
 # ── Main ───────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global _client
     _init_state()
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_message = on_message
+    _client = client
 
     log.info("Connecting to %s:%d …", MQTT_HOST, MQTT_PORT)
     while True:
@@ -938,6 +941,14 @@ def main() -> None:
 
     time.sleep(2)
     seed_initial(client)
+
+    # HTTP control plane (test center). Imported lazily so a missing FastAPI
+    # install does not block the core MQTT engine from running.
+    try:
+        import control
+        control.start_in_thread()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Control plane not started: %s", exc)
 
     if MODE == "once":
         client.loop_stop()
