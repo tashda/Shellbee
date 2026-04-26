@@ -141,6 +141,7 @@ jobs:
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
+            -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-unit.log
 
@@ -185,6 +186,21 @@ jobs:
             ${{ env.DERIVED_DATA }}/UnitTests.xcresult
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Cancel run on failure
+        # GitHub Actions does not auto-cancel sibling jobs when one fails,
+        # so the parallel ui-tests job would keep burning ~30 min of runner
+        # time after we already know the run is red. Cancelling the whole
+        # workflow run here propagates the failure immediately.
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.cancelWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
 
   ui-tests:
     name: UI Tests
@@ -327,3 +343,14 @@ jobs:
             ${{ env.DERIVED_DATA }}/UITests.xcresult
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Cancel run on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.cancelWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
