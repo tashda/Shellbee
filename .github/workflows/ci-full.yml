@@ -126,12 +126,21 @@ jobs:
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
+          # Skip the same tests that Shellbee-CI.xctestplan skips on Fast CI
+          # (keychain/concurrency issues that only fail on GitHub runners) —
+          # except Z2MIntegrationTests, which Full CI explicitly runs because
+          # we now have the mock bridge up. See xctestplans/README.md.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
+            -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
+            -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
+            -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
+            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
+            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-unit.log
 
