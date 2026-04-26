@@ -17,8 +17,14 @@ LOG_DIR="${RUNNER_TEMP:-/tmp}"
 
 echo "==> Installing mosquitto and Python deps"
 brew install mosquitto
-python3 -m pip install --upgrade --quiet pip
-python3 -m pip install --quiet paho-mqtt websockets
+
+# Homebrew Python on macOS GitHub runners is PEP 668 externally-managed,
+# so install Python deps into a dedicated venv and use that interpreter.
+VENV="$LOG_DIR/z2m-venv"
+python3 -m venv "$VENV"
+PYTHON="$VENV/bin/python"
+"$PYTHON" -m pip install --upgrade --quiet pip
+"$PYTHON" -m pip install --quiet paho-mqtt websockets
 
 echo "==> Writing mosquitto config (anonymous, no persistence)"
 MOSQ_CONF="$LOG_DIR/mosquitto-ci.conf"
@@ -50,7 +56,7 @@ echo "==> Starting Z2M WebSocket bridge"
   cd "$REPO_ROOT/docker/z2m-ws-bridge"
   MQTT_HOST=localhost MQTT_PORT=1883 Z2M_TOPIC=zigbee2mqtt \
   WS_PORT=8080 HEALTH_PORT=8081 AUTH_TOKEN=shellbee-integration-token \
-  nohup python3 -u bridge.py >"$LOG_DIR/z2m-bridge.log" 2>&1 &
+  nohup "$PYTHON" -u bridge.py >"$LOG_DIR/z2m-bridge.log" 2>&1 &
   echo $! > "$LOG_DIR/z2m-bridge.pid"
 )
 
@@ -59,7 +65,7 @@ echo "==> Starting seeder"
   cd "$REPO_ROOT/docker/seeder"
   MQTT_HOST=localhost MQTT_PORT=1883 Z2M_TOPIC=zigbee2mqtt \
   MODE=continuous SEED_INTERVAL=10 \
-  nohup python3 -u seeder.py >"$LOG_DIR/z2m-seeder.log" 2>&1 &
+  nohup "$PYTHON" -u seeder.py >"$LOG_DIR/z2m-seeder.log" 2>&1 &
   echo $! > "$LOG_DIR/z2m-seeder.pid"
 )
 
