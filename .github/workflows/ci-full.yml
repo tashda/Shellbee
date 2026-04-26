@@ -63,16 +63,8 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      - name: Setup Docker (colima)
-        run: |
-          # GitHub's macos-15 ARM runners ship without Docker. Install
-          # colima to provide a Docker daemon in a lightweight Linux VM.
-          # Ports are forwarded to the host, so the simulator can reach
-          # the bridge on localhost:8080 just like on a developer machine.
-          brew install docker docker-compose colima
-          colima start --cpu 2 --memory 4 --disk 10
-          docker version
-          docker compose version
+      - name: Setup Docker
+        uses: douglascamata/setup-docker-macos-action@v1.1.0
 
       - name: Start mock Z2M bridge (docker compose)
         run: |
