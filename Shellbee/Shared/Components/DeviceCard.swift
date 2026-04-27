@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum DeviceIdentityDisplayMode {
+    case prominent
+    case compact
+}
+
 struct DeviceCard: View {
     let device: Device
     let state: [String: JSONValue]
@@ -7,31 +12,224 @@ struct DeviceCard: View {
     let otaStatus: OTAUpdateStatus?
     var lastSeenEnabled: Bool = true
     var onRenameTapped: (() -> Void)? = nil
+    var displayMode: DeviceIdentityDisplayMode = .prominent
 
     private var isUpdating: Bool { otaStatus?.isActive == true }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            DeviceCardHeader(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus, lastSeenEnabled: lastSeenEnabled, onRenameTapped: onRenameTapped)
-                .padding(DesignTokens.Spacing.lg)
+        switch displayMode {
+        case .prominent:
+            prominentHeader
+        case .compact:
+            compactHeader
+        }
+    }
+
+    private var prominentHeader: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+            identityRow
                 .opacity(isUpdating ? 0.75 : 1)
 
             if let otaStatus, otaStatus.isActive {
                 otaProgressStrip(status: otaStatus)
             }
 
-            Divider().opacity(DesignTokens.Opacity.subtleFill)
-
-            DeviceCardFooterBar(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus)
+            hairline
+            metricsGrid
         }
         .animation(.easeInOut(duration: 0.2), value: isUpdating)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg))
-        .shadow(
-            color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-            radius: DesignTokens.Spacing.sm,
-            y: DesignTokens.Spacing.xs
-        )
+        .padding(DesignTokens.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+    }
+
+    private var compactHeader: some View {
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
+            DeviceImageView(
+                device: device,
+                isAvailable: isAvailable,
+                hasUpdate: state.hasUpdateAvailable,
+                otaStatus: otaStatus,
+                size: DesignTokens.Size.deviceCardImage * 0.68
+            )
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text(device.friendlyName)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Text("\(vendor) · \(model)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                if lastSeenEnabled {
+                    Text(lastSeenCaption)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: DesignTokens.Spacing.sm)
+
+            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.sm) {
+                statusPill
+                Text("\(linkQualityTitle) LQI")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(DesignTokens.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+    }
+
+    private var identityRow: some View {
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
+            DeviceImageView(
+                device: device,
+                isAvailable: isAvailable,
+                hasUpdate: state.hasUpdateAvailable,
+                otaStatus: otaStatus,
+                size: DesignTokens.Size.deviceCardImage * 0.80
+            )
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                nameView
+
+                deviceMetadata
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: DesignTokens.Spacing.sm)
+
+            if lastSeenEnabled, state.lastSeen != nil {
+                lastSeenBadge
+            }
+        }
+    }
+
+    private var metricsGrid: some View {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
+                GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
+            ],
+            alignment: .leading,
+            spacing: DesignTokens.Spacing.xl
+        ) {
+            identityMetric(label: "Type", icon: "network", value: device.type.chipLabel, unit: nil, color: deviceTypeColor)
+            identityMetric(label: "Status", icon: statusIcon, value: statusTitle, unit: nil, color: statusColor)
+            identityMetric(label: "Signal", icon: "wifi", value: linkQualityTitle, unit: linkQualityTitle == "—" ? nil : "LQI", color: lqiValueColor)
+            identityMetric(label: "Power", icon: powerIcon, value: powerTitle, unit: nil, color: powerColor)
+        }
+    }
+
+    private func identityMetric(label: String, icon: String, value: String, unit: String?, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(.secondary)
+
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                if let unit {
+                    Text(unit)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var lastSeenBadge: some View {
+        Text(lastSeenValue)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+            .lineLimit(1)
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(Color(.tertiarySystemFill), in: Capsule())
+            .padding(.top, DesignTokens.Spacing.xs)
+    }
+
+    @ViewBuilder
+    private var nameView: some View {
+        let label = Text(device.friendlyName)
+            .font(.system(size: 24, weight: .bold, design: .rounded))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.45)
+            .allowsTightening(true)
+
+        if let onRenameTapped {
+            Button(action: onRenameTapped) {
+                label.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Rename device")
+            .accessibilityValue(device.friendlyName)
+        } else {
+            label
+        }
+    }
+
+    private var deviceMetadata: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(vendor)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+            Text(model)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+    }
+
+    private var statusPill: some View {
+        Text(statusTitle)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(statusColor)
+            .padding(.horizontal, DesignTokens.Spacing.md)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(statusColor.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
+    }
+
+    private var hairline: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .frame(height: 0.5)
     }
 
     @ViewBuilder
@@ -59,6 +257,108 @@ struct DeviceCard: View {
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.bottom, DesignTokens.Spacing.md)
         .transition(.opacity)
+    }
+
+    private var vendor: String {
+        device.definition?.vendor ?? device.manufacturer ?? "Unknown Vendor"
+    }
+
+    private var model: String {
+        device.definition?.model ?? device.modelId ?? "Unknown Model"
+    }
+
+    private var linkQualityTitle: String {
+        state.linkQuality.map(String.init) ?? "—"
+    }
+
+    private var statusTitle: String {
+        if let otaStatus, otaStatus.isActive {
+            switch otaStatus.phase {
+            case .checking: return "Checking"
+            case .updating: return "Updating"
+            case .requested, .scheduled: return "Starting"
+            default: break
+            }
+        }
+
+        if device.interviewing {
+            return "Interviewing"
+        }
+
+        return isAvailable ? "Online" : "Offline"
+    }
+
+    private var statusColor: Color {
+        if otaStatus?.isActive == true { return .blue }
+        if device.interviewing { return .orange }
+        return isAvailable ? .green : .red
+    }
+
+    private var statusIcon: String {
+        if otaStatus?.isActive == true { return "arrow.triangle.2.circlepath.circle.fill" }
+        if device.interviewing { return "dot.radiowaves.left.and.right" }
+        return isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill"
+    }
+
+    private var normalizedPowerSource: String {
+        let source = state["power_source"]?.stringValue ?? device.powerSource
+        let trimmed = source?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if trimmed.isEmpty {
+            return "Unknown"
+        }
+
+        let normalized = trimmed.lowercased()
+        if normalized.contains("battery") { return "Battery" }
+        if normalized.contains("mains") || normalized.contains("ac") || normalized.contains("dc") {
+            return "Mains"
+        }
+
+        return trimmed.capitalized
+    }
+
+    private var powerTitle: String {
+        if device.type == .endDevice, let battery = state.battery {
+            return "\(battery)%"
+        }
+        return normalizedPowerSource
+    }
+
+    private var powerColor: Color {
+        if device.type == .endDevice, let battery = state.battery {
+            return battery.batteryColor
+        }
+        return .secondary
+    }
+
+    private var powerIcon: String {
+        if device.type == .endDevice {
+            return (state.battery ?? 100) <= DesignTokens.Threshold.lowBattery ? "battery.25" : "battery.100"
+        }
+        return "powerplug.fill"
+    }
+
+    private var lqiValueColor: Color {
+        (state.linkQuality ?? 0).lqiColor
+    }
+
+    private var deviceTypeColor: Color {
+        switch device.type {
+        case .router: return .indigo
+        case .endDevice: return .blue
+        case .coordinator: return .purple
+        case .unknown: return .secondary
+        }
+    }
+
+    private var lastSeenValue: String {
+        guard let lastSeen = state.lastSeen else { return "—" }
+        return DeviceCardLastSeen.format(lastSeen: lastSeen)
+    }
+
+    private var lastSeenCaption: String {
+        guard lastSeenValue != "—" else { return "Last seen unknown" }
+        return "Last seen \(lastSeenValue)"
     }
 
     private func phaseCaption(for status: OTAUpdateStatus) -> String {
@@ -111,6 +411,13 @@ struct DeviceCard: View {
             ],
             isAvailable: true,
             otaStatus: nil
+        )
+        DeviceCard(
+            device: .preview,
+            state: ["linkquality": .int(96)],
+            isAvailable: true,
+            otaStatus: nil,
+            displayMode: .compact
         )
     }
     .padding()

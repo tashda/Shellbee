@@ -16,6 +16,8 @@ enum Z2MTopics {
     static let bridgeResponseTouchlinkScan = "bridge/response/touchlink/scan"
     static let bridgeResponseTouchlinkIdentify = "bridge/response/touchlink/identify"
     static let bridgeResponseTouchlinkFactoryReset = "bridge/response/touchlink/factory_reset"
+    static let bridgeResponseDeviceRename = "bridge/response/device/rename"
+    static let bridgeResponseDeviceRemove = "bridge/response/device/remove"
 
     enum Request {
         static let deviceRename = "bridge/request/device/rename"

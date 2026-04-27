@@ -27,8 +27,9 @@ struct LightControlCard: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
             if mode == .snapshot { snapshotContent } else { interactiveContent }
         }
-        .padding(DesignTokens.Spacing.lg)
-        .background(Color(.secondarySystemGroupedBackground))
+        .padding(DesignTokens.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
                 radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
@@ -45,11 +46,53 @@ struct LightControlCard: View {
         }
     }
 
+    // MARK: – Background
+
+    /// Snapshot mode gets a subtle gradient tinted by the bulb's displayColor
+    /// when on — same hero treatment as other cards, since there's no
+    /// interactive `LightBrightnessArea` to carry the color.
+    /// Interactive mode keeps a clean neutral card so the colored brightness
+    /// capsule inside doesn't have to compete with a gradient behind it.
+    @ViewBuilder
+    private var cardBackground: some View {
+        if mode == .snapshot {
+            ZStack {
+                Color(.secondarySystemGroupedBackground)
+                LinearGradient(
+                    colors: [
+                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(context.isOn ? 0.18 : 0.06),
+                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(0.04)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        } else {
+            Color(.secondarySystemGroupedBackground)
+        }
+    }
+
+    /// Tint used by the interactive eyebrow and snapshot eyebrow/value. Tracks
+    /// the live bulb color when on, fades to neutral when off.
+    private var headerTint: Color {
+        context.isOn ? context.displayColor : Color(.tertiaryLabel)
+    }
+
     // MARK: – Interactive
 
     @ViewBuilder private var interactiveContent: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            Text("Light").font(.headline)
+            HStack(spacing: 5) {
+                Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
+                    .font(.system(size: 11, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(eyebrowLabel)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(headerTint)
             Spacer()
             if context.effectFeature != nil { configButton("sparkles") { showEffects = true } }
             if !context.startupFeatures.isEmpty { configButton("sunrise.fill") { showStartup = true } }
@@ -101,70 +144,147 @@ struct LightControlCard: View {
     // MARK: – Snapshot
 
     @ViewBuilder private var snapshotContent: some View {
-        snapshotHeader
-        if context.brightness != nil { brightnessSnapshotRow }
-        colorSnapshotRow
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+            snapshotHero
+            if hasColorOrTempInfo {
+                hairline
+                colorSnapshotRow
+            }
+        }
     }
 
-    private var snapshotHeader: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "lightbulb.fill")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(context.isOn ? context.displayColor : Color(.tertiaryLabel))
-            Text("Light State").font(.headline)
-            Spacer()
+    private var snapshotHero: some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                HStack(spacing: 5) {
+                    Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
+                        .font(.system(size: 11, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
+                    Text(eyebrowLabel)
+                        .font(.system(size: 11, weight: .semibold))
+                        .tracking(0.5)
+                        .textCase(.uppercase)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(headerTint)
+
+                snapshotHeroValue
+            }
+            Spacer(minLength: 0)
             stateBadge
+        }
+    }
+
+    @ViewBuilder
+    private var snapshotHeroValue: some View {
+        if context.isOn, context.brightness != nil {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("\(context.brightnessPercent)")
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text("%")
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            Text(context.isOn ? "On" : "Off")
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .foregroundStyle(headerTint)
         }
     }
 
     private var stateBadge: some View {
         Text(context.isOn ? "ON" : "OFF")
             .font(.caption.weight(.bold))
-            .foregroundStyle(context.isOn ? Color.green : Color(.secondaryLabel))
+            .foregroundStyle(context.isOn ? headerTint : Color(.secondaryLabel))
             .padding(.horizontal, DesignTokens.Spacing.sm)
             .padding(.vertical, DesignTokens.Spacing.xs)
             .background(
-                context.isOn ? Color.green.opacity(DesignTokens.Opacity.chipFill) : Color(.tertiarySystemFill),
+                context.isOn ? headerTint.opacity(DesignTokens.Opacity.chipFill)
+                             : Color(.tertiarySystemFill),
                 in: Capsule()
             )
     }
 
-    @ViewBuilder private var brightnessSnapshotRow: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            HStack {
-                Text("Brightness").font(.caption).foregroundStyle(.secondary)
-                Spacer()
-                Text("\(context.brightnessPercent)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color(.tertiarySystemFill)).frame(height: 6)
-                    Capsule()
-                        .fill(context.isOn ? AnyShapeStyle(context.displayColor.gradient) : AnyShapeStyle(Color(.systemFill).gradient))
-                        .frame(width: max(6, geo.size.width * CGFloat(context.brightnessPercent) / 100), height: 6)
-                }
-            }
-            .frame(height: 6)
-        }
+    private var hairline: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .frame(height: 0.5)
+    }
+
+    private var hasColorOrTempInfo: Bool {
+        let isColorMode = context.colorMode == "color_xy" || context.colorMode == "color_hs"
+        return isColorMode || context.colorTemperatureValue != nil
     }
 
     @ViewBuilder private var colorSnapshotRow: some View {
         let isColorMode = context.colorMode == "color_xy" || context.colorMode == "color_hs"
         if !isColorMode, let tempMireds = context.colorTemperatureValue {
-            HStack {
-                Text("Color Temperature").font(.caption).foregroundStyle(.secondary)
-                Spacer()
-                Text("\(Int(1_000_000 / tempMireds))K").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                Circle().fill(context.displayColor).frame(width: DesignTokens.Size.colorSwatchSize, height: DesignTokens.Size.colorSwatchSize)
-            }
+            snapshotInfoRow(
+                icon: "thermometer.medium",
+                label: "Color Temperature",
+                value: "\(Int(1_000_000 / tempMireds))",
+                unit: "K"
+            )
         } else if isColorMode {
-            HStack {
-                Text("Color").font(.caption).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline) {
+                HStack(spacing: 5) {
+                    Image(systemName: "paintpalette.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
+                    Text("Color")
+                        .font(.system(size: 11, weight: .semibold))
+                        .tracking(0.5)
+                        .textCase(.uppercase)
+                }
+                .foregroundStyle(.secondary)
                 Spacer()
-                Circle().fill(context.displayColor).frame(width: DesignTokens.Size.colorSwatchSize, height: DesignTokens.Size.colorSwatchSize)
+                Circle()
+                    .fill(context.displayColor)
+                    .frame(width: 22, height: 22)
                     .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
             }
         }
+    }
+
+    private func snapshotInfoRow(icon: String, label: String, value: String, unit: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(.secondary)
+            Spacer()
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                Text(unit)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Circle()
+                    .fill(context.displayColor)
+                    .frame(width: 18, height: 18)
+                    .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
+                    .padding(.leading, 4)
+            }
+        }
+    }
+
+    private var eyebrowLabel: String {
+        if let endpoint = context.endpointLabel { return "Light · \(endpoint)" }
+        return "Light"
     }
 
     // MARK: – Helpers

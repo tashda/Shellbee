@@ -36,7 +36,7 @@ struct ConnectionActivityWidget: Widget {
                     }
                 }
             } compactLeading: {
-                Image(systemName: "wifi")
+                Image(systemName: context.state.phase.compactSymbol)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(context.state.phase.accentColor)
                     .symbolEffect(
@@ -44,6 +44,7 @@ struct ConnectionActivityWidget: Widget {
                         options: .repeat(.continuous),
                         isActive: context.state.phase == .reconnecting
                     )
+                    .symbolEffect(.bounce, value: context.state.phase)
             } compactTrailing: {
                 switch context.state.phase {
                 case .reconnecting:
@@ -51,22 +52,14 @@ struct ConnectionActivityWidget: Widget {
                         .font(.caption2.weight(.bold))
                         .monospacedDigit()
                         .foregroundStyle(context.state.phase.accentColor)
-                case .connected:
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.green)
-                        .symbolEffect(.bounce, value: context.state.phase)
-                case .failed:
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.red)
-                        .symbolEffect(.bounce, value: context.state.phase)
-                default:
+                case .connecting:
                     ProgressView()
                         .controlSize(.mini)
+                default:
+                    EmptyView()
                 }
             } minimal: {
-                Image(systemName: "wifi")
+                Image(systemName: context.state.phase.compactSymbol)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(context.state.phase.accentColor)
                     .symbolEffect(
@@ -221,6 +214,15 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
         case .reconnecting: return "Reconnecting"
         case .failed: return "Connection Failed"
         case .cancelled: return "Cancelled"
+        }
+    }
+
+    var compactSymbol: String {
+        switch self {
+        case .connected: return "checkmark.circle.fill"
+        case .failed: return "xmark.circle.fill"
+        case .cancelled: return "minus.circle.fill"
+        case .connecting, .reconnecting: return "wifi"
         }
     }
 }

@@ -6,5 +6,6 @@ struct ShellbeeWidgetsBundle: WidgetBundle {
     var body: some Widget {
         ConnectionActivityWidget()
         OTAUpdateActivityWidget()
+        InterviewActivityWidget()
     }
 }

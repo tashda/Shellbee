@@ -72,10 +72,9 @@ struct DeviceFirmwareMenu: View {
             }
         }
         .accessibilityLabel("Firmware updates")
-        .confirmationDialog(
+        .alert(
             "Update \(updateCount) device\(updateCount == 1 ? "" : "s")?",
-            isPresented: $showUpdateAllConfirm,
-            titleVisibility: .visible
+            isPresented: $showUpdateAllConfirm
         ) {
             Button("Update All", role: .destructive) {
                 let names = devicesWithUpdateAvailable.map(\.friendlyName)

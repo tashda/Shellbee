@@ -18,72 +18,100 @@ struct RemoteCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            header
-            actionSection
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+            if mode == .snapshot {
+                header
+            }
+            actionTile
             if let voltage {
-                voltageRow(voltage)
+                voltageTile(voltage)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(DesignTokens.Spacing.lg)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .padding(DesignTokens.Spacing.xl)
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
                 radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
     }
 
-    // MARK: – Header
-
     private var header: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            if mode == .snapshot {
-                Image(systemName: "command")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
-            Text(mode == .snapshot ? "Remote State" : "Remote")
-                .font(.headline)
+            Image(systemName: "command")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.tint)
+            Text("Remote")
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
         }
     }
 
-    // MARK: – Action
+    private var actionTile: some View {
+        ReadingTile(
+            icon: "hand.tap.fill",
+            label: "Last Action",
+            value: lastAction.map(prettyAction) ?? "Waiting",
+            unit: nil,
+            valueColor: lastAction == nil ? .secondary : .primary
+        )
+    }
 
-    @ViewBuilder
-    private var actionSection: some View {
-        if let action = lastAction {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(action.replacingOccurrences(of: "_", with: " ").capitalized)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
+    private func voltageTile(_ value: Double) -> some View {
+        ReadingTile(
+            icon: "bolt.fill",
+            label: "Voltage",
+            value: "\(Int(value))",
+            unit: voltageUnit,
+            valueColor: .primary
+        )
+    }
+
+    private func prettyAction(_ raw: String) -> String {
+        raw.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+}
+
+private struct ReadingTile: View {
+    let icon: String
+    let label: String
+    let value: String
+    let unit: String?
+    let valueColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .textCase(.uppercase)
                     .lineLimit(2)
-                Text("Last action")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-        } else {
-            Text("Waiting for actions")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
+            .foregroundStyle(.secondary)
 
-    // MARK: – Voltage
-
-    private func voltageRow(_ value: Double) -> some View {
-        HStack {
-            Image(systemName: "bolt")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text("Voltage")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text("\(Int(value)) \(voltageUnit)")
-                .font(.caption.weight(.medium).monospacedDigit())
-                .foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(valueColor)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.55)
+                if let unit {
+                    Text(unit)
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

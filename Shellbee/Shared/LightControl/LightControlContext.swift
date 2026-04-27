@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct LightControlContext: Equatable {
+struct LightControlContext: Equatable, Identifiable {
     struct Feature: Equatable {
         let property: String
         let isWritable: Bool
@@ -18,6 +18,9 @@ struct LightControlContext: Equatable {
     let colorTemperatureValue: Double?
     let colorMode: String?
     let displayColor: Color
+    let endpointLabel: String?
+
+    var id: String { power?.property ?? brightness?.property ?? endpointLabel ?? "light" }
 
     var supportsWhiteControls: Bool { colorTemperature != nil }
     var supportsColorControls: Bool { color != nil }
@@ -36,11 +39,27 @@ struct LightControlContext: Equatable {
     }
 
     init?(device: Device, state: [String: JSONValue]) {
-        let exposures = device.definition?.exposes ?? []
-        let power = Self.findFeature(in: exposures, names: ["state"])
-        let brightness = Self.findFeature(in: exposures, names: ["brightness"])
-        let colorTemperature = Self.findFeature(in: exposures, names: ["color_temp"])
-        let color = Self.findColorFeature(in: exposures)
+        self.init(device: device, state: state, lightBlock: nil)
+    }
+
+    /// Builds one context per top-level `light` expose. Multi-endpoint dimmers
+    /// (e.g. QS-Zigbee-D02-TRIAC-2C-LN) emit one block per channel with
+    /// `state_l1`/`brightness_l1` etc., needing a separate card per channel.
+    static func contexts(for device: Device, state: [String: JSONValue]) -> [LightControlContext] {
+        let lightBlocks = (device.definition?.exposes ?? []).filter { $0.type == "light" }
+        if lightBlocks.count <= 1 {
+            return LightControlContext(device: device, state: state).map { [$0] } ?? []
+        }
+        return lightBlocks.compactMap { LightControlContext(device: device, state: state, lightBlock: $0) }
+    }
+
+    private init?(device: Device, state: [String: JSONValue], lightBlock: Expose?) {
+        let allExposures = device.definition?.exposes ?? []
+        let scope: [Expose] = lightBlock.map { [$0] } ?? allExposures
+        let power = Self.findFeature(in: scope, names: ["state"])
+        let brightness = Self.findFeature(in: scope, names: ["brightness"])
+        let colorTemperature = Self.findFeature(in: scope, names: ["color_temp"])
+        let color = Self.findColorFeature(in: scope)
 
         let brightnessValue = Self.numberValue(for: brightness?.property, in: state)
         let colorTemperatureValue = Self.numberValue(for: colorTemperature?.property, in: state)
@@ -54,7 +73,7 @@ struct LightControlContext: Equatable {
         self.brightness = brightness
         self.colorTemperature = colorTemperature
         self.color = color
-        self.advancedFeatures = Self.collectAdvancedFeatures(from: exposures, state: .object(state))
+        self.advancedFeatures = Self.collectAdvancedFeatures(from: scope, state: .object(state))
         self.isOn = state[power?.property ?? "state"]?.stringValue != "OFF"
         self.brightnessValue = brightnessValue
         self.colorTemperatureValue = colorTemperatureValue
@@ -64,6 +83,7 @@ struct LightControlContext: Equatable {
             colorTemperature: colorTemperatureValue,
             colorMode: colorMode
         )
+        self.endpointLabel = lightBlock?.endpoint.map { $0.replacingOccurrences(of: "_", with: " ").capitalized }
     }
 
     var brightnessPercent: Int {

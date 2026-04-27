@@ -20,6 +20,11 @@ struct InAppNotificationOverlay: View {
 
     private enum CarouselDirection { case forward, backward }
     private enum BannerRemovalStyle { case automatic, vertical }
+    // Reason for the most recent banner identity change. Lets `bannerTransition`
+    // distinguish "user expanded" (slide from bottom) from "user swiped to next
+    // page in the stack" (slide horizontally).
+    private enum BannerTransitionReason { case arrival, expansion, carousel }
+    @State private var transitionReason: BannerTransitionReason = .arrival
 
     private struct NotificationPage: Identifiable, Equatable {
         let notification: InAppNotification
@@ -99,12 +104,16 @@ struct InAppNotificationOverlay: View {
             if count > 0, !fastTrackVisible { showNextFastTrack() }
         }
         .onChange(of: isExpanded) { _, expanded in
+            transitionReason = .expansion
             if expanded {
                 autoDismissTask?.cancel()
                 carouselIndex = max(0, pages.count - 1)
             } else {
                 scheduleDismissIfPossible()
             }
+        }
+        .onChange(of: environment.store.notificationArrivalID) { _, _ in
+            transitionReason = .arrival
         }
         .onChange(of: pages.count) { _, _ in
             // Keep the expanded carousel pinned to the same item when new
@@ -133,11 +142,11 @@ struct InAppNotificationOverlay: View {
                 removal: .move(edge: .bottom).combined(with: .opacity)
             )
         }
-        // Carousel transitions only matter when the user is navigating
-        // between stack slots (expanded). Arrival/dismiss uses move+opacity
-        // from the bottom edge to match the insertion from below the tab bar.
-        let isCarousel = isExpanded && pages.count > 1
-        guard isCarousel else {
+        // Carousel transitions only fire when the user is actively swiping
+        // between stack pages. Expansion (swipe up to reveal actions) and
+        // arrival (new banner from below the tab bar) both come from the
+        // bottom edge so they read as a single continuous "rise" gesture.
+        guard transitionReason == .carousel else {
             return .asymmetric(
                 insertion: .move(edge: .bottom).combined(with: .opacity),
                 removal: .move(edge: .bottom).combined(with: .opacity)
@@ -209,6 +218,7 @@ struct InAppNotificationOverlay: View {
 
     private func advanceCarousel() {
         guard isExpanded, pages.count > 1 else { return }
+        transitionReason = .carousel
         withAnimation(Self.carouselAnimation) {
             carouselDirection = .forward
             carouselIndex = (carouselIndex - 1 + pages.count) % pages.count
@@ -217,6 +227,7 @@ struct InAppNotificationOverlay: View {
 
     private func reverseCarousel() {
         guard isExpanded, pages.count > 1 else { return }
+        transitionReason = .carousel
         withAnimation(Self.carouselAnimation) {
             carouselDirection = .backward
             carouselIndex = (carouselIndex + 1) % pages.count
@@ -238,14 +249,16 @@ struct InAppNotificationOverlay: View {
     private func goToLog(for page: NotificationPage) {
         guard !page.notification.logEntryIDs.isEmpty else { return }
         environment.pendingLogSheet = LogSheetRequest(entryIDs: page.notification.logEntryIDs)
-        dismissStack()
+        // Keep the banner expanded so it's still there when the sheet/nav
+        // is dismissed. The user dismisses it by swiping down.
+        autoDismissTask?.cancel()
     }
 
     private func goToDevice(for page: NotificationPage) {
         guard let name = page.occurrence.deviceName else { return }
         environment.pendingDeviceNavigation = name
         environment.selectedTab = .devices
-        dismissStack()
+        autoDismissTask?.cancel()
     }
 
     private func copy(_ value: String) {

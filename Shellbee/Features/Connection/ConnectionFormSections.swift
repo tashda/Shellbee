@@ -131,10 +131,18 @@ struct ConnectionServerSection: View {
                 Text("HTTPS").tag(true)
             }
             .pickerStyle(.automatic)
+            .onChange(of: draft.useTLS) { oldValue, newValue in
+                guard oldValue != newValue else { return }
+                if newValue && draft.port == "8080" {
+                    draft.port = "443"
+                } else if !newValue && draft.port == "443" {
+                    draft.port = "8080"
+                }
+            }
 
             SettingsTextField("Host", text: $draft.host, placeholder: "zigbee2mqtt.local")
 
-            SettingsTextField("Port", text: $draft.port, placeholder: "8080")
+            SettingsTextField("Port", text: $draft.port, placeholder: draft.useTLS ? "443" : "8080")
                 .keyboardType(.numberPad)
 
             SettingsTextField("Base Path", text: $draft.basePath, placeholder: "/")

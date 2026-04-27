@@ -121,6 +121,47 @@ struct Expose: Codable, Sendable, Equatable {
     nonisolated var isReadable: Bool { (access ?? 0) & 0x01 != 0 }
     nonisolated var isWritable: Bool { (access ?? 0) & 0x02 != 0 }
 
+    // The custom init(from:) below suppresses Swift's synthesized
+    // memberwise initializer, so we restore it explicitly for tests and
+    // fixture builders that construct exposes in code.
+    nonisolated init(
+        type: String,
+        name: String?,
+        label: String?,
+        description: String?,
+        access: Int?,
+        property: String?,
+        endpoint: String?,
+        features: [Expose]?,
+        options: [Expose]?,
+        unit: String?,
+        valueMin: Double?,
+        valueMax: Double?,
+        valueStep: Double?,
+        values: [String]?,
+        valueOn: JSONValue?,
+        valueOff: JSONValue?,
+        presets: [ExposePreset]?
+    ) {
+        self.type = type
+        self.name = name
+        self.label = label
+        self.description = description
+        self.access = access
+        self.property = property
+        self.endpoint = endpoint
+        self.features = features
+        self.options = options
+        self.unit = unit
+        self.valueMin = valueMin
+        self.valueMax = valueMax
+        self.valueStep = valueStep
+        self.values = values
+        self.valueOn = valueOn
+        self.valueOff = valueOff
+        self.presets = presets
+    }
+
     enum CodingKeys: String, CodingKey {
         case type, name, label, description, access, property, endpoint, features, options, unit, values, presets
         case valueMin = "value_min"
@@ -128,6 +169,40 @@ struct Expose: Codable, Sendable, Equatable {
         case valueStep = "value_step"
         case valueOn = "value_on"
         case valueOff = "value_off"
+    }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decode(String.self, forKey: .type)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        label = try c.decodeIfPresent(String.self, forKey: .label)
+        description = try c.decodeIfPresent(String.self, forKey: .description)
+        access = try c.decodeIfPresent(Int.self, forKey: .access)
+        property = try c.decodeIfPresent(String.self, forKey: .property)
+        endpoint = try c.decodeIfPresent(String.self, forKey: .endpoint)
+        features = try c.decodeIfPresent([Expose].self, forKey: .features)
+        options = try c.decodeIfPresent([Expose].self, forKey: .options)
+        unit = try c.decodeIfPresent(String.self, forKey: .unit)
+        valueMin = try c.decodeIfPresent(Double.self, forKey: .valueMin)
+        valueMax = try c.decodeIfPresent(Double.self, forKey: .valueMax)
+        valueStep = try c.decodeIfPresent(Double.self, forKey: .valueStep)
+        valueOn = try c.decodeIfPresent(JSONValue.self, forKey: .valueOn)
+        valueOff = try c.decodeIfPresent(JSONValue.self, forKey: .valueOff)
+        presets = try c.decodeIfPresent([ExposePreset].self, forKey: .presets)
+        // Real z2m sends enum `values` as strings most of the time, but some
+        // device definitions (e.g. Eurotronic SPZB0001 trv_mode) use numbers
+        // or booleans. Stringify so consumers can keep treating values as
+        // labels.
+        if let raw = try c.decodeIfPresent([JSONValue].self, forKey: .values) {
+            values = raw.map { v in
+                if let s = v.stringValue { return s }
+                if let n = v.numberValue { return n.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(n)) : String(n) }
+                if let b = v.boolValue { return b ? "true" : "false" }
+                return ""
+            }
+        } else {
+            values = nil
+        }
     }
 }
 

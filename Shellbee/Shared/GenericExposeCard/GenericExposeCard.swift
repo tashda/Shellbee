@@ -8,43 +8,69 @@ struct GenericExposeCard: View {
 
     private static let skipTypes: Set<String> = ["light", "switch", "cover", "lock", "fan", "climate"]
 
+    /// Properties already covered by the device header card (linkquality,
+    /// battery, OTA badges, last seen) — surfacing them here would just
+    /// duplicate signal a few pixels above. `identify*` is a write-only ping
+    /// command with no useful state, so we hide that too.
+    private static let skipProperties: Set<String> = [
+        "linkquality", "battery", "battery_low",
+        "last_seen", "update", "update_available"
+    ]
+
+    private let rowHorizontalPadding: CGFloat = DesignTokens.Spacing.lg
+    private let rowVerticalPadding: CGFloat = DesignTokens.Spacing.md
+    private let rowIconWidth: CGFloat = 22
+
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            header
-            let rows = makeRows()
-            if rows.isEmpty {
-                Text("No controllable features found")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(rows, id: \.id) { row in
-                    GenericExposeRow(row: row, mode: mode, onSend: onSend)
-                    if row.id != rows.last?.id {
-                        Divider()
-                    }
+        let rows = Self.rows(for: device, state: state)
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                if mode == .snapshot { snapshotHeader }
+                ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
+                    if idx > 0 { rowDivider }
+                    GenericExposeRow(
+                        row: row,
+                        mode: mode,
+                        horizontalPadding: rowHorizontalPadding,
+                        verticalPadding: rowVerticalPadding,
+                        iconWidth: rowIconWidth,
+                        onSend: onSend
+                    )
                 }
             }
-        }
-        .padding(DesignTokens.Spacing.lg)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
-    }
-
-    private var header: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            if mode == .snapshot {
-                Image(systemName: "cpu")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                Text("Device State").font(.headline)
-            } else {
-                Text("Controls").font(.headline)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         }
     }
 
-    private func makeRows() -> [ExposeRow] {
+    /// Snapshot-only eyebrow. Interactive mode drops it entirely — the device
+    /// name above the card already names what we're looking at, so a redundant
+    /// "Controls" / "Device State" headline is just noise.
+    private var snapshotHeader: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "cpu")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.tint)
+            Text("Device State")
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, rowHorizontalPadding)
+        .padding(.top, DesignTokens.Spacing.lg)
+        .padding(.bottom, DesignTokens.Spacing.sm)
+    }
+
+    private var rowDivider: some View {
+        Divider().padding(.leading, rowHorizontalPadding + rowIconWidth + DesignTokens.Spacing.md)
+    }
+
+    static func rows(for device: Device, state: [String: JSONValue]) -> [ExposeRow] {
         let exposes = device.definition?.exposes ?? []
         let flat = exposes.flattenedLeaves
         return flat.compactMap { expose -> ExposeRow? in
@@ -52,10 +78,10 @@ struct GenericExposeCard: View {
             guard expose.isReadable || expose.isWritable else { return nil }
             let prop = expose.property ?? expose.name ?? ""
             guard !prop.isEmpty else { return nil }
+            guard !Self.skipProperties.contains(prop), !prop.hasPrefix("identify") else { return nil }
             return ExposeRow(expose: expose, property: prop, stateValue: state[prop])
         }
     }
-
 }
 
 struct ExposeRow: Identifiable {
@@ -73,92 +99,163 @@ struct ExposeRow: Identifiable {
 private struct GenericExposeRow: View {
     let row: ExposeRow
     let mode: CardDisplayMode
+    let horizontalPadding: CGFloat
+    let verticalPadding: CGFloat
+    let iconWidth: CGFloat
     let onSend: (JSONValue) -> Void
 
     @State private var numericDraft: Double = 0
 
+    private var meta: FeatureMeta {
+        FeatureCatalog.meta(for: row.property, exposeType: row.expose.type)
+    }
+
     var body: some View {
+        rowContent
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+    }
+
+    @ViewBuilder
+    private var rowContent: some View {
         switch row.expose.type {
-        case "binary":
-            binaryRow
-        case "enum":
-            enumRow
-        case "numeric":
-            numericRow
-        default:
-            textRow
+        case "binary": binaryRow
+        case "enum": enumRow
+        case "numeric": numericRow
+        default: textRow
         }
     }
 
-    @ViewBuilder private var binaryRow: some View {
+    private var leadingIcon: some View {
+        Image(systemName: meta.symbol)
+            .font(.system(size: 16, weight: .medium))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(.secondary)
+            .frame(width: iconWidth)
+    }
+
+    private var labelText: some View {
+        Text(row.label).font(.body).foregroundStyle(.primary)
+    }
+
+    @ViewBuilder
+    private var binaryRow: some View {
         let isOn = row.stateValue == row.expose.valueOn || row.stateValue?.boolValue == true
-        if mode == .interactive, row.expose.isWritable,
-           let on = row.expose.valueOn, let off = row.expose.valueOff {
-            Toggle(row.label, isOn: Binding(
-                get: { isOn },
-                set: { v in onSend(.object([row.property: v ? on : off])) }
-            ))
-        } else {
-            LabeledContent(row.label) {
+        HStack(spacing: DesignTokens.Spacing.md) {
+            leadingIcon
+            labelText
+            Spacer()
+            if mode == .interactive, row.expose.isWritable,
+               let on = row.expose.valueOn, let off = row.expose.valueOff {
+                Toggle("", isOn: Binding(
+                    get: { isOn },
+                    set: { v in onSend(.object([row.property: v ? on : off])) }
+                ))
+                .labelsHidden()
+            } else {
                 Text(isOn ? "On" : "Off").foregroundStyle(.secondary)
             }
         }
     }
 
-    @ViewBuilder private var enumRow: some View {
+    @ViewBuilder
+    private var enumRow: some View {
         let values = row.expose.values ?? []
-        if mode == .interactive, row.expose.isWritable, !values.isEmpty {
-            Picker(row.label, selection: Binding(
-                get: { row.stateValue?.stringValue ?? values.first ?? "" },
-                set: { onSend(.object([row.property: .string($0)])) }
-            )) {
-                ForEach(values, id: \.self) {
-                    Text($0.replacingOccurrences(of: "_", with: " ").capitalized).tag($0)
+        let current = row.stateValue?.stringValue ?? "—"
+        HStack(spacing: DesignTokens.Spacing.md) {
+            leadingIcon
+            labelText
+            Spacer()
+            if mode == .interactive, row.expose.isWritable, !values.isEmpty {
+                Menu {
+                    ForEach(values, id: \.self) { v in
+                        Button {
+                            onSend(.object([row.property: .string(v)]))
+                        } label: {
+                            if current == v {
+                                Label(prettify(v), systemImage: "checkmark")
+                            } else {
+                                Text(prettify(v))
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(prettify(current))
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
+                .tint(.primary)
+            } else {
+                Text(prettify(current)).foregroundStyle(.secondary)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var numericRow: some View {
+        let current = row.stateValue?.numberValue ?? 0
+        let unit = row.expose.unit ?? ""
+        let writable = mode == .interactive && row.expose.isWritable
+            && row.expose.valueMin != nil && row.expose.valueMax != nil
+
+        if writable, let min = row.expose.valueMin, let max = row.expose.valueMax {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    leadingIcon
+                    labelText
+                    Spacer()
+                    Text(formatNumeric(numericDraft, unit: unit))
+                        .font(.body.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $numericDraft, in: min...max, step: row.expose.valueStep ?? 1) { editing in
+                    guard !editing else { return }
+                    onSend(.object([row.property: numericPayload(numericDraft, step: row.expose.valueStep)]))
+                }
+                .padding(.leading, iconWidth + DesignTokens.Spacing.md)
+            }
+            .onAppear { numericDraft = current }
+            .onChange(of: current) { _, v in numericDraft = v }
         } else {
-            LabeledContent(row.label) {
-                Text(row.stateValue?.stringValue?.replacingOccurrences(of: "_", with: " ").capitalized ?? "—")
+            HStack(spacing: DesignTokens.Spacing.md) {
+                leadingIcon
+                labelText
+                Spacer()
+                Text(formatNumeric(current, unit: unit))
+                    .font(.body.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
         }
     }
 
-    @ViewBuilder private var numericRow: some View {
-        let current = row.stateValue?.numberValue ?? 0
-        let unit = row.expose.unit.map { " \($0)" } ?? ""
-        if mode == .interactive, row.expose.isWritable,
-           let min = row.expose.valueMin, let max = row.expose.valueMax {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                HStack {
-                    Text(row.label)
-                    Spacer()
-                    Text("\(Int(numericDraft))\(unit)").foregroundStyle(.secondary).monospacedDigit()
-                }
-                Slider(value: $numericDraft, in: min...max) { editing in
-                    guard !editing else { return }
-                    onSend(.object([row.property: .double(numericDraft)]))
-                }
-            }
-            .onAppear { numericDraft = current }
-            .onChange(of: current) { _, v in numericDraft = v }
-        } else {
-            LabeledContent(row.label) {
-                Text("\(current.formatted(.number.precision(.fractionLength(0...1))))\(unit)")
-                    .foregroundStyle(.secondary).monospacedDigit()
-            }
-        }
-    }
-
+    @ViewBuilder
     private var textRow: some View {
-        LabeledContent(row.label) {
+        HStack(spacing: DesignTokens.Spacing.md) {
+            leadingIcon
+            labelText
+            Spacer()
             Text(row.stateValue?.stringified ?? "—").foregroundStyle(.secondary)
         }
     }
-}
 
-private extension Optional where Wrapped: Collection {
-    var isNilOrEmpty: Bool { self?.isEmpty ?? true }
+    private func numericPayload(_ v: Double, step: Double?) -> JSONValue {
+        if let step, step.truncatingRemainder(dividingBy: 1) == 0 {
+            return .int(Int(v.rounded()))
+        }
+        return .double(v)
+    }
+
+    private func prettify(_ s: String) -> String {
+        s.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func formatNumeric(_ v: Double, unit: String) -> String {
+        let formatted = v.formatted(.number.precision(.fractionLength(0...1)))
+        return unit.isEmpty ? formatted : "\(formatted) \(unit)"
+    }
 }
 
 #Preview {

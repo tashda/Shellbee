@@ -102,11 +102,19 @@ struct DocBrowserView: View {
     }
 
     private var flatSearchResults: [DocBrowserEntry] {
-        let q = searchText.lowercased()
-        return filtered.filter {
-            $0.model.lowercased().contains(q) ||
-            $0.vendor.lowercased().contains(q) ||
-            $0.description.lowercased().contains(q)
+        // Tokenize on whitespace and require every token to appear (as a
+        // substring) somewhere in the combined vendor/model/description.
+        // This makes "Shelly Mini", "Shell Mini", "mini shelly", etc. all
+        // match "Shelly 1 Mini Gen 4". Single-word substring search is
+        // preserved for queries without spaces.
+        let tokens = searchText
+            .lowercased()
+            .split(whereSeparator: { $0.isWhitespace })
+            .map(String.init)
+        guard !tokens.isEmpty else { return [] }
+        return filtered.filter { entry in
+            let haystack = "\(entry.vendor) \(entry.model) \(entry.description)".lowercased()
+            return tokens.allSatisfy { haystack.contains($0) }
         }
         .sorted { ($0.vendor, $0.model) < ($1.vendor, $1.model) }
     }

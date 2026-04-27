@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var permitJoinStartTime: Date?
     @State private var permitJoinDuration: Int = 0
     @State private var permitJoinTargetName: String?
+    @State private var showingMeshDetail = false
 
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
     @State private var showingAllLogs = false
@@ -102,6 +103,9 @@ struct HomeView: View {
             .navigationDestination(isPresented: $showingAllLogs) {
                 LogsView()
             }
+            .navigationDestination(isPresented: $showingMeshDetail) {
+                MeshDetailView(snapshot: snapshot)
+            }
             .task(id: environment.store.isConnected) {
                 guard environment.store.isConnected else { return }
                 environment.send(topic: Z2MTopics.Request.healthCheck, payload: .object([:]))
@@ -169,13 +173,21 @@ struct HomeView: View {
                 onRestart: { showingRestartAlert = true }
             )
         case .devices:
-            HomeDevicesCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
+            HomeDevicesCard(snapshot: snapshot) {
+                environment.showDevices(filter: .all)
+            } onFilter: {
+                environment.showDevices(filter: $0)
+            }
         case .groups:
             HomeGroupsCard(count: environment.store.groups.count) {
                 environment.selectedTab = .groups
             }
         case .mesh:
-            HomeMeshCard(snapshot: snapshot, onFilter: { environment.showDevices(filter: $0) })
+            HomeMeshCard(snapshot: snapshot) {
+                showingMeshDetail = true
+            } onFilter: {
+                environment.showDevices(filter: $0)
+            }
         case .recentEvents:
             HomeLogsCard(
                 entries: Array(environment.store.logEntries.prefix(recentEventsCount)),

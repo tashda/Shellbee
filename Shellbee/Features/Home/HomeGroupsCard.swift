@@ -14,9 +14,6 @@ struct HomeGroupsCard: View {
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
                         .monospacedDigit()
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
                 }
             }
         }

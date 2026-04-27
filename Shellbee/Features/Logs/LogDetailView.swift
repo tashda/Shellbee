@@ -109,7 +109,8 @@ struct LogDetailView: View {
                     state: environment.store.state(for: device.friendlyName),
                     isAvailable: environment.store.isAvailable(device.friendlyName),
                     otaStatus: environment.store.otaStatus(for: device.friendlyName),
-                    lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable"
+                    lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                    displayMode: .compact
                 )
                 NavigationLink(destination: DeviceDetailView(device: device)) { EmptyView() }
                     .opacity(0)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeMeshCard: View {
     let snapshot: HomeSnapshot
+    let onTap: () -> Void
     let onFilter: (DeviceQuickFilter) -> Void
 
     private var hasAlerts: Bool {
@@ -11,28 +12,15 @@ struct HomeMeshCard: View {
     var body: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                header
+                HomeCardTitle(symbol: "point.3.connected.trianglepath.dotted", title: "Mesh", tint: .indigo)
                 statsRow
                 if hasAlerts {
                     HomeCardAlertList { alertRows }
                 }
             }
         }
-    }
-
-    private var header: some View {
-        HStack(alignment: .center) {
-            HomeCardTitle(symbol: "point.3.connected.trianglepath.dotted", title: "Mesh", tint: .indigo)
-            Spacer()
-            NavigationLink {
-                MeshDetailView(snapshot: snapshot)
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .buttonStyle(.plain)
-        }
+        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .gesture(TapGesture().onEnded(onTap), including: .gesture)
     }
 
     private var statsRow: some View {
@@ -83,7 +71,7 @@ struct HomeMeshCard: View {
 }
 
 #Preview {
-    HomeMeshCard(snapshot: HomeMeshCard.previewSnapshot, onFilter: { _ in })
+    HomeMeshCard(snapshot: HomeMeshCard.previewSnapshot, onTap: {}, onFilter: { _ in })
         .padding()
         .background(Color(.systemGroupedBackground))
 }

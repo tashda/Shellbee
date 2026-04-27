@@ -112,11 +112,7 @@ struct DeviceSettingsView: View {
         .onChange(of: currentDevice.ieeeAddress) { _, _ in syncState() }
         .sheet(isPresented: $showRename) {
             RenameDeviceSheet(device: currentDevice) { newName, updateHA in
-                environment.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
-                    "from": .string(currentDevice.friendlyName),
-                    "to": .string(newName),
-                    "homeassistant_rename": .bool(updateHA)
-                ]))
+                environment.renameDevice(from: currentDevice.friendlyName, to: newName, homeassistantRename: updateHA)
             }
         }
     }

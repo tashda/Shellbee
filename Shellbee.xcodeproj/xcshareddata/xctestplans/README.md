@@ -15,6 +15,14 @@ or crash specifically under the conditions of the GitHub macOS runner
 (Xcode 26.3 strict concurrency, simulator without a provisioning profile for
 Keychain, etc.). Used by `ci-fast.yml` to gate PRs.
 
+`ci-full.yml` uses the default `Shellbee.xctestplan` but mirrors the same
+skip set on the `xcodebuild` command line via `-skip-testing` flags — the
+same root causes apply on Full CI too because it's the same runner image.
+The exception is `Z2MIntegrationTests`, which Full CI runs because it starts
+the mock z2m bridge first (one method that hits the keychain still has to
+be skipped — see the table below). If you add or remove a skip in this plan,
+mirror the change in `.github/workflows/ci-full.yml`.
+
 Every entry in `skippedTests` is tech debt with a tracking reason. When the
 underlying problem is fixed, the skip entry should be removed in the same PR
 as the fix.
@@ -29,6 +37,7 @@ as the fix.
 | `NotificationPreferencesTests` (entire class) | Sync `setUp()` on a nonisolated class with `@MainActor` test methods — Xcode 26.3 fails to bridge isolation and crashes. Fix: mark the class `@MainActor` and migrate setUp/tearDown. |
 | `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
 | `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
+| `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
 
 ### How to remove an entry
 

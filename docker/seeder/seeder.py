@@ -209,6 +209,38 @@ def _next_group_id() -> int:
 
 # ── /set and /get handlers ────────────────────────────────────────────────
 
+def _hex_to_xy(hex_str: str) -> dict:
+    """Convert a `#rrggbb` colour to CIE 1931 xy coords. Mirrors what real
+    z2m does when the frontend posts ``{"color": {"hex": "..."}}``."""
+    if not isinstance(hex_str, str):
+        return {"x": 0.3, "y": 0.3}
+    h = hex_str.lstrip("#")
+    if len(h) != 6:
+        return {"x": 0.3, "y": 0.3}
+    try:
+        r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    except ValueError:
+        return {"x": 0.3, "y": 0.3}
+    def gc(c: float) -> float:
+        return ((c + 0.055) / 1.055) ** 2.4 if c > 0.04045 else c / 12.92
+    r, g, b = gc(r), gc(g), gc(b)
+    X = r * 0.4124 + g * 0.3576 + b * 0.1805
+    Y = r * 0.2126 + g * 0.7152 + b * 0.0722
+    Z = r * 0.0193 + g * 0.1192 + b * 0.9505
+    s = X + Y + Z
+    if s <= 0:
+        return {"x": 0.3, "y": 0.3}
+    return {"x": round(X / s, 4), "y": round(Y / s, 4)}
+
+
+def _is_light(device: dict) -> bool:
+    defn = device.get("definition") or {}
+    for ex in defn.get("exposes", []) or []:
+        if ex.get("type") == "light":
+            return True
+    return False
+
+
 def handle_set(client, name: str, payload: Any) -> None:
     if not isinstance(payload, dict):
         log.warning("set for %r: non-dict payload %r", name, payload)
@@ -217,13 +249,39 @@ def handle_set(client, name: str, payload: Any) -> None:
     if device is None:
         log.warning("set for unknown device %r", name)
         return
+    payload = dict(payload)
     with _lock:
         state = _states.setdefault(name, {})
         # "state" requests with value "TOGGLE" flip the current binary state.
         if payload.get("state") == "TOGGLE":
             current = state.get("state", "OFF")
-            payload = dict(payload)
             payload["state"] = "OFF" if str(current).upper() == "ON" else "ON"
+
+        # Light semantics: real z2m turns the bulb ON when brightness/color/
+        # color_temp is set on an OFF light, and updates color_mode to match
+        # the chosen colour representation. The app reads color_mode to pick
+        # which slider to render. Real z2m also normalises a `hex` color
+        # input into xy coords; the app's colour reader only understands
+        # x/y, hue/sat, or r/g/b — never hex — so we must convert.
+        if _is_light(device):
+            if (
+                "brightness" in payload
+                or "color" in payload
+                or "color_temp" in payload
+            ) and "state" not in payload:
+                payload["state"] = "ON"
+            if "color_temp" in payload:
+                payload["color_mode"] = "color_temp"
+            elif "color" in payload and isinstance(payload["color"], dict):
+                c = dict(payload["color"])
+                if "hex" in c and "x" not in c and "hue" not in c:
+                    c = _hex_to_xy(c["hex"])
+                    payload["color"] = c
+                if "hue" in c or "saturation" in c:
+                    payload["color_mode"] = "hs"
+                elif "x" in c or "y" in c:
+                    payload["color_mode"] = "xy"
+
         for k, v in payload.items():
             state[k] = v
         state["last_seen"] = _now_iso()
@@ -725,6 +783,7 @@ def handle_request(client, subpath: str, payload: Any) -> None:
 # ── MQTT wiring ────────────────────────────────────────────────────────────
 
 _z2m_online = False
+_client: mqtt.Client | None = None  # set in main() once connected; used by control.py
 
 
 def on_connect(client, userdata, flags, reason_code, properties):
@@ -853,11 +912,13 @@ def drift_tick(client) -> None:
 # ── Main ───────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global _client
     _init_state()
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_message = on_message
+    _client = client
 
     log.info("Connecting to %s:%d …", MQTT_HOST, MQTT_PORT)
     while True:
@@ -880,6 +941,14 @@ def main() -> None:
 
     time.sleep(2)
     seed_initial(client)
+
+    # HTTP control plane (test center). Imported lazily so a missing FastAPI
+    # install does not block the core MQTT engine from running.
+    try:
+        import control
+        control.start_in_thread()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Control plane not started: %s", exc)
 
     if MODE == "once":
         client.loop_stop()

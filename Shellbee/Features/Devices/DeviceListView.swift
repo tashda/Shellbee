@@ -14,25 +14,13 @@ struct DeviceListView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            List {
-                if isGrouped {
-                    let grouped = viewModel.categorizedDevices(store: environment.store)
-                    ForEach(grouped, id: \.0) { (category, devices) in
-                        Section {
-                            ForEach(devices) { device in
-                                deviceRow(for: device)
-                            }
-                        } header: {
-                            Text(category.label)
-                        }
-                    }
-                } else {
-                    let devices = viewModel.filteredDevices(store: environment.store)
-                    ForEach(devices) { device in
-                        deviceRow(for: device)
-                    }
-                }
-            }
+            DeviceListContent(
+                viewModel: viewModel,
+                isGrouped: isGrouped,
+                onRename: { deviceToRename = $0 },
+                onRemove: { deviceToRemove = $0 },
+                onPendingAlert: { pendingDeviceAlert = $0 }
+            )
             .listStyle(.insetGrouped)
             .navigationTitle("Devices")
             .navigationBarTitleDisplayMode(.large)
@@ -49,17 +37,6 @@ struct DeviceListView: View {
                 }
             }
             .refreshable { await environment.refreshBridgeData() }
-            .overlay {
-                if environment.store.devices.isEmpty {
-                    ContentUnavailableView(
-                        "No Devices",
-                        systemImage: "cpu",
-                        description: Text("Devices will appear once connected to Zigbee2MQTT.")
-                    )
-                } else if !viewModel.searchText.isEmpty && viewModel.filteredDevices(store: environment.store).isEmpty {
-                    ContentUnavailableView.search(text: viewModel.searchText)
-                }
-            }
             .onAppear {
                 if let filter = environment.pendingDeviceFilter {
                     navigationPath = NavigationPath()
@@ -132,36 +109,15 @@ struct DeviceListView: View {
         }
     }
 
-    // MARK: - Row builder
-
-    @ViewBuilder
-    private func deviceRow(for device: Device) -> some View {
-        let state = environment.store.state(for: device.friendlyName)
-        let isAvailable = environment.store.isAvailable(device.friendlyName)
-        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
-        DeviceListRow(
-            device: device,
-            state: state,
-            isAvailable: isAvailable,
-            otaStatus: otaStatus,
-            checkResult: environment.store.deviceCheckResults[device.friendlyName],
-            onRename: { deviceToRename = device },
-            onRemove: { deviceToRemove = device },
-            onReconfigure: { pendingDeviceAlert = .reconfigure(device) },
-            onInterview: { pendingDeviceAlert = .interview(device) },
-            onUpdate: state.hasUpdateAvailable
-                ? { viewModel.updateDevice(device, environment: environment) }
-                : nil,
-            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment) }
-        )
-    }
-
     // MARK: - Sort menu
 
     private var sortMenu: some View {
         Menu {
             Toggle(isOn: $viewModel.groupByCategory) {
                 Label("Group by Type", systemImage: "square.grid.2x2")
+            }
+            Toggle(isOn: $viewModel.showRecents) {
+                Label("Show Recents", systemImage: "sparkles")
             }
 
             Divider()
@@ -186,6 +142,86 @@ struct DeviceListView: View {
         } label: {
             Image(systemName: "arrow.up.arrow.down")
         }
+    }
+}
+
+// Isolating the per-device state observation in a child view keeps OTA
+// progress ticks from invalidating the parent's `.toolbar` modifier, which
+// would otherwise dismiss any open Filter submenu mid-interaction.
+private struct DeviceListContent: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Bindable var viewModel: DeviceListViewModel
+    let isGrouped: Bool
+    let onRename: (Device) -> Void
+    let onRemove: (Device) -> Void
+    let onPendingAlert: (PendingDeviceAlert) -> Void
+
+    var body: some View {
+        List {
+            if isGrouped {
+                if viewModel.showRecents {
+                    let recents = viewModel.recentDevices(store: environment.store)
+                    if !recents.isEmpty {
+                        Section {
+                            ForEach(recents, id: \.ieeeAddress) { device in
+                                deviceRow(for: device)
+                            }
+                        } header: {
+                            Text("Recently Added")
+                        }
+                    }
+                }
+                let grouped = viewModel.categorizedDevices(store: environment.store)
+                ForEach(grouped, id: \.0) { (category, devices) in
+                    Section {
+                        ForEach(devices) { device in
+                            deviceRow(for: device)
+                        }
+                    } header: {
+                        Text(category.label)
+                    }
+                }
+            } else {
+                let devices = viewModel.filteredDevices(store: environment.store)
+                ForEach(devices) { device in
+                    deviceRow(for: device)
+                }
+            }
+        }
+        .overlay {
+            if environment.store.devices.isEmpty {
+                ContentUnavailableView(
+                    "No Devices",
+                    systemImage: "cpu",
+                    description: Text("Devices will appear once connected to Zigbee2MQTT.")
+                )
+            } else if !viewModel.searchText.isEmpty && viewModel.filteredDevices(store: environment.store).isEmpty {
+                ContentUnavailableView.search(text: viewModel.searchText)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func deviceRow(for device: Device) -> some View {
+        let state = environment.store.state(for: device.friendlyName)
+        let isAvailable = environment.store.isAvailable(device.friendlyName)
+        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        DeviceListRow(
+            device: device,
+            state: state,
+            isAvailable: isAvailable,
+            otaStatus: otaStatus,
+            checkResult: environment.store.deviceCheckResults[device.friendlyName],
+            isDeleting: environment.store.pendingRemovals.contains(device.friendlyName),
+            onRename: { onRename(device) },
+            onRemove: { onRemove(device) },
+            onReconfigure: { onPendingAlert(.reconfigure(device)) },
+            onInterview: { onPendingAlert(.interview(device)) },
+            onUpdate: state.hasUpdateAvailable
+                ? { viewModel.updateDevice(device, environment: environment) }
+                : nil,
+            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment) }
+        )
     }
 }
 

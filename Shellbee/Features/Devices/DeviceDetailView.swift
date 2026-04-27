@@ -14,23 +14,23 @@ struct DeviceDetailView: View {
     @State private var showRenameSheet = false
 
     var body: some View {
+        let device = environment.store.devices.first { $0.ieeeAddress == self.device.ieeeAddress } ?? self.device
         let state = environment.store.state(for: device.friendlyName)
         let isAvailable = environment.store.isAvailable(device.friendlyName)
         let otaStatus = environment.store.otaStatus(for: device.friendlyName)
 
         List {
-            Section {
-                DeviceCard(
-                    device: device,
-                    state: state,
-                    isAvailable: isAvailable,
-                    otaStatus: otaStatus,
-                    lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-                    onRenameTapped: { showRenameSheet = true }
-                )
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
+            DeviceCard(
+                device: device,
+                state: state,
+                isAvailable: isAvailable,
+                otaStatus: otaStatus,
+                lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                onRenameTapped: { showRenameSheet = true }
+            )
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
 
             Section {
                 ExposeCardView(device: device, state: state, mode: .interactive) { payload in
@@ -75,12 +75,13 @@ struct DeviceDetailView: View {
 
             logsSection
         }
-        .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .toolbarBackground(.automatic, for: .navigationBar)
         .navigationTitle(device.friendlyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                deviceConfigMenu
+                deviceConfigMenu(for: device)
             }
         }
         .navigationDestination(item: $menuDestination) { destination in
@@ -95,11 +96,7 @@ struct DeviceDetailView: View {
         }
         .sheet(isPresented: $showRenameSheet) {
             RenameDeviceSheet(device: device) { newName, updateHA in
-                environment.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
-                    "from": .string(device.friendlyName),
-                    "to": .string(newName),
-                    "homeassistant_rename": .bool(updateHA)
-                ]))
+                environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
             }
         }
         .sheet(isPresented: $showRemoveSheet) {
@@ -163,7 +160,7 @@ struct DeviceDetailView: View {
         }
     }
 
-    private var deviceConfigMenu: some View {
+    private func deviceConfigMenu(for device: Device) -> some View {
         let state = environment.store.state(for: device.friendlyName)
         let otaActive = environment.store.otaStatus(for: device.friendlyName)?.isActive == true
         let supportsOTA = device.definition?.supportsOTA == true
@@ -181,11 +178,11 @@ struct DeviceDetailView: View {
             }
             if supportsOTA && !otaActive {
                 Divider()
-                Button { checkForUpdate() } label: {
+                Button { checkForUpdate(device) } label: {
                     Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
                 }
                 if hasUpdateAvailable {
-                    Button { updateFirmware() } label: {
+                    Button { updateFirmware(device) } label: {
                         Label("Update", systemImage: "arrow.up.circle")
                     }
                 }
@@ -206,7 +203,7 @@ struct DeviceDetailView: View {
         }
     }
 
-    private func checkForUpdate() {
+    private func checkForUpdate(_ device: Device) {
         Haptics.impact(.light)
         environment.store.startOTACheck(for: device.friendlyName)
         environment.send(
@@ -215,7 +212,7 @@ struct DeviceDetailView: View {
         )
     }
 
-    private func updateFirmware() {
+    private func updateFirmware(_ device: Device) {
         Haptics.impact(.medium)
         environment.store.startOTAUpdate(for: device.friendlyName)
         environment.send(

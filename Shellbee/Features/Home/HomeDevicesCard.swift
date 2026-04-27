@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeDevicesCard: View {
     let snapshot: HomeSnapshot
+    let onTap: () -> Void
     let onFilter: (DeviceQuickFilter) -> Void
 
     private var hasAlerts: Bool {
@@ -18,6 +19,8 @@ struct HomeDevicesCard: View {
                 }
             }
         }
+        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .gesture(TapGesture().onEnded(onTap), including: .gesture)
     }
 
     private var statsRow: some View {
@@ -66,7 +69,7 @@ struct HomeDevicesCard: View {
 }
 
 #Preview {
-    HomeDevicesCard(snapshot: HomeDevicesCard.previewSnapshot, onFilter: { _ in })
+    HomeDevicesCard(snapshot: HomeDevicesCard.previewSnapshot, onTap: {}, onFilter: { _ in })
         .padding()
         .background(Color(.systemGroupedBackground))
 }

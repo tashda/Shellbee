@@ -94,8 +94,41 @@ final class DeviceListViewModel {
     var sortAscending = true
     var groupByCategory = true
 
+    private static let showRecentsKey = "DeviceList.showRecents"
+    var showRecents: Bool = (UserDefaults.standard.object(forKey: showRecentsKey) as? Bool) ?? true {
+        didSet { UserDefaults.standard.set(showRecents, forKey: Self.showRecentsKey) }
+    }
+
+    /// A device counts as "Recently Added" if it is currently interviewing, or
+    /// if its first-seen timestamp falls within this window. The window
+    /// survives app close/open via the timestamps persisted in `AppStore`.
+    static let recentWindow: TimeInterval = 30 * 60
+
     var hasActiveFilter: Bool {
         categoryFilter != nil || typeFilter != nil || vendorFilter != nil || statusFilter != .all
+    }
+
+    /// Devices currently interviewing or whose interview hasn't completed.
+    /// Surfaced in the "Recently Added" section so newly-paired devices are
+    /// easy to spot the moment they start interviewing. Sorted by friendly
+    /// name to keep order stable while interviews are in flight.
+    func recentDevices(store: AppStore) -> [Device] {
+        let cutoff = Date().addingTimeInterval(-Self.recentWindow)
+        return store.devices
+            .filter { $0.type != .coordinator }
+            .filter { device in
+                if device.interviewing { return true }
+                if let joined = store.deviceFirstSeen[device.ieeeAddress], joined >= cutoff {
+                    return true
+                }
+                return false
+            }
+            .sorted { lhs, rhs in
+                let lt = store.deviceFirstSeen[lhs.ieeeAddress] ?? .distantPast
+                let rt = store.deviceFirstSeen[rhs.ieeeAddress] ?? .distantPast
+                if lt != rt { return lt > rt } // newest first
+                return lhs.friendlyName.localizedCompare(rhs.friendlyName) == .orderedAscending
+            }
     }
 
     func categorizedDevices(store: AppStore) -> [(Device.Category, [Device])] {
@@ -186,11 +219,7 @@ final class DeviceListViewModel {
     }
 
     func renameDevice(_ device: Device, to newName: String, homeassistantRename: Bool = true, environment: AppEnvironment) {
-        environment.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
-            "from": .string(device.friendlyName),
-            "to": .string(newName),
-            "homeassistant_rename": .bool(homeassistantRename)
-        ]))
+        environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: homeassistantRename)
     }
 
     func reconfigureDevice(_ device: Device, environment: AppEnvironment) {
@@ -202,6 +231,8 @@ final class DeviceListViewModel {
     }
 
     func removeDevice(_ device: Device, force: Bool = false, block: Bool = false, environment: AppEnvironment) {
+        guard !environment.store.pendingRemovals.contains(device.friendlyName) else { return }
+        environment.store.pendingRemovals.insert(device.friendlyName)
         environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
             "id": .string(device.friendlyName),
             "force": .bool(force),

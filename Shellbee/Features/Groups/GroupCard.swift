@@ -5,23 +5,197 @@ struct GroupCard: View {
     let memberDevices: [Device]
     let state: [String: JSONValue]
     var onRenameTapped: (() -> Void)? = nil
+    var displayMode: DeviceIdentityDisplayMode = .prominent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            GroupCardHeader(group: group, memberDevices: memberDevices, onRenameTapped: onRenameTapped)
-                .padding(DesignTokens.Spacing.lg)
-
-            Divider().opacity(DesignTokens.Opacity.subtleFill)
-
-            GroupCardFooterBar(group: group, state: state)
+        switch displayMode {
+        case .prominent:
+            prominentHeader
+        case .compact:
+            compactHeader
         }
+    }
+
+    private var prominentHeader: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+            identityRow
+            hairline
+            metricsGrid
+        }
+        .padding(DesignTokens.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg))
-        .shadow(
-            color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-            radius: DesignTokens.Spacing.sm,
-            y: DesignTokens.Spacing.xs
-        )
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+    }
+
+    private var compactHeader: some View {
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
+            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage * 0.68)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text(group.friendlyName)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Text("Group #\(group.id) · \(group.members.count) members")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: DesignTokens.Spacing.sm)
+
+            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.sm) {
+                statusPill
+                Text(scenesTitle == "—" ? "No scenes" : "\(scenesTitle) scenes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(DesignTokens.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+    }
+
+    private var identityRow: some View {
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
+            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage * 0.80)
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                nameView
+
+                Text("Group #\(group.id)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                if let description = group.description, !description.isEmpty {
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.82)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var metricsGrid: some View {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
+                GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
+            ],
+            alignment: .leading,
+            spacing: DesignTokens.Spacing.xl
+        ) {
+            identityMetric(label: "Type", icon: "square.on.square.fill", value: "Group", unit: nil, color: .indigo)
+            identityMetric(label: "State", icon: stateIcon, value: stateTitle, unit: nil, color: stateColor)
+            identityMetric(label: "Members", icon: "person.2.fill", value: "\(group.members.count)", unit: nil, color: .blue)
+            identityMetric(label: "Scenes", icon: "sparkles", value: scenesTitle, unit: nil, color: .purple)
+        }
+    }
+
+    private func identityMetric(label: String, icon: String, value: String, unit: String?, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(.secondary)
+
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                if let unit {
+                    Text(unit)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var statusPill: some View {
+        Text(stateTitle)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(stateColor)
+            .padding(.horizontal, DesignTokens.Spacing.md)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(stateColor.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
+    }
+
+    @ViewBuilder
+    private var nameView: some View {
+        let label = Text(group.friendlyName)
+            .font(.system(size: 24, weight: .bold, design: .rounded))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.45)
+            .allowsTightening(true)
+
+        if let onRenameTapped {
+            Button(action: onRenameTapped) {
+                label.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Rename group")
+            .accessibilityValue(group.friendlyName)
+        } else {
+            label
+        }
+    }
+
+    private var hairline: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .frame(height: 0.5)
+    }
+
+    private var scenesTitle: String {
+        group.scenes.isEmpty ? "—" : "\(group.scenes.count)"
+    }
+
+    private var stateTitle: String {
+        guard let value = state["state"]?.stringValue else { return "—" }
+        return value.uppercased()
+    }
+
+    private var stateColor: Color {
+        guard let value = state["state"]?.stringValue else { return .secondary }
+        return value.uppercased() == "ON" ? .green : .secondary
+    }
+
+    private var stateIcon: String {
+        guard let value = state["state"]?.stringValue else { return "circle.dashed" }
+        return value.uppercased() == "ON" ? "power.circle.fill" : "power.circle"
     }
 }
 
@@ -29,6 +203,7 @@ struct GroupCard: View {
     VStack(spacing: DesignTokens.Spacing.lg) {
         GroupCard(group: .preview, memberDevices: [], state: ["state": .string("ON")])
         GroupCard(group: .previewWithMembers, memberDevices: [.preview, .fallbackPreview], state: [:])
+        GroupCard(group: .previewWithMembers, memberDevices: [.preview, .fallbackPreview], state: [:], displayMode: .compact)
     }
     .padding()
     .background(Color(.systemGroupedBackground))

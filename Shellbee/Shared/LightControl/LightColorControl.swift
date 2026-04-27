@@ -6,6 +6,13 @@ struct LightColorControl: View {
     let onChange: (Color) -> Void
 
     @State private var customColor: Color
+    // Suppress the next `customColor` change emitted as a side-effect of
+    // syncing from the external `value` (bridge echo). Without this, the
+    // ColorPicker re-publishes the echoed color, the bridge echoes again,
+    // and any small round-trip rounding (rgb→xy→rgb) drifts the color
+    // forever — the "repeating messages" feedback loop.
+    @State private var suppressEcho = false
+    @State private var publishTask: Task<Void, Never>?
 
     private static let swatches: [Color] = [
         .red, .orange, .yellow, .green, .mint,
@@ -29,11 +36,20 @@ struct LightColorControl: View {
             }
             customButton
         }
-        .onChange(of: value) { _, newValue in customColor = newValue }
+        .onChange(of: value) { _, newValue in
+            guard newValue.hexString != customColor.hexString else { return }
+            suppressEcho = true
+            customColor = newValue
+        }
     }
 
     private func swatchButton(_ color: Color) -> some View {
-        Button { onChange(color) } label: {
+        Button {
+            publishTask?.cancel()
+            suppressEcho = true
+            customColor = color
+            onChange(color)
+        } label: {
             Circle()
                 .fill(color)
                 .frame(width: Self.swatchSize, height: Self.swatchSize)
@@ -60,7 +76,19 @@ struct LightColorControl: View {
         }
         .labelsHidden()
         .disabled(!isInteractive)
-        .onChange(of: customColor) { _, color in onChange(color) }
+        .onChange(of: customColor) { _, color in
+            if suppressEcho {
+                suppressEcho = false
+                return
+            }
+            // Debounce drag-induced firehose from the system ColorPicker.
+            publishTask?.cancel()
+            publishTask = Task { [color] in
+                try? await Task.sleep(for: .milliseconds(250))
+                if Task.isCancelled { return }
+                await MainActor.run { onChange(color) }
+            }
+        }
     }
 
     private func isSelected(_ swatch: Color) -> Bool {

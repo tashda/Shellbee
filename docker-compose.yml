@@ -45,12 +45,15 @@ services:
         condition: service_healthy
       z2m-bridge:
         condition: service_healthy
+    ports:
+      - "8765:8765"   # HTTP test center (UI + scenario API)
     environment:
       - MQTT_HOST=mosquitto
       - MQTT_PORT=1883
       - Z2M_TOPIC=zigbee2mqtt
       - MODE=continuous
       - SEED_INTERVAL=10
+      - CONTROL_PORT=8765
     restart: unless-stopped
 
 volumes:

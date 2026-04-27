@@ -80,6 +80,28 @@ struct Z2MMessageRouter: Sendable {
         case Z2MTopics.bridgeResponseTouchlinkFactoryReset:
             return .touchlinkFactoryResetDone
 
+        case Z2MTopics.bridgeResponseDeviceRename:
+            let obj = raw.payload.object
+            let data = obj?["data"]?.object
+            guard let from = data?["from"]?.stringValue,
+                  let to = data?["to"]?.stringValue else {
+                return .bridgeResponse(topic: raw.topic, data: raw.payload)
+            }
+            let ok = obj?["status"]?.stringValue == "ok"
+            let error = obj?["error"]?.stringValue
+            return .deviceRenameResponse(from: from, to: to, ok: ok, error: error)
+
+        case Z2MTopics.bridgeResponseDeviceRemove:
+            let obj = raw.payload.object
+            let ok = obj?["status"]?.stringValue == "ok"
+            let error = obj?["error"]?.stringValue
+            // z2m echoes the request as `data` on both ok and error. The id
+            // lives there; on error it may also be embedded in the message.
+            let id = obj?["data"]?.object?["id"]?.stringValue
+                ?? Self.idFromRemoveError(error)
+                ?? ""
+            return .deviceRemoveResponse(id: id, ok: ok, error: error)
+
         case Z2MTopics.bridgeHealth:
             guard let health = raw.decode(BridgeHealth.self) else { return nil }
             return .bridgeHealth(health)
@@ -93,6 +115,14 @@ struct Z2MMessageRouter: Sendable {
         default:
             return routeDynamic(raw)
         }
+    }
+
+    private static func idFromRemoveError(_ error: String?) -> String? {
+        guard let error else { return nil }
+        guard let start = error.firstIndex(of: "'") else { return nil }
+        let remainder = error[error.index(after: start)...]
+        guard let end = remainder.firstIndex(of: "'") else { return nil }
+        return String(remainder[..<end])
     }
 
     private func routeDynamic(_ raw: RawMessage) -> Z2MEvent? {

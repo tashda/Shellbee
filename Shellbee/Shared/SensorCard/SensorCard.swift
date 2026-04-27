@@ -5,41 +5,55 @@ struct SensorCard: View {
     let state: [String: JSONValue]
     let mode: CardDisplayMode
 
-    private static let skipKeys: Set<String> = ["linkquality", "last_seen", "update", "update_available"]
+    private static let skipKeys: Set<String> = ["linkquality", "last_seen", "update", "update_available", "battery", "battery_low"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            header
+            if mode == .snapshot {
+                header
+            }
             let readings = makeReadings()
             if readings.isEmpty {
                 Text("No sensor data available")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
-                          spacing: DesignTokens.Spacing.md) {
-                    ForEach(readings, id: \.label) { reading in
-                        SensorReadingTile(reading: reading)
-                    }
-                }
+                readingsGrid(readings)
             }
         }
-        .padding(DesignTokens.Spacing.lg)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .padding(DesignTokens.Spacing.xl)
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
                 radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
     }
 
+    private func readingsGrid(_ readings: [SensorReading]) -> some View {
+        let columns = [
+            GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
+            GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
+        ]
+        return LazyVGrid(columns: columns,
+                         alignment: .leading,
+                         spacing: DesignTokens.Spacing.xl) {
+            ForEach(readings, id: \.label) { reading in
+                SensorReadingTile(reading: reading)
+            }
+        }
+    }
+
     private var header: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            if mode == .snapshot {
-                Image(systemName: "sensor.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.tint)
-                Text("Sensor State").font(.headline)
-            } else {
-                Text("Sensor").font(.headline)
-            }
+            Image(systemName: "sensor.fill")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.tint)
+            Text("Sensor")
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
         }
     }
 
@@ -79,7 +93,6 @@ struct SensorReading {
     var displayValue: String {
         switch expose.type {
         case "binary":
-            let isTrue = value.boolValue == true || value.stringValue?.lowercased() == "true"
             return binaryLabel(isTrue: isTrue)
         case "numeric":
             guard let num = value.numberValue else { return value.stringified }
@@ -95,7 +108,6 @@ struct SensorReading {
     var numericDisplayValue: String {
         switch expose.type {
         case "binary":
-            let isTrue = value.boolValue == true || value.stringValue?.lowercased() == "true"
             return binaryLabel(isTrue: isTrue)
         case "numeric":
             guard let num = value.numberValue else { return value.stringified }
@@ -118,113 +130,116 @@ struct SensorReading {
         case "humidity": return "humidity"
         case "pressure": return "gauge.medium"
         case "co2": return "aqi.medium"
+        case "carbon_monoxide": return "aqi.high"
         case "pm25", "pm10": return "aqi.high"
         case "illuminance", "illuminance_lux": return "sun.max"
-        case "motion", "occupancy": return "figure.walk"
-        case "contact": return value.boolValue == true ? "door.sliding.left.hand.open" : "door.sliding.left.hand.closed"
+        case "motion", "occupancy", "presence": return "figure.walk"
+        case "moving": return "arrow.left.arrow.right"
+        case "contact": return isTrue ? "door.sliding.left.hand.closed" : "door.sliding.left.hand.open"
+        case "window_open": return isTrue ? "window.vertical.open" : "window.vertical.closed"
         case "water_leak": return "drop.triangle"
         case "smoke": return "smoke"
         case "gas": return "exclamationmark.triangle"
         case "vibration": return "waveform.path"
-        case "battery": return batteryIcon
         case "voltage": return "bolt"
         case "current": return "bolt.ring.closed"
         case "power": return "plug"
         case "energy": return "chart.line.uptrend.xyaxis"
         case "tamper": return "lock.open.trianglebadge.exclamationmark"
+        case "alarm", "sos": return "exclamationmark.triangle.fill"
+        case "child_lock": return "lock.fill"
         default: return "sensor"
         }
     }
 
-    var tint: Color {
-        switch property {
-        case "temperature": return .orange
-        case "humidity": return .blue
-        case "pressure": return .indigo
-        case "co2", "pm25", "pm10": return .green
-        case "illuminance", "illuminance_lux": return .yellow
-        case "motion": return .orange
-        case "occupancy": return .purple
-        case "contact": return .green
-        case "water_leak": return .teal
-        case "smoke", "gas": return .secondary
-        case "vibration": return .purple
-        case "tamper": return .red
-        case "battery": return batteryTint
-        case "voltage", "current", "power", "energy": return .blue
-        default: return .secondary
-        }
+    /// Whether this binary reading represents an active/triggered state worth
+    /// drawing the user's eye to. Used to color the value text only — the icon
+    /// and label stay monochrome.
+    var binaryActive: Bool {
+        guard expose.type == "binary" else { return false }
+        if property == "contact" { return !isTrue }
+        return isTrue
     }
 
-    var isAlert: Bool {
+    /// Color of the *value* text. Numerics stay primary. Binary state sensors
+    /// get a state-driven color: alarm-class red, "open/triggered" orange,
+    /// "presence detected" green. Inactive binary stays secondary.
+    var valueColor: Color {
+        guard expose.type == "binary" else { return .primary }
+        if !binaryActive { return .secondary }
         switch property {
-        case "contact", "water_leak", "smoke", "gas", "vibration", "tamper", "battery_low":
-            return value.boolValue == true
-        case "battery":
-            guard let pct = value.numberValue else { return false }
-            return pct < Double(DesignTokens.Threshold.lowBattery)
+        case "water_leak", "smoke", "gas", "carbon_monoxide", "tamper", "sos", "alarm":
+            return .red
+        case "contact", "window_open", "vibration", "moving", "child_lock":
+            return .orange
+        case "motion", "occupancy", "presence":
+            return .green
         default:
-            return false
+            return .primary
         }
     }
 
     private func binaryLabel(isTrue: Bool) -> String {
         switch property {
         case "motion": return isTrue ? "Detected" : "Clear"
-        case "contact": return isTrue ? "Open" : "Closed"
-        case "occupancy": return isTrue ? "Occupied" : "Clear"
+        case "contact": return isTrue ? "Closed" : "Open"
+        case "window_open": return isTrue ? "Open" : "Closed"
+        case "occupancy", "presence": return isTrue ? "Occupied" : "Clear"
+        case "moving": return isTrue ? "Moving" : "Still"
         case "water_leak": return isTrue ? "Leak" : "Dry"
         case "smoke": return isTrue ? "Detected" : "Clear"
         case "gas": return isTrue ? "Detected" : "Clear"
+        case "carbon_monoxide": return isTrue ? "Detected" : "Clear"
         case "vibration": return isTrue ? "Vibrating" : "Still"
         case "tamper": return isTrue ? "Tampered" : "Secure"
-        case "battery_low": return isTrue ? "Low" : "OK"
-        default: return isTrue ? "True" : "False"
+        case "alarm": return isTrue ? "Alarm" : "Clear"
+        case "sos": return isTrue ? "SOS" : "Clear"
+        case "child_lock": return isTrue ? "Locked" : "Unlocked"
+        default: return isTrue ? "On" : "Off"
         }
     }
 
-    private var batteryIcon: String {
-        guard let pct = value.numberValue else { return "battery.50" }
-        return Int(pct).batterySymbol
+    private var isTrue: Bool {
+        value.boolValue == true || value.stringValue?.lowercased() == "true"
     }
 
-    private var batteryTint: Color {
-        guard let pct = value.numberValue else { return .secondary }
-        return Int(pct).batteryColor
-    }
 }
 
 private struct SensorReadingTile: View {
     let reading: SensorReading
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: reading.icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(reading.tint)
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: reading.icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(reading.label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(reading.numericDisplayValue)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundStyle(reading.isAlert ? Color.red : Color.primary)
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(reading.valueColor)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.55)
                 if let unit = reading.unitDisplay {
                     Text(unit)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(reading.isAlert ? Color.red.opacity(0.7) : Color.secondary)
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
-
-            Text(reading.label)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(DesignTokens.Spacing.md)
-        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
+        .contentShape(Rectangle())
     }
 }
 
@@ -234,14 +249,16 @@ private struct SensorReadingTile: View {
             SensorCard(device: .preview, state: [
                 "temperature": .double(21.5),
                 "humidity": .double(55),
-                "battery": .double(82),
-                "motion": .bool(false)
+                "occupancy": .bool(true),
+                "contact": .bool(false)
             ], mode: .interactive)
             SensorCard(device: .preview, state: [
                 "temperature": .double(21.5),
                 "humidity": .double(55),
-                "battery": .double(82),
-                "motion": .bool(true)
+                "contact": .bool(true),
+                "water_leak": .bool(true),
+                "motion": .bool(true),
+                "tamper": .bool(false)
             ], mode: .snapshot)
         }
         .padding()
