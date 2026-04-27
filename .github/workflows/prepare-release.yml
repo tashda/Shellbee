@@ -79,40 +79,50 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DATE=$(date -u +%Y-%m-%d)
-          BRANCH="chore/refresh-bundles-${DATE}"
+          # Include the run id so re-runs on the same day don't collide with a
+          # previously pushed branch (which would cause a non-fast-forward push
+          # rejection). Each run gets its own branch.
+          BRANCH="chore/refresh-bundles-${DATE}-${GITHUB_RUN_ID}"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git checkout -b "$BRANCH"
           git add Shellbee/Resources/
-          git commit -m "Refresh bundled docs and images (${DATE})
-
-          Regenerated via Tools/generate-bundle.swift from the latest
-          Koenkk/zigbee2mqtt.io. Auto-opened by prepare-release workflow."
+          git commit -m "Refresh bundled docs and images (${DATE})" \
+                     -m "Regenerated via Tools/generate-bundle.swift from the latest Koenkk/zigbee2mqtt.io. Auto-opened by prepare-release workflow."
           git push -u origin "$BRANCH"
 
           # Use the trigger reason in the PR body when dispatched manually.
           REASON="${{ github.event.inputs.reason || 'Weekly scheduled refresh' }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          # Write the PR body to a file with a quoted heredoc so apostrophes
+          # and backticks in the body don't get interpreted by the shell. Using
+          # `gh pr create --body-file` avoids the $(cat <<EOF) parsing quirk
+          # that previously broke this step on macOS bash.
+          cat > /tmp/pr-body.md <<'BODY'
+          ## Summary
+          Regenerated `Shellbee/Resources/device_docs.lzfse`, `device_images.lzfse`, and `device_index.lzfse` from the latest [Koenkk/zigbee2mqtt.io](https://github.com/Koenkk/zigbee2mqtt.io).
+
+          **Trigger:** __REASON__
+          **Run:** __RUN_URL__
+
+          ## Note on CI
+          PRs opened by `GITHUB_TOKEN` do not trigger workflow runs automatically (GitHub security policy to prevent infinite loops). To run Fast CI on this PR, either:
+          - Push an empty commit: `git commit --allow-empty -m "Trigger CI"`, or
+          - Close and reopen the PR.
+
+          ## Test plan
+          - [ ] Skim the diff — file sizes should change but not structure
+          - [ ] If you are about to tag a release, merge this first so the release ships current docs
+          BODY
+
+          # Inject runtime values without going through shell-quote hell.
+          sed -i '' -e "s|__REASON__|${REASON}|" -e "s|__RUN_URL__|${RUN_URL}|" /tmp/pr-body.md
 
           gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "Refresh bundled docs and images (${DATE})" \
-            --body "$(cat <<EOF
-          ## Summary
-          Regenerated \`Shellbee/Resources/device_docs.lzfse\`, \`device_images.lzfse\`, and \`device_index.lzfse\` from the latest [Koenkk/zigbee2mqtt.io](https://github.com/Koenkk/zigbee2mqtt.io).
-
-          **Trigger:** ${REASON}
-          **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-          ## Note on CI
-          PRs opened by \`GITHUB_TOKEN\` do not trigger workflow runs automatically (GitHub security policy to prevent infinite loops). To run Fast CI on this PR, either:
-          - Push an empty commit: \`git commit --allow-empty -m "Trigger CI"\`, or
-          - Close and reopen the PR.
-
-          ## Test plan
-          - [ ] Skim the diff — file sizes should change but not structure
-          - [ ] If you're about to tag a release, merge this first so the release ships current docs
-          EOF
-          )"
+            --body-file /tmp/pr-body.md
