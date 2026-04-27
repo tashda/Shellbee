@@ -253,6 +253,235 @@ device("Sunroom Schneider Fan",      model="41ECSFWMZ-VW",      ieee="0xa0b0c0d0
 device("Attic Tuya Fan",             model="_TZE284_z5jz7wpo",  ieee="0xa0b0c0d00000000a")
 
 
+# ── Test Lights (variety for action-card coverage) ──
+device("Test Light 01"         , model="GL-SPI-206P", ieee="0xbee1010000000000")
+device("Test Light 02"         , model="BMCT-DZ", ieee="0xbee1020000000000")
+device("Test Light 03"         , model="GL-C-006", ieee="0xbee1030000000000")
+device("Test Light 04"         , model="GL-C-003P", ieee="0xbee1040000000000")
+device("Test Light 05"         , model="GL-H-001", ieee="0xbee1050000000000")
+device("Test Light 06"         , model="GL-C-006S", ieee="0xbee1060000000000")
+device("Test Light 07"         , model="3420-G", ieee="0xbee1070000000000")
+device("Test Light 08"         , model="LED2109G6", ieee="0xbee1080000000000")
+device("Test Light 09"         , model="GL-G-003P", ieee="0xbee1090000000000")
+device("Test Light 10"         , model="GL-C-006P", ieee="0xbee10a0000000000")
+device("Test Light 11"         , model="LED1546G12", ieee="0xbee10b0000000000")
+device("Test Light 12"         , model="QS-Zigbee-D02-TRIAC-LN", ieee="0xbee10c0000000000")
+device("Test Light 13"         , model="QS-Zigbee-D02-TRIAC-2C-LN", ieee="0xbee10d0000000000")
+device("Test Light 14"         , model="GL-C-007-1ID", ieee="0xbee10e0000000000")
+device("Test Light 15"         , model="4256050-ZHAC", ieee="0xbee10f0000000000")
+device("Test Light 16"         , model="4257050-ZHAC", ieee="0xbee1100000000000")
+
+# ── Test Switches (variety for action-card coverage) ──
+device("Test Switch 01"        , model="BSP-FZ2", ieee="0xbee2010000000000")
+device("Test Switch 02"        , model="BSP-FD", ieee="0xbee2020000000000")
+device("Test Switch 03"        , model="BTH-RM230Z", ieee="0xbee2030000000000")
+device("Test Switch 04"        , model="4256251-RZHAC", ieee="0xbee2040000000000")
+device("Test Switch 05"        , model="PSM-29ZBSR", ieee="0xbee2050000000000")
+device("Test Switch 06"        , model="4256050-RZHAC", ieee="0xbee2060000000000")
+device("Test Switch 07"        , model="LLKZMK12LM", ieee="0xbee2070000000000")
+device("Test Switch 08"        , model="X701A", ieee="0xbee2080000000000")
+device("Test Switch 09"        , model="WS-USC01", ieee="0xbee2090000000000")
+device("Test Switch 10"        , model="W564100", ieee="0xbee20a0000000000")
+device("Test Switch 11"        , model="AUT000069", ieee="0xbee20b0000000000")
+device("Test Switch 12"        , model="QBKG27LM", ieee="0xbee20c0000000000")
+device("Test Switch 13"        , model="BMCT-RZ", ieee="0xbee20d0000000000")
+device("Test Switch 14"        , model="4257050-RZHAC", ieee="0xbee20e0000000000")
+device("Test Switch 15"        , model="4200-C", ieee="0xbee20f0000000000")
+device("Test Switch 16"        , model="3200-fr", ieee="0xbee2100000000000")
+
+# ── Test Covers (variety for action-card coverage) ──
+device("Test Cover 01"         , model="SCM-5ZBS", ieee="0xbee3010000000000")
+device("Test Cover 02"         , model="S520567", ieee="0xbee3020000000000")
+device("Test Cover 03"         , model="CP180335E-01", ieee="0xbee3030000000000")
+device("Test Cover 04"         , model="CK-MG22-JLDJ-01(7015)", ieee="0xbee3040000000000")
+device("Test Cover 05"         , model="ZNJLBL01LM", ieee="0xbee3050000000000")
+device("Test Cover 06"         , model="QS-Zigbee-C01", ieee="0xbee3060000000000")
+device("Test Cover 07"         , model="MB60L-ZG-ZT-TY", ieee="0xbee3070000000000")
+device("Test Cover 08"         , model="E2102", ieee="0xbee3080000000000")
+device("Test Cover 09"         , model="EPJ-ZB", ieee="0xbee3090000000000")
+device("Test Cover 10"         , model="ZNCLDJ14LM", ieee="0xbee30a0000000000")
+device("Test Cover 11"         , model="HS2CM-N-DC", ieee="0xbee30b0000000000")
+device("Test Cover 12"         , model="E2103", ieee="0xbee30c0000000000")
+device("Test Cover 13"         , model="5128.10", ieee="0xbee30d0000000000")
+device("Test Cover 14"         , model="11830304", ieee="0xbee30e0000000000")
+device("Test Cover 15"         , model="TS130F_dual", ieee="0xbee30f0000000000")
+device("Test Cover 16"         , model="QS-Zigbee-C03", ieee="0xbee3100000000000")
+
+# ── Test Locks (variety for action-card coverage) ──
+device("Test Lock 01"          , model="66492-001", ieee="0xbee4010000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 02"          , model="YRD426NRSC", ieee="0xbee4020000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 03"          , model="YRL256 TS", ieee="0xbee4030000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 04"          , model="99140-002", ieee="0xbee4040000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 05"          , model="99140-139", ieee="0xbee4050000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 06"          , model="YRD256HA20BP", ieee="0xbee4060000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 07"          , model="99140-031", ieee="0xbee4070000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 08"          , model="99100-045", ieee="0xbee4080000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 09"          , model="99100-006", ieee="0xbee4090000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 10"          , model="99120-021", ieee="0xbee40a0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 11"          , model="YAYRD256HA2619", ieee="0xbee40b0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 12"          , model="YRD652HA20BP", ieee="0xbee40c0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 13"          , model="YMF30", ieee="0xbee40d0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 14"          , model="YMF40/YDM4109+/YDF40", ieee="0xbee40e0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 15"          , model="YRD210-HA-605", ieee="0xbee40f0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Lock 16"          , model="YRL-220L", ieee="0xbee4100000000000",
+       type="EndDevice", power_source="Battery")
+
+# ── Test Climate devices (variety for action-card coverage) ──
+device("Test Climate 01"       , model="CoZB_dha", ieee="0xbee5010000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 02"       , model="BTH-RM", ieee="0xbee5020000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 03"       , model="ZBHTR20WT", ieee="0xbee5030000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 04"       , model="BTH-RA", ieee="0xbee5040000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 05"       , model="SRTS-A01", ieee="0xbee5050000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 06"       , model="WT-A03E", ieee="0xbee5060000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 07"       , model="COZB0001", ieee="0xbee5070000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 08"       , model="TS0601_thermostat_thermosphere", ieee="0xbee5080000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 09"       , model="ME168_AVATTO", ieee="0xbee5090000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 10"       , model="3157100", ieee="0xbee50a0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 11"       , model="WV704R0A0902", ieee="0xbee50b0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 12"       , model="Icon2", ieee="0xbee50c0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 13"       , model="3156105", ieee="0xbee50d0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 14"       , model="Icon", ieee="0xbee50e0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 15"       , model="SLR1", ieee="0xbee50f0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Climate 16"       , model="SLR1b", ieee="0xbee5100000000000",
+       type="EndDevice", power_source="Battery")
+
+# ── Test Fans (variety for action-card coverage) ──
+device("Test Fan 01"           , model="AC201", ieee="0xbee6010000000000")
+
+# ── Test Sensors (variety for action-card coverage) ──
+device("Test Sensor 01"        , model="8750001213", ieee="0xbee7010000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 02"        , model="WSDCGQ12LM", ieee="0xbee7020000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 03"        , model="ISW-ZPR1-WP13", ieee="0xbee7030000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 04"        , model="RADION TriTech ZB", ieee="0xbee7040000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 05"        , model="3323-G", ieee="0xbee7050000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 06"        , model="BSEN-W", ieee="0xbee7060000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 07"        , model="BSD-2", ieee="0xbee7070000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 08"        , model="WISZB-137", ieee="0xbee7080000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 09"        , model="HS3AQ", ieee="0xbee7090000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 10"        , model="AQSZB-110", ieee="0xbee70a0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 11"        , model="HS2AQ-EM", ieee="0xbee70b0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 12"        , model="FP1E", ieee="0xbee70c0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 13"        , model="KK-ES-J01W", ieee="0xbee70d0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 14"        , model="HS3CG", ieee="0xbee70e0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 15"        , model="BSIR-EZ", ieee="0xbee70f0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Sensor 16"        , model="BSEN-M", ieee="0xbee7100000000000",
+       type="EndDevice", power_source="Battery")
+
+# ── Test Remotes (variety for action-card coverage) ──
+device("Test Remote 01"        , model="BSEN-C2", ieee="0xbee8010000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 02"        , model="8719514440937/8719514440999", ieee="0xbee8020000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 03"        , model="511.324", ieee="0xbee8030000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 04"        , model="SBRC-005B-B", ieee="0xbee8040000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 05"        , model="3400-D", ieee="0xbee8050000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 06"        , model="mTouch_Bryter", ieee="0xbee8060000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 07"        , model="SR-ZG9030F-PS", ieee="0xbee8070000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 08"        , model="BSEN-CV", ieee="0xbee8080000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 09"        , model="BSEN-C2D", ieee="0xbee8090000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 10"        , model="BHI-US", ieee="0xbee80a0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 11"        , model="KP-23EL-ZBS-ACE", ieee="0xbee80b0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 12"        , model="KEYZB-110", ieee="0xbee80c0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 13"        , model="SBTZB-110", ieee="0xbee80d0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 14"        , model="HS1RC-N", ieee="0xbee80e0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 15"        , model="HM1RC-2-E", ieee="0xbee80f0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Remote 16"        , model="HS1RC-EM", ieee="0xbee8100000000000",
+       type="EndDevice", power_source="Battery")
+
+# ── Test Generic devices (variety for action-card coverage) ──
+device("Test Generic 01"       , model="SA100", ieee="0xbee9010000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 02"       , model="SRAC-23B-ZBSR", ieee="0xbee9020000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 03"       , model="QT-05M", ieee="0xbee9030000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 04"       , model="BMCT-SLZ", ieee="0xbee9040000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 05"       , model="Flower_Sensor_v2", ieee="0xbee9050000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 06"       , model="SLACKY_DIY_CO2_SENSOR_R02", ieee="0xbee9060000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 07"       , model="WS01", ieee="0xbee9070000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 08"       , model="WS90", ieee="0xbee9080000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 09"       , model="ZF24", ieee="0xbee9090000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 10"       , model="HM-722ESY-E Plus", ieee="0xbee90a0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 11"       , model="3328-G", ieee="0xbee90b0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 12"       , model="3310-G", ieee="0xbee90c0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 13"       , model="3315-Geu", ieee="0xbee90d0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 14"       , model="SS300", ieee="0xbee90e0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 15"       , model="SD-8SCZBS", ieee="0xbee90f0000000000",
+       type="EndDevice", power_source="Battery")
+device("Test Generic 16"       , model="WLS-15ZBS", ieee="0xbee9100000000000",
+       type="EndDevice", power_source="Battery")
+
+
+
 # ── Bridge / groups (unchanged) ───────────────────────────────────────────
 
 BRIDGE_INFO = {

@@ -29,6 +29,48 @@ const MODELS = [
     "FanBee", "99432", "VZM35-SN", "VZM36", "SSWF01G",
     "ZC0101", "AC221", "PCT504", "41ECSFWMZ-VW",
     "_TZE284_z5jz7wpo",
+    // Light variety (Shellbee action-card coverage).
+    "GL-SPI-206P", "BMCT-DZ", "GL-C-006", "GL-C-003P",
+    "GL-H-001", "GL-C-006S", "3420-G", "LED2109G6",
+    "GL-G-003P", "GL-C-006P", "LED1546G12", "QS-Zigbee-D02-TRIAC-LN",
+    "QS-Zigbee-D02-TRIAC-2C-LN", "GL-C-007-1ID", "4256050-ZHAC", "4257050-ZHAC",
+    // Switch variety (Shellbee action-card coverage).
+    "BSP-FZ2", "BSP-FD", "BTH-RM230Z", "4256251-RZHAC",
+    "PSM-29ZBSR", "4256050-RZHAC", "LLKZMK12LM", "X701A",
+    "WS-USC01", "W564100", "AUT000069", "QBKG27LM",
+    "BMCT-RZ", "4257050-RZHAC", "4200-C", "3200-fr",
+    // Cover variety (Shellbee action-card coverage).
+    "SCM-5ZBS", "S520567", "CP180335E-01", "CK-MG22-JLDJ-01(7015)",
+    "ZNJLBL01LM", "QS-Zigbee-C01", "MB60L-ZG-ZT-TY", "E2102",
+    "EPJ-ZB", "ZNCLDJ14LM", "HS2CM-N-DC", "E2103",
+    "5128.10", "11830304", "TS130F_dual", "QS-Zigbee-C03",
+    // Lock variety (Shellbee action-card coverage).
+    "66492-001", "YRD426NRSC", "YRL256 TS", "99140-002",
+    "99140-139", "YRD256HA20BP", "99140-031", "99100-045",
+    "99100-006", "99120-021", "YAYRD256HA2619", "YRD652HA20BP",
+    "YMF30", "YMF40/YDM4109+/YDF40", "YRD210-HA-605", "YRL-220L",
+    // Climate variety (Shellbee action-card coverage).
+    "CoZB_dha", "BTH-RM", "ZBHTR20WT", "BTH-RA",
+    "SRTS-A01", "WT-A03E", "COZB0001", "TS0601_thermostat_thermosphere",
+    "ME168_AVATTO", "3157100", "WV704R0A0902", "Icon2",
+    "3156105", "Icon", "SLR1", "SLR1b",
+    // Fan variety (Shellbee action-card coverage).
+    "AC201",
+    // Sensor variety (Shellbee action-card coverage).
+    "8750001213", "WSDCGQ12LM", "ISW-ZPR1-WP13", "RADION TriTech ZB",
+    "3323-G", "BSEN-W", "BSD-2", "WISZB-137",
+    "HS3AQ", "AQSZB-110", "HS2AQ-EM", "FP1E",
+    "KK-ES-J01W", "HS3CG", "BSIR-EZ", "BSEN-M",
+    // Remote variety (Shellbee action-card coverage).
+    "BSEN-C2", "8719514440937/8719514440999", "511.324", "SBRC-005B-B",
+    "3400-D", "mTouch_Bryter", "SR-ZG9030F-PS", "BSEN-CV",
+    "BSEN-C2D", "BHI-US", "KP-23EL-ZBS-ACE", "KEYZB-110",
+    "SBTZB-110", "HS1RC-N", "HM1RC-2-E", "HS1RC-EM",
+    // Generic variety (Shellbee action-card coverage).
+    "SA100", "SRAC-23B-ZBSR", "QT-05M", "BMCT-SLZ",
+    "Flower_Sensor_v2", "SLACKY_DIY_CO2_SENSOR_R02", "WS01", "WS90",
+    "ZF24", "HM-722ESY-E Plus", "3328-G", "3310-G",
+    "3315-Geu", "SS300", "SD-8SCZBS", "WLS-15ZBS",
 ];
 
 const devicesDir = path.join(

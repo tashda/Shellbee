@@ -144,6 +144,21 @@ final class AppStore {
                     recordFirstSeen(ieee: ieee, overwrite: true)
                 case "device_leave":
                     removeFirstSeen(ieee: ieee)
+                case "device_interview":
+                    let name = event.data.object?["friendly_name"]?.stringValue ?? ieee
+                    let status = event.data.object?["status"]?.stringValue
+                    Task { @MainActor in
+                        switch status {
+                        case "started":
+                            InterviewLiveActivityCoordinator.shared.start(deviceName: name, ieeeAddress: ieee)
+                        case "successful":
+                            InterviewLiveActivityCoordinator.shared.finish(deviceName: name, ieeeAddress: ieee, success: true)
+                        case "failed":
+                            InterviewLiveActivityCoordinator.shared.finish(deviceName: name, ieeeAddress: ieee, success: false)
+                        default:
+                            break
+                        }
+                    }
                 default:
                     break
                 }

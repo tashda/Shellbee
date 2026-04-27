@@ -22,8 +22,10 @@ final class ConnectionSessionController {
     private let history: ConnectionHistory
     private let client = Z2MWebSocketClient()
     private let router = Z2MMessageRouter()
+    private let pathMonitor = NetworkPathMonitor()
 
     private var sessionTask: Task<Void, Never>?
+    private var pathObserverTask: Task<Void, Never>?
 
     // User-configurable preference keys read via UserDefaults (mirrored in
      // AppGeneralView via @AppStorage). Defaults: 3 reconnect attempts, both
@@ -48,6 +50,55 @@ final class ConnectionSessionController {
     init(store: AppStore, history: ConnectionHistory) {
         self.store = store
         self.history = history
+        startPathObserver()
+    }
+
+    private func startPathObserver() {
+        pathMonitor.start()
+        pathObserverTask?.cancel()
+        pathObserverTask = Task { [weak self] in
+            guard let self else { return }
+            for await status in self.pathMonitor.updates() {
+                if Task.isCancelled { return }
+                await self.handlePathChange(status)
+            }
+        }
+    }
+
+    private func handlePathChange(_ status: NetworkPathMonitor.Status) async {
+        switch status {
+        case .unsatisfied:
+            // Drop the socket immediately so we surface "lost" within a second
+            // instead of waiting for the 10s socket read timeout. The session
+            // task observes the disconnection and enters reconnect/backoff.
+            switch connectionState {
+            case .connected, .connecting, .reconnecting:
+                let wasActive = connectionState.isConnected
+                store.isConnected = false
+                connectionState = hasBeenConnected
+                    ? .lost("Network unavailable")
+                    : .failed("Network unavailable")
+                await client.disconnect()
+                if hasBeenConnected && wasActive {
+                    postConnectionLostNotification(reason: "Network unavailable")
+                }
+            case .idle, .lost, .failed:
+                break
+            }
+        case .satisfied:
+            // Network came back. If we were waiting in a lost state with a
+            // saved config and a previously established session, kick a retry
+            // immediately rather than waiting for the next foreground.
+            guard hasBeenConnected, connectionConfig != nil else { return }
+            switch connectionState {
+            case .lost, .failed, .idle:
+                retryFromLost()
+            case .connecting, .connected, .reconnecting:
+                break
+            }
+        case .unknown:
+            break
+        }
     }
 
     func connect(config: ConnectionConfig) {
@@ -223,6 +274,25 @@ final class ConnectionSessionController {
     private func handleFailure(_ message: String) async {
         errorMessage = message
         store.isConnected = false
+        let wasActive = connectionState.isConnected
+        let wasReconnecting: Bool
+        if case .reconnecting = connectionState { wasReconnecting = true } else { wasReconnecting = false }
         connectionState = hasBeenConnected ? .lost(message) : .failed(message)
+        if hasBeenConnected && (wasActive || wasReconnecting) {
+            postConnectionLostNotification(reason: message)
+        }
+    }
+
+    private func postConnectionLostNotification(reason: String) {
+        let host = connectionConfig?.displayName ?? "bridge"
+        let subtitle = reason.isEmpty
+            ? "Lost connection to \(host)"
+            : "\(host) — \(reason)"
+        store.enqueueNotification(InAppNotification(
+            level: .error,
+            title: "Connection Lost",
+            subtitle: subtitle,
+            priority: .fastTrack
+        ))
     }
 }

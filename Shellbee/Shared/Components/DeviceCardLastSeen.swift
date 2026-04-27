@@ -5,7 +5,7 @@ struct DeviceCardLastSeen: View {
 
     var body: some View {
         if let lastSeen {
-            Text(compactRelativeString(for: lastSeen))
+            Text(Self.format(lastSeen: lastSeen))
                 .font(.system(size: DesignTokens.Size.lastSeenValueFont, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.trailing)
@@ -22,7 +22,7 @@ struct DeviceCardLastSeen: View {
         return formatter
     }
 
-    private func compactRelativeString(for date: Date) -> String {
+    static func format(lastSeen date: Date) -> String {
         let seconds = max(Int(Date().timeIntervalSince(date)), 0)
 
         if seconds < 3600 {

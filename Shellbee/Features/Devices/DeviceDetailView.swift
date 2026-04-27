@@ -19,18 +19,17 @@ struct DeviceDetailView: View {
         let otaStatus = environment.store.otaStatus(for: device.friendlyName)
 
         List {
-            Section {
-                DeviceCard(
-                    device: device,
-                    state: state,
-                    isAvailable: isAvailable,
-                    otaStatus: otaStatus,
-                    lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-                    onRenameTapped: { showRenameSheet = true }
-                )
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
+            DeviceCard(
+                device: device,
+                state: state,
+                isAvailable: isAvailable,
+                otaStatus: otaStatus,
+                lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                onRenameTapped: { showRenameSheet = true }
+            )
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
 
             Section {
                 ExposeCardView(device: device, state: state, mode: .interactive) { payload in
@@ -75,7 +74,8 @@ struct DeviceDetailView: View {
 
             logsSection
         }
-        .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .toolbarBackground(.automatic, for: .navigationBar)
         .navigationTitle(device.friendlyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

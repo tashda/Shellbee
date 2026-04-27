@@ -11,18 +11,30 @@ struct ExposeCardView: View {
     var body: some View {
         switch device.category {
         case .light:
-            if let ctx = LightControlContext(device: device, state: state) {
-                LightControlCard(context: ctx, mode: mode, onSend: onSend)
+            let lightContexts = LightControlContext.contexts(for: device, state: state)
+            if !lightContexts.isEmpty {
+                VStack(spacing: DesignTokens.Spacing.lg) {
+                    ForEach(lightContexts) { ctx in
+                        LightControlCard(context: ctx, mode: mode, onSend: onSend)
+                    }
+                }
             }
         case .switchPlug:
-            if let ctx = SwitchControlContext(device: device, state: state) {
-                SwitchControlCard(context: ctx, mode: mode, onSend: onSend)
-            } else {
+            let switchContexts = SwitchControlContext.contexts(for: device, state: state)
+            if switchContexts.isEmpty {
                 GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+            } else {
+                VStack(spacing: DesignTokens.Spacing.lg) {
+                    ForEach(switchContexts) { ctx in
+                        SwitchControlCard(context: ctx, mode: mode, onSend: onSend)
+                    }
+                }
             }
         case .sensor:
             if SensorCard.hasReadings(device: device, state: state) {
                 SensorCard(device: device, state: state, mode: mode)
+            } else {
+                GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
             }
         case .climate:
             if let ctx = ClimateControlContext(device: device, state: state) {
@@ -31,10 +43,15 @@ struct ExposeCardView: View {
                 GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
             }
         case .cover:
-            if let ctx = CoverControlContext(device: device, state: state) {
-                CoverControlCard(context: ctx, mode: mode, onSend: onSend)
-            } else {
+            let coverContexts = CoverControlContext.contexts(for: device, state: state)
+            if coverContexts.isEmpty {
                 GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+            } else {
+                VStack(spacing: DesignTokens.Spacing.lg) {
+                    ForEach(coverContexts) { ctx in
+                        CoverControlCard(context: ctx, mode: mode, onSend: onSend)
+                    }
+                }
             }
         case .lock:
             if let ctx = LockControlContext(device: device, state: state) {

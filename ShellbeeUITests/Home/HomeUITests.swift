@@ -75,17 +75,17 @@ final class HomeUITests: ShellbeeUITestCase {
         XCTAssertFalse(nav.exists, "Permit Join sheet did not dismiss")
     }
 
-    // MARK: - Navigation from device card stats
+    // MARK: - Navigation from cards
 
-    func testTappingTotalNavigatesToDevices() {
+    func testTappingDevicesCardNavigatesToDevices() {
         let total = app.staticTexts["Total"].firstMatch
         guard total.waitForExistence(timeout: 10) else {
             return XCTFail("Total stat not found")
         }
         total.tap()
         XCTAssertTrue(
-            app.navigationBars.firstMatch.waitForExistence(timeout: 5),
-            "Did not navigate after tapping Total"
+            app.navigationBars["Devices"].firstMatch.waitForExistence(timeout: 5),
+            "Devices card should open Devices"
         )
     }
 
@@ -115,19 +115,15 @@ final class HomeUITests: ShellbeeUITestCase {
         )
     }
 
-    // Behavior: the Mesh card header has a chevron NavigationLink that
-    // opens MeshDetailView (navigation title "Mesh"). SwiftUI surfaces
-    // that chevron as a Button with accessibility label "Forward".
+    // Behavior: the Mesh card opens MeshDetailView (navigation title "Mesh").
     func testTappingMeshCardOpensMeshDetail() {
-        XCTAssertTrue(app.staticTexts["Mesh"].firstMatch.waitForExistence(timeout: 10),
+        let mesh = app.staticTexts["Mesh"].firstMatch
+        XCTAssertTrue(mesh.waitForExistence(timeout: 10),
                       "Mesh card not rendered")
-        let forward = app.buttons["Forward"].firstMatch
-        XCTAssertTrue(forward.waitForExistence(timeout: 5),
-                      "Mesh card chevron not reachable")
-        forward.tap()
+        mesh.tap()
         XCTAssertTrue(
             app.navigationBars["Mesh"].firstMatch.waitForExistence(timeout: 5),
-            "Mesh chevron should push MeshDetailView"
+            "Mesh card should push MeshDetailView"
         )
     }
 

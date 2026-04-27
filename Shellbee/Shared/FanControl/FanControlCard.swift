@@ -9,8 +9,8 @@ struct FanControlCard: View {
     @State private var presentedGroup: IndexedGroup?
 
     private let rowHorizontalPadding: CGFloat = DesignTokens.Spacing.lg
-    private let rowVerticalPadding: CGFloat = 12
-    private let iconTileSize: CGFloat = 30
+    private let rowVerticalPadding: CGFloat = DesignTokens.Spacing.md
+    private let rowIconWidth: CGFloat = 22
 
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.lg) {
@@ -25,9 +25,9 @@ struct FanControlCard: View {
                 ForEach(Array(group.members.enumerated()), id: \.element.property) { idx, e in
                     if idx > 0 { rowDivider }
                     FanExtraRow(expose: e, state: context.state, mode: mode,
-                                iconTileSize: iconTileSize,
                                 horizontalPadding: rowHorizontalPadding,
                                 verticalPadding: rowVerticalPadding,
+                                iconWidth: rowIconWidth,
                                 onSend: onSend)
                 }
             }
@@ -36,8 +36,6 @@ struct FanControlCard: View {
 
     // MARK: - Sectioning
 
-    /// Extras eligible for sectioned display: everything that isn't already
-    /// represented in the hero or the dedicated Filter card.
     private var eligibleExtras: [Expose] {
         let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
         return context.extras.filter { e in
@@ -55,7 +53,7 @@ struct FanControlCard: View {
         context.extras.contains { filterProps.contains($0.property ?? "") }
     }
 
-    // MARK: - Hero
+    // MARK: - Hero data
 
     private var pm25Expose: Expose? { context.extras.first { $0.property == "pm25" } }
     private var airQualityExpose: Expose? { context.extras.first { $0.property == "air_quality" } }
@@ -69,6 +67,14 @@ struct FanControlCard: View {
     private var airQualityText: String? {
         guard let p = airQualityExpose?.property else { return nil }
         return context.state[p]?.stringValue
+    }
+
+    /// The single state-derived color that drives the hero gradient, eyebrow,
+    /// and any state-text inside the hero. Air-quality devices use an AQI
+    /// scale; plain fans use teal when on, neutral when off.
+    private var heroTint: Color {
+        if hasAirSensors { return airQualityTint }
+        return context.isOn ? .teal : Color(.tertiaryLabel)
     }
 
     private var airQualityTint: Color {
@@ -94,97 +100,137 @@ struct FanControlCard: View {
         return .teal
     }
 
+    // MARK: - Hero card
+
     @ViewBuilder
     private var heroCard: some View {
-        let tint = hasAirSensors ? airQualityTint : (context.isOn ? Color.teal : Color(.tertiaryLabel))
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            heroHeadline(tint: tint)
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+            heroHeadline
             if hasModeControl || hasSpeedControl {
-                heroDivider(tint: tint)
+                hairline
                 if hasModeControl { heroModeRow }
-                if hasModeControl && hasSpeedControl { heroDivider(tint: tint) }
+                if hasModeControl && hasSpeedControl { hairline }
                 if hasSpeedControl { heroSpeedRow }
             }
         }
-        .padding(DesignTokens.Spacing.lg)
+        .padding(DesignTokens.Spacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
+        .background(heroBackground)
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+    }
+
+    private var heroBackground: some View {
+        ZStack {
+            Color(.secondarySystemGroupedBackground)
             LinearGradient(
-                colors: [tint.opacity(hasAirSensors ? 0.22 : (context.isOn ? 0.18 : 0.05)),
-                         tint.opacity(0.05)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
+                colors: [
+                    heroTint.opacity(hasAirSensors ? 0.20 : (context.isOn ? 0.18 : 0.06)),
+                    heroTint.opacity(0.04)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
         }
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+    }
+
+    private var heroHeadline: some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                heroEyebrow
+                heroValue
+            }
+            Spacer(minLength: 0)
+            powerControl
+        }
+    }
+
+    private var heroEyebrow: some View {
+        HStack(spacing: 5) {
+            Image(systemName: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"))
+                .font(.system(size: 11, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+            Text(hasAirSensors ? "Air Quality" : "Fan")
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.5)
+                .textCase(.uppercase)
+        }
+        .foregroundStyle(heroTint)
     }
 
     @ViewBuilder
-    private func heroHeadline(tint: Color) -> some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(hasAirSensors ? "Air Quality" : "Fan")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .textCase(.uppercase)
-                    .tracking(0.6)
-
-                if hasAirSensors {
-                    if let pm = pm25Value {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text(Int(pm.rounded()).formatted())
-                                .font(.system(size: 56, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(.primary)
-                            Text(pm25Unit)
-                                .font(.title3.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        }
+    private var heroValue: some View {
+        if hasAirSensors {
+            VStack(alignment: .leading, spacing: 2) {
+                if let pm = pm25Value {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(Int(pm.rounded()).formatted())
+                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        Text(pm25Unit)
+                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
-                    if let aq = airQualityText {
-                        Text(prettify(aq))
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(tint)
-                    }
-                } else {
-                    Text(context.isOn ? "On" : "Off")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .foregroundStyle(tint)
+                }
+                if let aq = airQualityText {
+                    Text(prettify(aq))
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(heroTint)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
-            Spacer()
-            powerControl
+        } else {
+            Text(context.isOn ? "On" : "Off")
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .foregroundStyle(heroTint)
         }
     }
 
     @ViewBuilder
     private var powerControl: some View {
         if mode == .interactive, let f = context.stateFeature, f.isWritable {
-                Toggle("", isOn: Binding(
-                    get: { context.isOn },
-                    set: { _ in if let p = context.togglePayload() { onSend(p) } }
-                ))
-                .labelsHidden()
-                .tint(.teal)
-            } else {
-                Text(context.isOn ? "ON" : "OFF")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(context.isOn ? Color.teal : Color(.secondaryLabel))
-                    .padding(.horizontal, DesignTokens.Spacing.sm)
-                    .padding(.vertical, DesignTokens.Spacing.xs)
-                    .background(
-                        context.isOn ? Color.teal.opacity(DesignTokens.Opacity.chipFill)
-                                     : Color(.tertiarySystemFill),
-                        in: Capsule()
-                    )
+            Toggle("", isOn: Binding(
+                get: { context.isOn },
+                set: { _ in if let p = context.togglePayload() { onSend(p) } }
+            ))
+            .labelsHidden()
+            .tint(toggleTint)
+        } else {
+            statePill
         }
     }
 
-    private func heroDivider(tint: Color) -> some View {
+    /// Toggles get the live state tint while the fan is on, and a sane teal
+    /// while off (so they read as "tappable to turn on" rather than disabled).
+    private var toggleTint: Color {
+        context.isOn ? heroTint : .teal
+    }
+
+    private var statePill: some View {
+        Text(context.isOn ? "ON" : "OFF")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(context.isOn ? heroTint : Color(.secondaryLabel))
+            .padding(.horizontal, DesignTokens.Spacing.sm)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(
+                context.isOn ? heroTint.opacity(DesignTokens.Opacity.chipFill)
+                             : Color(.tertiarySystemFill),
+                in: Capsule()
+            )
+    }
+
+    private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
             .frame(height: 0.5)
     }
+
+    // MARK: - Hero mode row
 
     private var hasModeControl: Bool {
         guard let f = context.fanModeFeature, let v = f.values else { return false }
@@ -195,7 +241,7 @@ struct FanControlCard: View {
 
     private var heroModeRow: some View {
         HStack {
-            Text("Mode").font(.body)
+            Text("Mode").font(.body).foregroundStyle(.primary)
             Spacer()
             if mode == .interactive, let f = context.fanModeFeature, f.isWritable, let modes = f.values {
                 Menu {
@@ -213,6 +259,7 @@ struct FanControlCard: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(prettify(context.fanMode ?? "—"))
+                            .foregroundStyle(.primary)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.tertiary)
@@ -225,6 +272,8 @@ struct FanControlCard: View {
         }
     }
 
+    // MARK: - Hero speed row
+
     @ViewBuilder
     private var heroSpeedRow: some View {
         let f = context.speedFeature
@@ -234,7 +283,7 @@ struct FanControlCard: View {
 
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack {
-                Text("Speed").font(.body)
+                Text("Speed").font(.body).foregroundStyle(.primary)
                 Spacer()
                 Text("\(Int(speedDraft.rounded()))\(unit.isEmpty ? "" : " \(unit)")")
                     .font(.body.monospacedDigit())
@@ -245,7 +294,7 @@ struct FanControlCard: View {
                     guard !editing else { return }
                     if let p = context.speedPayload(speedDraft) { onSend(p) }
                 }
-                .tint(.teal)
+                .tint(toggleTint)
             }
         }
         .onAppear { speedDraft = current }
@@ -263,63 +312,92 @@ struct FanControlCard: View {
         return v?.boolValue
     }
 
-    private var filterAgeMinutes: Double? {
-        context.state["filter_age"]?.numberValue
-    }
-    private var deviceAgeMinutes: Double? {
-        context.state["device_age"]?.numberValue
-    }
+    private var filterAgeMinutes: Double? { context.state["filter_age"]?.numberValue }
+    private var deviceAgeMinutes: Double? { context.state["device_age"]?.numberValue }
 
     private var filterCard: some View {
         let needsReplace = replaceFilterValue ?? false
-        let healthTint: Color = needsReplace ? .orange : .green
-        let symbol = needsReplace ? "exclamationmark.triangle.fill" : "checkmark.seal.fill"
-        let title = needsReplace ? "Replace Filter" : "Filter Healthy"
+        let tint: Color = needsReplace ? .orange : .green
+        let title = needsReplace ? "Replace" : "Healthy"
+        let icon = needsReplace ? "exclamationmark.triangle.fill" : "checkmark.seal.fill"
 
-        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                Image(systemName: symbol)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white, healthTint)
-                    .symbolRenderingMode(.palette)
-                    .frame(width: 30, height: 30)
-                    .background(healthTint.gradient,
-                                in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("FILTER")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .tracking(0.6)
-                    Text(title).font(.headline)
+        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                HStack(spacing: 5) {
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
+                    Text("Filter")
+                        .font(.system(size: 11, weight: .semibold))
+                        .tracking(0.5)
+                        .textCase(.uppercase)
                 }
-                Spacer()
+                .foregroundStyle(tint)
+
+                Text(title)
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
             }
 
-            HStack(spacing: 0) {
-                if let v = filterAgeMinutes {
-                    statColumn(label: "Filter age", value: formatDuration(v))
-                }
-                if let v = deviceAgeMinutes {
-                    statColumn(label: "Device age", value: formatDuration(v))
+            if filterAgeMinutes != nil || deviceAgeMinutes != nil {
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
+                    GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
+                ], alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+                    if let v = filterAgeMinutes {
+                        ageTile(label: "Filter Age", minutes: v, icon: "calendar")
+                    }
+                    if let v = deviceAgeMinutes {
+                        ageTile(label: "Device Age", minutes: v, icon: "clock")
+                    }
                 }
             }
         }
-        .padding(DesignTokens.Spacing.lg)
+        .padding(DesignTokens.Spacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background {
+            ZStack {
+                Color(.secondarySystemGroupedBackground)
+                LinearGradient(
+                    colors: [tint.opacity(0.10), tint.opacity(0.03)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
     }
 
-    private func statColumn(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label.uppercased())
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .tracking(0.5)
-            Text(value)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.primary)
-                .monospacedDigit()
+    private func ageTile(label: String, minutes: Double, icon: String) -> some View {
+        let parts = formatDurationParts(minutes)
+        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(.secondary)
+
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(parts.value)
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                Text(parts.unit)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -329,18 +407,23 @@ struct FanControlCard: View {
     @ViewBuilder
     private func sectionView(_ section: LayoutSection) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text(section.title.uppercased())
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
+            Text(section.title)
+                .font(.system(size: 12, weight: .semibold))
                 .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
                 .padding(.leading, DesignTokens.Spacing.md)
 
-            groupedCard {
+            VStack(spacing: 0) {
                 ForEach(Array(section.items.enumerated()), id: \.element.id) { idx, item in
                     if idx > 0 { rowDivider }
                     itemView(item)
                 }
             }
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         }
     }
 
@@ -349,51 +432,77 @@ struct FanControlCard: View {
         switch item {
         case .row(let expose):
             FanExtraRow(expose: expose, state: context.state, mode: mode,
-                        iconTileSize: iconTileSize,
                         horizontalPadding: rowHorizontalPadding,
                         verticalPadding: rowVerticalPadding,
+                        iconWidth: rowIconWidth,
                         onSend: onSend)
         case .indexedGroup(let group):
-            DisclosureFeatureRow(
+            DisclosureRow(
                 symbol: group.symbol,
-                tint: group.tint,
                 label: group.label,
                 trailingSummary: "\(group.members.count)",
-                iconTileSize: iconTileSize,
                 horizontalPadding: rowHorizontalPadding,
-                verticalPadding: rowVerticalPadding
-            ) {
-                presentedGroup = group
-            }
+                verticalPadding: rowVerticalPadding,
+                iconWidth: rowIconWidth
+            ) { presentedGroup = group }
         }
     }
 
     // MARK: - Helpers
 
     private var rowDivider: some View {
-        Divider().padding(.leading, rowHorizontalPadding + iconTileSize + DesignTokens.Spacing.md)
-    }
-
-    @ViewBuilder
-    private func groupedCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        VStack(spacing: 0) { content() }
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        Divider().padding(.leading, rowHorizontalPadding + rowIconWidth + DesignTokens.Spacing.md)
     }
 
     private func prettify(_ s: String) -> String {
         s.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
-    private func formatDuration(_ minutes: Double) -> String {
+    private func formatDurationParts(_ minutes: Double) -> (value: String, unit: String) {
         let total = Int(minutes.rounded())
-        if total < 60 { return "\(total) min" }
+        if total < 60 { return ("\(total)", "min") }
         let hours = total / 60
-        if hours < 48 { return "\(hours) h" }
+        if hours < 48 { return ("\(hours)", "h") }
         let days = hours / 24
-        if days < 60 { return "\(days) d" }
+        if days < 60 { return ("\(days)", "d") }
         let months = days / 30
-        return "\(months) mo"
+        return ("\(months)", "mo")
+    }
+}
+
+// MARK: - Disclosure row (monochrome, local to fan card)
+
+private struct DisclosureRow: View {
+    let symbol: String
+    let label: String
+    let trailingSummary: String?
+    let horizontalPadding: CGFloat
+    let verticalPadding: CGFloat
+    let iconWidth: CGFloat
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                    .frame(width: iconWidth)
+                Text(label).font(.body).foregroundStyle(.primary)
+                Spacer()
+                if let trailingSummary {
+                    Text(trailingSummary).font(.body).foregroundStyle(.secondary)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -403,9 +512,9 @@ private struct FanExtraRow: View {
     let expose: Expose
     let state: [String: JSONValue]
     let mode: CardDisplayMode
-    let iconTileSize: CGFloat
     let horizontalPadding: CGFloat
     let verticalPadding: CGFloat
+    let iconWidth: CGFloat
     let onSend: (JSONValue) -> Void
 
     @State private var numericDraft: Double = 0
@@ -431,11 +540,19 @@ private struct FanExtraRow: View {
         }
     }
 
+    private var leadingIcon: some View {
+        Image(systemName: meta.symbol)
+            .font(.system(size: 16, weight: .medium))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(.secondary)
+            .frame(width: iconWidth)
+    }
+
     @ViewBuilder
     private var binaryRow: some View {
         let isOn = stateValue == expose.valueOn || stateValue?.boolValue == true
         HStack(spacing: DesignTokens.Spacing.md) {
-            FeatureIconTile(symbol: meta.symbol, tint: meta.tint, size: iconTileSize)
+            leadingIcon
             labelStack
             Spacer()
             if mode == .interactive, expose.isWritable,
@@ -445,10 +562,8 @@ private struct FanExtraRow: View {
                     set: { v in onSend(.object([property: v ? on : off])) }
                 ))
                 .labelsHidden()
-                .tint(.teal)
             } else {
-                Text(isOn ? "On" : "Off")
-                    .foregroundStyle(.secondary)
+                Text(isOn ? "On" : "Off").foregroundStyle(.secondary)
             }
         }
     }
@@ -458,7 +573,7 @@ private struct FanExtraRow: View {
         let values = expose.values ?? []
         let current = stateValue?.stringValue ?? "—"
         HStack(spacing: DesignTokens.Spacing.md) {
-            FeatureIconTile(symbol: meta.symbol, tint: meta.tint, size: iconTileSize)
+            leadingIcon
             labelStack
             Spacer()
             if mode == .interactive, expose.isWritable, !values.isEmpty {
@@ -499,7 +614,7 @@ private struct FanExtraRow: View {
         if writable, let min = expose.valueMin, let max = expose.valueMax {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                 HStack(spacing: DesignTokens.Spacing.md) {
-                    FeatureIconTile(symbol: meta.symbol, tint: meta.tint, size: iconTileSize)
+                    leadingIcon
                     labelStack
                     Spacer()
                     Text(formatNumeric(numericDraft, unit: unit))
@@ -510,14 +625,13 @@ private struct FanExtraRow: View {
                     guard !editing else { return }
                     onSend(.object([property: numericPayload(numericDraft, step: expose.valueStep)]))
                 }
-                .tint(.teal)
-                .padding(.leading, iconTileSize + DesignTokens.Spacing.md)
+                .padding(.leading, iconWidth + DesignTokens.Spacing.md)
             }
             .onAppear { numericDraft = current }
             .onChange(of: current) { _, v in numericDraft = v }
         } else {
             HStack(spacing: DesignTokens.Spacing.md) {
-                FeatureIconTile(symbol: meta.symbol, tint: meta.tint, size: iconTileSize)
+                leadingIcon
                 labelStack
                 Spacer()
                 Text(formatNumeric(current, unit: unit))
@@ -537,16 +651,13 @@ private struct FanExtraRow: View {
     @ViewBuilder
     private var textRow: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
-            FeatureIconTile(symbol: meta.symbol, tint: meta.tint, size: iconTileSize)
+            leadingIcon
             labelStack
             Spacer()
             Text(stateValue?.stringified ?? "—").foregroundStyle(.secondary)
         }
     }
 
-    /// Two-line label: primary title with an optional small secondary
-    /// description from `expose.description`. Description is suppressed when
-    /// it just restates the label, to avoid noise on rows that explain themselves.
     @ViewBuilder
     private var labelStack: some View {
         if let desc = meaningfulDescription {
@@ -562,33 +673,13 @@ private struct FanExtraRow: View {
         }
     }
 
-    /// Show `expose.description` only when it adds real information the label
-    /// can't carry on its own. The cost of a wrong "show" is real (clutter),
-    /// so the bar is high — most rows will not pass.
-    ///
-    /// Show if EITHER:
-    ///   • the description contains digits — almost always means a range,
-    ///     unit, or specific value that's load-bearing ("0-255 (hue)",
-    ///     "in 25ms increments", "0=disabled")
-    ///   • the description contributes ≥4 substantive words not already
-    ///     implied by the label or common stopwords. "Smart Bulb Mode"
-    ///     paired with "Whether device is connected to dumb load or smart
-    ///     load" passes; "LED Enable" / "Whether the LED is enabled" doesn't.
     private var meaningfulDescription: String? {
         guard let desc = expose.description?.trimmingCharacters(in: .whitespacesAndNewlines),
               desc.count >= 12 else { return nil }
-
-        // Suppress exact restatements (case- and punctuation-insensitive).
         let normalizedLabel = label.lowercased().filter { $0.isLetter || $0.isNumber }
         let normalizedDesc = desc.lowercased().filter { $0.isLetter || $0.isNumber }
         if normalizedDesc == normalizedLabel { return nil }
-
-        // Numeric content almost always means a range/unit worth showing.
         if desc.contains(where: { $0.isNumber }) { return desc }
-
-        // Word-novelty test: how many substantive words does the description
-        // add over the label? Strip stopwords and tokens that are stems of
-        // label words ("enabled" vs "Enable", "locks" vs "Lock").
         let labelTokens = tokenize(label).map { $0.lowercased() }
         let descTokens = tokenize(desc).map { $0.lowercased() }
         let novel = descTokens.filter { token in

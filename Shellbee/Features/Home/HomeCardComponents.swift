@@ -103,11 +103,6 @@ struct HomeCardAlertRow: View {
                 .font(.subheadline)
                 .foregroundStyle(.primary)
             Spacer()
-            if action != nil {
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
         }
     }
 }

@@ -18,21 +18,18 @@ struct CoverControlCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            header
-            if context.positionFeature != nil {
-                positionHero
-            }
-            if mode == .interactive, context.stateFeature?.isWritable == true {
-                actionButtons
-            }
-            if context.tiltFeature != nil {
-                tiltRow
-            }
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+            heroHeadline
+            if showsPositionSlider { positionSliderRow }
+            if showsActionButtons { hairline; actionButtons }
+            if context.tiltFeature != nil { hairline; tiltRow }
         }
-        .padding(DesignTokens.Spacing.lg)
-        .background(Color(.secondarySystemGroupedBackground))
+        .padding(DesignTokens.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(heroBackground)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         .onChange(of: context.positionValue) { _, v in
             guard !isDraggingPosition else { return }
             positionDraft = v ?? 0
@@ -40,131 +37,192 @@ struct CoverControlCard: View {
         .onChange(of: context.tiltValue) { _, v in tiltDraft = v ?? 0 }
     }
 
-    // MARK: - Header
+    // MARK: - Tinting
 
-    private var header: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: coverIcon)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(context.isOpen ? Color.accentColor : Color.secondary)
-                .frame(width: 36, height: 36)
-                .background(
-                    (context.isOpen ? Color.accentColor.opacity(DesignTokens.Opacity.chipFill) : Color(.tertiarySystemFill)),
-                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous)
-                )
+    /// One state-derived color for the gradient, eyebrow, slider, and action
+    /// buttons. Orange when any opening is present (a "letting in light" feel
+    /// that matches Apple Home's blinds tile when open); grey when fully closed.
+    private var heroTint: Color {
+        if isFullyClosed { return Color(.tertiaryLabel) }
+        return .orange
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Cover")
-                    .font(.headline)
-                Text(context.displayState)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+    /// "Fully closed" means the state explicitly says CLOSED *and* (if position
+    /// is reported) position is 0. We don't trust state alone — many covers
+    /// keep state at OPEN while position falls below 100%.
+    private var isFullyClosed: Bool {
+        if let pos = context.positionValue, pos > 0 { return false }
+        let state = context.stateValue?.uppercased()
+        return state == "CLOSED" || state == "CLOSE" || (state == nil && context.positionValue == 0)
+    }
 
-            Spacer()
+    private var heroBackground: some View {
+        ZStack {
+            Color(.secondarySystemGroupedBackground)
+            LinearGradient(
+                colors: [heroTint.opacity(isFullyClosed ? 0.06 : 0.18),
+                         heroTint.opacity(0.04)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
     }
 
-    private var coverIcon: String {
-        context.isOpen ? "blinds.horizontal.open" : "blinds.horizontal.closed"
+    // MARK: - Hero headline
+
+    private var heroHeadline: some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                heroEyebrow
+                heroValue
+            }
+            Spacer(minLength: 0)
+        }
     }
 
-    // MARK: - Position hero
+    private var heroEyebrow: some View {
+        HStack(spacing: 5) {
+            Image(systemName: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open")
+                .font(.system(size: 11, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+            Text(eyebrowLabel)
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.5)
+                .textCase(.uppercase)
+                .lineLimit(1)
+        }
+        .foregroundStyle(heroTint)
+    }
+
+    private var eyebrowLabel: String {
+        if let endpoint = context.endpointLabel { return "Cover · \(endpoint)" }
+        return "Cover"
+    }
 
     @ViewBuilder
-    private var positionHero: some View {
-        let writable = context.positionFeature?.isWritable == true && mode == .interactive
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .lastTextBaseline) {
-                Text("\(Int(positionDraft.rounded()))%")
-                    .font(.system(size: 44, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .contentTransition(.numericText(value: positionDraft))
-                    .animation(.snappy, value: positionDraft)
-                Text("open")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer()
+    private var heroValue: some View {
+        if context.positionFeature != nil {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(Int(positionDraft.rounded()))")
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .contentTransition(.numericText(value: positionDraft))
+                        .animation(.snappy, value: positionDraft)
+                    Text("%")
+                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+                Text(context.displayState)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(heroTint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-
-            if writable, let f = context.positionFeature {
-                Slider(
-                    value: $positionDraft,
-                    in: f.range ?? 0...100,
-                    onEditingChanged: { editing in
-                        isDraggingPosition = editing
-                        if !editing, let p = context.positionPayload(positionDraft) { onSend(p) }
-                    }
-                )
-            } else {
-                positionFillBar(fraction: positionDraft / 100)
-            }
+        } else {
+            Text(context.displayState)
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .foregroundStyle(heroTint)
         }
     }
 
-    private func positionFillBar(fraction: Double) -> some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color(.tertiarySystemFill))
-                Capsule().fill(Color.accentColor)
-                    .frame(width: max(8, geo.size.width * CGFloat(max(0, min(1, fraction)))))
-            }
+    private var hairline: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .frame(height: 0.5)
+    }
+
+    // MARK: - Position slider
+
+    private var showsPositionSlider: Bool {
+        guard let f = context.positionFeature else { return false }
+        return mode == .interactive && f.isWritable
+    }
+
+    @ViewBuilder
+    private var positionSliderRow: some View {
+        if let f = context.positionFeature {
+            Slider(
+                value: $positionDraft,
+                in: f.range ?? 0...100,
+                onEditingChanged: { editing in
+                    isDraggingPosition = editing
+                    if !editing, let p = context.positionPayload(positionDraft) { onSend(p) }
+                }
+            )
+            .tint(heroTint == Color(.tertiaryLabel) ? .orange : heroTint)
         }
-        .frame(height: 10)
     }
 
     // MARK: - Action buttons
 
+    private var showsActionButtons: Bool {
+        mode == .interactive && context.stateFeature?.isWritable == true
+    }
+
     private var actionButtons: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            coverActionButton(title: "Open", systemImage: "arrow.up.to.line") {
-                onSend(.object(["state": .string("OPEN")]))
-            }
-            coverActionButton(title: "Stop", systemImage: "stop.fill") {
-                onSend(.object(["state": .string("STOP")]))
-            }
-            coverActionButton(title: "Close", systemImage: "arrow.down.to.line") {
-                onSend(.object(["state": .string("CLOSE")]))
-            }
+            actionButton(title: "Open", systemImage: "arrow.up.to.line", payload: "OPEN")
+            actionButton(title: "Stop", systemImage: "stop.fill", payload: "STOP")
+            actionButton(title: "Close", systemImage: "arrow.down.to.line", payload: "CLOSE")
         }
     }
 
-    private func coverActionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: DesignTokens.Spacing.xs) {
+    private func actionButton(title: String, systemImage: String, payload: String) -> some View {
+        Button {
+            if let p = context.statePayload(payload) { onSend(p) }
+        } label: {
+            HStack(spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                 Text(title)
-                    .font(.footnote.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, DesignTokens.Spacing.sm)
         }
         .buttonStyle(.bordered)
-        .tint(.accentColor)
+        .tint(heroTint == Color(.tertiaryLabel) ? .orange : heroTint)
     }
 
     // MARK: - Tilt
 
-    @ViewBuilder private var tiltRow: some View {
+    @ViewBuilder
+    private var tiltRow: some View {
         let writable = context.tiltFeature?.isWritable == true && mode == .interactive
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            HStack {
-                Text("Tilt")
-                    .font(.subheadline.weight(.medium))
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline) {
+                HStack(spacing: 5) {
+                    Image(systemName: "rotate.3d")
+                        .font(.system(size: 11, weight: .bold))
+                        .symbolRenderingMode(.hierarchical)
+                    Text("Tilt")
+                        .font(.system(size: 11, weight: .semibold))
+                        .tracking(0.5)
+                        .textCase(.uppercase)
+                }
+                .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(Int(tiltDraft.rounded()))%")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text("\(Int(tiltDraft.rounded()))")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                    Text("%")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
             }
             if writable, let f = context.tiltFeature {
                 Slider(value: $tiltDraft, in: f.range ?? 0...100) { editing in
                     guard !editing else { return }
                     if let p = context.tiltPayload(tiltDraft) { onSend(p) }
                 }
-            } else {
-                positionFillBar(fraction: tiltDraft / 100)
+                .tint(heroTint == Color(.tertiaryLabel) ? .orange : heroTint)
             }
         }
     }
@@ -178,6 +236,11 @@ struct CoverControlCard: View {
             ]) {
                 CoverControlCard(context: ctx, mode: .interactive, onSend: { _ in })
                 CoverControlCard(context: ctx, mode: .snapshot, onSend: { _ in })
+            }
+            if let closed = CoverControlContext(device: .preview, state: [
+                "state": .string("CLOSED"), "position": .int(0)
+            ]) {
+                CoverControlCard(context: closed, mode: .interactive, onSend: { _ in })
             }
         }
         .padding()

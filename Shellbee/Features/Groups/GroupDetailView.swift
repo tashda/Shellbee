@@ -38,16 +38,15 @@ struct GroupDetailView: View {
 
     var body: some View {
         List {
-            Section {
-                GroupCard(
-                    group: currentGroup,
-                    memberDevices: memberDevices,
-                    state: groupState,
-                    onRenameTapped: { showRenameSheet = true }
-                )
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
+            GroupCard(
+                group: currentGroup,
+                memberDevices: memberDevices,
+                state: groupState,
+                onRenameTapped: { showRenameSheet = true }
+            )
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
 
             if let lightContext = groupLightContext {
                 Section {
@@ -65,7 +64,8 @@ struct GroupDetailView: View {
 
             GroupScenesSection(group: currentGroup, viewModel: viewModel)
         }
-        .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .toolbarBackground(.automatic, for: .navigationBar)
         .navigationTitle(currentGroup.friendlyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
