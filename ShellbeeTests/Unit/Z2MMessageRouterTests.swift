@@ -225,11 +225,51 @@ final class Z2MMessageRouterTests: XCTestCase, @unchecked Sendable {
     @MainActor
 
     func testRoutesGenericBridgeError() {
+        // Use a response topic that does not have a specific case in the
+        // router. bridge/response/device/rename is now routed to
+        // .deviceRenameResponse; pick one without dedicated handling so the
+        // generic operationError fallback is exercised here.
         let data = Z2MFrame.make(
-            topic: "bridge/response/device/rename",
+            topic: "bridge/response/device/configure",
             payload: ["status": "error", "error": "Device not found"]
         )
         guard case .operationError(_) = router.route(data) else { return XCTFail() }
+    }
+
+    @MainActor
+
+    func testRoutesDeviceRenameSuccess() {
+        let data = Z2MFrame.make(
+            topic: "bridge/response/device/rename",
+            payload: [
+                "status": "ok",
+                "data": ["from": "Old Name", "to": "New Name"],
+            ]
+        )
+        guard case .deviceRenameResponse(let from, let to, let ok, _) = router.route(data) else {
+            return XCTFail("Expected .deviceRenameResponse")
+        }
+        XCTAssertEqual(from, "Old Name")
+        XCTAssertEqual(to, "New Name")
+        XCTAssertTrue(ok)
+    }
+
+    @MainActor
+
+    func testRoutesDeviceRenameFailure() {
+        let data = Z2MFrame.make(
+            topic: "bridge/response/device/rename",
+            payload: [
+                "status": "error",
+                "error": "Device not found",
+                "data": ["from": "Old Name", "to": "New Name"],
+            ]
+        )
+        guard case .deviceRenameResponse(_, _, let ok, let error) = router.route(data) else {
+            return XCTFail("Expected .deviceRenameResponse")
+        }
+        XCTAssertFalse(ok)
+        XCTAssertEqual(error, "Device not found")
     }
 
     // MARK: - Malformed / Unknown
