@@ -9,77 +9,60 @@ struct RemoveDeviceSheet: View {
     @State private var blockJoining = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                Text("Remove Device")
-                    .font(.title3.weight(.semibold))
-                Text("This removes the device from Zigbee2MQTT.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                HStack(spacing: DesignTokens.Spacing.md) {
-                    DeviceImageView(
-                        device: device,
-                        isAvailable: true,
-                        size: DesignTokens.Size.deviceActionSheetImage
-                    )
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                        Text(device.friendlyName)
-                            .font(.headline)
-                        Text(device.definition?.model ?? "Unknown Model")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-            }
-            .padding()
-            .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg))
-
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                Toggle("Force Remove", isOn: $forceRemove)
-                Divider()
-                    .padding(.vertical, DesignTokens.Spacing.xs)
-                Toggle("Block from joining", isOn: $blockJoining)
-            }
-            .padding()
-            .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg))
-
-            if forceRemove || blockJoining {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                    if forceRemove {
-                        Label(
-                            "Force remove deletes the device even without a leave response.",
-                            systemImage: "exclamationmark.triangle.fill"
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: DesignTokens.Spacing.md) {
+                        DeviceImageView(
+                            device: device,
+                            isAvailable: true,
+                            size: DesignTokens.Size.deviceActionSheetImage
                         )
-                        .foregroundStyle(.orange)
-                    }
-                    if blockJoining {
-                        Label(
-                            "Device will be blocklisted from rejoining the network.",
-                            systemImage: "nosign"
-                        )
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                            Text(device.friendlyName)
+                                .font(.headline)
+                            Text(device.definition?.model ?? "Unknown Model")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-                .font(.caption)
-            }
 
-            Spacer(minLength: 0)
-
-            Button("Remove Device", role: .destructive) {
-                onConfirm(forceRemove, blockJoining)
-                dismiss()
+                Section {
+                    Toggle("Force Remove", isOn: $forceRemove)
+                    Toggle("Block from joining", isOn: $blockJoining)
+                } footer: {
+                    if forceRemove && blockJoining {
+                        Text("Force remove deletes the device even without a leave response. The device will also be blocklisted from rejoining the network.")
+                    } else if forceRemove {
+                        Text("Force remove deletes the device even without a leave response.")
+                    } else if blockJoining {
+                        Text("Device will be blocklisted from rejoining the network.")
+                    } else {
+                        Text("This removes the device from Zigbee2MQTT.")
+                    }
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .fontWeight(.semibold)
-            .frame(maxWidth: .infinity)
+            .navigationTitle("Remove Device")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) { actionBar }
         }
-        .padding()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
+    }
+
+    private var actionBar: some View {
+        Button("Remove Device", role: .destructive) {
+            onConfirm(forceRemove, blockJoining)
+            dismiss()
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .controlSize(.large)
+        .fontWeight(.semibold)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.Spacing.md)
     }
 }
 

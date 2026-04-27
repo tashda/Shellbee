@@ -231,6 +231,8 @@ final class DeviceListViewModel {
     }
 
     func removeDevice(_ device: Device, force: Bool = false, block: Bool = false, environment: AppEnvironment) {
+        guard !environment.store.pendingRemovals.contains(device.friendlyName) else { return }
+        environment.store.pendingRemovals.insert(device.friendlyName)
         environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
             "id": .string(device.friendlyName),
             "force": .bool(force),

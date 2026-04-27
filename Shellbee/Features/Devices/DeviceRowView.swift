@@ -6,12 +6,17 @@ struct DeviceRowView: View {
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
     var checkResult: AppStore.DeviceCheckResult? = nil
+    var isDeleting: Bool = false
+
+    private var effectiveAvailable: Bool {
+        isDeleting ? false : isAvailable
+    }
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             DeviceImageView(
                 device: device,
-                isAvailable: isAvailable,
+                isAvailable: effectiveAvailable,
                 hasUpdate: state.hasUpdateAvailable,
                 otaStatus: otaStatus,
                 size: DesignTokens.Size.summaryRowSymbolFrame
@@ -28,7 +33,7 @@ struct DeviceRowView: View {
                 Text(device.friendlyName)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(isAvailable ? .primary : .secondary)
+                    .foregroundStyle(effectiveAvailable ? .primary : .secondary)
                     .lineLimit(1)
             }
 
@@ -45,7 +50,12 @@ struct DeviceRowView: View {
 
     @ViewBuilder
     private var rightDetailView: some View {
-        if isInterviewing {
+        if isDeleting {
+            Label("Deleting", systemImage: "trash")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.red)
+                .labelStyle(.titleAndIcon)
+        } else if isInterviewing {
             Label("Interviewing", systemImage: "waveform.path.ecg")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.purple)

@@ -18,6 +18,10 @@ final class AppStore {
     // Optimistic renames awaiting bridge confirmation. Used to roll back if z2m
     // returns status="error" for the rename request.
     private var pendingRenames: [(from: String, to: String)] = []
+    // Friendly names of devices the user has asked to remove and we're awaiting
+    // bridge/response/device/remove for. Drives the "Deleting" badge and
+    // disables further swipe-deletes on the same row.
+    var pendingRemovals: Set<String> = []
     private static let firstSeenStoreKey = "AppStore.deviceFirstSeen"
     var otaUpdates: [String: OTAUpdateStatus] = [:]
     var logEntries: [LogEntry] = []
@@ -211,6 +215,28 @@ final class AppStore {
 
         case .touchlinkFactoryResetDone:
             touchlinkResetInProgress = false
+
+        case .deviceRemoveResponse(let id, let ok, let errorMessage):
+            pendingRemovals.remove(id)
+            if ok {
+                // Remove locally so the next bridge/devices snapshot doesn't
+                // race with our List diff. Also clears keyed state so the
+                // "Recently Added" backfill doesn't resurrect it.
+                devices.removeAll { $0.friendlyName == id }
+                deviceStates.removeValue(forKey: id)
+                deviceAvailability.removeValue(forKey: id)
+                otaUpdates.removeValue(forKey: id)
+                deviceCheckResults.removeValue(forKey: id)
+            } else {
+                let message = errorMessage ?? "Failed to remove '\(id)'"
+                let error = Z2MOperationError(
+                    id: UUID(),
+                    topic: Z2MTopics.bridgeResponseDeviceRemove,
+                    message: message,
+                    timestamp: .now
+                )
+                apply(.operationError(error))
+            }
 
         case .deviceRenameResponse(let from, let to, let ok, let errorMessage):
             if let pendingIdx = pendingRenames.firstIndex(where: { $0.from == from && $0.to == to }) {
@@ -510,6 +536,7 @@ final class AppStore {
         pendingNotifications = []
         fastTrackNotifications = []
         deviceCheckResults = [:]
+        pendingRemovals = []
         touchlinkDevices = []
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false

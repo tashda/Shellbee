@@ -9,6 +9,7 @@ struct DeviceListRow: View {
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
     var checkResult: AppStore.DeviceCheckResult? = nil
+    var isDeleting: Bool = false
     let onRename: () -> Void
     let onRemove: () -> Void
     let onReconfigure: () -> Void
@@ -44,7 +45,14 @@ struct DeviceListRow: View {
 
     var body: some View {
         NavigationLink(value: device) {
-            DeviceRowView(device: device, state: state, isAvailable: isAvailable, otaStatus: otaStatus, checkResult: checkResult)
+            DeviceRowView(
+                device: device,
+                state: state,
+                isAvailable: isAvailable,
+                otaStatus: otaStatus,
+                checkResult: checkResult,
+                isDeleting: isDeleting
+            )
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if let rejection = rejectionMessage {
@@ -66,9 +74,15 @@ struct DeviceListRow: View {
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive, action: onRemove) {
+            // Intentionally NOT role: .destructive — that makes SwiftUI's List
+            // animate the row out as if deleted, but our data source still
+            // contains the device until z2m confirms. The UICollectionView
+            // diff then asserts ("0 inserted, 1 deleted"). We mark the row
+            // "Deleting" instead and remove it on bridge/response/device/remove.
+            Button(action: { if !isDeleting { onRemove() } }) {
                 Label("Delete", systemImage: "trash")
             }
+            .tint(.red)
             Button(action: onRename) {
                 Label("Rename", systemImage: "pencil")
             }
@@ -101,6 +115,7 @@ struct DeviceListRow: View {
             Button(role: .destructive, action: onRemove) {
                 Label("Remove Device", systemImage: "trash")
             }
+            .disabled(isDeleting)
         }
     }
 

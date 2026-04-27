@@ -212,6 +212,7 @@ private struct DeviceListContent: View {
             isAvailable: isAvailable,
             otaStatus: otaStatus,
             checkResult: environment.store.deviceCheckResults[device.friendlyName],
+            isDeleting: environment.store.pendingRemovals.contains(device.friendlyName),
             onRename: { onRename(device) },
             onRemove: { onRemove(device) },
             onReconfigure: { onPendingAlert(.reconfigure(device)) },
