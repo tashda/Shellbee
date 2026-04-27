@@ -205,7 +205,8 @@ jobs:
     name: UI Tests
     needs: gate
     runs-on: macos-15
-    timeout-minutes: 45
+    # 60-minute test step + ~10 min for sim boot, build, etc.
+    timeout-minutes: 75
 
     env:
       SCHEME: Shellbee
@@ -277,32 +278,31 @@ jobs:
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO | tee build-ui.log
 
-      - name: Run UI tests
-        timeout-minutes: 20
+      - name: Run UI tests (2 parallel workers)
+        timeout-minutes: 60
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
-          # Earlier runs hung silently for 30 minutes with no xcodebuild
-          # output at all. Pipe-to-tee triggers block buffering; use
-          # `script -q` to allocate a pseudo-TTY so xcodebuild line-buffers
-          # its output and we can see what's happening if it hangs again.
-          # Also start with one cheap test as a smoke check before the full
-          # bundle, so if it hangs we know within seconds, not minutes.
+          # Wrap xcodebuild in `script -q` to allocate a pseudo-TTY so it
+          # line-buffers its progress output. Earlier runs that piped
+          # straight into `tee` block-buffered stdout, so the entire run
+          # produced zero output for 30 minutes before timing out — the
+          # tests were actually progressing, we just couldn't see them.
+          # With a PTY we get live progress and can diagnose real hangs.
+          #
+          # Each UI test takes ~30-90s thanks to app-launch overhead, so
+          # 50+ tests easily exceed an hour wall-clock; the 60-minute step
+          # timeout matches that. Parallel x2 brings it down ~40% on the
+          # 2-core macos-15 runner. 3+ workers showed no further win and
+          # caused flakes on shared-state tests (Logs clear, drift activity).
           set -o pipefail
           /usr/bin/script -q /dev/null xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            -only-testing:"$TEST_TARGET/ConnectionFlowUITests/testConnectionSetupAppearsOnFreshLaunch" \
-            -resultBundlePath "$DERIVED_DATA/UITests-smoke.xcresult" \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tee test-ui-smoke.log
-          echo "Smoke test passed; running full UI suite"
-          /usr/bin/script -q /dev/null xcodebuild test-without-building \
-            -project Shellbee.xcodeproj -scheme "$SCHEME" \
-            -testPlan "$TEST_PLAN" \
-            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
-            -skip-testing:"$TEST_TARGET/ConnectionFlowUITests/testConnectionSetupAppearsOnFreshLaunch" \
+            -parallel-testing-enabled YES \
+            -parallel-testing-worker-count 2 \
             -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee test-ui.log
 
