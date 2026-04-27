@@ -14,6 +14,7 @@ struct DeviceDetailView: View {
     @State private var showRenameSheet = false
 
     var body: some View {
+        let device = environment.store.devices.first { $0.ieeeAddress == self.device.ieeeAddress } ?? self.device
         let state = environment.store.state(for: device.friendlyName)
         let isAvailable = environment.store.isAvailable(device.friendlyName)
         let otaStatus = environment.store.otaStatus(for: device.friendlyName)
@@ -80,7 +81,7 @@ struct DeviceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                deviceConfigMenu
+                deviceConfigMenu(for: device)
             }
         }
         .navigationDestination(item: $menuDestination) { destination in
@@ -159,7 +160,7 @@ struct DeviceDetailView: View {
         }
     }
 
-    private var deviceConfigMenu: some View {
+    private func deviceConfigMenu(for device: Device) -> some View {
         let state = environment.store.state(for: device.friendlyName)
         let otaActive = environment.store.otaStatus(for: device.friendlyName)?.isActive == true
         let supportsOTA = device.definition?.supportsOTA == true
@@ -177,11 +178,11 @@ struct DeviceDetailView: View {
             }
             if supportsOTA && !otaActive {
                 Divider()
-                Button { checkForUpdate() } label: {
+                Button { checkForUpdate(device) } label: {
                     Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
                 }
                 if hasUpdateAvailable {
-                    Button { updateFirmware() } label: {
+                    Button { updateFirmware(device) } label: {
                         Label("Update", systemImage: "arrow.up.circle")
                     }
                 }
@@ -202,7 +203,7 @@ struct DeviceDetailView: View {
         }
     }
 
-    private func checkForUpdate() {
+    private func checkForUpdate(_ device: Device) {
         Haptics.impact(.light)
         environment.store.startOTACheck(for: device.friendlyName)
         environment.send(
@@ -211,7 +212,7 @@ struct DeviceDetailView: View {
         )
     }
 
-    private func updateFirmware() {
+    private func updateFirmware(_ device: Device) {
         Haptics.impact(.medium)
         environment.store.startOTAUpdate(for: device.friendlyName)
         environment.send(
