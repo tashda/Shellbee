@@ -278,22 +278,33 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tee build-ui.log
 
       - name: Run UI tests
-        timeout-minutes: 30
+        timeout-minutes: 20
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
-          # Parallel testing is intentionally off for now: the previous run
-          # with -parallel-testing-enabled YES hung silently for the full
-          # 30-minute timeout before any test even started. Drop back to
-          # serial until we have a green baseline, then re-enable for speed.
+          # Earlier runs hung silently for 30 minutes with no xcodebuild
+          # output at all. Pipe-to-tee triggers block buffering; use
+          # `script -q` to allocate a pseudo-TTY so xcodebuild line-buffers
+          # its output and we can see what's happening if it hangs again.
+          # Also start with one cheap test as a smoke check before the full
+          # bundle, so if it hangs we know within seconds, not minutes.
           set -o pipefail
-          xcodebuild test-without-building \
+          /usr/bin/script -q /dev/null xcodebuild test-without-building \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            -only-testing:"$TEST_TARGET/ConnectionFlowUITests/testConnectionSetupAppearsOnFreshLaunch" \
+            -resultBundlePath "$DERIVED_DATA/UITests-smoke.xcresult" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee test-ui-smoke.log
+          echo "Smoke test passed; running full UI suite"
+          /usr/bin/script -q /dev/null xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
+            -skip-testing:"$TEST_TARGET/ConnectionFlowUITests/testConnectionSetupAppearsOnFreshLaunch" \
             -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-ui.log
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee test-ui.log
 
       - name: Capture mock bridge logs
         if: always()
