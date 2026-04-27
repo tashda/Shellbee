@@ -277,19 +277,21 @@ jobs:
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO | tee build-ui.log
 
-      - name: Run UI tests (2 parallel workers)
+      - name: Run UI tests
         timeout-minutes: 30
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
+          # Parallel testing is intentionally off for now: the previous run
+          # with -parallel-testing-enabled YES hung silently for the full
+          # 30-minute timeout before any test even started. Drop back to
+          # serial until we have a green baseline, then re-enable for speed.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
-            -parallel-testing-enabled YES \
-            -parallel-testing-worker-count 2 \
             -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-ui.log
 
