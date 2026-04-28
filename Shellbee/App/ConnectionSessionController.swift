@@ -37,6 +37,7 @@ final class ConnectionSessionController {
     static let maxReconnectAttemptsKey = "connectionMaxReconnectAttempts"
     static let connectionLiveActivityEnabledKey = "connectionLiveActivityEnabled"
     static let otaLiveActivityEnabledKey = "otaLiveActivityEnabled"
+    static let otaScheduledLiveActivityEnabledKey = "otaScheduledLiveActivityEnabled"
     static let defaultMaxReconnectAttempts: Int = 3
     static let maxReconnectAttemptsRange: ClosedRange<Int> = 1...20
     private static let baseReconnectDelay: Double = 1
