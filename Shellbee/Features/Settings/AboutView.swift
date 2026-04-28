@@ -42,7 +42,7 @@ struct AboutView: View {
     }
 
     private var connectSection: some View {
-        Section {
+        Section("Connect") {
             externalLinkRow(
                 title: "Rate Shellbee",
                 systemImage: "star.fill",
@@ -52,7 +52,7 @@ struct AboutView: View {
             externalLinkRow(
                 title: "View on GitHub",
                 systemImage: "chevron.left.forwardslash.chevron.right",
-                color: Color(.label),
+                color: Color(.darkGray),
                 url: Self.githubURL
             )
         }
@@ -74,6 +74,7 @@ struct AboutView: View {
                     .foregroundStyle(.tertiary)
             }
         }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
