@@ -63,7 +63,7 @@ struct SerialSettingsView: View {
             } header: {
                 Text("Hardware")
             } footer: {
-                Text("Turns off the indicator LED on the Zigbee adapter, if supported.")
+                Text("Controls the indicator LED on the Zigbee adapter, if supported.")
             }
         }
         .navigationTitle("Adapter")

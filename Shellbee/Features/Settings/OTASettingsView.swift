@@ -59,7 +59,7 @@ struct OTASettingsView: View {
             } header: {
                 Text("Transfer Timing")
             } footer: {
-                Text("Advanced transfer settings. Request Timeout is how long to wait for each block response (default 150,000 ms). Delay adds a pause between blocks to reduce load. Block Size controls how many bytes are sent per block (default 50).")
+                Text("Advanced transfer settings. Request Timeout is how long to wait for each block response (default 150,000 ms). Block Delay adds a pause between blocks to reduce load. Block Size controls how many bytes are sent per block (default 50).")
             }
         }
         .navigationTitle("OTA Updates")

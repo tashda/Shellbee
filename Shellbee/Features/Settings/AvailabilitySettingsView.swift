@@ -30,7 +30,7 @@ struct AvailabilitySettingsView: View {
             Section {
                 Toggle("Track Device Availability", isOn: $enabled)
             } footer: {
-                Text("When enabled, Shellbee tracks whether each device is online or offline. Mains-powered devices use a short timeout; battery-powered devices use a longer one.")
+                Text("When enabled, the bridge tracks whether each device is online or offline. Mains-powered devices use a short timeout; battery-powered devices use a longer one.")
             }
 
             if enabled {

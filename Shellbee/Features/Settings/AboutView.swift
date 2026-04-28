@@ -14,9 +14,15 @@ struct AboutView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
     }
 
+    // App Store ID is assigned at first TestFlight upload. Until then, the
+    // Rate row links to a search; replace `idTBD` once known.
+    private static let appStoreReviewURL = URL(string: "https://apps.apple.com/app/idTBD?action=write-review")!
+    private static let githubURL = URL(string: "https://github.com/tashda/Shellbee")!
+
     var body: some View {
         Form {
             shellbeeSection
+            connectSection
             bridgeSection
             networkSection
         }
@@ -33,6 +39,41 @@ struct AboutView: View {
             }
             NavigationLink { AcknowledgementsView() } label: {
                 Text("Acknowledgements")
+            }
+        }
+    }
+
+    private var connectSection: some View {
+        Section {
+            externalLinkRow(
+                title: "Rate Shellbee",
+                systemImage: "star.fill",
+                color: .pink,
+                url: Self.appStoreReviewURL
+            )
+            externalLinkRow(
+                title: "View on GitHub",
+                systemImage: "chevron.left.forwardslash.chevron.right",
+                color: Color(.label),
+                url: Self.githubURL
+            )
+        }
+    }
+
+    private func externalLinkRow(title: String, systemImage: String, color: Color, url: URL) -> some View {
+        Link(destination: url) {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                Image(systemName: systemImage)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
+                    .background(color, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
+                Text(title)
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
         }
     }
