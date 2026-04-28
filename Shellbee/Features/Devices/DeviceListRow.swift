@@ -62,7 +62,12 @@ struct DeviceListRow: View {
             )
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            if let rejection = rejectionMessage {
+            if otaStatus?.phase == .scheduled, let onUnschedule {
+                Button(action: onUnschedule) {
+                    Label("Cancel", systemImage: "xmark.circle")
+                }
+                .tint(.orange)
+            } else if let rejection = rejectionMessage {
                 Button(action: rejectSwipe) {
                     Label(rejection.text, systemImage: rejection.icon)
                 }
@@ -72,11 +77,32 @@ struct DeviceListRow: View {
                     Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
                 }
                 .tint(.blue)
-                if let onUpdate {
-                    Button(action: onUpdate) {
-                        Label("Update", systemImage: "arrow.up.circle")
+                if isBatteryPowered {
+                    if let onSchedule {
+                        Button(action: onSchedule) {
+                            Label("Schedule", systemImage: "calendar.badge.clock")
+                        }
+                        .tint(.indigo)
                     }
-                    .tint(.green)
+                    if let onUpdate {
+                        Button(action: onUpdate) {
+                            Label("Update", systemImage: "arrow.up.circle")
+                        }
+                        .tint(.green)
+                    }
+                } else {
+                    if let onUpdate {
+                        Button(action: onUpdate) {
+                            Label("Update", systemImage: "arrow.up.circle")
+                        }
+                        .tint(.green)
+                    }
+                    if let onSchedule {
+                        Button(action: onSchedule) {
+                            Label("Schedule", systemImage: "calendar.badge.clock")
+                        }
+                        .tint(.indigo)
+                    }
                 }
             }
         }

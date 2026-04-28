@@ -17,13 +17,23 @@ final class OTAUpdateLiveActivityCoordinator {
         UserDefaults.standard.object(forKey: ConnectionSessionController.otaLiveActivityEnabledKey) as? Bool ?? true
     }
 
+    /// Whether scheduled OTAs (parked, waiting for the device to wake) are
+    /// surfaced in the OTA Live Activity. Off by default — a scheduled OTA can
+    /// sit pending for hours or days, and most users don't want a Lock-Screen
+    /// surface for that.
+    static var isScheduledEnabled: Bool {
+        UserDefaults.standard.object(forKey: ConnectionSessionController.otaScheduledLiveActivityEnabledKey) as? Bool ?? false
+    }
+
     func sync(with statuses: [OTAUpdateStatus], devices: [Device] = []) {
         guard Self.isEnabled else {
             if isVisible { clearAll() }
             return
         }
+        let scheduledEnabled = Self.isScheduledEnabled
         let activeStatuses = statuses
             .filter(\.isActive)
+            .filter { scheduledEnabled || $0.phase != .scheduled }
             .sorted { lhs, rhs in
                 if lhs.sortPriority != rhs.sortPriority {
                     return lhs.sortPriority < rhs.sortPriority

@@ -271,6 +271,13 @@ struct DeviceDetailView: View {
             topic: Z2MTopics.Request.deviceOTAUnschedule,
             payload: .object(["id": .string(device.friendlyName)])
         )
+        // Z2M leaves update.state at "idle" after unschedule — re-check so
+        // the device returns to "available" and stays in the Updates filter.
+        environment.store.startOTACheck(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTACheck,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
     }
 }
 

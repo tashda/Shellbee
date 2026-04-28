@@ -4,10 +4,6 @@ struct DeviceFirmwareMenu: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var showUpdateAllConfirm = false
 
-    static func isBattery(_ device: Device) -> Bool {
-        (device.powerSource?.lowercased() ?? "").contains("battery")
-    }
-
     private var otaCapableDevices: [Device] {
         environment.store.devices.filter {
             guard $0.definition?.supportsOTA == true else { return false }
@@ -43,27 +39,17 @@ struct DeviceFirmwareMenu: View {
             }
 
             Button {
-                let battery = otaCapableDevices.filter(Self.isBattery)
-                let mains = otaCapableDevices.filter { !Self.isBattery($0) }
-                // Mains-powered (& unknown power source) → standard OTA check
-                // through the rate-limited bulk queue.
-                let mainsNames = mains.map(\.friendlyName)
-                if !mainsNames.isEmpty {
-                    for name in mainsNames {
-                        environment.store.startOTACheck(for: name)
-                    }
-                    environment.otaBulkQueue.enqueue(mainsNames, kind: .check)
+                // Z2M only offers a synchronous OTA check; there is no
+                // "scheduled check". Route every OTA-capable device through
+                // the rate-limited bulk queue regardless of power source —
+                // sleepy battery devices that happen to be awake succeed,
+                // ones that don't respond surface the standard "Device
+                // didn't respond to OTA" error, same as windfront.
+                let names = otaCapableDevices.map(\.friendlyName)
+                for name in names {
+                    environment.store.startOTACheck(for: name)
                 }
-                // Battery-powered → schedule directly. Z2M waits for each
-                // device's next wake-up; no need to rate-limit since these
-                // requests don't traverse the mesh until the device asks.
-                for device in battery {
-                    environment.store.startOTASchedule(for: device.friendlyName)
-                    environment.send(
-                        topic: Z2MTopics.Request.deviceOTASchedule,
-                        payload: .object(["id": .string(device.friendlyName)])
-                    )
-                }
+                environment.otaBulkQueue.enqueue(names, kind: .check)
             } label: {
                 Label("Check All for Updates\(otaCount > 0 ? " (\(otaCount))" : "")", systemImage: "arrow.trianglehead.2.clockwise")
             }
@@ -72,7 +58,10 @@ struct DeviceFirmwareMenu: View {
             Button {
                 showUpdateAllConfirm = true
             } label: {
-                Label("Update All Available\(updateCount > 0 ? " (\(updateCount))" : "")", systemImage: "arrow.up.circle")
+                Label(
+                    updateCount > 0 ? "Update All Available (\(updateCount))" : "No Updates",
+                    systemImage: updateCount > 0 ? "arrow.up.circle" : "checkmark.circle"
+                )
             }
             .disabled(updateCount == 0 || bulkActive)
         } label: {

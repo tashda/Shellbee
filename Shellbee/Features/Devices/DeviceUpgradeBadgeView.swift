@@ -71,6 +71,15 @@ struct DeviceUpgradeBadgeView: View {
                     .rotationEffect(.degrees(-90))
                     .padding(DesignTokens.Size.badgeStroke * 2)
                     .animation(.spring(response: 0.4, dampingFraction: 0.7), value: progress)
+            } else if status.phase == .scheduled {
+                // Static ring — scheduled is parked, waiting for the device
+                // to wake. No animation conveys "queued, idle".
+                Circle()
+                    .stroke(
+                        Color.blue.opacity(DesignTokens.Opacity.subtleFill * 2),
+                        style: StrokeStyle(lineWidth: DesignTokens.Size.badgeStroke * 3, lineCap: .round)
+                    )
+                    .padding(DesignTokens.Size.badgeStroke * 2)
             } else {
                 // Indeterminate Animated Ring
                 Circle()
@@ -102,6 +111,7 @@ struct DeviceUpgradeBadgeView: View {
         switch phase {
         case .updating: return "arrow.down"
         case .checking: return "magnifyingglass"
+        case .scheduled: return "clock.badge"
         default: return "arrow.trianglehead.2.clockwise"
         }
     }

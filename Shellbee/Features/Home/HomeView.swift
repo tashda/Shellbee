@@ -20,6 +20,7 @@ struct HomeView: View {
             devices: environment.store.devices,
             availability: environment.store.deviceAvailability,
             states: environment.store.deviceStates,
+            otaStatuses: environment.store.otaUpdates,
             isConnected: environment.store.isConnected,
             isBridgeOnline: environment.store.bridgeOnline,
             groupCount: environment.store.groups.count,
