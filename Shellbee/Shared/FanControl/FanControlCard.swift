@@ -488,10 +488,7 @@ struct FanFeatureSections: View {
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
 
-    @State private var presentedGroup: IndexedGroup?
-
     private let filterProps: Set<String> = ["replace_filter", "filter_age", "device_age"]
-    private let rowIconWidth: CGFloat = 22
 
     private var eligibleExtras: [Expose] {
         let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
@@ -511,51 +508,188 @@ struct FanFeatureSections: View {
                 }
             }
         }
-        .sheet(item: $presentedGroup) { group in
-            FeatureDetailSheet(title: group.label) {
-                ForEach(Array(group.members.enumerated()), id: \.element.property) { idx, e in
-                    if idx > 0 {
-                        Divider().padding(.leading, DesignTokens.Spacing.lg + rowIconWidth + DesignTokens.Spacing.md)
-                    }
-                    FanExtraRow(expose: e, state: context.state, mode: mode,
-                                horizontalPadding: DesignTokens.Spacing.lg,
-                                verticalPadding: DesignTokens.Spacing.md,
-                                iconWidth: rowIconWidth,
-                                onSend: onSend)
-                }
-            }
-        }
     }
 
     @ViewBuilder
     private func rowFor(_ item: LayoutItem) -> some View {
         switch item {
         case .row(let expose):
-            FanExtraRow(expose: expose, state: context.state, mode: mode,
-                        horizontalPadding: 0,
-                        verticalPadding: 0,
-                        iconWidth: rowIconWidth,
-                        onSend: onSend)
+            SettingsFormRow(expose: expose, state: context.state, mode: mode, onSend: onSend)
         case .indexedGroup(let group):
-            Button {
-                presentedGroup = group
+            NavigationLink {
+                FeatureGroupDetailView(group: group, context: context, mode: mode, onSend: onSend)
             } label: {
-                HStack(spacing: DesignTokens.Spacing.md) {
-                    Image(systemName: group.symbol)
-                        .font(.system(size: 16, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                        .frame(width: rowIconWidth)
-                    Text(group.label).foregroundStyle(.primary)
-                    Spacer()
-                    Text("\(group.members.count)").foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                LabeledContent(group.label) {
+                    Text("\(group.members.count)")
                 }
             }
-            .buttonStyle(.plain)
         }
+    }
+}
+
+// MARK: - Settings-style form row
+
+/// Renders a single `Expose` as a native iOS Settings-style row: plain label
+/// on the left, value or control on the right. No leading icons, no chevrons —
+/// the row is whatever SwiftUI gives you in a `Form` / inset-grouped `List`.
+/// Writable numerics tap into a detail screen with a slider.
+private struct SettingsFormRow: View {
+    let expose: Expose
+    let state: [String: JSONValue]
+    let mode: CardDisplayMode
+    let onSend: (JSONValue) -> Void
+
+    private var property: String { expose.property ?? expose.name ?? "" }
+    private var meta: FeatureMeta { FeatureCatalog.meta(for: property, exposeType: expose.type) }
+    private var label: String { meta.label }
+    private var stateValue: JSONValue? { state[property] }
+
+    var body: some View {
+        switch expose.type {
+        case "binary":  binaryRow
+        case "enum":    enumRow
+        case "numeric": numericRow
+        default:        textRow
+        }
+    }
+
+    @ViewBuilder
+    private var binaryRow: some View {
+        let isOn = stateValue == expose.valueOn || stateValue?.boolValue == true
+        if mode == .interactive, expose.isWritable,
+           let on = expose.valueOn, let off = expose.valueOff {
+            Toggle(label, isOn: Binding(
+                get: { isOn },
+                set: { v in onSend(.object([property: v ? on : off])) }
+            ))
+        } else {
+            LabeledContent(label) { Text(isOn ? "On" : "Off") }
+        }
+    }
+
+    @ViewBuilder
+    private var enumRow: some View {
+        let values = expose.values ?? []
+        let current = stateValue?.stringValue ?? ""
+        if mode == .interactive, expose.isWritable, !values.isEmpty {
+            Picker(label, selection: Binding(
+                get: { current },
+                set: { onSend(.object([property: .string($0)])) }
+            )) {
+                ForEach(values, id: \.self) { v in
+                    Text(prettify(v)).tag(v)
+                }
+            }
+        } else {
+            LabeledContent(label) { Text(prettify(current.isEmpty ? "—" : current)) }
+        }
+    }
+
+    @ViewBuilder
+    private var numericRow: some View {
+        let current = stateValue?.numberValue ?? 0
+        let unit = expose.unit ?? ""
+        let writable = mode == .interactive && expose.isWritable
+            && expose.valueMin != nil && expose.valueMax != nil
+
+        if writable {
+            NavigationLink {
+                NumericDetailView(expose: expose, state: state, onSend: onSend)
+            } label: {
+                LabeledContent(label) { Text(format(current, unit: unit)) }
+            }
+        } else {
+            LabeledContent(label) { Text(format(current, unit: unit)) }
+        }
+    }
+
+    @ViewBuilder
+    private var textRow: some View {
+        LabeledContent(label) { Text(stateValue?.stringified ?? "—") }
+    }
+
+    private func prettify(_ s: String) -> String {
+        s.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func format(_ v: Double, unit: String) -> String {
+        let s = v.formatted(.number.precision(.fractionLength(0...1)))
+        return unit.isEmpty ? s : "\(s) \(unit)"
+    }
+}
+
+// MARK: - Numeric detail (slider) screen
+
+/// Pushed when tapping a writable numeric row. Hosts the slider in a Form
+/// section with the current value, min, and max — same idiom as iOS
+/// Settings → Display & Brightness → Text Size.
+private struct NumericDetailView: View {
+    let expose: Expose
+    let state: [String: JSONValue]
+    let onSend: (JSONValue) -> Void
+
+    @State private var draft: Double = 0
+
+    private var property: String { expose.property ?? expose.name ?? "" }
+    private var meta: FeatureMeta { FeatureCatalog.meta(for: property, exposeType: expose.type) }
+    private var label: String { meta.label }
+    private var unit: String { expose.unit ?? "" }
+    private var current: Double { state[property]?.numberValue ?? 0 }
+
+    var body: some View {
+        Form {
+            if let min = expose.valueMin, let max = expose.valueMax {
+                Section {
+                    LabeledContent("Value") {
+                        Text(format(draft))
+                            .monospacedDigit()
+                    }
+                    Slider(value: $draft, in: min...max, step: expose.valueStep ?? 1) { editing in
+                        guard !editing else { return }
+                        onSend(.object([property: numericPayload(draft, step: expose.valueStep)]))
+                    }
+                } footer: {
+                    Text("\(format(min)) – \(format(max))")
+                }
+            }
+        }
+        .navigationTitle(label)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { draft = current }
+        .onChange(of: current) { _, v in draft = v }
+    }
+
+    private func numericPayload(_ v: Double, step: Double?) -> JSONValue {
+        if let step, step.truncatingRemainder(dividingBy: 1) == 0 {
+            return .int(Int(v.rounded()))
+        }
+        return .double(v)
+    }
+
+    private func format(_ v: Double) -> String {
+        let s = v.formatted(.number.precision(.fractionLength(0...1)))
+        return unit.isEmpty ? s : "\(s) \(unit)"
+    }
+}
+
+// MARK: - Indexed group detail (pushed)
+
+private struct FeatureGroupDetailView: View {
+    let group: IndexedGroup
+    let context: FanControlContext
+    let mode: CardDisplayMode
+    let onSend: (JSONValue) -> Void
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(group.members, id: \.property) { e in
+                    SettingsFormRow(expose: e, state: context.state, mode: mode, onSend: onSend)
+                }
+            }
+        }
+        .navigationTitle(group.label)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
