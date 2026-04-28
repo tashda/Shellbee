@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
+    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
 
@@ -19,6 +20,10 @@ struct SettingsView: View {
                 networkSection
                 toolsSection
                 applicationSection
+
+                if developerModeEnabled {
+                    developerSection
+                }
 
                 if environment.connectionState.isConnected || environment.hasBeenConnected {
                     dangerSection
@@ -117,6 +122,9 @@ struct SettingsView: View {
             NavigationLink { TouchlinkView() } label: {
                 settingsLabel(title: "Touchlink", systemImage: "dot.radiowaves.left.and.right", color: .teal)
             }
+            NavigationLink { BackupView() } label: {
+                settingsLabel(title: "Backup", systemImage: "arrow.down.doc.fill", color: .indigo)
+            }
         } header: {
             Text("Tools")
         }
@@ -159,17 +167,30 @@ struct SettingsView: View {
             NavigationLink { AppGeneralView() } label: {
                 settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
             }
+            NavigationLink { AppLiveActivitiesView() } label: {
+                settingsLabel(title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
+            }
             NavigationLink { AppNotificationSettingsView() } label: {
                 settingsLabel(title: "Notifications", systemImage: "bell.badge.fill", color: .red)
             }
             NavigationLink { AppPerformanceView() } label: {
-                settingsLabel(title: "Performance", systemImage: "speedometer", color: .blue)
+                settingsLabel(title: "Bulk OTA", systemImage: "arrow.down.circle.dotted", color: .blue)
             }
             NavigationLink { AboutView() } label: {
                 settingsLabel(title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             }
         } header: {
             Text("Application")
+        }
+    }
+
+    private var developerSection: some View {
+        Section {
+            NavigationLink { DeveloperSettingsView() } label: {
+                settingsLabel(title: "Developer", systemImage: "hammer.fill", color: .purple)
+            }
+        } header: {
+            Text("Developer")
         }
     }
 

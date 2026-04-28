@@ -37,7 +37,7 @@ struct NetworkSettingsView: View {
                 numericField("Concurrency", text: $adapterConcurrent, placeholder: "Default", unit: "threads")
                 numericField("Message Delay", text: $adapterDelay, placeholder: "Default", unit: "ms")
             } header: {
-                Text("Hardware Tuning")
+                Text("Adapter Tuning")
             } footer: {
                 Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrency and message delay affect how fast commands are sent to the adapter.")
             }

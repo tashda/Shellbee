@@ -113,6 +113,7 @@ struct DeviceRowView: View {
     private func otaPhaseLabel(_ status: OTAUpdateStatus) -> String {
         switch status.phase {
         case .checking: return "Checking"
+        case .scheduled: return "Scheduled"
         case .updating:
             if let p = status.progress { return "Updating \(Int(p))%" }
             return "Updating"

@@ -32,13 +32,7 @@ struct DeviceDetailView: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
 
-            Section {
-                ExposeCardView(device: device, state: state, mode: .interactive) { payload in
-                    environment.sendDeviceState(device.friendlyName, payload: payload)
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            }
+            heroAndSettingsSections(for: device, state: state)
 
             if device.definition != nil {
                 Section("Documentation") {
@@ -131,6 +125,105 @@ struct DeviceDetailView: View {
         }
     }
 
+    /// Renders the hero card(s) plus any "leftover" exposes as native iOS
+    /// Settings-style sections beneath. The cards stay exactly as they are;
+    /// the sections handle configuration / advanced features that don't fit
+    /// in the hero (LED, child lock, power-on behaviour, calibration, etc.).
+    @ViewBuilder
+    private func heroAndSettingsSections(for device: Device, state: [String: JSONValue]) -> some View {
+        let send: (JSONValue) -> Void = { payload in
+            environment.sendDeviceState(device.friendlyName, payload: payload)
+        }
+
+        switch device.category {
+        case .fan:
+            if let ctx = FanControlContext(device: device, state: state) {
+                Section {
+                    FanControlCard(context: ctx, mode: .interactive, onSend: send, rendersSectionsInline: false)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                FanFeatureSections(context: ctx, mode: .interactive, onSend: send)
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .light:
+            let contexts = LightControlContext.contexts(for: device, state: state)
+            if !contexts.isEmpty {
+                Section {
+                    VStack(spacing: DesignTokens.Spacing.lg) {
+                        ForEach(contexts) { ctx in
+                            LightControlCard(context: ctx, mode: .interactive, onSend: send,
+                                             rendersAdvancedSheetsInline: false)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+                ForEach(contexts) { ctx in
+                    LightFeatureSections(context: ctx, onSend: send)
+                }
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .switchPlug:
+            let contexts = SwitchControlContext.contexts(for: device, state: state)
+            if !contexts.isEmpty {
+                Section {
+                    ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                if let ctx = contexts.first {
+                    SwitchFeatureSections(device: device, context: ctx, state: state, onSend: send)
+                }
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .climate:
+            if let ctx = ClimateControlContext(device: device, state: state) {
+                Section {
+                    ClimateControlCard(context: ctx, mode: .interactive, onSend: send)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                ClimateFeatureSections(device: device, context: ctx, state: state, onSend: send)
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .cover:
+            let contexts = CoverControlContext.contexts(for: device, state: state)
+            if !contexts.isEmpty {
+                Section {
+                    ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                if let ctx = contexts.first {
+                    CoverFeatureSections(device: device, context: ctx, state: state, onSend: send)
+                }
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        default:
+            genericExposeSection(device: device, state: state, send: send)
+        }
+    }
+
+    @ViewBuilder
+    private func genericExposeSection(device: Device, state: [String: JSONValue], send: @escaping (JSONValue) -> Void) -> some View {
+        Section {
+            ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }
+    }
+
     private static let recentLogLimit = 5
 
     @ViewBuilder
@@ -162,9 +255,12 @@ struct DeviceDetailView: View {
 
     private func deviceConfigMenu(for device: Device) -> some View {
         let state = environment.store.state(for: device.friendlyName)
-        let otaActive = environment.store.otaStatus(for: device.friendlyName)?.isActive == true
+        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        let otaActive = otaStatus?.isActive == true
         let supportsOTA = device.definition?.supportsOTA == true
         let hasUpdateAvailable = state.hasUpdateAvailable
+        let isBattery = (device.powerSource?.lowercased() ?? "").contains("battery")
+        let isScheduled = otaStatus?.phase == .scheduled
 
         return Menu {
             Button { menuDestination = .settings } label: {
@@ -176,14 +272,32 @@ struct DeviceDetailView: View {
             Button { menuDestination = .reporting } label: {
                 Label("Reporting", systemImage: "waveform")
             }
-            if supportsOTA && !otaActive {
+            if supportsOTA {
                 Divider()
-                Button { checkForUpdate(device) } label: {
-                    Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
-                }
-                if hasUpdateAvailable {
-                    Button { updateFirmware(device) } label: {
-                        Label("Update", systemImage: "arrow.up.circle")
+                if isScheduled {
+                    Button { unscheduleUpdate(device) } label: {
+                        Label("Cancel Scheduled Update", systemImage: "xmark.circle")
+                    }
+                } else if !otaActive {
+                    Button { checkForUpdate(device) } label: {
+                        Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
+                    }
+                    if hasUpdateAvailable {
+                        if isBattery {
+                            Button { scheduleUpdate(device) } label: {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                            Button { updateFirmware(device) } label: {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                        } else {
+                            Button { updateFirmware(device) } label: {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                            Button { scheduleUpdate(device) } label: {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                        }
                     }
                 }
             }
@@ -217,6 +331,31 @@ struct DeviceDetailView: View {
         environment.store.startOTAUpdate(for: device.friendlyName)
         environment.send(
             topic: Z2MTopics.Request.deviceOTAUpdate,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
+    private func scheduleUpdate(_ device: Device) {
+        Haptics.impact(.medium)
+        environment.store.startOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTASchedule,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
+    private func unscheduleUpdate(_ device: Device) {
+        Haptics.impact(.light)
+        environment.store.cancelOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTAUnschedule,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+        // Z2M leaves update.state at "idle" after unschedule — re-check so
+        // the device returns to "available" and stays in the Updates filter.
+        environment.store.startOTACheck(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTACheck,
             payload: .object(["id": .string(device.friendlyName)])
         )
     }

@@ -26,7 +26,10 @@ struct OTASettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Disable Automatic Checks", isOn: $disableAutomaticUpdateCheck)
+                Toggle("Enable Automatic Checks", isOn: Binding(
+                    get: { !disableAutomaticUpdateCheck },
+                    set: { disableAutomaticUpdateCheck = !$0 }
+                ))
                 if !disableAutomaticUpdateCheck {
                     InlineIntField("Check Interval", value: $updateCheckInterval, unit: "min", range: 60...43200)
                 }
@@ -50,13 +53,13 @@ struct OTASettingsView: View {
             }
 
             Section {
-                InlineIntField("Transfer Request Timeout", value: $imageBlockRequestTimeout, unit: "ms", range: 10000...600000)
-                InlineIntField("Delay Between Blocks", value: $imageBlockResponseDelay, unit: "ms", range: 0...5000)
+                InlineIntField("Request Timeout", value: $imageBlockRequestTimeout, unit: "ms", range: 10000...600000)
+                InlineIntField("Block Delay", value: $imageBlockResponseDelay, unit: "ms", range: 0...5000)
                 InlineIntField("Block Size", value: $defaultMaximumDataSize, unit: "bytes", range: 10...100)
             } header: {
                 Text("Transfer Timing")
             } footer: {
-                Text("Advanced transfer settings. Request Timeout is how long to wait for each block response (default 150,000 ms). Delay adds a pause between blocks to reduce load. Block Size controls how many bytes are sent per block (default 50).")
+                Text("Advanced transfer settings. Request Timeout is how long to wait for each block response (default 150,000 ms). Block Delay adds a pause between blocks to reduce load. Block Size controls how many bytes are sent per block (default 50).")
             }
         }
         .navigationTitle("OTA Updates")

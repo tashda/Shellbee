@@ -4,6 +4,11 @@ struct FanControlCard: View {
     let context: FanControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
+    /// When `false`, the feature sections (Behaviour / Indicators / etc.) are
+    /// suppressed so the caller can render them as native `List` sections.
+    /// Defaults to `true` to preserve inline rendering for snapshot contexts
+    /// (e.g. LogDetailView) that aren't backed by a List.
+    var rendersSectionsInline: Bool = true
 
     @State private var speedDraft: Double = 0
     @State private var presentedGroup: IndexedGroup?
@@ -16,8 +21,10 @@ struct FanControlCard: View {
         VStack(spacing: DesignTokens.Spacing.lg) {
             heroCard
             if hasFilterSection { filterCard }
-            ForEach(sections) { section in
-                sectionView(section)
+            if rendersSectionsInline {
+                ForEach(sections) { section in
+                    sectionView(section)
+                }
             }
         }
         .sheet(item: $presentedGroup) { group in
@@ -470,6 +477,56 @@ struct FanControlCard: View {
     }
 }
 
+// MARK: - Native list sections
+
+/// Renders the Fan device's feature sections (Behaviour, Indicators, etc.) as
+/// native `List` sections. Place inside a `List` whose `.listStyle` is grouped
+/// or inset-grouped. The hero / filter cards are still rendered by
+/// `FanControlCard` (with `rendersSectionsInline: false`).
+struct FanFeatureSections: View {
+    let context: FanControlContext
+    let mode: CardDisplayMode
+    let onSend: (JSONValue) -> Void
+
+    private let filterProps: Set<String> = ["replace_filter", "filter_age", "device_age"]
+
+    private var eligibleExtras: [Expose] {
+        let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
+        return context.extras.filter { e in
+            guard let prop = e.property else { return false }
+            return !claimed.contains(prop)
+        }
+    }
+
+    private var sections: [LayoutSection] { FeatureLayout.sections(from: eligibleExtras) }
+
+    var body: some View {
+        ForEach(sections) { section in
+            Section(section.title) {
+                ForEach(section.items, id: \.id) { item in
+                    rowFor(item)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rowFor(_ item: LayoutItem) -> some View {
+        switch item {
+        case .row(let expose):
+            SettingsFormRow(expose: expose, state: context.state, mode: mode, onSend: onSend)
+        case .indexedGroup(let group):
+            NavigationLink {
+                FeatureGroupDetailView(group: group, state: context.state, mode: mode, onSend: onSend)
+            } label: {
+                LabeledContent(group.label) {
+                    Text("\(group.members.count)")
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Disclosure row (monochrome, local to fan card)
 
 private struct DisclosureRow: View {
@@ -660,50 +717,8 @@ private struct FanExtraRow: View {
 
     @ViewBuilder
     private var labelStack: some View {
-        if let desc = meaningfulDescription {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.body)
-                Text(desc)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        } else {
-            Text(label).font(.body)
-        }
+        Text(label).font(.body)
     }
-
-    private var meaningfulDescription: String? {
-        guard let desc = expose.description?.trimmingCharacters(in: .whitespacesAndNewlines),
-              desc.count >= 12 else { return nil }
-        let normalizedLabel = label.lowercased().filter { $0.isLetter || $0.isNumber }
-        let normalizedDesc = desc.lowercased().filter { $0.isLetter || $0.isNumber }
-        if normalizedDesc == normalizedLabel { return nil }
-        if desc.contains(where: { $0.isNumber }) { return desc }
-        let labelTokens = tokenize(label).map { $0.lowercased() }
-        let descTokens = tokenize(desc).map { $0.lowercased() }
-        let novel = descTokens.filter { token in
-            if Self.stopwords.contains(token) { return false }
-            return !labelTokens.contains { stem in
-                token.hasPrefix(stem) || stem.hasPrefix(token)
-            }
-        }
-        return novel.count >= 4 ? desc : nil
-    }
-
-    private func tokenize(_ s: String) -> [String] {
-        s.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
-    }
-
-    private static let stopwords: Set<String> = [
-        "a", "an", "the", "this", "that", "these", "those",
-        "is", "are", "was", "were", "be", "been", "being",
-        "of", "to", "in", "on", "at", "for", "with", "by", "as", "from",
-        "and", "or", "but", "if", "when", "while", "whether",
-        "it", "its", "this", "you", "your",
-        "controls", "control", "sets", "set", "set:", "value", "current",
-        "device", "switch"
-    ]
 
     private func prettify(_ s: String) -> String {
         s.replacingOccurrences(of: "_", with: " ").capitalized

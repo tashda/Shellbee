@@ -6,7 +6,11 @@ struct HomeDevicesCard: View {
     let onFilter: (DeviceQuickFilter) -> Void
 
     private var hasAlerts: Bool {
-        snapshot.devicesWithUpdates > 0 || snapshot.lowBatteryDevices > 0 || snapshot.weakSignalDevices > 0
+        snapshot.devicesWithUpdates > 0
+            || snapshot.scheduledUpdateDevices > 0
+            || snapshot.updatingDevices > 0
+            || snapshot.lowBatteryDevices > 0
+            || snapshot.weakSignalDevices > 0
     }
 
     var body: some View {
@@ -46,6 +50,22 @@ struct HomeDevicesCard: View {
                 symbol: "arrow.down.circle.fill",
                 title: "\(snapshot.devicesWithUpdates) firmware update\(snapshot.devicesWithUpdates == 1 ? "" : "s") ready",
                 color: .blue,
+                action: { onFilter(.updatesAvailable) }
+            )
+        }
+        if snapshot.scheduledUpdateDevices > 0 {
+            HomeCardAlertRow(
+                symbol: "calendar.badge.clock",
+                title: "\(snapshot.scheduledUpdateDevices) scheduled for update",
+                color: .indigo,
+                action: { onFilter(.updatesAvailable) }
+            )
+        }
+        if snapshot.updatingDevices > 0 {
+            HomeCardAlertRow(
+                symbol: "arrow.up.circle.fill",
+                title: "\(snapshot.updatingDevices) updating now",
+                color: .green,
                 action: { onFilter(.updatesAvailable) }
             )
         }

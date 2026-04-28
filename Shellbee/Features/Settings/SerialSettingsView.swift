@@ -50,17 +50,20 @@ struct SerialSettingsView: View {
                 }
                 Toggle("RTS/CTS Flow Control", isOn: $rtscts)
             } header: {
-                Text("Adapter")
+                Text("Connection")
             } footer: {
                 Text("The serial port is read-only and can only be changed in Zigbee2MQTT directly.")
             }
 
             Section {
-                Toggle("Disable Adapter LED", isOn: $disableLed)
+                Toggle("Adapter LED", isOn: Binding(
+                    get: { !disableLed },
+                    set: { disableLed = !$0 }
+                ))
             } header: {
                 Text("Hardware")
             } footer: {
-                Text("Disables the LED on the Zigbee adapter if supported.")
+                Text("Controls the indicator LED on the Zigbee adapter, if supported.")
             }
         }
         .navigationTitle("Adapter")

@@ -39,6 +39,12 @@ struct DeviceFirmwareMenu: View {
             }
 
             Button {
+                // Z2M only offers a synchronous OTA check; there is no
+                // "scheduled check". Route every OTA-capable device through
+                // the rate-limited bulk queue regardless of power source —
+                // sleepy battery devices that happen to be awake succeed,
+                // ones that don't respond surface the standard "Device
+                // didn't respond to OTA" error, same as windfront.
                 let names = otaCapableDevices.map(\.friendlyName)
                 for name in names {
                     environment.store.startOTACheck(for: name)
@@ -52,7 +58,10 @@ struct DeviceFirmwareMenu: View {
             Button {
                 showUpdateAllConfirm = true
             } label: {
-                Label("Update All Available\(updateCount > 0 ? " (\(updateCount))" : "")", systemImage: "arrow.up.circle")
+                Label(
+                    updateCount > 0 ? "Update All Available (\(updateCount))" : "No Updates",
+                    systemImage: updateCount > 0 ? "arrow.up.circle" : "checkmark.circle"
+                )
             }
             .disabled(updateCount == 0 || bulkActive)
         } label: {

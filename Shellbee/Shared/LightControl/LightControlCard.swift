@@ -10,16 +10,28 @@ struct LightControlCard: View {
     let context: LightControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
+    /// When `true` (the default for snapshot contexts like LogDetailView),
+    /// Startup + Other-advanced configuration is reachable via sheet buttons
+    /// inside the card. When `false`, those buttons are suppressed because
+    /// the surrounding screen is rendering them as native iOS Settings
+    /// sections beneath the card via `LightFeatureSections`. Effects stays
+    /// inside the card either way — it's a light-specific control, not
+    /// configuration.
+    var rendersAdvancedSheetsInline: Bool = true
 
     @State private var selectedSurface: Surface
     @State private var showEffects = false
     @State private var showStartup = false
     @State private var showMore = false
 
-    init(context: LightControlContext, mode: CardDisplayMode, onSend: @escaping (JSONValue) -> Void = { _ in }) {
+    init(context: LightControlContext,
+         mode: CardDisplayMode,
+         onSend: @escaping (JSONValue) -> Void = { _ in },
+         rendersAdvancedSheetsInline: Bool = true) {
         self.context = context
         self.mode = mode
         self.onSend = onSend
+        self.rendersAdvancedSheetsInline = rendersAdvancedSheetsInline
         _selectedSurface = State(initialValue: Self.initialSurface(for: context))
     }
 
@@ -95,8 +107,10 @@ struct LightControlCard: View {
             .foregroundStyle(headerTint)
             Spacer()
             if context.effectFeature != nil { configButton("sparkles") { showEffects = true } }
-            if !context.startupFeatures.isEmpty { configButton("sunrise.fill") { showStartup = true } }
-            if !context.otherAdvancedFeatures.isEmpty { configButton("ellipsis") { showMore = true } }
+            if rendersAdvancedSheetsInline {
+                if !context.startupFeatures.isEmpty { configButton("sunrise.fill") { showStartup = true } }
+                if !context.otherAdvancedFeatures.isEmpty { configButton("ellipsis") { showMore = true } }
+            }
         }
         if let brightness = context.brightness {
             LightBrightnessArea(

@@ -220,7 +220,11 @@ private struct DeviceListContent: View {
             onUpdate: state.hasUpdateAvailable
                 ? { viewModel.updateDevice(device, environment: environment) }
                 : nil,
-            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment) }
+            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment) },
+            onSchedule: state.hasUpdateAvailable
+                ? { viewModel.scheduleDeviceUpdate(device, environment: environment) }
+                : nil,
+            onUnschedule: { viewModel.unscheduleDeviceUpdate(device, environment: environment) }
         )
     }
 }

@@ -200,9 +200,16 @@
 				Features/Settings/AboutView.swift,
 				Features/Settings/AcknowledgementsView.swift,
 				Features/Settings/AppGeneralView.swift,
+				Features/Settings/AppLiveActivitiesView.swift,
 				Features/Settings/AppNotificationSettingsView.swift,
 				Features/Settings/AppPerformanceView.swift,
 				Features/Settings/AvailabilitySettingsView.swift,
+				Features/Settings/Backup/BackupPayload.swift,
+				Features/Settings/Backup/BackupView.swift,
+				Features/Settings/Backup/RestoreGuideSheet.swift,
+				Features/Settings/Developer/DeveloperSettings.swift,
+				Features/Settings/Developer/DeveloperSettingsView.swift,
+				Features/Settings/Developer/MQTTInspectorView.swift,
 				Features/Settings/DeviceStatisticsView.swift,
 				Features/Settings/DocBrowserDetailView.swift,
 				Features/Settings/DocBrowserView.swift,
@@ -225,9 +232,12 @@
 				Shared/CardDisplayMode.swift,
 				Shared/ClimateControl/ClimateControlCard.swift,
 				Shared/ClimateControl/ClimateControlContext.swift,
+				Shared/ClimateControl/ClimateFeatureSections.swift,
 				Shared/Components/BeautifulPayloadView.swift,
 				Shared/Components/BeautifulRow.swift,
 				Shared/Components/CopyableRow.swift,
+				Shared/Components/DeviceExtras.swift,
+				Shared/Components/DeviceFeatureSectionRow.swift,
 				Shared/Components/DevicePickerRow.swift,
 				Shared/Components/Doc/DefaultDocSectionView.swift,
 				Shared/Components/Doc/DeviceInfoCardView.swift,
@@ -242,11 +252,14 @@
 				Shared/Components/Doc/OptionsSectionView.swift,
 				Shared/Components/Doc/PairingGuideExperienceView.swift,
 				Shared/Components/Doc/PairingSectionView.swift,
+				Shared/Components/FeatureGroupDetailView.swift,
 				Shared/Components/FilterChip.swift,
 				Shared/Components/MemberAvatarStack.swift,
 				Shared/Components/SafariBrowserView.swift,
+				Shared/Components/SettingsFormRow.swift,
 				Shared/CoverControl/CoverControlCard.swift,
 				Shared/CoverControl/CoverControlContext.swift,
+				Shared/CoverControl/CoverFeatureSections.swift,
 				"Shared/DesignTokens+Groups.swift",
 				Shared/ExposeCardView.swift,
 				Shared/FanControl/FanControlCard.swift,
@@ -261,6 +274,7 @@
 				Shared/LightControl/LightControlContext.swift,
 				Shared/LightControl/LightDisplayColor.swift,
 				Shared/LightControl/LightEffectsSheet.swift,
+				Shared/LightControl/LightFeatureSections.swift,
 				Shared/LightControl/LightTemperatureControl.swift,
 				Shared/LockControl/LockControlCard.swift,
 				Shared/LockControl/LockControlContext.swift,
@@ -268,6 +282,7 @@
 				Shared/SensorCard/SensorCard.swift,
 				Shared/SwitchControl/SwitchControlCard.swift,
 				Shared/SwitchControl/SwitchControlContext.swift,
+				Shared/SwitchControl/SwitchFeatureSections.swift,
 				ShellbeeApp.swift,
 			);
 			target = 0A9D45CD2F96232B00DF6DF5 /* ShellbeeWidgetsExtension */;
@@ -794,7 +809,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -835,7 +850,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -875,7 +890,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -917,7 +932,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

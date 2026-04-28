@@ -11,6 +11,8 @@ struct HomeSnapshot: Sendable {
     let disabledDevices: Int
     let groupCount: Int
     let devicesWithUpdates: Int
+    let scheduledUpdateDevices: Int
+    let updatingDevices: Int
     let lowBatteryDevices: Int
     let weakSignalDevices: Int
     let interviewingDevices: Int
@@ -48,6 +50,7 @@ struct HomeSnapshot: Sendable {
         devices: [Device],
         availability: [String: Bool],
         states: [String: [String: JSONValue]],
+        otaStatuses: [String: OTAUpdateStatus] = [:],
         isConnected: Bool,
         isBridgeOnline: Bool,
         groupCount: Int,
@@ -72,6 +75,15 @@ struct HomeSnapshot: Sendable {
         self.groupCount = groupCount
         devicesWithUpdates = nonCoordinatorDevices.filter {
             (states[$0.friendlyName] ?? [:]).hasUpdateAvailable
+        }.count
+        scheduledUpdateDevices = nonCoordinatorDevices.filter {
+            let phase = otaStatuses[$0.friendlyName]?.phase
+                ?? OTAUpdateStatus.Phase(rawValue: (states[$0.friendlyName] ?? [:]).otaUpdateState ?? "")
+            return phase == .scheduled
+        }.count
+        updatingDevices = nonCoordinatorDevices.filter {
+            if otaStatuses[$0.friendlyName]?.phase == .updating { return true }
+            return (states[$0.friendlyName] ?? [:]).isUpdating
         }.count
         lowBatteryDevices = nonCoordinatorDevices.filter {
             guard let battery = (states[$0.friendlyName] ?? [:]).battery else { return false }

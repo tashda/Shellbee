@@ -164,7 +164,8 @@ final class DeviceListViewModel {
             condition.matches(
                 device: $0,
                 state: store.state(for: $0.friendlyName),
-                isAvailable: store.isAvailable($0.friendlyName)
+                isAvailable: store.isAvailable($0.friendlyName),
+                otaStatus: store.otaStatus(for: $0.friendlyName)
             )
         }.count
     }
@@ -218,6 +219,31 @@ final class DeviceListViewModel {
         )
     }
 
+    func scheduleDeviceUpdate(_ device: Device, environment: AppEnvironment) {
+        Haptics.impact(.medium)
+        environment.store.startOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTASchedule,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
+    func unscheduleDeviceUpdate(_ device: Device, environment: AppEnvironment) {
+        Haptics.impact(.light)
+        environment.store.cancelOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTAUnschedule,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+        // Z2M leaves update.state at "idle" after unschedule — re-check so
+        // the device returns to "available" and stays in the Updates filter.
+        environment.store.startOTACheck(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTACheck,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
     func renameDevice(_ device: Device, to newName: String, homeassistantRename: Bool = true, environment: AppEnvironment) {
         environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: homeassistantRename)
     }
@@ -263,7 +289,8 @@ final class DeviceListViewModel {
             condition.matches(
                 device: $0,
                 state: store.state(for: $0.friendlyName),
-                isAvailable: store.isAvailable($0.friendlyName)
+                isAvailable: store.isAvailable($0.friendlyName),
+                otaStatus: store.otaStatus(for: $0.friendlyName)
             )
         }
     }

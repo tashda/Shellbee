@@ -18,6 +18,10 @@ final class ConnectionSessionController {
     var errorMessage: String?
     private(set) var hasBeenConnected = false
 
+    /// Receives every inbound (topic, payload) before routing. Used by the
+    /// MQTT inspector in Developer Mode. Set on view appear, clear on disappear.
+    var rawInboundTap: ((String, JSONValue) -> Void)?
+
     private let store: AppStore
     private let history: ConnectionHistory
     private let client = Z2MWebSocketClient()
@@ -33,6 +37,7 @@ final class ConnectionSessionController {
     static let maxReconnectAttemptsKey = "connectionMaxReconnectAttempts"
     static let connectionLiveActivityEnabledKey = "connectionLiveActivityEnabled"
     static let otaLiveActivityEnabledKey = "otaLiveActivityEnabled"
+    static let otaScheduledLiveActivityEnabledKey = "otaScheduledLiveActivityEnabled"
     static let defaultMaxReconnectAttempts: Int = 3
     static let maxReconnectAttemptsRange: ClosedRange<Int> = 1...20
     private static let baseReconnectDelay: Double = 1
@@ -102,6 +107,14 @@ final class ConnectionSessionController {
     }
 
     func connect(config: ConnectionConfig) {
+        // A user-initiated connect is a fresh attempt — drop any prior session
+        // state so a failure routes the UI back to the setup screen instead of
+        // leaving the user on a stale homepage. Without this, switching from a
+        // working server to one with bad/missing auth would leave hasBeenConnected
+        // == true, sending the failure into the `.lost` branch.
+        hasBeenConnected = false
+        store.reset()
+        store.isConnected = false
         connectionConfig = config
         errorMessage = nil
         startSession(config: config)
@@ -212,6 +225,9 @@ final class ConnectionSessionController {
 
             switch socketEvent {
             case .message(let data):
+                if let tap = rawInboundTap, let raw = Z2MMessageRouter.decodeRaw(data) {
+                    tap(raw.topic, raw.payload)
+                }
                 if let event = router.route(data) {
                     store.apply(event)
                 }

@@ -30,15 +30,15 @@ struct AvailabilitySettingsView: View {
             Section {
                 Toggle("Track Device Availability", isOn: $enabled)
             } footer: {
-                Text("When enabled, Shellbee tracks whether each device is online or offline. Mains-powered devices use a short timeout; battery-powered devices use a longer one.")
+                Text("When enabled, the bridge tracks whether each device is online or offline. Mains-powered devices use a short timeout; battery-powered devices use a longer one.")
             }
 
             if enabled {
                 Section {
-                    InlineIntField("Offline Timeout", value: $activeTimeout, unit: "min", range: 1...60)
+                    InlineIntField("Timeout", value: $activeTimeout, unit: "min", range: 1...60)
                     Toggle("Retry with Backoff", isOn: $activeBackoff)
                     if activeBackoff {
-                        InlineIntField("Pause After Retries", value: $activePauseOnBackoffGt, unit: "retries", range: 0...20)
+                        InlineIntField("Pause After", value: $activePauseOnBackoffGt, unit: "retries", range: 0...20)
                     }
                     InlineIntField("Max Jitter", value: $activeMaxJitter, unit: "ms", range: 0...60000)
                 } header: {
@@ -48,7 +48,7 @@ struct AvailabilitySettingsView: View {
                 }
 
                 Section {
-                    InlineIntField("Offline Timeout", value: $passiveTimeout, unit: "min", range: 60...10000)
+                    InlineIntField("Timeout", value: $passiveTimeout, unit: "min", range: 60...10000)
                 } header: {
                     Text("Battery-Powered Devices")
                 } footer: {

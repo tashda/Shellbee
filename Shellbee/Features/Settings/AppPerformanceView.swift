@@ -8,7 +8,7 @@ struct AppPerformanceView: View {
         Form {
             Section {
                 InlineIntField(
-                    "Concurrent Requests",
+                    "Concurrency",
                     value: $concurrency,
                     unit: "requests",
                     range: OTABulkOperationQueue.concurrencyRange
@@ -19,13 +19,11 @@ struct AppPerformanceView: View {
                     unit: "s",
                     range: OTABulkOperationQueue.checkTimeoutRange
                 )
-            } header: {
-                Text("Bulk OTA Checks")
             } footer: {
                 Text("Controls how Shellbee paces \"Check All for Updates\". Higher concurrency finishes faster but can flood the Zigbee coordinator.")
             }
         }
-        .navigationTitle("Performance")
+        .navigationTitle("Bulk OTA")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

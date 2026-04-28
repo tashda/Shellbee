@@ -16,10 +16,16 @@ struct AcknowledgementsView: View {
                     badge: "GPL-3.0",
                     url: URL(string: "https://github.com/Koenkk/zigbee2mqtt.io")!
                 )
+                acknowledgementRow(
+                    title: "Sentry Cocoa SDK",
+                    subtitle: "Powers opt-in crash reporting (off by default)",
+                    badge: "MIT",
+                    url: URL(string: "https://github.com/getsentry/sentry-cocoa")!
+                )
             } header: {
                 Text("Open Source")
             } footer: {
-                Text("Shellbee uses documentation and data from the zigbee2mqtt.io project, which is licensed under GPL-3.0.")
+                Text("Shellbee uses documentation and data from the zigbee2mqtt.io project (GPL-3.0). Crash reporting, when enabled, is powered by the Sentry Cocoa SDK (MIT).")
             }
 
             Section("Support") {

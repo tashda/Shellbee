@@ -19,7 +19,7 @@ struct HealthSettingsView: View {
             Section {
                 InlineIntField("Check Interval", value: $interval, unit: "min", range: 0...120)
             } header: {
-                Text("Health Check Interval")
+                Text("Interval")
             } footer: {
                 Text("How often the bridge checks its own health. Set to 0 to disable health checks entirely.")
             }

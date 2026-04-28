@@ -46,23 +46,22 @@ struct LightAdvancedFeatureRow: View {
         }
     }
 
+    /// Reuses the same swatch + slider control as the hero light card so the
+    /// "Color Temperature" startup row reads identically to the live control
+    /// the user just adjusted in the card.
     private func temperatureRow(range: ClosedRange<Double>?) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack {
-                Text(feature.displayLabel)
-                Spacer()
-                Text("\(Int((1_000_000 / max(numericDraftValue, 1)).rounded()).formatted(.number.grouping(.never)))K")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-
+            Text(feature.displayLabel)
             if let range {
-                let kelvinRange = (1_000_000 / range.upperBound)...(1_000_000 / max(range.lowerBound, 1))
-                Slider(value: kelvinBinding, in: kelvinRange) { editing in
-                    guard !editing else { return }
-                    onChange(.double(numericDraftValue))
-                }
-                .tint(LightDisplayColor.temperatureColor(mireds: numericDraftValue))
+                LightTemperatureControl(
+                    range: range,
+                    value: numericDraftValue,
+                    isInteractive: true,
+                    onChange: { mireds in
+                        numericDraftValue = mireds
+                        onChange(.double(mireds))
+                    }
+                )
                 .onChange(of: feature.value?.numberValue ?? 0) { _, newValue in
                     numericDraftValue = newValue
                 }

@@ -16,6 +16,13 @@ struct DeviceListRow: View {
     let onInterview: () -> Void
     let onUpdate: (() -> Void)?
     let onCheckUpdate: () -> Void
+    let onSchedule: (() -> Void)?
+    let onUnschedule: (() -> Void)?
+
+    private var isBatteryPowered: Bool {
+        guard let raw = device.powerSource?.lowercased() else { return false }
+        return raw.contains("battery")
+    }
 
     private var supportsOTA: Bool {
         device.definition?.supportsOTA == true
@@ -55,7 +62,12 @@ struct DeviceListRow: View {
             )
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            if let rejection = rejectionMessage {
+            if otaStatus?.phase == .scheduled, let onUnschedule {
+                Button(action: onUnschedule) {
+                    Label("Cancel", systemImage: "xmark.circle")
+                }
+                .tint(.orange)
+            } else if let rejection = rejectionMessage {
                 Button(action: rejectSwipe) {
                     Label(rejection.text, systemImage: rejection.icon)
                 }
@@ -65,11 +77,32 @@ struct DeviceListRow: View {
                     Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
                 }
                 .tint(.blue)
-                if let onUpdate {
-                    Button(action: onUpdate) {
-                        Label("Update", systemImage: "arrow.up.circle")
+                if isBatteryPowered {
+                    if let onSchedule {
+                        Button(action: onSchedule) {
+                            Label("Schedule", systemImage: "calendar.badge.clock")
+                        }
+                        .tint(.indigo)
                     }
-                    .tint(.green)
+                    if let onUpdate {
+                        Button(action: onUpdate) {
+                            Label("Update", systemImage: "arrow.up.circle")
+                        }
+                        .tint(.green)
+                    }
+                } else {
+                    if let onUpdate {
+                        Button(action: onUpdate) {
+                            Label("Update", systemImage: "arrow.up.circle")
+                        }
+                        .tint(.green)
+                    }
+                    if let onSchedule {
+                        Button(action: onSchedule) {
+                            Label("Schedule", systemImage: "calendar.badge.clock")
+                        }
+                        .tint(.indigo)
+                    }
                 }
             }
         }
@@ -106,9 +139,43 @@ struct DeviceListRow: View {
             Button(action: onInterview) {
                 Label("Interview", systemImage: "questionmark.circle")
             }
-            if let onUpdate {
-                Button(action: onUpdate) {
-                    Label("Update Firmware", systemImage: "arrow.up.circle")
+            if supportsOTA {
+                Divider()
+                Button(action: onCheckUpdate) {
+                    Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
+                }
+                if otaStatus?.phase == .scheduled, let onUnschedule {
+                    Button(action: onUnschedule) {
+                        Label("Cancel Scheduled Update", systemImage: "xmark.circle")
+                    }
+                } else {
+                    // Both actions exposed when an update is available.
+                    // Battery devices get Schedule listed first as the
+                    // recommended path (Z2M waits for the device to wake);
+                    // mains devices get Update Now first.
+                    if isBatteryPowered {
+                        if let onSchedule {
+                            Button(action: onSchedule) {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                        }
+                        if let onUpdate {
+                            Button(action: onUpdate) {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                        }
+                    } else {
+                        if let onUpdate {
+                            Button(action: onUpdate) {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                        }
+                        if let onSchedule {
+                            Button(action: onSchedule) {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                        }
+                    }
                 }
             }
             Divider()
@@ -134,7 +201,9 @@ struct DeviceListRow: View {
                 onReconfigure: {},
                 onInterview: {},
                 onUpdate: {},
-                onCheckUpdate: {}
+                onCheckUpdate: {},
+                onSchedule: {},
+                onUnschedule: {}
             )
         }
     }
