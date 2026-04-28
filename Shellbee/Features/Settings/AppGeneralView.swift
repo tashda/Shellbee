@@ -21,7 +21,7 @@ struct AppGeneralView: View {
             }
 
             Section {
-                Picker("Recent Events on Home", selection: $recentEventsCount) {
+                Picker("Recent Events", selection: $recentEventsCount) {
                     ForEach(HomeSettings.recentEventsOptions, id: \.self) { n in
                         Text("\(n)").tag(n)
                     }
@@ -36,7 +36,7 @@ struct AppGeneralView: View {
                 Toggle("Connection Live Activity", isOn: $connectionLiveActivityEnabled)
                 Toggle("OTA Live Activity", isOn: $otaLiveActivityEnabled)
                 InlineIntField(
-                    "Reconnect Attempts",
+                    "Reconnect Limit",
                     value: $maxReconnectAttempts,
                     unit: "attempts",
                     range: ConnectionSessionController.maxReconnectAttemptsRange
@@ -48,7 +48,7 @@ struct AppGeneralView: View {
             }
 
             Section {
-                Toggle("Automatically share crash reports", isOn: Binding(
+                Toggle("Automatically Share Crash Reports", isOn: Binding(
                     get: { consent.alwaysShare },
                     set: { consent.alwaysShare = $0 }
                 ))

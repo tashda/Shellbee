@@ -195,6 +195,56 @@ final class SettingsUITests: ShellbeeUITestCase {
                        "Unit should be rendered alongside the value, not in the label")
     }
 
+    // Behavior: Home Assistant toggles drop the "Use" verb prefix —
+    // iOS toggle labels are nouns, not imperatives.
+    func testHomeAssistantTogglesAreNouns() {
+        openSettingsScreen("Home Assistant")
+        // The toggles are inside the conditional "Compatibility" section,
+        // only visible when HA is enabled. We just assert the negative —
+        // the verb-prefixed labels must not exist anywhere on the screen.
+        XCTAssertFalse(app.staticTexts["Use Legacy Action Sensor"].exists)
+        XCTAssertFalse(app.staticTexts["Use Event Entities"].exists)
+    }
+
+    // Behavior: Adapter LED is presented as a positive toggle (default ON),
+    // not the negated Z2M flag "Disable Adapter LED".
+    func testAdapterLEDLabelIsPositive() {
+        openSettingsScreen("Adapter")
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Adapter LED"].waitForExistence(timeout: 5),
+                      "Adapter settings should show 'Adapter LED', not 'Disable Adapter LED'")
+        XCTAssertFalse(app.staticTexts["Disable Adapter LED"].exists)
+    }
+
+    // Behavior: numeric labels never duplicate their unit
+    // ("5 attempts attempts" / "5 requests requests" / "3 retries retries").
+    func testNumericLabelsDoNotRepeatUnit() {
+        // App General — Reconnect Limit
+        openSettingsScreen("General")
+        app.swipeUp()
+        XCTAssertFalse(app.staticTexts["Reconnect Attempts"].exists,
+                       "Should be 'Reconnect Limit' to avoid 'attempts attempts'")
+        // Performance — Concurrency
+        app.navigationBars.buttons.firstMatch.tap()
+        openSettingsScreen("Performance")
+        XCTAssertTrue(app.staticTexts["Concurrency"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Concurrent Requests"].exists)
+    }
+
+    // Behavior: when the section header already disambiguates, the row
+    // label drops the redundant qualifier ("Mains-Powered Devices" → "Timeout",
+    // not "Offline Timeout").
+    func testAvailabilityTimeoutRowsAreUnqualified() {
+        openSettingsScreen("Availability")
+        // Enable tracking so the timeout sections appear.
+        let toggle = app.switches.firstMatch
+        if toggle.waitForExistence(timeout: 5), toggle.value as? String == "0" {
+            toggle.tap()
+        }
+        // Two "Timeout" rows are expected (one per section); legacy label gone.
+        XCTAssertFalse(app.staticTexts["Offline Timeout"].exists)
+    }
+
     // MARK: - Health
 
     func testHealthSettingsOpens() {

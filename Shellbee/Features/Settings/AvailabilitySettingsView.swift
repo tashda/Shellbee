@@ -35,10 +35,10 @@ struct AvailabilitySettingsView: View {
 
             if enabled {
                 Section {
-                    InlineIntField("Offline Timeout", value: $activeTimeout, unit: "min", range: 1...60)
+                    InlineIntField("Timeout", value: $activeTimeout, unit: "min", range: 1...60)
                     Toggle("Retry with Backoff", isOn: $activeBackoff)
                     if activeBackoff {
-                        InlineIntField("Pause After Retries", value: $activePauseOnBackoffGt, unit: "retries", range: 0...20)
+                        InlineIntField("Pause After", value: $activePauseOnBackoffGt, unit: "retries", range: 0...20)
                     }
                     InlineIntField("Max Jitter", value: $activeMaxJitter, unit: "ms", range: 0...60000)
                 } header: {
@@ -48,7 +48,7 @@ struct AvailabilitySettingsView: View {
                 }
 
                 Section {
-                    InlineIntField("Offline Timeout", value: $passiveTimeout, unit: "min", range: 60...10000)
+                    InlineIntField("Timeout", value: $passiveTimeout, unit: "min", range: 60...10000)
                 } header: {
                     Text("Battery-Powered Devices")
                 } footer: {

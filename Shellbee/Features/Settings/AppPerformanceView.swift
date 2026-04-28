@@ -8,7 +8,7 @@ struct AppPerformanceView: View {
         Form {
             Section {
                 InlineIntField(
-                    "Concurrent Requests",
+                    "Concurrency",
                     value: $concurrency,
                     unit: "requests",
                     range: OTABulkOperationQueue.concurrencyRange

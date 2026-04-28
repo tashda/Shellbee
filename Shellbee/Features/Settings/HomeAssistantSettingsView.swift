@@ -40,8 +40,8 @@ struct HomeAssistantSettingsView: View {
                 }
 
                 Section {
-                    Toggle("Use Legacy Action Sensor", isOn: $legacyActionSensor)
-                    Toggle("Use Event Entities", isOn: $experimentalEventEntities)
+                    Toggle("Legacy Action Sensor", isOn: $legacyActionSensor)
+                    Toggle("Event Entities", isOn: $experimentalEventEntities)
                 } header: {
                     Text("Compatibility")
                 } footer: {
