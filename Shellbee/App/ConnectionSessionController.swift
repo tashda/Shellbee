@@ -107,6 +107,14 @@ final class ConnectionSessionController {
     }
 
     func connect(config: ConnectionConfig) {
+        // A user-initiated connect is a fresh attempt — drop any prior session
+        // state so a failure routes the UI back to the setup screen instead of
+        // leaving the user on a stale homepage. Without this, switching from a
+        // working server to one with bad/missing auth would leave hasBeenConnected
+        // == true, sending the failure into the `.lost` branch.
+        hasBeenConnected = false
+        store.reset()
+        store.isConnected = false
         connectionConfig = config
         errorMessage = nil
         startSession(config: config)
