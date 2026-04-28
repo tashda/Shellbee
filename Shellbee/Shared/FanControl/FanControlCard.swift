@@ -4,6 +4,11 @@ struct FanControlCard: View {
     let context: FanControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
+    /// When `false`, the feature sections (Behaviour / Indicators / etc.) are
+    /// suppressed so the caller can render them as native `List` sections.
+    /// Defaults to `true` to preserve inline rendering for snapshot contexts
+    /// (e.g. LogDetailView) that aren't backed by a List.
+    var rendersSectionsInline: Bool = true
 
     @State private var speedDraft: Double = 0
     @State private var presentedGroup: IndexedGroup?
@@ -16,8 +21,10 @@ struct FanControlCard: View {
         VStack(spacing: DesignTokens.Spacing.lg) {
             heroCard
             if hasFilterSection { filterCard }
-            ForEach(sections) { section in
-                sectionView(section)
+            if rendersSectionsInline {
+                ForEach(sections) { section in
+                    sectionView(section)
+                }
             }
         }
         .sheet(item: $presentedGroup) { group in
@@ -467,6 +474,88 @@ struct FanControlCard: View {
         if days < 60 { return ("\(days)", "d") }
         let months = days / 30
         return ("\(months)", "mo")
+    }
+}
+
+// MARK: - Native list sections
+
+/// Renders the Fan device's feature sections (Behaviour, Indicators, etc.) as
+/// native `List` sections. Place inside a `List` whose `.listStyle` is grouped
+/// or inset-grouped. The hero / filter cards are still rendered by
+/// `FanControlCard` (with `rendersSectionsInline: false`).
+struct FanFeatureSections: View {
+    let context: FanControlContext
+    let mode: CardDisplayMode
+    let onSend: (JSONValue) -> Void
+
+    @State private var presentedGroup: IndexedGroup?
+
+    private let filterProps: Set<String> = ["replace_filter", "filter_age", "device_age"]
+    private let rowIconWidth: CGFloat = 22
+
+    private var eligibleExtras: [Expose] {
+        let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
+        return context.extras.filter { e in
+            guard let prop = e.property else { return false }
+            return !claimed.contains(prop)
+        }
+    }
+
+    private var sections: [LayoutSection] { FeatureLayout.sections(from: eligibleExtras) }
+
+    var body: some View {
+        ForEach(sections) { section in
+            Section(section.title) {
+                ForEach(section.items, id: \.id) { item in
+                    rowFor(item)
+                }
+            }
+        }
+        .sheet(item: $presentedGroup) { group in
+            FeatureDetailSheet(title: group.label) {
+                ForEach(Array(group.members.enumerated()), id: \.element.property) { idx, e in
+                    if idx > 0 {
+                        Divider().padding(.leading, DesignTokens.Spacing.lg + rowIconWidth + DesignTokens.Spacing.md)
+                    }
+                    FanExtraRow(expose: e, state: context.state, mode: mode,
+                                horizontalPadding: DesignTokens.Spacing.lg,
+                                verticalPadding: DesignTokens.Spacing.md,
+                                iconWidth: rowIconWidth,
+                                onSend: onSend)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rowFor(_ item: LayoutItem) -> some View {
+        switch item {
+        case .row(let expose):
+            FanExtraRow(expose: expose, state: context.state, mode: mode,
+                        horizontalPadding: 0,
+                        verticalPadding: 0,
+                        iconWidth: rowIconWidth,
+                        onSend: onSend)
+        case .indexedGroup(let group):
+            Button {
+                presentedGroup = group
+            } label: {
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    Image(systemName: group.symbol)
+                        .font(.system(size: 16, weight: .medium))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                        .frame(width: rowIconWidth)
+                    Text(group.label).foregroundStyle(.primary)
+                    Spacer()
+                    Text("\(group.members.count)").foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 

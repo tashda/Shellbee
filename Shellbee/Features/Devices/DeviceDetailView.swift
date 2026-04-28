@@ -32,12 +32,25 @@ struct DeviceDetailView: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
 
-            Section {
-                ExposeCardView(device: device, state: state, mode: .interactive) { payload in
+            if device.category == .fan, let fanCtx = FanControlContext(device: device, state: state) {
+                Section {
+                    FanControlCard(context: fanCtx, mode: .interactive, onSend: { payload in
+                        environment.sendDeviceState(device.friendlyName, payload: payload)
+                    }, rendersSectionsInline: false)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+                FanFeatureSections(context: fanCtx, mode: .interactive) { payload in
                     environment.sendDeviceState(device.friendlyName, payload: payload)
                 }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
+            } else {
+                Section {
+                    ExposeCardView(device: device, state: state, mode: .interactive) { payload in
+                        environment.sendDeviceState(device.friendlyName, payload: payload)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
             }
 
             if device.definition != nil {

@@ -23,6 +23,8 @@ struct MQTTInspectorView: View {
         .navigationTitle("MQTT Inspector")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Fixed-width principal keeps the segmented picker in the same
+            // place regardless of how many trailing items the active tab has.
             ToolbarItem(placement: .principal) {
                 Picker("Mode", selection: $selectedTab) {
                     ForEach(Tab.allCases) { tab in
@@ -30,7 +32,7 @@ struct MQTTInspectorView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 280)
+                .frame(width: 220)
             }
         }
         .onAppear { store.attach(session: environment.session) }
@@ -91,6 +93,86 @@ struct InspectorMessage: Identifiable, Equatable {
         }
         return text
     }
+
+    /// Z2M log messages on `bridge/logging` carry a `level` field — surface
+    /// that color on the row icon to match the raw logs view.
+    var logLevelColor: Color {
+        guard topic == Z2MTopics.bridgeLogging,
+              let level = payload.object?["level"]?.stringValue,
+              let parsed = LogLevel(rawValue: level.lowercased()) else {
+            return .secondary
+        }
+        return parsed.color
+    }
+
+    var logLevelIcon: String {
+        guard topic == Z2MTopics.bridgeLogging,
+              let level = payload.object?["level"]?.stringValue,
+              let parsed = LogLevel(rawValue: level.lowercased()) else {
+            return "dot.radiowaves.up.forward"
+        }
+        return parsed.systemImage
+    }
+}
+
+// MARK: - JSON syntax highlighting
+
+enum JSONHighlighter {
+    static func attributed(_ source: String) -> AttributedString {
+        var out = AttributedString(source)
+        out.font = .caption.monospaced()
+        out.foregroundColor = .secondary
+
+        // Keys: "<word>" : → blue
+        if let regex = try? Regex<(Substring, Substring)>("\"([^\"\\\\]+)\"\\s*:") {
+            for match in source.matches(of: regex) {
+                let r = match.range
+                if let lower = AttributedString.Index(r.lowerBound, within: out),
+                   let upper = AttributedString.Index(r.upperBound, within: out) {
+                    out[lower..<upper].foregroundColor = .blue
+                }
+            }
+        }
+
+        // String values: : "..." or array element strings → green
+        if let regex = try? Regex<(Substring, Substring)>(":\\s*(\"[^\"\\\\]*\")") {
+            for match in source.matches(of: regex) {
+                let inner = match.output.1
+                let r = inner.startIndex..<inner.endIndex
+                if let lower = AttributedString.Index(r.lowerBound, within: out),
+                   let upper = AttributedString.Index(r.upperBound, within: out) {
+                    out[lower..<upper].foregroundColor = .green
+                }
+            }
+        }
+
+        // Numbers: ints / floats → orange
+        if let regex = try? Regex<(Substring, Substring)>("(?<![\\w-])(-?\\d+(?:\\.\\d+)?)") {
+            for match in source.matches(of: regex) {
+                let inner = match.output.1
+                let r = inner.startIndex..<inner.endIndex
+                if let lower = AttributedString.Index(r.lowerBound, within: out),
+                   let upper = AttributedString.Index(r.upperBound, within: out) {
+                    out[lower..<upper].foregroundColor = .orange
+                }
+            }
+        }
+
+        // Booleans / null → purple
+        for word in ["true", "false", "null"] {
+            if let regex = try? Regex<Substring>("\\b\(word)\\b") {
+                for match in source.matches(of: regex) {
+                    let r = match.range
+                    if let lower = AttributedString.Index(r.lowerBound, within: out),
+                       let upper = AttributedString.Index(r.upperBound, within: out) {
+                        out[lower..<upper].foregroundColor = .purple
+                    }
+                }
+            }
+        }
+
+        return out
+    }
 }
 
 // MARK: - Subscribe
@@ -120,20 +202,26 @@ private struct SubscribeView: View {
         .autocorrectionDisabled()
         .textInputAutocapitalization(.never)
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    store.paused.toggle()
+            // Single trailing item (a menu) keeps the principal picker stable.
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        store.paused.toggle()
+                    } label: {
+                        Label(store.paused ? "Resume" : "Pause",
+                              systemImage: store.paused ? "play.fill" : "pause.fill")
+                    }
+                    Button(role: .destructive) {
+                        store.clear()
+                    } label: {
+                        Label("Clear Buffer", systemImage: "trash")
+                    }
+                    .disabled(store.messages.isEmpty)
                 } label: {
-                    Image(systemName: store.paused ? "play.fill" : "pause.fill")
+                    Image(systemName: store.paused ? "pause.circle.fill" : "ellipsis.circle")
+                        .foregroundStyle(store.paused ? .orange : .blue)
                 }
-                .accessibilityLabel(store.paused ? "Resume" : "Pause")
-                Button {
-                    store.clear()
-                } label: {
-                    Image(systemName: "trash")
-                }
-                .accessibilityLabel("Clear")
-                .disabled(store.messages.isEmpty)
+                .accessibilityLabel("Inspector actions")
             }
         }
         .overlay(alignment: .bottom) {
@@ -166,20 +254,23 @@ private struct MessageRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: message.logLevelIcon)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(message.logLevelColor)
+                    .frame(width: 14)
                 Text(message.topic)
-                    .font(.subheadline.monospaced().weight(.semibold))
+                    .font(.system(.caption, design: .monospaced).weight(.bold))
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
                 Spacer(minLength: 8)
                 Text(message.timestamp, format: .dateTime.hour().minute().second())
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
             }
-            Text(message.prettyPayload)
-                .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+            Text(JSONHighlighter.attributed(message.prettyPayload))
                 .lineLimit(expanded ? nil : 6)
                 .textSelection(.enabled)
                 .padding(10)
@@ -188,6 +279,7 @@ private struct MessageRow: View {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(Color(.tertiarySystemFill))
                 )
+                .padding(.leading, 22)
             if message.prettyPayload.components(separatedBy: "\n").count > 6 {
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() }
@@ -196,6 +288,7 @@ private struct MessageRow: View {
                         .font(.caption.weight(.medium))
                 }
                 .buttonStyle(.borderless)
+                .padding(.leading, 22)
             }
         }
         .padding(.vertical, 2)
@@ -219,63 +312,74 @@ private struct PublishView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                Section {
-                    TextField("e.g. zigbee2mqtt/Office Lamp/set", text: $topic)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.callout.monospaced())
-                        .focused($focusedField, equals: .topic)
-                        .submitLabel(.next)
-                        .onSubmit { focusedField = .payload }
-                } header: {
-                    Text("Topic")
-                }
+        Form {
+            Section {
+                TextField("e.g. zigbee2mqtt/Office Lamp/set", text: $topic)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.callout.monospaced())
+                    .focused($focusedField, equals: .topic)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField = .payload }
+            } header: {
+                Text("Topic")
+            }
 
-                Section {
-                    TextEditor(text: $payload)
-                        .frame(minHeight: 140)
-                        .font(.callout.monospaced())
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .focused($focusedField, equals: .payload)
-                } header: {
-                    Text("Payload")
-                } footer: {
-                    Text("JSON object, JSON literal, or raw string. Empty payload is allowed.")
-                }
+            Section {
+                TextEditor(text: $payload)
+                    .frame(minHeight: 140)
+                    .font(.callout.monospaced())
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused($focusedField, equals: .payload)
+            } header: {
+                Text("Payload")
+            } footer: {
+                Text("JSON object, JSON literal, or raw string. Empty payload is allowed.")
+            }
 
-                if let lastResult {
-                    Section {
-                        Label(lastResult, systemImage: "checkmark.circle.fill")
-                            .font(.footnote)
-                            .foregroundStyle(.green)
+            Section {
+                Button {
+                    if topic.hasPrefix("bridge/request/") {
+                        showWarning = true
+                    } else {
+                        sendNow()
+                    }
+                } label: {
+                    HStack {
+                        Spacer()
+                        Label("Publish", systemImage: "paperplane.fill")
+                            .font(.body.weight(.semibold))
+                        Spacer()
                     }
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!isValid)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                .listRowBackground(Color.clear)
             }
 
-            Divider()
-
-            Button {
-                if topic.hasPrefix("bridge/request/") {
-                    showWarning = true
-                } else {
-                    sendNow()
+            if let lastResult {
+                Section {
+                    Label(lastResult, systemImage: "checkmark.circle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.green)
                 }
-            } label: {
-                HStack {
-                    Image(systemName: "paperplane.fill")
-                    Text("Publish")
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!isValid)
-            .padding()
-            .background(.bar)
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    topic = ""
+                    payload = ""
+                    lastResult = nil
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                }
+                .accessibilityLabel("Reset form")
+                .disabled(topic.isEmpty && payload.isEmpty && lastResult == nil)
+            }
         }
         .alert("Publish to bridge/request/*?", isPresented: $showWarning) {
             Button("Publish", role: .destructive) { sendNow() }
