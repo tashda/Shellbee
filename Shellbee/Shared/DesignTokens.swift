@@ -2,6 +2,7 @@ import SwiftUI
 
 nonisolated enum DesignTokens {
     nonisolated enum Spacing {
+        static let xxs: CGFloat = 2
         static let xs: CGFloat = 4
         static let sm: CGFloat = 8
         static let md: CGFloat = 12
@@ -53,6 +54,8 @@ nonisolated enum DesignTokens {
         static let levelIndicatorHeight: CGFloat = 20
         static let cardStroke: CGFloat = 1
         static let badgeStroke: CGFloat = 0.5
+        static let hairline: CGFloat = 0.5
+        static let notificationBottomInset: CGFloat = 80
         static let heroCardMinHeight: CGFloat = 200
         static let metricCardMinHeight: CGFloat = 120
         static let bridgeCardMinHeight: CGFloat = 164
