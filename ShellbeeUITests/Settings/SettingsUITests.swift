@@ -231,6 +231,49 @@ final class SettingsUITests: ShellbeeUITestCase {
         XCTAssertFalse(app.staticTexts["Concurrent Requests"].exists)
     }
 
+    // Behavior: Live Activities have their own subpage under Application;
+    // they no longer live on App → General. The new page exposes all three
+    // toggles and is reachable via a dedicated nav link.
+    func testLiveActivitiesHasOwnPage() {
+        // Reach the new link in the Application section.
+        openSettingsScreen("Live Activities")
+        XCTAssertTrue(
+            app.navigationBars["Live Activities"].firstMatch.waitForExistence(timeout: 5),
+            "Live Activities page did not open"
+        )
+        XCTAssertTrue(app.staticTexts["Connection"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["OTA Updates"].exists)
+        XCTAssertTrue(app.staticTexts["Scheduled OTAs"].exists)
+    }
+
+    // Behavior: App → General no longer hosts the Live Activity toggles —
+    // they moved to their own page.
+    func testGeneralNoLongerHostsLiveActivities() {
+        openSettingsScreen("General")
+        XCTAssertFalse(app.staticTexts["Connection Live Activity"].exists)
+        XCTAssertFalse(app.staticTexts["OTA Live Activity"].exists)
+        XCTAssertFalse(app.staticTexts["Show Scheduled OTAs"].exists)
+        // Reconnect Limit stays on General.
+        XCTAssertTrue(app.staticTexts["Reconnect Limit"].waitForExistence(timeout: 3))
+    }
+
+    // Behavior: the Performance page was renamed to "Bulk OTA" since
+    // that was its only content. The link label and page title both update.
+    func testBulkOTAReplacesPerformance() {
+        // The settings root should expose "Bulk OTA", not "Performance".
+        let bulkOTARow = app.cells.containing(.staticText, identifier: "Bulk OTA").firstMatch
+        if !bulkOTARow.waitForExistence(timeout: 3) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(bulkOTARow.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.cells.containing(.staticText, identifier: "Performance").firstMatch.exists)
+        bulkOTARow.tap()
+        XCTAssertTrue(
+            app.navigationBars["Bulk OTA"].firstMatch.waitForExistence(timeout: 5),
+            "Bulk OTA page did not open"
+        )
+    }
+
     // Behavior: when the section header already disambiguates, the row
     // label drops the redundant qualifier ("Mains-Powered Devices" → "Timeout",
     // not "Offline Timeout").

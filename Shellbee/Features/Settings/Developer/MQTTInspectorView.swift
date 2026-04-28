@@ -218,8 +218,12 @@ private struct SubscribeView: View {
                     }
                     .disabled(store.messages.isEmpty)
                 } label: {
-                    Image(systemName: store.paused ? "pause.circle.fill" : "ellipsis.circle")
-                        .foregroundStyle(store.paused ? .orange : .blue)
+                    if store.paused {
+                        Image(systemName: "pause.circle.fill")
+                            .foregroundStyle(.orange)
+                    } else {
+                        Image(systemName: "ellipsis")
+                    }
                 }
                 .accessibilityLabel("Inspector actions")
             }
@@ -339,22 +343,17 @@ private struct PublishView: View {
             }
 
             Section {
-                Button {
+                Button("Publish") {
                     if topic.hasPrefix("bridge/request/") {
                         showWarning = true
                     } else {
                         sendNow()
                     }
-                } label: {
-                    HStack {
-                        Spacer()
-                        Label("Publish", systemImage: "paperplane.fill")
-                            .font(.body.weight(.semibold))
-                        Spacer()
-                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
                 .disabled(!isValid)
                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 .listRowBackground(Color.clear)
@@ -375,9 +374,9 @@ private struct PublishView: View {
                     payload = ""
                     lastResult = nil
                 } label: {
-                    Image(systemName: "arrow.counterclockwise")
+                    Image(systemName: "trash")
                 }
-                .accessibilityLabel("Reset form")
+                .accessibilityLabel("Clear form")
                 .disabled(topic.isEmpty && payload.isEmpty && lastResult == nil)
             }
         }

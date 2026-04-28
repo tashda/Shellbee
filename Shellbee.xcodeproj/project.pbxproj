@@ -200,6 +200,7 @@
 				Features/Settings/AboutView.swift,
 				Features/Settings/AcknowledgementsView.swift,
 				Features/Settings/AppGeneralView.swift,
+				Features/Settings/AppLiveActivitiesView.swift,
 				Features/Settings/AppNotificationSettingsView.swift,
 				Features/Settings/AppPerformanceView.swift,
 				Features/Settings/AvailabilitySettingsView.swift,

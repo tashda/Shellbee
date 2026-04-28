@@ -167,11 +167,14 @@ struct SettingsView: View {
             NavigationLink { AppGeneralView() } label: {
                 settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
             }
+            NavigationLink { AppLiveActivitiesView() } label: {
+                settingsLabel(title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
+            }
             NavigationLink { AppNotificationSettingsView() } label: {
                 settingsLabel(title: "Notifications", systemImage: "bell.badge.fill", color: .red)
             }
             NavigationLink { AppPerformanceView() } label: {
-                settingsLabel(title: "Performance", systemImage: "speedometer", color: .blue)
+                settingsLabel(title: "Bulk OTA", systemImage: "arrow.down.circle.dotted", color: .blue)
             }
             NavigationLink { AboutView() } label: {
                 settingsLabel(title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))

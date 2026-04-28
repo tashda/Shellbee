@@ -3,8 +3,6 @@ import SwiftUI
 struct AppGeneralView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
-    @AppStorage(ConnectionSessionController.connectionLiveActivityEnabledKey) private var connectionLiveActivityEnabled: Bool = true
-    @AppStorage(ConnectionSessionController.otaLiveActivityEnabledKey) private var otaLiveActivityEnabled: Bool = true
     @AppStorage(ConnectionSessionController.maxReconnectAttemptsKey) private var maxReconnectAttempts: Int = ConnectionSessionController.defaultMaxReconnectAttempts
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var consent = CrashReportingConsent.shared
@@ -33,8 +31,6 @@ struct AppGeneralView: View {
             }
 
             Section {
-                Toggle("Connection Live Activity", isOn: $connectionLiveActivityEnabled)
-                Toggle("OTA Live Activity", isOn: $otaLiveActivityEnabled)
                 InlineIntField(
                     "Reconnect Limit",
                     value: $maxReconnectAttempts,
@@ -44,7 +40,7 @@ struct AppGeneralView: View {
             } header: {
                 Text("Connection")
             } footer: {
-                Text("Live Activities show connection and OTA progress on the Lock Screen and Dynamic Island. The reconnect limit caps how many times Shellbee retries before giving up; opening the app always tries again immediately.")
+                Text("How many times Shellbee retries before giving up. Opening the app always tries again.")
             }
 
             Section {
@@ -60,6 +56,8 @@ struct AppGeneralView: View {
 
             Section {
                 Toggle("Developer Mode", isOn: $developerModeEnabled)
+            } header: {
+                Text("Advanced")
             } footer: {
                 Text("Exposes the MQTT Inspector and other power-user tools under a Developer section in Settings.")
             }
