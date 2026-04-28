@@ -94,7 +94,7 @@ struct LightControlCard: View {
 
     @ViewBuilder private var interactiveContent: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -170,7 +170,7 @@ struct LightControlCard: View {
     private var snapshotHero: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
                         .font(.system(size: 11, weight: .bold))
                         .symbolRenderingMode(.hierarchical)
@@ -192,7 +192,7 @@ struct LightControlCard: View {
     @ViewBuilder
     private var snapshotHeroValue: some View {
         if context.isOn, context.brightness != nil {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Text("\(context.brightnessPercent)")
                     .font(.system(size: 56, weight: .bold, design: .rounded))
                     .monospacedDigit()
@@ -226,7 +226,7 @@ struct LightControlCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     private var hasColorOrTempInfo: Bool {
@@ -245,7 +245,7 @@ struct LightControlCard: View {
             )
         } else if isColorMode {
             HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: "paintpalette.fill")
                         .font(.system(size: 11, weight: .bold))
                         .symbolRenderingMode(.hierarchical)
@@ -258,7 +258,7 @@ struct LightControlCard: View {
                 Spacer()
                 Circle()
                     .fill(context.displayColor)
-                    .frame(width: 22, height: 22)
+                    .frame(width: DesignTokens.Size.cardSymbol, height: DesignTokens.Size.cardSymbol)
                     .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
             }
         }
@@ -266,7 +266,7 @@ struct LightControlCard: View {
 
     private func snapshotInfoRow(icon: String, label: String, value: String, unit: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -279,7 +279,7 @@ struct LightControlCard: View {
             }
             .foregroundStyle(.secondary)
             Spacer()
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
                     .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .monospacedDigit()
@@ -289,9 +289,9 @@ struct LightControlCard: View {
                     .foregroundStyle(.secondary)
                 Circle()
                     .fill(context.displayColor)
-                    .frame(width: 18, height: 18)
+                    .frame(width: DesignTokens.Size.summaryRowSymbol, height: DesignTokens.Size.summaryRowSymbol)
                     .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
-                    .padding(.leading, 4)
+                    .padding(.leading, DesignTokens.Spacing.xs)
             }
         }
     }
