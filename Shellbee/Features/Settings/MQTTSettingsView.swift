@@ -88,7 +88,10 @@ struct MQTTSettingsView: View {
 
             Section {
                 Toggle("Include Device Metadata", isOn: $includeDeviceInformation)
-                Toggle("Disable Message Retain", isOn: $forceDisableRetain)
+                Toggle("Retain Messages", isOn: Binding(
+                    get: { !forceDisableRetain },
+                    set: { forceDisableRetain = !$0 }
+                ))
 
                 Picker("QoS Level", selection: $qos) {
                     Text("QoS 0 — At most once").tag(0)
@@ -96,15 +99,11 @@ struct MQTTSettingsView: View {
                     Text("QoS 2 — Exactly once").tag(2)
                 }
 
-                LabeledContent("Max Packet Size (bytes)") {
-                    TextField("1048576", value: $maximumPacketSize, format: .number.grouping(.never))
-                        .multilineTextAlignment(.trailing)
-                        .keyboardType(.numberPad)
-                }
+                InlineIntField("Max Packet Size", value: $maximumPacketSize, unit: "bytes", range: 1024...10485760)
             } header: {
                 Text("Advanced")
             } footer: {
-                Text("Include Device Metadata adds model and vendor info to every state message. Disabling retain means the broker won't store the last state for new subscribers.")
+                Text("Include Device Metadata adds model and vendor info to every state message. Turning off Retain Messages means the broker won't store the last state for new subscribers.")
             }
         }
         .navigationTitle("MQTT")

@@ -150,6 +150,51 @@ final class SettingsUITests: ShellbeeUITestCase {
         _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
     }
 
+    // Behavior: Automatic Checks is presented as a positive toggle
+    // ("Enable Automatic Checks") rather than the negated Z2M flag
+    // ("Disable Automatic Checks"). Verifies the user-facing label.
+    func testOTAAutomaticChecksLabelIsPositive() {
+        openSettingsScreen("OTA Updates")
+        let positive = app.staticTexts["Enable Automatic Checks"]
+        XCTAssertTrue(positive.waitForExistence(timeout: 5),
+                      "OTA settings should show 'Enable Automatic Checks', not the negated Z2M flag")
+        XCTAssertFalse(app.staticTexts["Disable Automatic Checks"].exists,
+                       "Negated label 'Disable Automatic Checks' should no longer be shown")
+    }
+
+    // Behavior: Transfer Timing labels must fit within their row
+    // (no truncation). The shortened labels are visible verbatim.
+    func testOTATransferTimingLabelsVisible() {
+        openSettingsScreen("OTA Updates")
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Request Timeout"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Block Delay"].exists)
+        XCTAssertTrue(app.staticTexts["Block Size"].exists)
+    }
+
+    // Behavior: MQTT retain is presented as a positive toggle
+    // ("Retain Messages") rather than the negated Z2M flag.
+    func testMQTTRetainLabelIsPositive() {
+        openSettingsScreen("MQTT")
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Retain Messages"].waitForExistence(timeout: 5),
+                      "MQTT settings should show 'Retain Messages', not 'Disable Message Retain'")
+        XCTAssertFalse(app.staticTexts["Disable Message Retain"].exists)
+    }
+
+    // Behavior: numeric units belong with the value (via InlineIntField),
+    // never parenthesised in the label. Catches regressions like
+    // "Max Packet Size (bytes)".
+    func testMQTTMaxPacketSizeLabelHasNoParenthesisedUnit() {
+        openSettingsScreen("MQTT")
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Max Packet Size"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Max Packet Size (bytes)"].exists,
+                       "Unit should be rendered alongside the value, not in the label")
+    }
+
     // MARK: - Health
 
     func testHealthSettingsOpens() {
