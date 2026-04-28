@@ -783,16 +783,28 @@ def handle_request(client, subpath: str, payload: Any) -> None:
 # ── MQTT wiring ────────────────────────────────────────────────────────────
 
 _z2m_online = False
-_client: mqtt.Client | None = None  # set in main() once connected; used by control.py
+_client: mqtt.Client | None = None  # set in main() once instantiated; used by control.py
+_mqtt_connected = False              # True between on_connect and on_disconnect
+_mqtt_last_error: str | None = None  # last broker connect/disconnect failure reason
+_seed_complete = False               # True after seed_initial() finishes
 
 
 def on_connect(client, userdata, flags, reason_code, properties):
+    global _mqtt_connected, _mqtt_last_error
     log.info("Connected to MQTT broker (rc=%s)", reason_code)
+    _mqtt_connected = True
+    _mqtt_last_error = None
     client.subscribe(f"{Z2M_TOPIC}/bridge/state")
     client.subscribe(f"{Z2M_TOPIC}/+/set")
     client.subscribe(f"{Z2M_TOPIC}/+/get")
     client.subscribe(f"{Z2M_TOPIC}/bridge/request/#")
     client.subscribe(f"{Z2M_TOPIC}/_engine/client_connected")
+
+
+def on_disconnect(client, userdata, *args):
+    global _mqtt_connected
+    _mqtt_connected = False
+    log.warning("Disconnected from MQTT broker (args=%s)", args)
 
 
 def on_message(client, userdata, msg):
@@ -912,20 +924,32 @@ def drift_tick(client) -> None:
 # ── Main ───────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    global _client
+    global _client, _mqtt_last_error, _seed_complete
     _init_state()
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
     client.on_message = on_message
     _client = client
+
+    # Start the test-center HTTP server before we touch the broker. If MQTT is
+    # unreachable, scenarios will still 503 — but /api/state and /api/health
+    # come up immediately so the operator can see what's wrong.
+    try:
+        import control
+        control.start_in_thread()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Control plane not started: %s", exc)
 
     log.info("Connecting to %s:%d …", MQTT_HOST, MQTT_PORT)
     while True:
         try:
             client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
+            _mqtt_last_error = None
             break
         except Exception as exc:
+            _mqtt_last_error = f"{type(exc).__name__}: {exc}"
             log.warning("Broker not ready (%s), retrying in 3s …", exc)
             time.sleep(3)
 
@@ -941,14 +965,7 @@ def main() -> None:
 
     time.sleep(2)
     seed_initial(client)
-
-    # HTTP control plane (test center). Imported lazily so a missing FastAPI
-    # install does not block the core MQTT engine from running.
-    try:
-        import control
-        control.start_in_thread()
-    except Exception as exc:  # noqa: BLE001
-        log.warning("Control plane not started: %s", exc)
+    _seed_complete = True
 
     if MODE == "once":
         client.loop_stop()
