@@ -264,6 +264,8 @@
 				Shared/ExposeCardView.swift,
 				Shared/FanControl/FanControlCard.swift,
 				Shared/FanControl/FanControlContext.swift,
+				Shared/FanControl/FanExtraRow.swift,
+				Shared/FanControl/FanFeatureSections.swift,
 				Shared/GenericExposeCard/GenericExposeCard.swift,
 				"Shared/LightControl/Color+HexString.swift",
 				Shared/LightControl/LightAdvancedFeatureRow.swift,
