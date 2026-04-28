@@ -660,50 +660,8 @@ private struct FanExtraRow: View {
 
     @ViewBuilder
     private var labelStack: some View {
-        if let desc = meaningfulDescription {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.body)
-                Text(desc)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        } else {
-            Text(label).font(.body)
-        }
+        Text(label).font(.body)
     }
-
-    private var meaningfulDescription: String? {
-        guard let desc = expose.description?.trimmingCharacters(in: .whitespacesAndNewlines),
-              desc.count >= 12 else { return nil }
-        let normalizedLabel = label.lowercased().filter { $0.isLetter || $0.isNumber }
-        let normalizedDesc = desc.lowercased().filter { $0.isLetter || $0.isNumber }
-        if normalizedDesc == normalizedLabel { return nil }
-        if desc.contains(where: { $0.isNumber }) { return desc }
-        let labelTokens = tokenize(label).map { $0.lowercased() }
-        let descTokens = tokenize(desc).map { $0.lowercased() }
-        let novel = descTokens.filter { token in
-            if Self.stopwords.contains(token) { return false }
-            return !labelTokens.contains { stem in
-                token.hasPrefix(stem) || stem.hasPrefix(token)
-            }
-        }
-        return novel.count >= 4 ? desc : nil
-    }
-
-    private func tokenize(_ s: String) -> [String] {
-        s.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
-    }
-
-    private static let stopwords: Set<String> = [
-        "a", "an", "the", "this", "that", "these", "those",
-        "is", "are", "was", "were", "be", "been", "being",
-        "of", "to", "in", "on", "at", "for", "with", "by", "as", "from",
-        "and", "or", "but", "if", "when", "while", "whether",
-        "it", "its", "this", "you", "your",
-        "controls", "control", "sets", "set", "set:", "value", "current",
-        "device", "switch"
-    ]
 
     private func prettify(_ s: String) -> String {
         s.replacingOccurrences(of: "_", with: " ").capitalized
