@@ -16,6 +16,13 @@ struct DeviceListRow: View {
     let onInterview: () -> Void
     let onUpdate: (() -> Void)?
     let onCheckUpdate: () -> Void
+    let onSchedule: (() -> Void)?
+    let onUnschedule: (() -> Void)?
+
+    private var isBatteryPowered: Bool {
+        guard let raw = device.powerSource?.lowercased() else { return false }
+        return raw.contains("battery")
+    }
 
     private var supportsOTA: Bool {
         device.definition?.supportsOTA == true
@@ -106,9 +113,23 @@ struct DeviceListRow: View {
             Button(action: onInterview) {
                 Label("Interview", systemImage: "questionmark.circle")
             }
-            if let onUpdate {
-                Button(action: onUpdate) {
-                    Label("Update Firmware", systemImage: "arrow.up.circle")
+            if supportsOTA {
+                Divider()
+                Button(action: onCheckUpdate) {
+                    Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
+                }
+                if otaStatus?.phase == .scheduled, let onUnschedule {
+                    Button(action: onUnschedule) {
+                        Label("Cancel Scheduled Update", systemImage: "xmark.circle")
+                    }
+                } else if isBatteryPowered, let onSchedule {
+                    Button(action: onSchedule) {
+                        Label("Schedule Update", systemImage: "calendar.badge.clock")
+                    }
+                } else if let onUpdate {
+                    Button(action: onUpdate) {
+                        Label("Update Now", systemImage: "arrow.up.circle")
+                    }
                 }
             }
             Divider()
@@ -134,7 +155,9 @@ struct DeviceListRow: View {
                 onReconfigure: {},
                 onInterview: {},
                 onUpdate: {},
-                onCheckUpdate: {}
+                onCheckUpdate: {},
+                onSchedule: {},
+                onUnschedule: {}
             )
         }
     }

@@ -218,6 +218,24 @@ final class DeviceListViewModel {
         )
     }
 
+    func scheduleDeviceUpdate(_ device: Device, environment: AppEnvironment) {
+        Haptics.impact(.medium)
+        environment.store.startOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTASchedule,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
+    func unscheduleDeviceUpdate(_ device: Device, environment: AppEnvironment) {
+        Haptics.impact(.light)
+        environment.store.cancelOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTAUnschedule,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
     func renameDevice(_ device: Device, to newName: String, homeassistantRename: Bool = true, environment: AppEnvironment) {
         environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: homeassistantRename)
     }

@@ -7,6 +7,8 @@ enum Z2MTopics {
     static let bridgeEvent = "bridge/event"
     static let bridgeResponseDeviceOTAUpdate = "bridge/response/device/ota_update/update"
     static let bridgeResponseDeviceOTACheck = "bridge/response/device/ota_update/check"
+    static let bridgeResponseDeviceOTASchedule = "bridge/response/device/ota_update/schedule"
+    static let bridgeResponseDeviceOTAUnschedule = "bridge/response/device/ota_update/unschedule"
     static let bridgeHealth = "bridge/health"
     static let bridgeDefinitions = "bridge/definitions"
 
@@ -29,6 +31,8 @@ enum Z2MTopics {
         static let deviceUnbind = "bridge/request/device/unbind"
         static let deviceOTACheck = "bridge/request/device/ota_update/check"
         static let deviceOTAUpdate = "bridge/request/device/ota_update/update"
+        static let deviceOTASchedule = "bridge/request/device/ota_update/schedule"
+        static let deviceOTAUnschedule = "bridge/request/device/ota_update/unschedule"
         static let deviceReportingConfigure = "bridge/request/device/configure_reporting"
         static let groupAdd = "bridge/request/group/add"
         static let groupRemove = "bridge/request/group/remove"

@@ -533,6 +533,21 @@ final class AppStore {
         )
     }
 
+    func startOTASchedule(for friendlyName: String) {
+        otaUpdates[friendlyName] = OTAUpdateStatus(
+            deviceName: friendlyName,
+            phase: .scheduled,
+            progress: nil,
+            remaining: nil
+        )
+    }
+
+    func cancelOTASchedule(for friendlyName: String) {
+        if otaUpdates[friendlyName]?.phase == .scheduled {
+            otaUpdates.removeValue(forKey: friendlyName)
+        }
+    }
+
     func reset() {
         devices = []
         groups = []
