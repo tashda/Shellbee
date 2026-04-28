@@ -196,6 +196,8 @@
 				Features/Logs/LogRowView.swift,
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
+				Features/Notifications/FastTrackBanner.swift,
+				Features/Notifications/InAppNotificationBanner.swift,
 				Features/Notifications/InAppNotificationOverlay.swift,
 				Features/Settings/AboutView.swift,
 				Features/Settings/AcknowledgementsView.swift,
