@@ -104,6 +104,7 @@ nonisolated enum DesignTokens {
         static let climateSetpointMinWidth: CGFloat = 72
         static let inspectorTabPickerWidth: CGFloat = 220
         static let inspectorPayloadInset: CGFloat = 10
+        static let restoreStepCircle: CGFloat = 24
     }
 
     nonisolated enum Shadow {

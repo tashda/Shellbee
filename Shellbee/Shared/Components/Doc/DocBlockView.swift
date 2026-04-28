@@ -68,7 +68,7 @@ private struct BulletListView: View {
                 HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                     Text("•")
                         .foregroundStyle(.secondary)
-                        .padding(.top, 1)
+                        .padding(.top, DesignTokens.Spacing.xxs)
                     DocInlineTextView(spans: spans, sourcePath: sourcePath)
                         .font(.body)
                         .fixedSize(horizontal: false, vertical: true)
@@ -136,7 +136,7 @@ private struct SubsectionView: View {
 
 #Preview {
     ScrollView {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
             DocBlockView(block: .paragraph([.text("IKEA lights only support transitions on "), .bold("1 attribute"), .text(" at a time.")]))
             DocBlockView(block: .note([.text("Keep the bulb close to the coordinator during pairing.")]))
             DocBlockView(block: .stepList([
