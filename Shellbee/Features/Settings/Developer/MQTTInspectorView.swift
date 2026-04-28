@@ -32,7 +32,7 @@ struct MQTTInspectorView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 220)
+                .frame(width: DesignTokens.Size.inspectorTabPickerWidth)
             }
         }
         .onAppear { store.attach(session: environment.session) }
@@ -233,10 +233,10 @@ private struct SubscribeView: View {
                 Text("Paused")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.vertical, DesignTokens.Spacing.sm)
                     .background(.orange.opacity(0.9), in: Capsule())
-                    .padding(.bottom, 12)
+                    .padding(.bottom, DesignTokens.Spacing.md)
             }
         }
     }
@@ -257,12 +257,12 @@ private struct MessageRow: View {
     @State private var expanded: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: message.logLevelIcon)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(message.logLevelColor)
-                    .frame(width: 14)
+                    .frame(width: DesignTokens.Size.logLevelIconWidth)
                 Text(message.topic)
                     .font(.system(.caption, design: .monospaced).weight(.bold))
                     .foregroundStyle(.primary)
@@ -277,13 +277,13 @@ private struct MessageRow: View {
             Text(JSONHighlighter.attributed(message.prettyPayload))
                 .lineLimit(expanded ? nil : 6)
                 .textSelection(.enabled)
-                .padding(10)
+                .padding(DesignTokens.Size.inspectorPayloadInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous)
                         .fill(Color(.tertiarySystemFill))
                 )
-                .padding(.leading, 22)
+                .padding(.leading, DesignTokens.Size.cardSymbol)
             if message.prettyPayload.components(separatedBy: "\n").count > 6 {
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() }
@@ -292,10 +292,10 @@ private struct MessageRow: View {
                         .font(.caption.weight(.medium))
                 }
                 .buttonStyle(.borderless)
-                .padding(.leading, 22)
+                .padding(.leading, DesignTokens.Size.cardSymbol)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
     }
 }
 
