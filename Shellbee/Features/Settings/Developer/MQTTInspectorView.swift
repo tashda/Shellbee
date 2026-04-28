@@ -3,38 +3,80 @@ import SwiftUI
 struct MQTTInspectorView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var selectedTab: Tab = .subscribe
+    @State private var store = SubscribeStore()
 
-    enum Tab: String, CaseIterable, Identifiable {
+    enum Tab: String, CaseIterable, Identifiable, Hashable {
         case subscribe = "Subscribe"
         case publish = "Publish"
         var id: String { rawValue }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("Mode", selection: $selectedTab) {
-                ForEach(Tab.allCases) { tab in
-                    Text(tab.rawValue).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding()
-
+        ZStack {
             switch selectedTab {
             case .subscribe:
-                SubscribeView()
+                SubscribeView(store: store)
             case .publish:
                 PublishView()
             }
         }
         .navigationTitle("MQTT Inspector")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("Mode", selection: $selectedTab) {
+                    ForEach(Tab.allCases) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 280)
+            }
+        }
+        .onAppear { store.attach(session: environment.session) }
+        .onDisappear { store.detach(session: environment.session) }
     }
 }
 
-// MARK: - Subscribe
+// MARK: - Model
 
-private struct InspectorMessage: Identifiable, Equatable {
+@Observable
+final class SubscribeStore {
+    var messages: [InspectorMessage] = []
+    var paused: Bool = false
+    var filter: String = ""
+    let bufferCap: Int = 1000
+
+    func attach(session: ConnectionSessionController) {
+        session.rawInboundTap = { [weak self] topic, payload in
+            guard let self, !self.paused else { return }
+            let msg = InspectorMessage(timestamp: .now, topic: topic, payload: payload)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.messages.append(msg)
+                if self.messages.count > self.bufferCap {
+                    self.messages.removeFirst(self.messages.count - self.bufferCap)
+                }
+            }
+        }
+    }
+
+    func detach(session: ConnectionSessionController) {
+        session.rawInboundTap = nil
+    }
+
+    func clear() {
+        messages.removeAll()
+    }
+
+    var filtered: [InspectorMessage] {
+        let f = filter.trimmingCharacters(in: .whitespaces)
+        guard !f.isEmpty else { return messages }
+        return messages.filter { $0.topic.localizedCaseInsensitiveContains(f) }
+    }
+}
+
+struct InspectorMessage: Identifiable, Equatable {
     let id = UUID()
     let timestamp: Date
     let topic: String
@@ -51,88 +93,112 @@ private struct InspectorMessage: Identifiable, Equatable {
     }
 }
 
+// MARK: - Subscribe
+
 private struct SubscribeView: View {
-    @Environment(AppEnvironment.self) private var environment
-    @State private var filter: String = ""
-    @State private var messages: [InspectorMessage] = []
-    @State private var paused: Bool = false
-    @State private var bufferCap: Int = 1000
+    @Bindable var store: SubscribeStore
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                TextField("Filter (substring of topic)", text: $filter)
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                Button(paused ? "Resume" : "Pause") {
-                    paused.toggle()
+        List {
+            if store.filtered.isEmpty {
+                ContentUnavailableView {
+                    Label("No messages", systemImage: "dot.radiowaves.left.and.right")
+                } description: {
+                    Text(emptyDescription)
                 }
-                .buttonStyle(.bordered)
-                Button("Clear") {
-                    messages.removeAll()
-                }
-                .buttonStyle(.bordered)
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-
-            if filteredMessages.isEmpty {
-                ContentUnavailableView(
-                    "No messages",
-                    systemImage: "dot.radiowaves.left.and.right",
-                    description: Text(paused
-                        ? "Inspector is paused."
-                        : "Waiting for messages from \(environment.connectionConfig?.displayName ?? "the bridge")."
-                    )
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             } else {
-                List(filteredMessages.reversed()) { msg in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(msg.topic)
-                                .font(.callout.monospaced())
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                            Spacer()
-                            Text(msg.timestamp, format: .dateTime.hour().minute().second())
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(msg.prettyPayload)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(8)
-                            .textSelection(.enabled)
-                    }
-                    .padding(.vertical, 2)
-                }
-                .listStyle(.plain)
-            }
-        }
-        .onAppear {
-            environment.session.rawInboundTap = { topic, payload in
-                guard !paused else { return }
-                let msg = InspectorMessage(timestamp: .now, topic: topic, payload: payload)
-                Task { @MainActor in
-                    messages.append(msg)
-                    if messages.count > bufferCap {
-                        messages.removeFirst(messages.count - bufferCap)
-                    }
+                ForEach(store.filtered.reversed()) { msg in
+                    MessageRow(message: msg)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 }
             }
         }
-        .onDisappear {
-            environment.session.rawInboundTap = nil
+        .listStyle(.plain)
+        .searchable(text: $store.filter, prompt: "Filter topics")
+        .autocorrectionDisabled()
+        .textInputAutocapitalization(.never)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    store.paused.toggle()
+                } label: {
+                    Image(systemName: store.paused ? "play.fill" : "pause.fill")
+                }
+                .accessibilityLabel(store.paused ? "Resume" : "Pause")
+                Button {
+                    store.clear()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .accessibilityLabel("Clear")
+                .disabled(store.messages.isEmpty)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if store.paused {
+                Text("Paused")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.orange.opacity(0.9), in: Capsule())
+                    .padding(.bottom, 12)
+            }
         }
     }
 
-    private var filteredMessages: [InspectorMessage] {
-        let f = filter.trimmingCharacters(in: .whitespaces)
-        guard !f.isEmpty else { return messages }
-        return messages.filter { $0.topic.contains(f) }
+    private var emptyDescription: String {
+        if store.paused {
+            return "Inspector is paused. Resume to continue capturing."
+        }
+        if !store.filter.isEmpty {
+            return "No topic matches \"\(store.filter)\"."
+        }
+        return "Waiting for the next bridge message."
+    }
+}
+
+private struct MessageRow: View {
+    let message: InspectorMessage
+    @State private var expanded: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(message.topic)
+                    .font(.subheadline.monospaced().weight(.semibold))
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                Spacer(minLength: 8)
+                Text(message.timestamp, format: .dateTime.hour().minute().second())
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Text(message.prettyPayload)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .lineLimit(expanded ? nil : 6)
+                .textSelection(.enabled)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color(.tertiarySystemFill))
+                )
+            if message.prettyPayload.components(separatedBy: "\n").count > 6 {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() }
+                } label: {
+                    Text(expanded ? "Show less" : "Show more")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -144,43 +210,72 @@ private struct PublishView: View {
     @State private var payload: String = ""
     @State private var showWarning: Bool = false
     @State private var lastResult: String?
+    @FocusState private var focusedField: Field?
+
+    enum Field: Hashable { case topic, payload }
+
+    private var isValid: Bool {
+        !topic.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
-        Form {
-            Section("Topic") {
-                TextField("e.g. zigbee2mqtt/Office Lamp/set", text: $topic)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.callout.monospaced())
-            }
-            Section {
-                TextEditor(text: $payload)
-                    .frame(minHeight: 120)
-                    .font(.callout.monospaced())
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-            } header: {
-                Text("Payload")
-            } footer: {
-                Text("JSON object, JSON literal, or raw string. Empty payload is allowed.")
-            }
-            Section {
-                Button {
-                    if topic.hasPrefix("bridge/request/") {
-                        showWarning = true
-                    } else {
-                        sendNow()
+        VStack(spacing: 0) {
+            Form {
+                Section {
+                    TextField("e.g. zigbee2mqtt/Office Lamp/set", text: $topic)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.callout.monospaced())
+                        .focused($focusedField, equals: .topic)
+                        .submitLabel(.next)
+                        .onSubmit { focusedField = .payload }
+                } header: {
+                    Text("Topic")
+                }
+
+                Section {
+                    TextEditor(text: $payload)
+                        .frame(minHeight: 140)
+                        .font(.callout.monospaced())
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($focusedField, equals: .payload)
+                } header: {
+                    Text("Payload")
+                } footer: {
+                    Text("JSON object, JSON literal, or raw string. Empty payload is allowed.")
+                }
+
+                if let lastResult {
+                    Section {
+                        Label(lastResult, systemImage: "checkmark.circle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.green)
                     }
-                } label: {
-                    Label("Publish", systemImage: "paperplane.fill")
-                }
-                .disabled(topic.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            if let lastResult {
-                Section("Last") {
-                    Text(lastResult).font(.footnote).foregroundStyle(.secondary)
                 }
             }
+
+            Divider()
+
+            Button {
+                if topic.hasPrefix("bridge/request/") {
+                    showWarning = true
+                } else {
+                    sendNow()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "paperplane.fill")
+                    Text("Publish")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(!isValid)
+            .padding()
+            .background(.bar)
         }
         .alert("Publish to bridge/request/*?", isPresented: $showWarning) {
             Button("Publish", role: .destructive) { sendNow() }
@@ -192,7 +287,8 @@ private struct PublishView: View {
 
     private func sendNow() {
         environment.send(topic: topic, payload: parsedPayload())
-        lastResult = "Published to \(topic) at \(Date.now.formatted(date: .omitted, time: .standard))"
+        lastResult = "Published at \(Date.now.formatted(date: .omitted, time: .standard))"
+        Haptics.impact(.light)
     }
 
     private func parsedPayload() -> JSONValue {
