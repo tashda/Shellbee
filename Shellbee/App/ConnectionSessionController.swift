@@ -18,6 +18,10 @@ final class ConnectionSessionController {
     var errorMessage: String?
     private(set) var hasBeenConnected = false
 
+    /// Receives every inbound (topic, payload) before routing. Used by the
+    /// MQTT inspector in Developer Mode. Set on view appear, clear on disappear.
+    var rawInboundTap: ((String, JSONValue) -> Void)?
+
     private let store: AppStore
     private let history: ConnectionHistory
     private let client = Z2MWebSocketClient()
@@ -212,6 +216,9 @@ final class ConnectionSessionController {
 
             switch socketEvent {
             case .message(let data):
+                if let tap = rawInboundTap, let raw = Z2MMessageRouter.decodeRaw(data) {
+                    tap(raw.topic, raw.payload)
+                }
                 if let event = router.route(data) {
                     store.apply(event)
                 }

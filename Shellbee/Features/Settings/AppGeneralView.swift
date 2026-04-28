@@ -6,6 +6,7 @@ struct AppGeneralView: View {
     @AppStorage(ConnectionSessionController.connectionLiveActivityEnabledKey) private var connectionLiveActivityEnabled: Bool = true
     @AppStorage(ConnectionSessionController.otaLiveActivityEnabledKey) private var otaLiveActivityEnabled: Bool = true
     @AppStorage(ConnectionSessionController.maxReconnectAttemptsKey) private var maxReconnectAttempts: Int = ConnectionSessionController.defaultMaxReconnectAttempts
+    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var consent = CrashReportingConsent.shared
 
     var body: some View {
@@ -55,6 +56,12 @@ struct AppGeneralView: View {
                 Text("Diagnostics")
             } footer: {
                 Text("Crash reports contain the error and a short stack trace. Bridge URLs, tokens, and device names are redacted. When this is off, you'll still be asked before any crash is sent.")
+            }
+
+            Section {
+                Toggle("Developer Mode", isOn: $developerModeEnabled)
+            } footer: {
+                Text("Exposes the MQTT Inspector and other power-user tools under a Developer section in Settings.")
             }
         }
         .navigationTitle("General")

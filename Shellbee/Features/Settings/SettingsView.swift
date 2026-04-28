@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
+    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
 
@@ -19,6 +20,10 @@ struct SettingsView: View {
                 networkSection
                 toolsSection
                 applicationSection
+
+                if developerModeEnabled {
+                    developerSection
+                }
 
                 if environment.connectionState.isConnected || environment.hasBeenConnected {
                     dangerSection
@@ -170,6 +175,16 @@ struct SettingsView: View {
             }
         } header: {
             Text("Application")
+        }
+    }
+
+    private var developerSection: some View {
+        Section {
+            NavigationLink { DeveloperSettingsView() } label: {
+                settingsLabel(title: "Developer", systemImage: "hammer.fill", color: .purple)
+            }
+        } header: {
+            Text("Developer")
         }
     }
 

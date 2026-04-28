@@ -17,6 +17,11 @@ struct Z2MMessageRouter: Sendable {
         return dispatch(raw)
     }
 
+    static func decodeRaw(_ data: Data) -> (topic: String, payload: JSONValue)? {
+        guard let raw = try? JSONDecoder().decode(RawMessage.self, from: data) else { return nil }
+        return (raw.topic, raw.payload)
+    }
+
     private func dispatch(_ raw: RawMessage) -> Z2MEvent? {
         switch raw.topic {
         case Z2MTopics.bridgeInfo:
