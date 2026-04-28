@@ -82,7 +82,7 @@ struct ClimateControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: heroIcon)
                 .font(.system(size: 11, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
@@ -106,7 +106,7 @@ struct ClimateControlCard: View {
 
     @ViewBuilder
     private var heroValue: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
             Text(context.displayTemperature)
                 .font(.system(size: 56, weight: .bold, design: .rounded))
                 .monospacedDigit()
@@ -133,7 +133,7 @@ struct ClimateControlCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Setpoint row
@@ -146,7 +146,7 @@ struct ClimateControlCard: View {
 
     private var setpointRow: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: "target")
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -171,7 +171,7 @@ struct ClimateControlCard: View {
                     .font(.system(size: 24, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(heroTint)
-                    .frame(minWidth: 72)
+                    .frame(minWidth: DesignTokens.Size.climateSetpointMinWidth)
                     .contentTransition(.numericText(value: setpointDraft))
                     .animation(.snappy, value: setpointDraft)
 
@@ -190,7 +190,7 @@ struct ClimateControlCard: View {
             Image(systemName: systemImage)
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(heroTint)
-                .frame(width: 32, height: 32)
+                .frame(width: DesignTokens.Size.climateActionButton, height: DesignTokens.Size.climateActionButton)
                 .background(heroTint.opacity(0.15), in: Circle())
         }
         .buttonStyle(.plain)
@@ -201,7 +201,7 @@ struct ClimateControlCard: View {
     @ViewBuilder
     private func modeRow(modes: [String]) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: "dial.medium")
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)

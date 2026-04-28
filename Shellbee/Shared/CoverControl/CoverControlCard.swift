@@ -81,7 +81,7 @@ struct CoverControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open")
                 .font(.system(size: 11, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
@@ -102,8 +102,8 @@ struct CoverControlCard: View {
     @ViewBuilder
     private var heroValue: some View {
         if context.positionFeature != nil {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                     Text("\(Int(positionDraft.rounded()))")
                         .font(.system(size: 56, weight: .bold, design: .rounded))
                         .monospacedDigit()
@@ -132,7 +132,7 @@ struct CoverControlCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Position slider
@@ -175,7 +175,7 @@ struct CoverControlCard: View {
         Button {
             if let p = context.statePayload(payload) { onSend(p) }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: systemImage)
                     .font(.system(size: 14, weight: .semibold))
                 Text(title)
@@ -196,7 +196,7 @@ struct CoverControlCard: View {
         let writable = context.tiltFeature?.isWritable == true && mode == .interactive
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: "rotate.3d")
                         .font(.system(size: 11, weight: .bold))
                         .symbolRenderingMode(.hierarchical)
@@ -207,7 +207,7 @@ struct CoverControlCard: View {
                 }
                 .foregroundStyle(.secondary)
                 Spacer()
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                     Text("\(Int(tiltDraft.rounded()))")
                         .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .monospacedDigit()

@@ -100,6 +100,8 @@ nonisolated enum DesignTokens {
         static let splashIcon: CGFloat = 60
         static let splashTitle: CGFloat = 40
         static let touchlinkButtonFrame: CGFloat = 24
+        static let climateActionButton: CGFloat = 32
+        static let climateSetpointMinWidth: CGFloat = 72
     }
 
     nonisolated enum Shadow {
