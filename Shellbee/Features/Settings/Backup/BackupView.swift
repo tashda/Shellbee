@@ -6,6 +6,7 @@ struct BackupView: View {
     @State private var status: Status = .idle
     @State private var lastBackupURL: URL?
     @State private var history: [HistoryEntry] = HistoryEntry.load()
+    @State private var showRestoreGuide = false
 
     enum Status: Equatable {
         case idle
@@ -31,7 +32,10 @@ struct BackupView: View {
                 .disabled(status == .running || !environment.connectionState.isConnected)
 
                 if let url = lastBackupURL {
-                    ShareLink(item: url) {
+                    ShareLink(
+                        item: url,
+                        preview: SharePreview(url.lastPathComponent, image: Image(systemName: "doc.zipper"))
+                    ) {
                         Label("Save / Share", systemImage: "square.and.arrow.up")
                     }
                 }
@@ -84,14 +88,19 @@ struct BackupView: View {
             }
 
             Section {
-                Link(destination: URL(string: "https://www.zigbee2mqtt.io/guide/usage/backup_restore.html")!) {
-                    Label("Restore guide", systemImage: "arrow.up.bin.fill")
+                Button {
+                    showRestoreGuide = true
+                } label: {
+                    Label("Restore Guide", systemImage: "arrow.up.bin.fill")
                 }
             } footer: {
-                Text("Restoring a backup requires host-level access to your Z2M data directory. The bridge does not expose a restore API.")
+                Text("Restoring a backup requires host-level access to your Z2M data directory. Shellbee can't perform the restore — open the guide for the steps.")
             }
         }
         .navigationTitle("Backup")
+        .sheet(isPresented: $showRestoreGuide) {
+            RestoreGuideSheet()
+        }
     }
 
     private func triggerBackup() {
@@ -126,7 +135,16 @@ struct BackupView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HHmmss"
         let filename = "shellbee-z2m-backup-\(formatter.string(from: .now)).zip"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+        // Documents/Backups/ — durable enough for the share sheet to expose
+        // the full set of receivers (AirDrop, Mail, Messages, third-party apps).
+        // temporaryDirectory works for ShareLink in theory but receivers see
+        // a sandboxed URL and many fall back to "Save to Files" only.
+        let docs = try FileManager.default.url(
+            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+        )
+        let dir = docs.appendingPathComponent("Backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(filename)
         try data.write(to: url, options: .atomic)
         return url
     }
