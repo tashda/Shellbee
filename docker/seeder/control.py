@@ -43,7 +43,15 @@ app = FastAPI(title="Shellbee Test Center", docs_url="/api/docs", redoc_url=None
 def _client():
     c = seeder._client
     if c is None:
-        raise HTTPException(503, "MQTT client not connected yet")
+        raise HTTPException(503, "Seeder has not initialised the MQTT client yet")
+    if not getattr(seeder, "_mqtt_connected", False):
+        last = getattr(seeder, "_mqtt_last_error", None) or "no on_connect callback received"
+        raise HTTPException(
+            503,
+            f"MQTT broker not connected (host={seeder.MQTT_HOST}:{seeder.MQTT_PORT}, last_error={last})",
+        )
+    if not getattr(seeder, "_seed_complete", False):
+        raise HTTPException(503, "Seeder still waiting for bridge/state online — initial seed not yet published")
     return c
 
 
@@ -59,6 +67,22 @@ def _ok(**extra: Any) -> dict:
 
 
 # ── Read APIs ─────────────────────────────────────────────────────────────
+
+@app.get("/api/health")
+def get_health():
+    return {
+        "mqtt": {
+            "host": seeder.MQTT_HOST,
+            "port": seeder.MQTT_PORT,
+            "client_initialised": seeder._client is not None,
+            "connected": getattr(seeder, "_mqtt_connected", False),
+            "last_error": getattr(seeder, "_mqtt_last_error", None),
+        },
+        "z2m_online": getattr(seeder, "_z2m_online", False),
+        "seed_complete": getattr(seeder, "_seed_complete", False),
+        "z2m_topic": seeder.Z2M_TOPIC,
+    }
+
 
 @app.get("/api/state")
 def get_state():
