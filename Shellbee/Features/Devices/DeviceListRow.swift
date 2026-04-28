@@ -122,13 +122,33 @@ struct DeviceListRow: View {
                     Button(action: onUnschedule) {
                         Label("Cancel Scheduled Update", systemImage: "xmark.circle")
                     }
-                } else if isBatteryPowered, let onSchedule {
-                    Button(action: onSchedule) {
-                        Label("Schedule Update", systemImage: "calendar.badge.clock")
-                    }
-                } else if let onUpdate {
-                    Button(action: onUpdate) {
-                        Label("Update Now", systemImage: "arrow.up.circle")
+                } else {
+                    // Both actions exposed when an update is available.
+                    // Battery devices get Schedule listed first as the
+                    // recommended path (Z2M waits for the device to wake);
+                    // mains devices get Update Now first.
+                    if isBatteryPowered {
+                        if let onSchedule {
+                            Button(action: onSchedule) {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                        }
+                        if let onUpdate {
+                            Button(action: onUpdate) {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                        }
+                    } else {
+                        if let onUpdate {
+                            Button(action: onUpdate) {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                        }
+                        if let onSchedule {
+                            Button(action: onSchedule) {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                        }
                     }
                 }
             }

@@ -162,9 +162,12 @@ struct DeviceDetailView: View {
 
     private func deviceConfigMenu(for device: Device) -> some View {
         let state = environment.store.state(for: device.friendlyName)
-        let otaActive = environment.store.otaStatus(for: device.friendlyName)?.isActive == true
+        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        let otaActive = otaStatus?.isActive == true
         let supportsOTA = device.definition?.supportsOTA == true
         let hasUpdateAvailable = state.hasUpdateAvailable
+        let isBattery = (device.powerSource?.lowercased() ?? "").contains("battery")
+        let isScheduled = otaStatus?.phase == .scheduled
 
         return Menu {
             Button { menuDestination = .settings } label: {
@@ -176,14 +179,32 @@ struct DeviceDetailView: View {
             Button { menuDestination = .reporting } label: {
                 Label("Reporting", systemImage: "waveform")
             }
-            if supportsOTA && !otaActive {
+            if supportsOTA {
                 Divider()
-                Button { checkForUpdate(device) } label: {
-                    Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
-                }
-                if hasUpdateAvailable {
-                    Button { updateFirmware(device) } label: {
-                        Label("Update", systemImage: "arrow.up.circle")
+                if isScheduled {
+                    Button { unscheduleUpdate(device) } label: {
+                        Label("Cancel Scheduled Update", systemImage: "xmark.circle")
+                    }
+                } else if !otaActive {
+                    Button { checkForUpdate(device) } label: {
+                        Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
+                    }
+                    if hasUpdateAvailable {
+                        if isBattery {
+                            Button { scheduleUpdate(device) } label: {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                            Button { updateFirmware(device) } label: {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                        } else {
+                            Button { updateFirmware(device) } label: {
+                                Label("Update Now", systemImage: "arrow.up.circle")
+                            }
+                            Button { scheduleUpdate(device) } label: {
+                                Label("Schedule Update", systemImage: "calendar.badge.clock")
+                            }
+                        }
                     }
                 }
             }
@@ -217,6 +238,24 @@ struct DeviceDetailView: View {
         environment.store.startOTAUpdate(for: device.friendlyName)
         environment.send(
             topic: Z2MTopics.Request.deviceOTAUpdate,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
+    private func scheduleUpdate(_ device: Device) {
+        Haptics.impact(.medium)
+        environment.store.startOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTASchedule,
+            payload: .object(["id": .string(device.friendlyName)])
+        )
+    }
+
+    private func unscheduleUpdate(_ device: Device) {
+        Haptics.impact(.light)
+        environment.store.cancelOTASchedule(for: device.friendlyName)
+        environment.send(
+            topic: Z2MTopics.Request.deviceOTAUnschedule,
             payload: .object(["id": .string(device.friendlyName)])
         )
     }

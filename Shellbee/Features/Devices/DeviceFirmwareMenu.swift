@@ -4,6 +4,10 @@ struct DeviceFirmwareMenu: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var showUpdateAllConfirm = false
 
+    static func isBattery(_ device: Device) -> Bool {
+        (device.powerSource?.lowercased() ?? "").contains("battery")
+    }
+
     private var otaCapableDevices: [Device] {
         environment.store.devices.filter {
             guard $0.definition?.supportsOTA == true else { return false }
@@ -39,11 +43,27 @@ struct DeviceFirmwareMenu: View {
             }
 
             Button {
-                let names = otaCapableDevices.map(\.friendlyName)
-                for name in names {
-                    environment.store.startOTACheck(for: name)
+                let battery = otaCapableDevices.filter(Self.isBattery)
+                let mains = otaCapableDevices.filter { !Self.isBattery($0) }
+                // Mains-powered (& unknown power source) → standard OTA check
+                // through the rate-limited bulk queue.
+                let mainsNames = mains.map(\.friendlyName)
+                if !mainsNames.isEmpty {
+                    for name in mainsNames {
+                        environment.store.startOTACheck(for: name)
+                    }
+                    environment.otaBulkQueue.enqueue(mainsNames, kind: .check)
                 }
-                environment.otaBulkQueue.enqueue(names, kind: .check)
+                // Battery-powered → schedule directly. Z2M waits for each
+                // device's next wake-up; no need to rate-limit since these
+                // requests don't traverse the mesh until the device asks.
+                for device in battery {
+                    environment.store.startOTASchedule(for: device.friendlyName)
+                    environment.send(
+                        topic: Z2MTopics.Request.deviceOTASchedule,
+                        payload: .object(["id": .string(device.friendlyName)])
+                    )
+                }
             } label: {
                 Label("Check All for Updates\(otaCount > 0 ? " (\(otaCount))" : "")", systemImage: "arrow.trianglehead.2.clockwise")
             }
