@@ -49,7 +49,7 @@ struct DocOptionRowView: View {
 }
 
 #Preview {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
         DocOptionRowView(option: DocOption(
             name: "transition",
             type: "number",

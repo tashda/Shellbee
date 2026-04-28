@@ -113,7 +113,7 @@ struct GroupCard: View {
 
     private func identityMetric(label: String, icon: String, value: String, unit: String?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -125,7 +125,7 @@ struct GroupCard: View {
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
                     .font(.system(size: 24, weight: .semibold, design: .rounded))
                     .monospacedDigit()
@@ -176,7 +176,7 @@ struct GroupCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     private var scenesTitle: String {

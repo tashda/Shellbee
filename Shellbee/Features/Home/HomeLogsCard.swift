@@ -50,7 +50,7 @@ struct HomeLogRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
             badge
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 Text(entry.summaryTitle)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)

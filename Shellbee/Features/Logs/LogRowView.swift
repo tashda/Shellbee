@@ -8,7 +8,7 @@ struct LogRowView: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             leadingVisual
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                     Text(entry.summaryTitle)
                         .font(.subheadline.bold())

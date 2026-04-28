@@ -19,7 +19,7 @@ struct SplashScreenView: View {
                 Image(splashImageName)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
+                    .frame(width: DesignTokens.Size.splashIconLarge, height: DesignTokens.Size.splashIconLarge)
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
                     .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
                 .scaleEffect(isVisible ? 1 : 0.8)

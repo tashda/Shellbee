@@ -85,7 +85,7 @@ struct DeviceImageView: View {
 }
 
 #Preview {
-    VStack(spacing: 20) {
+    VStack(spacing: DesignTokens.Spacing.xl) {
         HStack {
             DeviceImageView(device: .preview, isAvailable: true)
             Text("Available Image")

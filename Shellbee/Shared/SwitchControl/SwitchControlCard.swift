@@ -56,7 +56,7 @@ struct SwitchControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: context.isOn ? "power.circle.fill" : "power.circle")
                 .font(.system(size: 11, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
@@ -116,7 +116,7 @@ struct SwitchControlCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Metering grid
@@ -179,7 +179,7 @@ private struct MeteringTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -192,7 +192,7 @@ private struct MeteringTile: View {
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .monospacedDigit()

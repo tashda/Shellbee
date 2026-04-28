@@ -60,7 +60,7 @@ struct LockControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: context.isLocked ? "lock.fill" : "lock.open.fill")
                 .font(.system(size: 11, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
@@ -92,7 +92,7 @@ struct LockControlCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Action button

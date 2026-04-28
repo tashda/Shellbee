@@ -55,7 +55,7 @@ struct PermitJoinActiveSheet: View {
                     .symbolEffect(.pulse)
             }
         }
-        .frame(width: 220, height: 220)
+        .frame(width: DesignTokens.Size.permitJoinQR, height: DesignTokens.Size.permitJoinQR)
     }
 
     private func progress(remaining: Int?) -> CGFloat {

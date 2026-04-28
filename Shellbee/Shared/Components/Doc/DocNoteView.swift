@@ -31,7 +31,7 @@ struct DocNoteView: View {
 }
 
 #Preview {
-    VStack(spacing: 16) {
+    VStack(spacing: DesignTokens.Spacing.lg) {
         DocNoteView(spans: [
             .text("Keep the bulb "),
             .bold("close to the coordinator"),

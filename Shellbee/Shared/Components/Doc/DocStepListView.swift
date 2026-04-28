@@ -54,7 +54,7 @@ private struct DocStepRow: View {
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
+                .padding(.top, DesignTokens.Spacing.xs)
                 .padding(.bottom, showConnector ? DesignTokens.Spacing.xl : 0)
         }
     }

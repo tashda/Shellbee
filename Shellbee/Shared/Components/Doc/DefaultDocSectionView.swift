@@ -63,7 +63,7 @@ struct SectionHeader: View {
 
 #Preview {
     ScrollView {
-        VStack(spacing: 20) {
+        VStack(spacing: DesignTokens.Spacing.xl) {
             DefaultDocSectionView(section: DocSection(
                 title: "Notes",
                 level: 2,

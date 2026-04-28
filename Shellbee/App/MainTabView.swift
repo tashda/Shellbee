@@ -23,7 +23,7 @@ struct MainTabView: View {
         .overlay(alignment: .bottom) {
             InAppNotificationOverlay()
                 .safeAreaPadding(.bottom)
-                .padding(.bottom, 58)
+                .padding(.bottom, DesignTokens.Size.mainTabBarInset)
         }
         .sheet(item: Binding(
             get: { environment.pendingLogSheet },

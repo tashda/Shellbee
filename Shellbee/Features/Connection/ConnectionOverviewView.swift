@@ -11,7 +11,7 @@ struct ConnectionOverviewView: View {
                 Section("Explore") {
                     NavigationLink(destination: DocBrowserView()) {
                         Label {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                                 Text("Device Library")
                                 Text("Browse docs for 5,000+ Zigbee devices")
                                     .font(.caption)

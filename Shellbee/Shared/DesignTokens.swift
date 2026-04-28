@@ -105,6 +105,11 @@ nonisolated enum DesignTokens {
         static let inspectorTabPickerWidth: CGFloat = 220
         static let inspectorPayloadInset: CGFloat = 10
         static let restoreStepCircle: CGFloat = 24
+        static let splashIconLarge: CGFloat = 120
+        static let mainTabBarInset: CGFloat = 58
+        static let permitJoinQR: CGFloat = 220
+        static let homeAddDividerInset: CGFloat = 60
+        static let docLabelColumnWidth: CGFloat = 90
     }
 
     nonisolated enum Shadow {

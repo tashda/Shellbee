@@ -83,7 +83,7 @@ private struct ReadingTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -96,7 +96,7 @@ private struct ReadingTile: View {
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .monospacedDigit()

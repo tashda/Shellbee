@@ -38,7 +38,7 @@ struct HomeStatCell: View {
     var subtitle: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
             Text(value)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(valueColor)

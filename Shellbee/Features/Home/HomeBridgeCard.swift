@@ -69,7 +69,7 @@ struct HomeBridgeCard: View {
             HomeCardTitle(symbol: "antenna.radiowaves.left.and.right", title: headerTitle, tint: .teal)
                 .lineLimit(1)
             if isReconnecting {
-                HStack(spacing: 4) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     ProgressView().controlSize(.mini)
                     Text("Reconnecting (\(reconnectAttempt))")
                         .font(.caption)
@@ -123,7 +123,7 @@ struct HomeBridgeCard: View {
     }
 
     private func statusLine(symbol: String, tint: Color, text: String) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: symbol)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(tint)
