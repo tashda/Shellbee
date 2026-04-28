@@ -1,0 +1,97 @@
+name: Bug report
+description: Something in Shellbee is broken or behaving unexpectedly.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more concrete you can be, the faster it gets fixed.
+        If you can reproduce it against the mock bridge (`docker-compose up` in this repo), please mention that — it's the fastest path to a fix.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what did Shellbee do instead?
+      placeholder: |
+        1. Opened the Bedroom Light card
+        2. Tapped the brightness slider
+        3. Expected: brightness changes
+        4. Actual: card freezes for ~5s, then snaps back to old value
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps so I can hit the same bug. If it's intermittent, say roughly how often.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: shellbee-version
+    attributes:
+      label: Shellbee version
+      description: Settings → About, or the App Store version. Include the build number if you have it.
+      placeholder: "1.2.0 (45)"
+    validations:
+      required: true
+
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS / iPadOS version and device
+      placeholder: "iOS 18.2, iPhone 15 Pro"
+    validations:
+      required: true
+
+  - type: input
+    id: z2m-version
+    attributes:
+      label: Zigbee2MQTT version
+      description: Found in the Z2M web frontend under Settings → About, or in `bridge/info`.
+      placeholder: "2.1.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bridge-type
+    attributes:
+      label: Bridge connection
+      options:
+        - Real Z2M bridge over WebSocket
+        - Mock bridge from this repo (docker-compose)
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: device-info
+    attributes:
+      label: Affected device(s)
+      description: If the bug is about a specific Zigbee device, paste its model and manufacturer (visible on the device card or in `bridge/devices`). Skip if not device-specific.
+      placeholder: "Philips Hue White A60 (LWA001), Signify Netherlands B.V."
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: |
+        Drag in screenshots, a screen recording, or relevant log lines from Settings → Logging. Redact any auth tokens or hostnames you don't want public.
+      placeholder: "Paste logs here or drop in a screenshot."
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: I'm on the latest version of Shellbee available to me.
+          required: true

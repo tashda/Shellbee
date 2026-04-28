@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/tashda/Shellbee/discussions
+    about: Ask a question or discuss an idea before filing a feature request.
+  - name: Privacy policy
+    url: https://github.com/tashda/Shellbee/blob/main/PRIVACY.md
+    about: How Shellbee handles your data.

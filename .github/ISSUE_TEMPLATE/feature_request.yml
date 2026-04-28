@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest a new feature, setting, or improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Shellbee aims to feel familiar to Z2M web frontend users, so if your idea exists there already, pointing at it (screenshot or link) is the most useful thing you can do.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do today, and where does Shellbee get in the way?
+      placeholder: "I want to ... but currently I have to ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Shellbee to do?
+      description: Describe the feature or change. UI sketches, screenshots from the Z2M web frontend, or "it should look like X screen but with Y" all work.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: z2m-parity
+    attributes:
+      label: Does the Z2M web frontend already do this?
+      options:
+        - Yes — and Shellbee should match it
+        - Partially — Z2M does something similar
+        - No — this would be Shellbee-specific
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Workarounds you're using today, or other approaches you thought about. Skip if there aren't any.
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions and this isn't already requested.
+          required: true
