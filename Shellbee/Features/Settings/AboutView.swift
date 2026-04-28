@@ -14,9 +14,7 @@ struct AboutView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
     }
 
-    // App Store ID is assigned at first TestFlight upload. Until then, the
-    // Rate row links to a search; replace `idTBD` once known.
-    private static let appStoreReviewURL = URL(string: "https://apps.apple.com/app/idTBD?action=write-review")!
+    private static let appStoreReviewURL = URL(string: "https://apps.apple.com/app/id6763139074?action=write-review")!
     private static let githubURL = URL(string: "https://github.com/tashda/Shellbee")!
 
     var body: some View {
