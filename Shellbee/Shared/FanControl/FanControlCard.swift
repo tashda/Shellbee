@@ -15,7 +15,7 @@ struct FanControlCard: View {
 
     private let rowHorizontalPadding: CGFloat = DesignTokens.Spacing.lg
     private let rowVerticalPadding: CGFloat = DesignTokens.Spacing.md
-    private let rowIconWidth: CGFloat = 22
+    private let rowIconWidth: CGFloat = DesignTokens.Size.cardSymbol
 
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.lg) {
@@ -154,7 +154,7 @@ struct FanControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"))
                 .font(.system(size: 11, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
@@ -169,9 +169,9 @@ struct FanControlCard: View {
     @ViewBuilder
     private var heroValue: some View {
         if hasAirSensors {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 if let pm = pm25Value {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                         Text(Int(pm.rounded()).formatted())
                             .font(.system(size: 56, weight: .bold, design: .rounded))
                             .monospacedDigit()
@@ -234,7 +234,7 @@ struct FanControlCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Hero mode row
@@ -264,7 +264,7 @@ struct FanControlCard: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
                         Text(prettify(context.fanMode ?? "—"))
                             .foregroundStyle(.primary)
                         Image(systemName: "chevron.up.chevron.down")
@@ -330,7 +330,7 @@ struct FanControlCard: View {
 
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: icon)
                         .font(.system(size: 11, weight: .bold))
                         .symbolRenderingMode(.hierarchical)
@@ -381,7 +381,7 @@ struct FanControlCard: View {
     private func ageTile(label: String, minutes: Double, icon: String) -> some View {
         let parts = formatDurationParts(minutes)
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -394,7 +394,7 @@ struct FanControlCard: View {
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(parts.value)
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .monospacedDigit()
@@ -647,7 +647,7 @@ private struct FanExtraRow: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
                         Text(prettify(current))
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption2.weight(.semibold))
