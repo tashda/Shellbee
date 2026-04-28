@@ -6,14 +6,35 @@ struct AboutView: View {
     private var info: BridgeInfo? { environment.store.bridgeInfo }
     private var stats: HomeStatsSnapshot { HomeStatsSnapshot(devices: environment.store.devices) }
 
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+
+    private var appBuild: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+    }
+
     var body: some View {
         Form {
+            shellbeeSection
             bridgeSection
             networkSection
-            moreSection
         }
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var shellbeeSection: some View {
+        Section("Shellbee") {
+            CopyableRow(label: "Version", value: appVersion)
+            CopyableRow(label: "Build", value: appBuild)
+            NavigationLink { DeviceStatisticsView() } label: {
+                Text("Device Statistics")
+            }
+            NavigationLink { AcknowledgementsView() } label: {
+                Text("Acknowledgements")
+            }
+        }
     }
 
     @ViewBuilder
@@ -54,16 +75,6 @@ struct AboutView: View {
         }
     }
 
-    private var moreSection: some View {
-        Section {
-            NavigationLink { DeviceStatisticsView() } label: {
-                Text("Device Statistics")
-            }
-            NavigationLink { AcknowledgementsView() } label: {
-                Text("Acknowledgements")
-            }
-        }
-    }
 }
 
 #Preview {
