@@ -5,8 +5,15 @@ struct BackupView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var status: Status = .idle
     @State private var lastBackupURL: URL?
+    @State private var lastBackupSize: Int?
     @State private var history: [HistoryEntry] = HistoryEntry.load()
     @State private var showRestoreGuide = false
+    @State private var shareItem: ShareItem?
+
+    private struct ShareItem: Identifiable {
+        let url: URL
+        var id: URL { url }
+    }
 
     enum Status: Equatable {
         case idle
@@ -22,7 +29,7 @@ struct BackupView: View {
                     triggerBackup()
                 } label: {
                     HStack {
-                        Label("Create Backup", systemImage: "arrow.down.doc.fill")
+                        Text("Create Backup")
                         Spacer()
                         if status == .running {
                             ProgressView()
@@ -31,49 +38,25 @@ struct BackupView: View {
                 }
                 .disabled(status == .running || !environment.connectionState.isConnected)
 
-                if let url = lastBackupURL {
-                    ShareLink(
-                        item: url,
-                        preview: SharePreview(url.lastPathComponent, image: Image(systemName: "doc.zipper"))
-                    ) {
-                        Label("Save / Share", systemImage: "square.and.arrow.up")
+                if let url = lastBackupURL, let size = lastBackupSize {
+                    Button {
+                        shareItem = ShareItem(url: url)
+                    } label: {
+                        LabeledContent("Share Backup", value: formatted(size: size))
                     }
                 }
-            } header: {
-                Text("Create")
             } footer: {
-                Text("Backs up Z2M configuration and coordinator state via the bridge. Save the resulting zip to Files, iCloud Drive, or AirDrop.")
-            }
-
-            switch status {
-            case .idle:
-                EmptyView()
-            case .running:
-                Section { Text("Working…").foregroundStyle(.secondary) }
-            case .success(let size):
-                Section {
-                    Label("Backup ready (\(formatted(size: size)))", systemImage: "checkmark.seal.fill")
-                        .foregroundStyle(.green)
-                }
-            case .failed(let reason):
-                Section {
-                    Label(reason, systemImage: "xmark.octagon.fill")
-                        .foregroundStyle(.red)
-                }
+                statusFooter
             }
 
             if !history.isEmpty {
                 Section {
                     ForEach(history) { entry in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(entry.timestamp, format: .dateTime.day().month().year().hour().minute())
-                                    .font(.callout)
-                                Text(formatted(size: entry.size))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
+                        LabeledContent {
+                            Text(formatted(size: entry.size))
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Text(entry.timestamp, format: .dateTime.day().month().year().hour().minute())
                         }
                     }
                     .onDelete { indices in
@@ -81,9 +64,9 @@ struct BackupView: View {
                         HistoryEntry.save(history)
                     }
                 } header: {
-                    Text("Recent")
+                    Text("Recent Backups")
                 } footer: {
-                    Text("Metadata only — Shellbee does not retain backup files. Save them to Files / iCloud Drive when prompted.")
+                    Text("Shellbee does not retain backup files — save them to Files or iCloud Drive when prompted.")
                 }
             }
 
@@ -91,15 +74,41 @@ struct BackupView: View {
                 Button {
                     showRestoreGuide = true
                 } label: {
-                    Label("Restore Guide", systemImage: "arrow.up.bin.fill")
+                    HStack {
+                        Text("Restore Guide")
+                            .foregroundStyle(Color.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             } footer: {
-                Text("Restoring a backup requires host-level access to your Z2M data directory. Shellbee can't perform the restore — open the guide for the steps.")
+                Text("Restoring requires host-level access to your Z2M data directory. Shellbee can't perform the restore.")
             }
         }
         .navigationTitle("Backup")
         .sheet(isPresented: $showRestoreGuide) {
             RestoreGuideSheet()
+        }
+        .sheet(item: $shareItem) { item in
+            ActivityViewController(activityItems: [item.url])
+                .ignoresSafeArea()
+        }
+    }
+
+    @ViewBuilder
+    private var statusFooter: some View {
+        switch status {
+        case .idle:
+            Text("Backs up Z2M configuration and coordinator state via the bridge. Save the resulting zip to Files, iCloud Drive, or AirDrop.")
+        case .running:
+            Text("Working…")
+        case .success:
+            Text("Backup ready. Use Share Backup to save it.")
+        case .failed(let reason):
+            Text(reason)
+                .foregroundStyle(.red)
         }
     }
 
@@ -112,6 +121,7 @@ struct BackupView: View {
                         let url = try saveBackup(base64: zipBase64)
                         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
                         lastBackupURL = url
+                        lastBackupSize = size
                         status = .success(size: size)
                         let entry = HistoryEntry(id: UUID(), timestamp: .now, size: size, filename: url.lastPathComponent)
                         history.insert(entry, at: 0)
@@ -129,9 +139,7 @@ struct BackupView: View {
     }
 
     private func saveBackup(base64: String) throws -> URL {
-        guard let data = Data(base64Encoded: base64) else {
-            throw NSError(domain: "Backup", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid base64 zip"])
-        }
+        let data = try BackupPayload.decode(base64: base64)
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HHmmss"
         let filename = "shellbee-z2m-backup-\(formatter.string(from: .now)).zip"
@@ -146,6 +154,12 @@ struct BackupView: View {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent(filename)
         try data.write(to: url, options: .atomic)
+        do {
+            try BackupPayload.verifyZip(at: url)
+        } catch {
+            try? FileManager.default.removeItem(at: url)
+            throw error
+        }
         return url
     }
 
@@ -173,6 +187,16 @@ struct BackupView: View {
             UserDefaults.standard.set(data, forKey: key)
         }
     }
+}
+
+private struct ActivityViewController: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 #Preview {
