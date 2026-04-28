@@ -10,17 +10,10 @@ struct AppLiveActivitiesView: View {
             Section {
                 Toggle("Connection", isOn: $connectionLiveActivityEnabled)
                 Toggle("OTA Updates", isOn: $otaLiveActivityEnabled)
-            } header: {
-                Text("On Lock Screen")
-            } footer: {
-                Text("Show progress on the Lock Screen and Dynamic Island.")
-            }
-
-            Section {
                 Toggle("Scheduled OTAs", isOn: $otaScheduledLiveActivityEnabled)
                     .disabled(!otaLiveActivityEnabled)
             } footer: {
-                Text("Off by default — scheduled updates can sit pending for hours waiting for the device to wake up.")
+                Text("Show progress on the Lock Screen and Dynamic Island. Scheduled OTAs are off by default — they can sit pending for hours waiting for the device to wake up.")
             }
         }
         .navigationTitle("Live Activities")
