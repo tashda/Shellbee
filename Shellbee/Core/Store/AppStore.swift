@@ -42,6 +42,11 @@ final class AppStore {
     // bulk queue so it can advance to the next device.
     var otaResponseForwarding: ((_ friendlyName: String, _ success: Bool, _ kind: OTABulkOperationQueue.Kind) -> Void)?
 
+    // One-shot callback invoked when the next bridge/response/backup arrives.
+    // BackupView sets this before sending the request and clears it on receipt.
+    // Tuple: (zipBase64, errorMessage) — exactly one is non-nil.
+    var backupResponseHandler: ((_ zipBase64: String?, _ error: String?) -> Void)?
+
     // Set by AppEnvironment to filter out notifications the user disabled
     // in Settings → App → Notifications. Returns true to allow.
     var notificationFilter: ((InAppNotification) -> Bool)?
@@ -195,7 +200,18 @@ final class AppStore {
                 )
             }
 
-        case .bridgeResponse(_, let payload):
+        case .bridgeResponse(let topic, let payload):
+            if topic == Z2MTopics.bridgeResponseBackup, let handler = backupResponseHandler {
+                backupResponseHandler = nil
+                if payload.object?["status"]?.stringValue == "ok",
+                   let zip = payload.object?["data"]?.object?["zip"]?.stringValue {
+                    handler(zip, nil)
+                } else {
+                    let err = payload.object?["error"]?.stringValue ?? "Unknown error"
+                    handler(nil, err)
+                }
+                break
+            }
             // The options/info responses carry only `{restart_required}` (and
             // echo the request on error). The full config is delivered via the
             // separate `bridge/info` topic, so don't try to decode config here

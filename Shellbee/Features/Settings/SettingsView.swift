@@ -122,6 +122,9 @@ struct SettingsView: View {
             NavigationLink { TouchlinkView() } label: {
                 settingsLabel(title: "Touchlink", systemImage: "dot.radiowaves.left.and.right", color: .teal)
             }
+            NavigationLink { BackupView() } label: {
+                settingsLabel(title: "Backup", systemImage: "arrow.down.doc.fill", color: .indigo)
+            }
         } header: {
             Text("Tools")
         }
