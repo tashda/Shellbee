@@ -138,7 +138,7 @@ struct DeviceCard: View {
 
     private func identityMetric(label: String, icon: String, value: String, unit: String?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .bold))
                     .symbolRenderingMode(.hierarchical)
@@ -150,7 +150,7 @@ struct DeviceCard: View {
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
                     .font(.system(size: 24, weight: .semibold, design: .rounded))
                     .monospacedDigit()
@@ -202,7 +202,7 @@ struct DeviceCard: View {
     }
 
     private var deviceMetadata: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
             Text(vendor)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -229,7 +229,7 @@ struct DeviceCard: View {
     private var hairline: some View {
         Rectangle()
             .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     @ViewBuilder
@@ -372,7 +372,7 @@ struct DeviceCard: View {
 }
 
 #Preview {
-    VStack(spacing: 20) {
+    VStack(spacing: DesignTokens.Spacing.xl) {
         DeviceCard(
             device: .preview,
             state: [

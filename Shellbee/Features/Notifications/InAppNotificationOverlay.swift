@@ -360,9 +360,9 @@ struct InAppNotificationBanner: View {
             Image(systemName: notification.level.systemImage)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(notification.level.color)
-                .frame(width: 22)
+                .frame(width: DesignTokens.Size.cardSymbol)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Text(notification.title)
                         .font(.footnote.weight(.semibold))
@@ -372,7 +372,7 @@ struct InAppNotificationBanner: View {
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, DesignTokens.Spacing.sm)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DesignTokens.Spacing.xxs)
                             .background(.secondary.opacity(DesignTokens.Opacity.subtleFill), in: Capsule())
                     }
                     if let stackPositionLabel {
@@ -380,7 +380,7 @@ struct InAppNotificationBanner: View {
                             .font(.caption2.weight(.semibold).monospacedDigit())
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, DesignTokens.Spacing.sm)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DesignTokens.Spacing.xxs)
                             .background(.tint.opacity(DesignTokens.Opacity.softFill), in: Capsule())
                     }
                 }
@@ -399,7 +399,7 @@ struct InAppNotificationBanner: View {
                 Image(systemName: "xmark")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
-                    .frame(width: 22, height: 22)
+                    .frame(width: DesignTokens.Size.cardSymbol, height: DesignTokens.Size.cardSymbol)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -446,7 +446,7 @@ struct InAppNotificationBanner: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.leading, 30)
+        .padding(.leading, DesignTokens.Size.cardSymbol + DesignTokens.Spacing.sm)
     }
 
     private var dragGesture: some Gesture {
@@ -679,7 +679,7 @@ struct FastTrackBanner: View {
             onSwipeNext: {},
             onSwipePrevious: {}
         )
-        .padding(.bottom, 80)
+        .padding(.bottom, DesignTokens.Size.notificationBottomInset)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color(.systemGroupedBackground))
@@ -695,7 +695,7 @@ struct FastTrackBanner: View {
                 priority: .fastTrack
             )
         )
-        .padding(.bottom, 80)
+        .padding(.bottom, DesignTokens.Size.notificationBottomInset)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color(.systemGroupedBackground))
@@ -719,7 +719,7 @@ private struct PreviewHost: View {
                 onGoToDevice: {},
                 onCopyMessage: {}
             )
-            .padding(.bottom, 80)
+            .padding(.bottom, DesignTokens.Size.notificationBottomInset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))
