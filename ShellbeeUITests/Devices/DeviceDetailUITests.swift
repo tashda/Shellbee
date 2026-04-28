@@ -135,6 +135,86 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
         XCTAssertTrue(app.navigationBars["Bathroom Fan"].waitForExistence(timeout: 5))
     }
 
+    /// Light hero card surfaces brightness + Effects (sparkles button); Startup
+    /// / Other-advanced features used to live behind sunrise / ellipsis sheet
+    /// buttons inside the card. They now drop down as native iOS Settings
+    /// sections beneath the card. The Effects button stays — it's a true
+    /// light-specific control, not configuration.
+    func testLightAdvancedFeaturesRenderAsSettingsSections() {
+        openDetail(named: "Bedroom Hue")
+        XCTAssertTrue(app.navigationBars["Bedroom Hue"].waitForExistence(timeout: 5))
+
+        // Effects button (sparkles) must still exist in the card.
+        // Sunrise (Startup) and Ellipsis (More) buttons must NOT be there.
+        // We verify by swiping down to the section area instead — the
+        // presence of section headers like "Configuration" or rows with
+        // typical advanced-feature labels signals the new layout.
+        app.swipeUp()
+        let configHeader = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] 'Configuration' OR label CONTAINS[c] 'Startup'")
+        ).firstMatch
+        XCTAssertTrue(
+            configHeader.waitForExistence(timeout: 3),
+            "Light should expose advanced features in a native section beneath the card"
+        )
+    }
+
+    /// `linkquality` and `identify` must never appear in any feature section —
+    /// they're either surfaced on the device card (linkquality) or are
+    /// noisy diagnostics (identify). Enforced for every device category.
+    func testFeatureSectionsHideLinkqualityAndIdentify() {
+        for name in ["Bedroom Hue", "Bathroom Fan", "Office Inovelli Fan Switch", "Bedroom Curtain"] {
+            openDetail(named: name)
+            _ = app.navigationBars[name].waitForExistence(timeout: 5)
+            app.swipeUp()
+            app.swipeUp()
+            XCTAssertFalse(
+                app.staticTexts["Linkquality"].exists,
+                "\(name) must not surface 'Linkquality' as a settings row"
+            )
+            XCTAssertFalse(
+                app.staticTexts["Identify"].exists,
+                "\(name) must not surface 'Identify' as a settings row"
+            )
+            // Back out for the next iteration.
+            let backBtn = app.navigationBars.buttons.element(boundBy: 0)
+            if backBtn.exists { backBtn.tap() }
+            _ = app.cells.firstMatch.waitForExistence(timeout: 5)
+        }
+    }
+
+    /// Writable numeric settings under the fan card render their slider inline
+    /// — never push to a separate detail screen. Attic Tuya Fan exposes both a
+    /// hero `speed` slider and a `countdown_hours` writable numeric in its
+    /// settings sections, so a correctly-rendered detail screen exposes more
+    /// than one slider without any navigation push.
+    func testFanWritableNumericRendersInline() {
+        openDetail(named: "Attic Tuya Fan")
+        XCTAssertTrue(app.navigationBars["Attic Tuya Fan"].waitForExistence(timeout: 5))
+
+        let detailNav = app.navigationBars["Attic Tuya Fan"]
+        XCTAssertTrue(detailNav.waitForExistence(timeout: 5))
+
+        // Scroll down so the Behaviour section (countdown_hours lives there)
+        // is rendered and its slider is hit-testable.
+        app.swipeUp()
+        app.swipeUp()
+
+        let sliderCount = app.sliders.count
+        XCTAssertGreaterThan(
+            sliderCount, 1,
+            "Expected hero speed slider plus an inline slider for countdown_hours; got \(sliderCount)"
+        )
+
+        // No new navigation page (e.g. a dedicated "Countdown Hours" detail)
+        // should be on screen — the original device detail nav bar must still
+        // be the active one.
+        XCTAssertFalse(
+            app.navigationBars["Countdown Hours"].exists,
+            "Writable numeric must not push a dedicated detail screen"
+        )
+    }
+
     // MARK: - Remote — "TRADFRI Remote"
 
     func testRemoteDetailOpens() {

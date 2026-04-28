@@ -30,6 +30,12 @@ struct LightAdvancedFeature: Equatable, Identifiable {
             return "Color Temperature"
         case "current_level_startup":
             return "Startup Brightness"
+        case "power_on_behavior":
+            return "Power-On Behavior"
+        case "color_power_on_behavior":
+            return "Color Power-On Behavior"
+        case "state_startup":
+            return "Startup State"
         default:
             let stripped = last.hasSuffix("_startup") ? String(last.dropLast("_startup".count)) : last
             return stripped.replacingOccurrences(of: "_", with: " ").capitalized

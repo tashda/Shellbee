@@ -31,7 +31,26 @@ struct LightControlContext: Equatable, Identifiable {
     }
 
     var startupFeatures: [LightAdvancedFeature] {
-        advancedFeatures.filter { $0.category == .startup }
+        let filtered = advancedFeatures.filter { $0.category == .startup }
+        return filtered.sorted { Self.startupSortKey($0) < Self.startupSortKey($1) }
+    }
+
+    /// Lower keys sort first. Power-On Behavior is the headline setting and
+    /// must lead; the per-attribute startup defaults follow in a natural
+    /// "what does it do, then what does it look like" order.
+    private static func startupSortKey(_ feature: LightAdvancedFeature) -> Int {
+        guard let last = feature.payloadPath.last else { return 99 }
+        switch last {
+        case "power_on_behavior":               return 0
+        case "color_power_on_behavior":         return 1
+        case "state_startup":                   return 2
+        case "current_level_startup":           return 3
+        case "color_temp_startup":              return 4
+        case "hue_startup", "saturation_startup": return 5
+        case "execute_if_off":                  return 9
+        default:
+            return last.hasSuffix("_startup") ? 6 : 8
+        }
     }
 
     var otherAdvancedFeatures: [LightAdvancedFeature] {

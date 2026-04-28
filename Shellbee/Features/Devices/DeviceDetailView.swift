@@ -32,26 +32,7 @@ struct DeviceDetailView: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
 
-            if device.category == .fan, let fanCtx = FanControlContext(device: device, state: state) {
-                Section {
-                    FanControlCard(context: fanCtx, mode: .interactive, onSend: { payload in
-                        environment.sendDeviceState(device.friendlyName, payload: payload)
-                    }, rendersSectionsInline: false)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
-                FanFeatureSections(context: fanCtx, mode: .interactive) { payload in
-                    environment.sendDeviceState(device.friendlyName, payload: payload)
-                }
-            } else {
-                Section {
-                    ExposeCardView(device: device, state: state, mode: .interactive) { payload in
-                        environment.sendDeviceState(device.friendlyName, payload: payload)
-                    }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
-            }
+            heroAndSettingsSections(for: device, state: state)
 
             if device.definition != nil {
                 Section("Documentation") {
@@ -141,6 +122,105 @@ struct DeviceDetailView: View {
             Button("Cancel", role: .cancel) { pendingDeviceAlert = nil }
         } message: { alert in
             Text(alert.message)
+        }
+    }
+
+    /// Renders the hero card(s) plus any "leftover" exposes as native iOS
+    /// Settings-style sections beneath. The cards stay exactly as they are;
+    /// the sections handle configuration / advanced features that don't fit
+    /// in the hero (LED, child lock, power-on behaviour, calibration, etc.).
+    @ViewBuilder
+    private func heroAndSettingsSections(for device: Device, state: [String: JSONValue]) -> some View {
+        let send: (JSONValue) -> Void = { payload in
+            environment.sendDeviceState(device.friendlyName, payload: payload)
+        }
+
+        switch device.category {
+        case .fan:
+            if let ctx = FanControlContext(device: device, state: state) {
+                Section {
+                    FanControlCard(context: ctx, mode: .interactive, onSend: send, rendersSectionsInline: false)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                FanFeatureSections(context: ctx, mode: .interactive, onSend: send)
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .light:
+            let contexts = LightControlContext.contexts(for: device, state: state)
+            if !contexts.isEmpty {
+                Section {
+                    VStack(spacing: DesignTokens.Spacing.lg) {
+                        ForEach(contexts) { ctx in
+                            LightControlCard(context: ctx, mode: .interactive, onSend: send,
+                                             rendersAdvancedSheetsInline: false)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+                ForEach(contexts) { ctx in
+                    LightFeatureSections(context: ctx, onSend: send)
+                }
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .switchPlug:
+            let contexts = SwitchControlContext.contexts(for: device, state: state)
+            if !contexts.isEmpty {
+                Section {
+                    ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                if let ctx = contexts.first {
+                    SwitchFeatureSections(device: device, context: ctx, state: state, onSend: send)
+                }
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .climate:
+            if let ctx = ClimateControlContext(device: device, state: state) {
+                Section {
+                    ClimateControlCard(context: ctx, mode: .interactive, onSend: send)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                ClimateFeatureSections(device: device, context: ctx, state: state, onSend: send)
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        case .cover:
+            let contexts = CoverControlContext.contexts(for: device, state: state)
+            if !contexts.isEmpty {
+                Section {
+                    ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                if let ctx = contexts.first {
+                    CoverFeatureSections(device: device, context: ctx, state: state, onSend: send)
+                }
+            } else {
+                genericExposeSection(device: device, state: state, send: send)
+            }
+
+        default:
+            genericExposeSection(device: device, state: state, send: send)
+        }
+    }
+
+    @ViewBuilder
+    private func genericExposeSection(device: Device, state: [String: JSONValue], send: @escaping (JSONValue) -> Void) -> some View {
+        Section {
+            ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
         }
     }
 
