@@ -62,7 +62,7 @@ struct ClimateControlCard: View {
             Color(.secondarySystemGroupedBackground)
             LinearGradient(
                 colors: [heroTint.opacity(isActive ? 0.18 : 0.06),
-                         heroTint.opacity(0.04)],
+                         heroTint.opacity(DesignTokens.Opacity.subtleFade)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -88,7 +88,7 @@ struct ClimateControlCard: View {
                 .symbolRenderingMode(.hierarchical)
             Text(context.runningStateLabel)
                 .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(0.5)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .lineLimit(1)
         }
@@ -112,7 +112,7 @@ struct ClimateControlCard: View {
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
             // In snapshot mode (and when no interactive setpoint control is
             // shown), surface the target inside the hero block — otherwise the
             // setpoint row below already carries it.
@@ -121,7 +121,7 @@ struct ClimateControlCard: View {
                     .font(DesignTokens.Typography.heroSubtitle)
                     .foregroundStyle(heroTint)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
             }
         }
     }
@@ -132,7 +132,7 @@ struct ClimateControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 
@@ -152,7 +152,7 @@ struct ClimateControlCard: View {
                     .symbolRenderingMode(.hierarchical)
                 Text("Target")
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
             }
             .foregroundStyle(.secondary)
@@ -191,7 +191,7 @@ struct ClimateControlCard: View {
                 .font(DesignTokens.Typography.climateActionIcon)
                 .foregroundStyle(heroTint)
                 .frame(width: DesignTokens.Size.climateActionButton, height: DesignTokens.Size.climateActionButton)
-                .background(heroTint.opacity(0.15), in: Circle())
+                .background(heroTint.opacity(DesignTokens.Opacity.actionButtonFill), in: Circle())
         }
         .buttonStyle(.plain)
     }
@@ -207,7 +207,7 @@ struct ClimateControlCard: View {
                     .symbolRenderingMode(.hierarchical)
                 Text("Mode")
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
             }
             .foregroundStyle(.secondary)
@@ -233,7 +233,7 @@ struct ClimateControlCard: View {
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.vertical, DesignTokens.Spacing.sm)
                 .background(
-                    isSelected ? chipTint.opacity(0.20) : Color(.tertiarySystemFill),
+                    isSelected ? chipTint.opacity(DesignTokens.Opacity.strongAccentFill) : Color(.tertiarySystemFill),
                     in: Capsule()
                 )
                 .foregroundStyle(isSelected ? chipTint : Color.primary)

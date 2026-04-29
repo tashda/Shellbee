@@ -73,7 +73,7 @@ struct LightControlCard: View {
                 LinearGradient(
                     colors: [
                         (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(context.isOn ? 0.18 : 0.06),
-                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(0.04)
+                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(DesignTokens.Opacity.subtleFade)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -100,7 +100,7 @@ struct LightControlCard: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(eyebrowLabel)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(1)
             }
@@ -176,7 +176,7 @@ struct LightControlCard: View {
                         .symbolRenderingMode(.hierarchical)
                     Text(eyebrowLabel)
                         .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(0.5)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                         .lineLimit(1)
                 }
@@ -198,7 +198,7 @@ struct LightControlCard: View {
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
                 Text("%")
                     .font(DesignTokens.Typography.heroUnit)
                     .foregroundStyle(.secondary)
@@ -225,7 +225,7 @@ struct LightControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 
@@ -251,7 +251,7 @@ struct LightControlCard: View {
                         .symbolRenderingMode(.hierarchical)
                     Text("Color")
                         .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(0.5)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                 }
                 .foregroundStyle(.secondary)
@@ -272,7 +272,7 @@ struct LightControlCard: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)

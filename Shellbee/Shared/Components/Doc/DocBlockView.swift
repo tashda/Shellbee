@@ -105,7 +105,7 @@ private struct DocTableView: View {
                             .padding(.vertical, DesignTokens.Spacing.xs)
                     }
                 }
-                .background(idx % 2 == 0 ? Color.clear : .secondary.opacity(0.05))
+                .background(idx % 2 == 0 ? Color.clear : .secondary.opacity(DesignTokens.Opacity.veryLight))
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))

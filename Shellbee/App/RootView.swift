@@ -17,7 +17,7 @@ struct RootView: View {
                 setupInterface
             }
         }
-        .animation(.spring(duration: 0.6), value: isInitializing)
+        .animation(.spring(duration: DesignTokens.Duration.slowAnimation), value: isInitializing)
         .sheet(item: $pendingCrash) { crash in
             PendingCrashSheet(
                 crash: crash,

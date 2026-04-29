@@ -128,7 +128,7 @@ extension AppStore {
     func flashCheckResult(_ result: DeviceCheckResult, for deviceName: String) {
         deviceCheckResults[deviceName] = result
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(DesignTokens.Duration.checkResultDisplay))
             await MainActor.run {
                 guard let self else { return }
                 if self.deviceCheckResults[deviceName] == result {

@@ -100,7 +100,7 @@ private struct SubscribeView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, DesignTokens.Spacing.md)
                     .padding(.vertical, DesignTokens.Spacing.sm)
-                    .background(.orange.opacity(0.9), in: Capsule())
+                    .background(.orange.opacity(DesignTokens.Opacity.banner), in: Capsule())
                     .padding(.bottom, DesignTokens.Spacing.md)
             }
         }
@@ -134,7 +134,7 @@ private struct MessageRow: View {
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
-                Spacer(minLength: 8)
+                Spacer(minLength: DesignTokens.Spacing.sm)
                 Text(message.timestamp, format: .dateTime.hour().minute().second())
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.tertiary)
@@ -151,7 +151,7 @@ private struct MessageRow: View {
                 .padding(.leading, DesignTokens.Size.cardSymbol)
             if message.prettyPayload.components(separatedBy: "\n").count > 6 {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() }
+                    withAnimation(.easeInOut(duration: DesignTokens.Duration.quickFade)) { expanded.toggle() }
                 } label: {
                     Text(expanded ? "Show less" : "Show more")
                         .font(.caption.weight(.medium))

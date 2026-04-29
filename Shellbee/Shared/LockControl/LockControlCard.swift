@@ -39,7 +39,7 @@ struct LockControlCard: View {
         ZStack {
             Color(.secondarySystemGroupedBackground)
             LinearGradient(
-                colors: [heroTint.opacity(0.18), heroTint.opacity(0.04)],
+                colors: [heroTint.opacity(DesignTokens.Opacity.onStateTint), heroTint.opacity(DesignTokens.Opacity.subtleFade)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -66,7 +66,7 @@ struct LockControlCard: View {
                 .symbolRenderingMode(.hierarchical)
             Text("Lock")
                 .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(0.5)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
         }
         .foregroundStyle(heroTint)
@@ -77,7 +77,7 @@ struct LockControlCard: View {
             .font(DesignTokens.Typography.heroStateText)
             .foregroundStyle(heroTint)
             .lineLimit(1)
-            .minimumScaleFactor(0.7)
+            .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
     }
 
     private var statePill: some View {
@@ -91,7 +91,7 @@ struct LockControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 

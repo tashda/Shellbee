@@ -35,13 +35,14 @@ struct PermitJoinActiveSheet: View {
     private func countdownRing(remaining: Int?) -> some View {
         ZStack {
             Circle()
-                .stroke(Color.green.opacity(0.15), lineWidth: 8)
+                .stroke(Color.green.opacity(DesignTokens.Opacity.actionButtonFill),
+                        lineWidth: DesignTokens.Size.permitJoinRingStroke)
 
             Circle()
                 .trim(from: 0, to: progress(remaining: remaining))
-                .stroke(Color.green, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .stroke(Color.green, style: StrokeStyle(lineWidth: DesignTokens.Size.permitJoinRingStroke, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.linear(duration: 1), value: remaining)
+                .animation(.linear(duration: DesignTokens.Duration.pulseFull), value: remaining)
 
             if let remaining {
                 Text(String(format: "%d:%02d", remaining / 60, remaining % 60))

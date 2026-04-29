@@ -40,7 +40,7 @@ struct GroupCard: View {
                     .font(DesignTokens.Typography.compactCardTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMildLight)
 
                 Text("Group #\(group.id) · \(group.members.count) members")
                     .font(.subheadline)
@@ -88,7 +88,7 @@ struct GroupCard: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.82)
+                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorSubtle)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -119,7 +119,7 @@ struct GroupCard: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(1)
             }
@@ -131,7 +131,7 @@ struct GroupCard: View {
                     .monospacedDigit()
                     .foregroundStyle(color)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit {
                     Text(unit)
                         .font(DesignTokens.Typography.identityUnit)
@@ -158,7 +158,7 @@ struct GroupCard: View {
             .font(DesignTokens.Typography.cardTitle)
             .foregroundStyle(.primary)
             .lineLimit(1)
-            .minimumScaleFactor(0.45)
+            .minimumScaleFactor(DesignTokens.Typography.scaleFactorAggressive)
             .allowsTightening(true)
 
         if let onRenameTapped {
@@ -175,7 +175,7 @@ struct GroupCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 

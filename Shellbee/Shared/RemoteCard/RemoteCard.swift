@@ -90,7 +90,7 @@ private struct ReadingTile: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -103,7 +103,7 @@ private struct ReadingTile: View {
                     .monospacedDigit()
                     .foregroundStyle(valueColor)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit {
                     Text(unit)
                         .font(DesignTokens.Typography.metricUnit)

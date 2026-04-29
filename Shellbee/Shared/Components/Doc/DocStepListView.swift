@@ -43,7 +43,7 @@ private struct DocStepRow: View {
                 }
                 if showConnector {
                     Rectangle()
-                        .fill(.tint.opacity(0.25))
+                        .fill(.tint.opacity(DesignTokens.Opacity.pressedAlpha))
                         .frame(width: DesignTokens.Size.docStepConnector)
                         .frame(maxHeight: .infinity)
                 }

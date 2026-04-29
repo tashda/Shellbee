@@ -91,8 +91,8 @@ struct TouchlinkGuideView: View {
         .background(
             LinearGradient(
                 colors: [
-                    Color.teal.opacity(0.18),
-                    Color.cyan.opacity(0.10),
+                    Color.teal.opacity(DesignTokens.Opacity.onStateTint),
+                    Color.cyan.opacity(DesignTokens.Opacity.lightOpaque),
                     Color(.secondarySystemGroupedBackground)
                 ],
                 startPoint: .topLeading,

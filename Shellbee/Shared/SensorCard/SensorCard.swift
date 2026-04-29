@@ -217,7 +217,7 @@ private struct SensorReadingTile: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(reading.label)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -230,7 +230,7 @@ private struct SensorReadingTile: View {
                     .monospacedDigit()
                     .foregroundStyle(reading.valueColor)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit = reading.unitDisplay {
                     Text(unit)
                         .font(DesignTokens.Typography.metricUnit)

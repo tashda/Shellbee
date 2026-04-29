@@ -45,12 +45,12 @@ struct HomeView: View {
                             card: id,
                             isEditing: layout.isEditing,
                             onHide: {
-                                withAnimation(.easeInOut(duration: 0.25)) {
+                                withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
                                     layout.hide(id)
                                 }
                             },
                             onEnterEdit: {
-                                withAnimation(.easeInOut(duration: 0.25)) {
+                                withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
                                     layout.isEditing = true
                                 }
                             }
@@ -76,7 +76,7 @@ struct HomeView: View {
                         HomeAddCardsSection(
                             hidden: HomeCardID.allCases.filter { layout.hidden.contains($0) }
                         ) { card in
-                            withAnimation(.easeInOut(duration: 0.25)) {
+                            withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
                                 layout.show(card)
                             }
                         }
@@ -117,7 +117,7 @@ struct HomeView: View {
                 if layout.isEditing {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Done") {
-                            withAnimation(.easeInOut(duration: 0.25)) {
+                            withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
                                 layout.isEditing = false
                             }
                         }
@@ -211,7 +211,7 @@ struct HomeView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Button("Edit Home") {
-                withAnimation(.easeInOut(duration: 0.25)) {
+                withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
                     layout.isEditing = true
                 }
             }

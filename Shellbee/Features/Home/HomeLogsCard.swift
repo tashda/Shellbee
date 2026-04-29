@@ -75,7 +75,7 @@ struct HomeLogRow: View {
 
     private var badge: some View {
         Circle()
-            .fill(entry.level.color.opacity(0.18))
+            .fill(entry.level.color.opacity(DesignTokens.Opacity.onStateTint))
             .frame(width: Self.badgeSize, height: Self.badgeSize)
             .overlay {
                 Image(systemName: entry.category.systemImage)

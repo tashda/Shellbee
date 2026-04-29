@@ -19,7 +19,7 @@ struct HomeBackgroundGradient: View {
             stops: [
                 .init(color: .black, location: 0.0),
                 .init(color: .black, location: 0.75),
-                .init(color: .black.opacity(0.75), location: 1.0)
+                .init(color: .black.opacity(DesignTokens.Opacity.secondaryDim), location: 1.0)
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -44,7 +44,7 @@ struct HomeBackgroundGradient: View {
         )
         .overlay(
             LinearGradient(
-                colors: [.white.opacity(0.30), .clear],
+                colors: [.white.opacity(DesignTokens.Opacity.dimmedSurface), .clear],
                 startPoint: .top,
                 endPoint: .center
             )
@@ -69,7 +69,7 @@ struct HomeBackgroundGradient: View {
         )
         .overlay(
             LinearGradient(
-                colors: [.black.opacity(0.25), .clear],
+                colors: [.black.opacity(DesignTokens.Opacity.pressedAlpha), .clear],
                 startPoint: .top,
                 endPoint: .center
             )

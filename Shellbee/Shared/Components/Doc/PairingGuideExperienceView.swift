@@ -158,10 +158,10 @@ private struct PhilipsHueSerialResetCard: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DesignTokens.Spacing.lg)
-        .background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .background(Color.blue.opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
-                .strokeBorder(Color.blue.opacity(0.2))
+                .strokeBorder(Color.blue.opacity(DesignTokens.Opacity.accentFill))
         )
         .sheet(isPresented: $showResetSheet) {
             PhilipsHueResetSheet(
@@ -214,10 +214,10 @@ private struct TouchlinkResetCard: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DesignTokens.Spacing.lg)
-        .background(Color.teal.opacity(0.08), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .background(Color.teal.opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
-                .strokeBorder(Color.teal.opacity(0.2))
+                .strokeBorder(Color.teal.opacity(DesignTokens.Opacity.accentFill))
         )
     }
 }
@@ -301,7 +301,7 @@ private struct PairingCalloutView: View {
                 .font(.subheadline)
         }
         .padding(DesignTokens.Spacing.md)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
+        .background(tint.opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
     }
 }
 

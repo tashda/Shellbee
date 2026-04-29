@@ -37,7 +37,7 @@ struct DeviceCard: View {
             hairline
             metricsGrid
         }
-        .animation(.easeInOut(duration: 0.2), value: isUpdating)
+        .animation(.easeInOut(duration: DesignTokens.Duration.fastFade), value: isUpdating)
         .padding(DesignTokens.Spacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground),
@@ -59,7 +59,7 @@ struct DeviceCard: View {
                     .font(DesignTokens.Typography.compactCardTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMildLight)
 
                 Text("\(vendor) · \(model)")
                     .font(.subheadline)
@@ -144,7 +144,7 @@ struct DeviceCard: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(1)
             }
@@ -156,7 +156,7 @@ struct DeviceCard: View {
                     .monospacedDigit()
                     .foregroundStyle(color)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit {
                     Text(unit)
                         .font(DesignTokens.Typography.identityUnit)
@@ -186,7 +186,7 @@ struct DeviceCard: View {
             .font(DesignTokens.Typography.cardTitle)
             .foregroundStyle(.primary)
             .lineLimit(1)
-            .minimumScaleFactor(0.45)
+            .minimumScaleFactor(DesignTokens.Typography.scaleFactorAggressive)
             .allowsTightening(true)
 
         if let onRenameTapped {
@@ -207,13 +207,13 @@ struct DeviceCard: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.82)
+                .minimumScaleFactor(DesignTokens.Typography.scaleFactorSubtle)
 
             Text(model)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .minimumScaleFactor(DesignTokens.Typography.scaleFactorMildLight)
         }
     }
 
@@ -228,7 +228,7 @@ struct DeviceCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 

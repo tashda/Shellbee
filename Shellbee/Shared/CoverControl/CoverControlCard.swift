@@ -61,7 +61,7 @@ struct CoverControlCard: View {
             Color(.secondarySystemGroupedBackground)
             LinearGradient(
                 colors: [heroTint.opacity(isFullyClosed ? 0.06 : 0.18),
-                         heroTint.opacity(0.04)],
+                         heroTint.opacity(DesignTokens.Opacity.subtleFade)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -87,7 +87,7 @@ struct CoverControlCard: View {
                 .symbolRenderingMode(.hierarchical)
             Text(eyebrowLabel)
                 .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(0.5)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .lineLimit(1)
         }
@@ -109,7 +109,7 @@ struct CoverControlCard: View {
                         .monospacedDigit()
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
                         .contentTransition(.numericText(value: positionDraft))
                         .animation(.snappy, value: positionDraft)
                     Text("%")
@@ -120,7 +120,7 @@ struct CoverControlCard: View {
                     .font(DesignTokens.Typography.heroSubtitle)
                     .foregroundStyle(heroTint)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
             }
         } else {
             Text(context.displayState)
@@ -131,7 +131,7 @@ struct CoverControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 
@@ -202,7 +202,7 @@ struct CoverControlCard: View {
                         .symbolRenderingMode(.hierarchical)
                     Text("Tilt")
                         .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(0.5)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                 }
                 .foregroundStyle(.secondary)

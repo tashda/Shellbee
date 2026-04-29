@@ -134,7 +134,7 @@ struct FanControlCard: View {
             LinearGradient(
                 colors: [
                     heroTint.opacity(hasAirSensors ? 0.20 : (context.isOn ? 0.18 : 0.06)),
-                    heroTint.opacity(0.04)
+                    heroTint.opacity(DesignTokens.Opacity.subtleFade)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -160,7 +160,7 @@ struct FanControlCard: View {
                 .symbolRenderingMode(.hierarchical)
             Text(hasAirSensors ? "Air Quality" : "Fan")
                 .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(0.5)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
         }
         .foregroundStyle(heroTint)
@@ -177,7 +177,7 @@ struct FanControlCard: View {
                             .monospacedDigit()
                             .foregroundStyle(.primary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.6)
+                            .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
                         Text(pm25Unit)
                             .font(DesignTokens.Typography.heroUnit)
                             .foregroundStyle(.secondary)
@@ -188,7 +188,7 @@ struct FanControlCard: View {
                         .font(DesignTokens.Typography.heroSubtitle)
                         .foregroundStyle(heroTint)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
                 }
             }
         } else {
@@ -233,7 +233,7 @@ struct FanControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 
@@ -336,7 +336,7 @@ struct FanControlCard: View {
                         .symbolRenderingMode(.hierarchical)
                     Text("Filter")
                         .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(0.5)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                 }
                 .foregroundStyle(tint)
@@ -367,7 +367,7 @@ struct FanControlCard: View {
             ZStack {
                 Color(.secondarySystemGroupedBackground)
                 LinearGradient(
-                    colors: [tint.opacity(0.10), tint.opacity(0.03)],
+                    colors: [tint.opacity(DesignTokens.Opacity.lightOpaque), tint.opacity(DesignTokens.Opacity.veryFaint)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -387,7 +387,7 @@ struct FanControlCard: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -400,7 +400,7 @@ struct FanControlCard: View {
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 Text(parts.unit)
                     .font(DesignTokens.Typography.metricUnit)
                     .foregroundStyle(.secondary)

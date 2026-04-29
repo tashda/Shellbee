@@ -12,11 +12,11 @@ struct FilterChip: View {
                 .font(.subheadline.weight(isSelected ? .semibold : .regular))
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.vertical, DesignTokens.Spacing.xs)
-                .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.12), in: Capsule())
+                .background(isSelected ? Color.accentColor : Color.secondary.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
                 .foregroundStyle(isSelected ? .white : .primary)
         }
         .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.15), value: isSelected)
+        .animation(.easeInOut(duration: DesignTokens.Duration.quickFade), value: isSelected)
     }
 }
 

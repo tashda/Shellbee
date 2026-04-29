@@ -54,7 +54,7 @@ struct LogRowView: View {
     }
 
     private var iconForeground: Color {
-        entry.level == .warning ? Color.black.opacity(0.75) : Color.white
+        entry.level == .warning ? Color.black.opacity(DesignTokens.Opacity.secondaryDim) : Color.white
     }
 
     private func deviceThumbnail(_ device: Device, size: CGFloat) -> some View {

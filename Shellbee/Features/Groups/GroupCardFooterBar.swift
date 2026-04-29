@@ -20,7 +20,7 @@ struct GroupCardFooterBar: View {
                 .font(DesignTokens.Typography.footerActionLabel)
                 .foregroundStyle(color)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(DesignTokens.Typography.scaleFactorMild)
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)

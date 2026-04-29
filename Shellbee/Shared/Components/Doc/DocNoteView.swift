@@ -26,7 +26,7 @@ struct DocNoteView: View {
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.tint.opacity(0.06), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))
+        .background(.tint.opacity(DesignTokens.Opacity.offStateTint), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))
     }
 }
 

@@ -34,7 +34,7 @@ struct SwitchControlCard: View {
             LinearGradient(
                 colors: [
                     heroTint.opacity(context.isOn ? 0.18 : 0.06),
-                    heroTint.opacity(0.04)
+                    heroTint.opacity(DesignTokens.Opacity.subtleFade)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -62,7 +62,7 @@ struct SwitchControlCard: View {
                 .symbolRenderingMode(.hierarchical)
             Text(eyebrowLabel)
                 .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(0.5)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .lineLimit(1)
         }
@@ -115,7 +115,7 @@ struct SwitchControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
             .frame(height: DesignTokens.Size.hairline)
     }
 
@@ -185,7 +185,7 @@ private struct MeteringTile: View {
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
                     .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(0.5)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -198,7 +198,7 @@ private struct MeteringTile: View {
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 Text(unit)
                     .font(DesignTokens.Typography.metricUnit)
                     .foregroundStyle(.secondary)

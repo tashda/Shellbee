@@ -52,7 +52,7 @@ struct DeviceCardHeader: View {
             .font(DesignTokens.Typography.cardHeadline)
             .foregroundStyle(.primary)
             .lineLimit(1)
-            .minimumScaleFactor(0.6)
+            .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
             .allowsTightening(true)
 
         if let onRenameTapped {

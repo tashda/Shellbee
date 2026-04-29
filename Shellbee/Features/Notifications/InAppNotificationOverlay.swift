@@ -91,7 +91,7 @@ struct InAppNotificationOverlay: View {
         }
         .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: stack.isEmpty)
         .animation(Self.carouselAnimation, value: displayedPage.map { bannerIdentity(for: $0) })
-        .animation(.spring(duration: 0.25), value: fastTrackVisible)
+        .animation(.spring(duration: DesignTokens.Duration.mediumAnimation), value: fastTrackVisible)
         .onChange(of: environment.store.notificationArrivalID) { _, newID in
             // New (non-coalesced) normal notification arrived. Haptic once,
             // and schedule auto-dismiss on the now-visible banner.

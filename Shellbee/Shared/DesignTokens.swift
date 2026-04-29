@@ -110,6 +110,8 @@ nonisolated enum DesignTokens {
         static let permitJoinQR: CGFloat = 220
         static let homeAddDividerInset: CGFloat = 60
         static let docLabelColumnWidth: CGFloat = 90
+        static let permitJoinRingStroke: CGFloat = 8
+        static let lightSelectionStroke: CGFloat = 2
     }
 
     nonisolated enum Shadow {
@@ -119,10 +121,16 @@ nonisolated enum DesignTokens {
         static let floatingOpacity: Double = 0.18
         static let floatingRadius: CGFloat = 6
         static let floatingY: CGFloat = 3
+        static let splashRadius: CGFloat = 18
+        static let splashY: CGFloat = 8
+    }
+
+    nonisolated enum Tracking {
+        static let splashTitle: CGFloat = -1
     }
 
     nonisolated enum Gradient {
-        static let progress = [Color.blue, Color.blue.opacity(0.7)]
+        static let progress = [Color.blue, Color.blue.opacity(DesignTokens.Opacity.secondaryFull)]
         static let updateAvailable = [Color.blue, Color(red: 0.2, green: 0.5, blue: 1.0)]
     }
 
@@ -143,12 +151,14 @@ nonisolated enum DesignTokens {
         static let pressedState: Double = 0.16
         // Common SwiftUI .easeInOut / .snappy / withAnimation durations
         static let quickFade: Double = 0.15
+        static let fastFade: Double = 0.2
         static let mediumAnimation: Double = 0.25
         static let slowAnimation: Double = 0.6
         static let pulseExpand: Double = 0.8
         static let pulseFull: Double = 1.0
         static let checkResultDisplay: Double = 3
         static let pendingDeleteTimeout: Double = 15
+        static let discoveryScanWindow: Double = 15
     }
 
     nonisolated enum Typography {
@@ -250,6 +260,7 @@ nonisolated enum DesignTokens {
         static let mildOpaque: Double = 0.22
         static let pressedAlpha: Double = 0.25
         static let dimmedSurface: Double = 0.30
+        static let outOfRange: Double = 0.35
         static let secondaryDim: Double = 0.75
         static let secondaryFull: Double = 0.7
     }
