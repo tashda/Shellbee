@@ -112,6 +112,11 @@ nonisolated enum DesignTokens {
         static let docLabelColumnWidth: CGFloat = 90
         static let permitJoinRingStroke: CGFloat = 8
         static let lightSelectionStroke: CGFloat = 2
+        // Offsets (pixel-pushing for badge alignment over a parent shape)
+        static let logRowBadgeOffset: CGFloat = 3
+        static let firmwareUpdateBadgeOffsetX: CGFloat = 4
+        static let firmwareUpdateBadgeOffsetY: CGFloat = -2
+        static let homeCardSlotButtonOffset: CGFloat = -8
     }
 
     nonisolated enum Shadow {
@@ -137,6 +142,37 @@ nonisolated enum DesignTokens {
     nonisolated enum Threshold {
         static let lowBattery = 20
         static let weakSignal = 40
+    }
+
+    /// Proportional layout ratios — multipliers applied to a parent dimension
+    /// (e.g. an offset that's 28% of the parent frame side, a corner radius
+    /// that's 27% of the tile size). Use these instead of inline percentages
+    /// so the whole layout scales consistently.
+    nonisolated enum Ratio {
+        // Log row icon (device thumbnail badge inside the log level circle)
+        static let logRowBadgeSize: CGFloat = 0.47
+        static let logRowBadgeBorder: CGFloat = 0.1
+        static let logRowBadgeBorderMin: CGFloat = 1.5
+
+        // Group icon (member device images stacked into a group thumbnail)
+        static let groupIconMember: CGFloat = 0.72
+        static let groupIconOffset: CGFloat = 0.28
+        static let groupIconCorner: CGFloat = 0.28
+
+        // Device image (status / availability dot inside the thumbnail)
+        static let deviceImageDot: CGFloat = 0.26
+        static let deviceImageDotMin: CGFloat = 7
+
+        // Feature tile (rounded rect background corner radius)
+        static let featureTileCorner: CGFloat = 0.27
+
+        // Member avatar stack (group detail row, etc)
+        static let memberAvatarBorder: CGFloat = 0.063
+        static let memberAvatarBorderMin: CGFloat = 1.5
+        static let memberAvatarFont: CGFloat = 0.375
+        static let memberAvatarBadgeFont: CGFloat = 0.44
+        static let memberAvatarBadgeFontMin: CGFloat = 9
+        static let memberAvatarBadgePadding: CGFloat = 0.25
     }
 
     nonisolated enum Duration {
@@ -226,6 +262,13 @@ nonisolated enum DesignTokens {
         static let climateActionIcon: Font = .system(size: 14, weight: .bold)
         // Light card secondary glyphs (compass / palette icon overlays)
         static let lightSecondaryIcon: Font = .system(size: 14, weight: .semibold)
+
+        // MARK: Icon glyph ratios (proportional sizing inside a parent frame)
+        // e.g. an icon glyph that fills half its containing thumbnail circle.
+        // Used as multipliers: `.font(.system(size: parent * iconRatioHalf))`.
+        static let iconRatioSmall: CGFloat = 0.38
+        static let iconRatioHalf: CGFloat = 0.5
+        static let iconRatioMedium: CGFloat = 0.55
 
         // MARK: minimumScaleFactor presets (per Text element shrink budgets)
         static let scaleFactorAggressive: CGFloat = 0.45

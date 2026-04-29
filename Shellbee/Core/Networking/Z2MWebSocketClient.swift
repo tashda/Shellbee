@@ -2,7 +2,7 @@ import Foundation
 
 actor Z2MWebSocketClient {
 
-    private static let connectionTimeout: TimeInterval = 10
+    private static let connectionTimeout: TimeInterval = AppConfig.Networking.websocketConnectionTimeout
     /// After the WS handshake succeeds we wait for the *first inbound message*
     /// before declaring the connection valid. Z2M accepts the HTTP 101 upgrade
     /// and only then either (a) immediately publishes the cached bridge state /
@@ -10,7 +10,7 @@ actor Z2MWebSocketClient {
     /// auth token is missing/invalid. Both arrive over the WS — receive() will
     /// return data on success and throw on close. If neither happens within
     /// this timeout, the bridge is unreachable.
-    private static let firstMessageTimeout: TimeInterval = 5
+    private static let firstMessageTimeout: TimeInterval = AppConfig.Networking.websocketFirstMessageTimeout
     /// Default URLSessionWebSocketTask frame limit is 1 MB. Z2M `bridge/response/backup`
     /// payloads carry the entire data folder as a base64 string inside JSON — a populated
     /// install with many devices and rotated config backups can produce 5–10 MB frames.

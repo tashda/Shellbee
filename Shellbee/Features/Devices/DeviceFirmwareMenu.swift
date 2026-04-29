@@ -76,7 +76,8 @@ struct DeviceFirmwareMenu: View {
                     Circle()
                         .fill(Color.red)
                         .frame(width: DesignTokens.Size.logLevelDotSize, height: DesignTokens.Size.logLevelDotSize)
-                        .offset(x: 4, y: -2)
+                        .offset(x: DesignTokens.Size.firmwareUpdateBadgeOffsetX,
+                                y: DesignTokens.Size.firmwareUpdateBadgeOffsetY)
                 }
             }
         }

@@ -62,7 +62,7 @@ final class AppStore {
     }
 
     static let logLimit = 1000
-    static let coalesceWindow: TimeInterval = 1.5
+    static let coalesceWindow: TimeInterval = AppConfig.UX.notificationCoalesceWindow
 
     init() {
         if let raw = UserDefaults.standard.dictionary(forKey: Self.firstSeenStoreKey) as? [String: Double] {

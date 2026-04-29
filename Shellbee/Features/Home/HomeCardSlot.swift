@@ -20,7 +20,8 @@ struct HomeCardSlot<Content: View>: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Hide \(card.title)")
-                    .offset(x: -8, y: -8)
+                    .offset(x: DesignTokens.Size.homeCardSlotButtonOffset,
+                            y: DesignTokens.Size.homeCardSlotButtonOffset)
                     .transition(.scale.combined(with: .opacity))
                 }
             }

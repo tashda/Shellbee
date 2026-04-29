@@ -9,12 +9,12 @@ struct FeatureIconTile: View {
     var prominent: Bool = false
 
     var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+        RoundedRectangle(cornerRadius: size * DesignTokens.Ratio.featureTileCorner, style: .continuous)
             .fill(tint.gradient)
             .frame(width: size, height: size)
             .overlay {
                 Image(systemName: symbol)
-                    .font(.system(size: prominent ? size * 0.55 : size * 0.5,
+                    .font(.system(size: prominent ? size * DesignTokens.Typography.iconRatioMedium : size * DesignTokens.Typography.iconRatioHalf,
                                   weight: .semibold))
                     .foregroundStyle(.white)
             }

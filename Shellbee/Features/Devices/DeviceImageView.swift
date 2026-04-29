@@ -60,7 +60,8 @@ struct DeviceImageView: View {
     }
 
     private var offlineDot: some View {
-        let dotSize = max(7, size * 0.26)
+        let dotSize = max(DesignTokens.Ratio.deviceImageDotMin,
+                          size * DesignTokens.Ratio.deviceImageDot)
         return Circle()
             .fill(Color.red)
             .frame(width: dotSize, height: dotSize)
@@ -70,7 +71,7 @@ struct DeviceImageView: View {
     
     private var fallbackIcon: some View {
         Image(systemName: device.categorySystemImage)
-            .font(.system(size: size * 0.5, weight: .medium))
+            .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
             .foregroundStyle(isAvailable ? Color.accentColor : .secondary.opacity(DesignTokens.Opacity.overlay))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Optional: add a very subtle circle for fallbacks only 
