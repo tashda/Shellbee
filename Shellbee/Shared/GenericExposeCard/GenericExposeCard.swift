@@ -50,14 +50,13 @@ struct GenericExposeCard: View {
     /// name above the card already names what we're looking at, so a redundant
     /// "Controls" / "Device State" headline is just noise.
     private var snapshotHeader: some View {
-        // NOTE: 12pt eyebrow vs 11pt elsewhere — see #36.A.
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: "cpu")
-                .font(DesignTokens.Typography.eyebrowIconLarge)
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .foregroundStyle(.tint)
             Text("Device State")
-                .font(DesignTokens.Typography.eyebrowLabelLarge)
-                .tracking(DesignTokens.Typography.eyebrowTrackingLoose)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)

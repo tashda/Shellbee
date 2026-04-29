@@ -166,15 +166,18 @@ nonisolated enum DesignTokens {
         static let cardSubheadline: Font = .subheadline
 
         // MARK: Eyebrow pattern (small uppercase label above metric values)
-        // Dominant value used in most card hero blocks. SensorCard, RemoteCard,
-        // and GenericExposeCard currently use the larger 12pt variant —
-        // tracked in #36. Once that's resolved one variant goes away.
+        // Used as the small contextual label at the top of every card.
+        // (#36.A resolved 2026-04-29: unified all card eyebrows on 11pt.)
         static let eyebrowLabel: Font = .system(size: 11, weight: .semibold)
         static let eyebrowIcon: Font = .system(size: 11, weight: .bold)
-        static let eyebrowLabelLarge: Font = .system(size: 12, weight: .semibold)
-        static let eyebrowIconLarge: Font = .system(size: 12, weight: .bold)
         static let eyebrowTracking: CGFloat = 0.5
-        static let eyebrowTrackingLoose: CGFloat = 0.6
+
+        // MARK: Section header (uppercase label dividing content within a card)
+        // Slightly larger and looser-tracked than card eyebrows. One step up
+        // in the visual hierarchy.
+        static let sectionHeaderLabel: Font = .system(size: 12, weight: .semibold)
+        static let sectionHeaderIcon: Font = .system(size: 12, weight: .bold)
+        static let sectionHeaderTracking: CGFloat = 0.6
 
         // MARK: Hero metric (the giant number/state on a card hero block)
         static let heroValue: Font = .system(size: 56, weight: .bold, design: .rounded)
@@ -186,13 +189,17 @@ nonisolated enum DesignTokens {
         // Smaller subtitle text under the hero value (e.g. "Target 21.5°" under temperature)
         static let heroSubtitle: Font = .system(size: 20, weight: .semibold, design: .rounded)
 
-        // MARK: Metric tile (a stat tile inside the card body)
-        static let metricValue: Font = .system(size: 30, weight: .semibold, design: .rounded)
-        static let metricUnit: Font = .system(size: 15, weight: .medium, design: .rounded)
-        // Identity-tile variant (smaller — used in DeviceCard / GroupCard).
-        // Whether 24/14 should be unified with 30/15 is tracked in #36.
-        static let identityValue: Font = .system(size: 24, weight: .semibold, design: .rounded)
-        static let identityUnit: Font = .system(size: 14, weight: .medium, design: .rounded)
+        // MARK: Feature tile (1–N prominent stats in a card body, room to breathe)
+        // Used by FanControlCard, RemoteCard, SensorCard, SwitchControlCard.
+        static let featureTileValue: Font = .system(size: 30, weight: .semibold, design: .rounded)
+        static let featureTileUnit: Font = .system(size: 15, weight: .medium, design: .rounded)
+        // Identity tile (smaller — packed 2x2 grids of summary stats).
+        // Used by DeviceCard / GroupCard for Type/Status/Signal/Power tiles,
+        // and by ClimateControlCard for the setpoint number between +/- buttons.
+        // The size distinction from featureTile is deliberate (#36.B resolved
+        // 2026-04-29: keep two tiers, identity grid stays compact).
+        static let identityTileValue: Font = .system(size: 24, weight: .semibold, design: .rounded)
+        static let identityTileUnit: Font = .system(size: 14, weight: .medium, design: .rounded)
         // Snapshot-row variant (Light card colorSnapshotRow, Cover tilt row)
         static let snapshotRowValue: Font = .system(size: 20, weight: .semibold, design: .rounded)
         static let snapshotRowUnit: Font = .system(size: 13, weight: .medium, design: .rounded)
@@ -212,9 +219,9 @@ nonisolated enum DesignTokens {
         static let sliderEndLabel: Font = .system(size: 9, weight: .medium)
         static let permitJoinCountdown: Font = .system(size: 64, weight: .thin)
         static let permitJoinSymbol: Font = .system(size: 48)
-        // Notification banner level glyphs — sizes differ per #36.D.
+        // Banner level glyph — shared by InAppNotificationBanner and
+        // FastTrackBanner (#36.D resolved 2026-04-29: unified on 15pt).
         static let notificationLevelIcon: Font = .system(size: 15, weight: .semibold)
-        static let fastTrackLevelIcon: Font = .system(size: 14, weight: .semibold)
         // Climate setpoint +/- button glyph
         static let climateActionIcon: Font = .system(size: 14, weight: .bold)
         // Light card secondary glyphs (compass / palette icon overlays)

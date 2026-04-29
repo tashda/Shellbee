@@ -194,13 +194,13 @@ private struct MeteringTile: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(DesignTokens.Typography.metricValue)
+                    .font(DesignTokens.Typography.featureTileValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 Text(unit)
-                    .font(DesignTokens.Typography.metricUnit)
+                    .font(DesignTokens.Typography.featureTileUnit)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

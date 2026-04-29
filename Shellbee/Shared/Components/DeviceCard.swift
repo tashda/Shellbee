@@ -152,14 +152,14 @@ struct DeviceCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(DesignTokens.Typography.identityValue)
+                    .font(DesignTokens.Typography.identityTileValue)
                     .monospacedDigit()
                     .foregroundStyle(color)
                     .lineLimit(1)
                     .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit {
                     Text(unit)
-                        .font(DesignTokens.Typography.identityUnit)
+                        .font(DesignTokens.Typography.identityTileUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

@@ -342,7 +342,7 @@ struct FanControlCard: View {
                 .foregroundStyle(tint)
 
                 Text(title)
-                    .font(DesignTokens.Typography.metricValue)
+                    .font(DesignTokens.Typography.featureTileValue)
                     .foregroundStyle(tint)
                     .lineLimit(1)
             }
@@ -396,13 +396,13 @@ struct FanControlCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(parts.value)
-                    .font(DesignTokens.Typography.metricValue)
+                    .font(DesignTokens.Typography.featureTileValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 Text(parts.unit)
-                    .font(DesignTokens.Typography.metricUnit)
+                    .font(DesignTokens.Typography.featureTileUnit)
                     .foregroundStyle(.secondary)
             }
         }
@@ -415,8 +415,8 @@ struct FanControlCard: View {
     private func sectionView(_ section: LayoutSection) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text(section.title)
-                .font(DesignTokens.Typography.eyebrowLabelLarge)
-                .tracking(DesignTokens.Typography.eyebrowTrackingLoose)
+                .font(DesignTokens.Typography.sectionHeaderLabel)
+                .tracking(DesignTokens.Typography.sectionHeaderTracking)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
                 .padding(.leading, DesignTokens.Spacing.md)

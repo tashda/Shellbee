@@ -10,7 +10,7 @@ struct FastTrackBanner: View {
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: notification.level.systemImage)
-                .font(DesignTokens.Typography.fastTrackLevelIcon)
+                .font(DesignTokens.Typography.notificationLevelIcon)
                 .foregroundStyle(notification.level.color)
             Text(notification.title)
                 .font(.footnote.weight(.semibold))

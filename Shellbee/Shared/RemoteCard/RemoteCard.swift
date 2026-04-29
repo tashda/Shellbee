@@ -36,14 +36,13 @@ struct RemoteCard: View {
     }
 
     private var header: some View {
-        // NOTE: 12pt eyebrow vs 11pt elsewhere — see #36.A.
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "command")
-                .font(DesignTokens.Typography.eyebrowIconLarge)
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .foregroundStyle(.tint)
             Text("Remote")
-                .font(DesignTokens.Typography.eyebrowLabelLarge)
-                .tracking(DesignTokens.Typography.eyebrowTrackingLoose)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -99,14 +98,14 @@ private struct ReadingTile: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(DesignTokens.Typography.metricValue)
+                    .font(DesignTokens.Typography.featureTileValue)
                     .monospacedDigit()
                     .foregroundStyle(valueColor)
                     .lineLimit(2)
                     .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit {
                     Text(unit)
-                        .font(DesignTokens.Typography.metricUnit)
+                        .font(DesignTokens.Typography.featureTileUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

@@ -44,14 +44,13 @@ struct SensorCard: View {
     }
 
     private var header: some View {
-        // NOTE: 12pt eyebrow vs 11pt elsewhere — see #36.A.
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "sensor.fill")
-                .font(DesignTokens.Typography.eyebrowIconLarge)
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .foregroundStyle(.tint)
             Text("Sensor")
-                .font(DesignTokens.Typography.eyebrowLabelLarge)
-                .tracking(DesignTokens.Typography.eyebrowTrackingLoose)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -226,14 +225,14 @@ private struct SensorReadingTile: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(reading.numericDisplayValue)
-                    .font(DesignTokens.Typography.metricValue)
+                    .font(DesignTokens.Typography.featureTileValue)
                     .monospacedDigit()
                     .foregroundStyle(reading.valueColor)
                     .lineLimit(1)
                     .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit = reading.unitDisplay {
                     Text(unit)
-                        .font(DesignTokens.Typography.metricUnit)
+                        .font(DesignTokens.Typography.featureTileUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

@@ -168,7 +168,7 @@ struct ClimateControlCard: View {
                 }
 
                 Text(formatTemp(setpointDraft))
-                    .font(DesignTokens.Typography.identityValue)
+                    .font(DesignTokens.Typography.identityTileValue)
                     .monospacedDigit()
                     .foregroundStyle(heroTint)
                     .frame(minWidth: DesignTokens.Size.climateSetpointMinWidth)
