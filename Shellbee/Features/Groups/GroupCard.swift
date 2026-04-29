@@ -37,10 +37,10 @@ struct GroupCard: View {
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(group.friendlyName)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(DesignTokens.Typography.compactCardTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMildLight)
 
                 Text("Group #\(group.id) · \(group.members.count) members")
                     .font(.subheadline)
@@ -88,7 +88,7 @@ struct GroupCard: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.82)
+                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorSubtle)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,28 +113,28 @@ struct GroupCard: View {
 
     private func identityMetric(label: String, icon: String, value: String, unit: String?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(1)
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.identityTileValue)
                     .monospacedDigit()
                     .foregroundStyle(color)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit {
                     Text(unit)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.identityTileUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -155,10 +155,10 @@ struct GroupCard: View {
     @ViewBuilder
     private var nameView: some View {
         let label = Text(group.friendlyName)
-            .font(.system(size: 24, weight: .bold, design: .rounded))
+            .font(DesignTokens.Typography.cardTitle)
             .foregroundStyle(.primary)
             .lineLimit(1)
-            .minimumScaleFactor(0.45)
+            .minimumScaleFactor(DesignTokens.Typography.scaleFactorAggressive)
             .allowsTightening(true)
 
         if let onRenameTapped {
@@ -175,8 +175,8 @@ struct GroupCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     private var scenesTitle: String {

@@ -26,12 +26,12 @@ struct DocNoteView: View {
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.tint.opacity(0.06), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))
+        .background(.tint.opacity(DesignTokens.Opacity.offStateTint), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))
     }
 }
 
 #Preview {
-    VStack(spacing: 16) {
+    VStack(spacing: DesignTokens.Spacing.lg) {
         DocNoteView(spans: [
             .text("Keep the bulb "),
             .bold("close to the coordinator"),

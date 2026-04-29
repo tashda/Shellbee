@@ -93,7 +93,7 @@ struct DeviceUpgradeBadgeView: View {
                     .phaseAnimator([0, 360]) { content, phase in
                         content.rotationEffect(.degrees(phase))
                     } animation: { _ in
-                        .linear(duration: 1.0).repeatForever(autoreverses: false)
+                        .linear(duration: DesignTokens.Duration.pulseFull).repeatForever(autoreverses: false)
                     }
             }
 

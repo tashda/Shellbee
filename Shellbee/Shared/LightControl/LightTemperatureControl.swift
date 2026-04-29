@@ -61,11 +61,12 @@ struct LightTemperatureControl: View {
                             .fill(LightDisplayColor.temperatureColor(mireds: mireds))
                             .frame(width: DesignTokens.Size.lightControlButton, height: DesignTokens.Size.lightControlButton)
                             .overlay(Circle().strokeBorder(
-                                isSelected ? Color.primary : Color.clear, lineWidth: 2
+                                isSelected ? Color.primary : Color.clear,
+                                lineWidth: DesignTokens.Size.lightSelectionStroke
                             ))
-                            .opacity(inRange ? 1 : 0.35)
+                            .opacity(inRange ? 1 : DesignTokens.Opacity.outOfRange)
                         Text(preset.label)
-                            .font(.system(size: 9, weight: .medium))
+                            .font(DesignTokens.Typography.sliderEndLabel)
                             .foregroundStyle(.secondary)
                     }
                 }

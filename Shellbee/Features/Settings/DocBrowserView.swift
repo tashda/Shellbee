@@ -202,7 +202,7 @@ private struct DocEntryRow: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
             } placeholder: {
                 Image(systemName: entry.deviceType?.systemImage ?? "cpu")
-                    .font(.system(size: size * 0.5, weight: .medium))
+                    .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
                     .foregroundStyle(Color.accentColor)
             }
             .frame(width: size, height: size)

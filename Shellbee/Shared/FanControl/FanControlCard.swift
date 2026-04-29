@@ -15,7 +15,7 @@ struct FanControlCard: View {
 
     private let rowHorizontalPadding: CGFloat = DesignTokens.Spacing.lg
     private let rowVerticalPadding: CGFloat = DesignTokens.Spacing.md
-    private let rowIconWidth: CGFloat = 22
+    private let rowIconWidth: CGFloat = DesignTokens.Size.cardSymbol
 
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.lg) {
@@ -134,7 +134,7 @@ struct FanControlCard: View {
             LinearGradient(
                 colors: [
                     heroTint.opacity(hasAirSensors ? 0.20 : (context.isOn ? 0.18 : 0.06)),
-                    heroTint.opacity(0.04)
+                    heroTint.opacity(DesignTokens.Opacity.subtleFade)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -154,13 +154,13 @@ struct FanControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"))
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(hasAirSensors ? "Air Quality" : "Fan")
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.5)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
         }
         .foregroundStyle(heroTint)
@@ -169,31 +169,31 @@ struct FanControlCard: View {
     @ViewBuilder
     private var heroValue: some View {
         if hasAirSensors {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 if let pm = pm25Value {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                         Text(Int(pm.rounded()).formatted())
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .font(DesignTokens.Typography.heroValue)
                             .monospacedDigit()
                             .foregroundStyle(.primary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.6)
+                            .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
                         Text(pm25Unit)
-                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .font(DesignTokens.Typography.heroUnit)
                             .foregroundStyle(.secondary)
                     }
                 }
                 if let aq = airQualityText {
                     Text(prettify(aq))
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .font(DesignTokens.Typography.heroSubtitle)
                         .foregroundStyle(heroTint)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
                 }
             }
         } else {
             Text(context.isOn ? "On" : "Off")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroStateText)
                 .foregroundStyle(heroTint)
         }
     }
@@ -233,8 +233,8 @@ struct FanControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Hero mode row
@@ -264,7 +264,7 @@ struct FanControlCard: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
                         Text(prettify(context.fanMode ?? "—"))
                             .foregroundStyle(.primary)
                         Image(systemName: "chevron.up.chevron.down")
@@ -330,19 +330,19 @@ struct FanControlCard: View {
 
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: icon)
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text("Filter")
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(0.5)
+                        .font(DesignTokens.Typography.eyebrowLabel)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                 }
                 .foregroundStyle(tint)
 
                 Text(title)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.featureTileValue)
                     .foregroundStyle(tint)
                     .lineLimit(1)
             }
@@ -367,7 +367,7 @@ struct FanControlCard: View {
             ZStack {
                 Color(.secondarySystemGroupedBackground)
                 LinearGradient(
-                    colors: [tint.opacity(0.10), tint.opacity(0.03)],
+                    colors: [tint.opacity(DesignTokens.Opacity.lightOpaque), tint.opacity(DesignTokens.Opacity.veryFaint)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -381,28 +381,28 @@ struct FanControlCard: View {
     private func ageTile(label: String, minutes: Double, icon: String) -> some View {
         let parts = formatDurationParts(minutes)
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(parts.value)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.featureTileValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 Text(parts.unit)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.featureTileUnit)
                     .foregroundStyle(.secondary)
             }
         }
@@ -415,8 +415,8 @@ struct FanControlCard: View {
     private func sectionView(_ section: LayoutSection) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text(section.title)
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(0.6)
+                .font(DesignTokens.Typography.sectionHeaderLabel)
+                .tracking(DesignTokens.Typography.sectionHeaderTracking)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
                 .padding(.leading, DesignTokens.Spacing.md)
@@ -477,56 +477,6 @@ struct FanControlCard: View {
     }
 }
 
-// MARK: - Native list sections
-
-/// Renders the Fan device's feature sections (Behaviour, Indicators, etc.) as
-/// native `List` sections. Place inside a `List` whose `.listStyle` is grouped
-/// or inset-grouped. The hero / filter cards are still rendered by
-/// `FanControlCard` (with `rendersSectionsInline: false`).
-struct FanFeatureSections: View {
-    let context: FanControlContext
-    let mode: CardDisplayMode
-    let onSend: (JSONValue) -> Void
-
-    private let filterProps: Set<String> = ["replace_filter", "filter_age", "device_age"]
-
-    private var eligibleExtras: [Expose] {
-        let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
-        return context.extras.filter { e in
-            guard let prop = e.property else { return false }
-            return !claimed.contains(prop)
-        }
-    }
-
-    private var sections: [LayoutSection] { FeatureLayout.sections(from: eligibleExtras) }
-
-    var body: some View {
-        ForEach(sections) { section in
-            Section(section.title) {
-                ForEach(section.items, id: \.id) { item in
-                    rowFor(item)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func rowFor(_ item: LayoutItem) -> some View {
-        switch item {
-        case .row(let expose):
-            SettingsFormRow(expose: expose, state: context.state, mode: mode, onSend: onSend)
-        case .indexedGroup(let group):
-            NavigationLink {
-                FeatureGroupDetailView(group: group, state: context.state, mode: mode, onSend: onSend)
-            } label: {
-                LabeledContent(group.label) {
-                    Text("\(group.members.count)")
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Disclosure row (monochrome, local to fan card)
 
 private struct DisclosureRow: View {
@@ -542,7 +492,7 @@ private struct DisclosureRow: View {
         Button(action: action) {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(DesignTokens.Typography.formRowIcon)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)
@@ -563,172 +513,6 @@ private struct DisclosureRow: View {
     }
 }
 
-// MARK: - Extra row
-
-private struct FanExtraRow: View {
-    let expose: Expose
-    let state: [String: JSONValue]
-    let mode: CardDisplayMode
-    let horizontalPadding: CGFloat
-    let verticalPadding: CGFloat
-    let iconWidth: CGFloat
-    let onSend: (JSONValue) -> Void
-
-    @State private var numericDraft: Double = 0
-
-    private var property: String { expose.property ?? expose.name ?? "" }
-    private var meta: FeatureMeta { FeatureCatalog.meta(for: property, exposeType: expose.type) }
-    private var label: String { meta.label }
-    private var stateValue: JSONValue? { state[property] }
-
-    var body: some View {
-        rowContent
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, verticalPadding)
-    }
-
-    @ViewBuilder
-    private var rowContent: some View {
-        switch expose.type {
-        case "binary": binaryRow
-        case "enum": enumRow
-        case "numeric": numericRow
-        default: textRow
-        }
-    }
-
-    private var leadingIcon: some View {
-        Image(systemName: meta.symbol)
-            .font(.system(size: 16, weight: .medium))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(.secondary)
-            .frame(width: iconWidth)
-    }
-
-    @ViewBuilder
-    private var binaryRow: some View {
-        let isOn = stateValue == expose.valueOn || stateValue?.boolValue == true
-        HStack(spacing: DesignTokens.Spacing.md) {
-            leadingIcon
-            labelStack
-            Spacer()
-            if mode == .interactive, expose.isWritable,
-               let on = expose.valueOn, let off = expose.valueOff {
-                Toggle("", isOn: Binding(
-                    get: { isOn },
-                    set: { v in onSend(.object([property: v ? on : off])) }
-                ))
-                .labelsHidden()
-            } else {
-                Text(isOn ? "On" : "Off").foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var enumRow: some View {
-        let values = expose.values ?? []
-        let current = stateValue?.stringValue ?? "—"
-        HStack(spacing: DesignTokens.Spacing.md) {
-            leadingIcon
-            labelStack
-            Spacer()
-            if mode == .interactive, expose.isWritable, !values.isEmpty {
-                Menu {
-                    ForEach(values, id: \.self) { v in
-                        Button {
-                            onSend(.object([property: .string(v)]))
-                        } label: {
-                            if current == v {
-                                Label(prettify(v), systemImage: "checkmark")
-                            } else {
-                                Text(prettify(v))
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(prettify(current))
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .tint(.primary)
-            } else {
-                Text(prettify(current)).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var numericRow: some View {
-        let current = stateValue?.numberValue ?? 0
-        let unit = expose.unit ?? ""
-        let writable = mode == .interactive && expose.isWritable
-            && expose.valueMin != nil && expose.valueMax != nil
-
-        if writable, let min = expose.valueMin, let max = expose.valueMax {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: DesignTokens.Spacing.md) {
-                    leadingIcon
-                    labelStack
-                    Spacer()
-                    Text(formatNumeric(numericDraft, unit: unit))
-                        .font(.body.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                Slider(value: $numericDraft, in: min...max, step: expose.valueStep ?? 1) { editing in
-                    guard !editing else { return }
-                    onSend(.object([property: numericPayload(numericDraft, step: expose.valueStep)]))
-                }
-                .padding(.leading, iconWidth + DesignTokens.Spacing.md)
-            }
-            .onAppear { numericDraft = current }
-            .onChange(of: current) { _, v in numericDraft = v }
-        } else {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                leadingIcon
-                labelStack
-                Spacer()
-                Text(formatNumeric(current, unit: unit))
-                    .font(.body.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func numericPayload(_ v: Double, step: Double?) -> JSONValue {
-        if let step, step.truncatingRemainder(dividingBy: 1) == 0 {
-            return .int(Int(v.rounded()))
-        }
-        return .double(v)
-    }
-
-    @ViewBuilder
-    private var textRow: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            leadingIcon
-            labelStack
-            Spacer()
-            Text(stateValue?.stringified ?? "—").foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private var labelStack: some View {
-        Text(label).font(.body)
-    }
-
-    private func prettify(_ s: String) -> String {
-        s.replacingOccurrences(of: "_", with: " ").capitalized
-    }
-
-    private func formatNumeric(_ v: Double, unit: String) -> String {
-        let formatted = v.formatted(.number.precision(.fractionLength(0...1)))
-        return unit.isEmpty ? formatted : "\(formatted) \(unit)"
-    }
-}
 
 #Preview {
     ScrollView {

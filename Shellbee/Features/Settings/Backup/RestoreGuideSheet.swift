@@ -8,7 +8,7 @@ struct RestoreGuideSheet: View {
             List {
                 Section {
                     Label {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                             Text("Host-only operation")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.orange)
@@ -72,23 +72,23 @@ struct RestoreGuideSheet: View {
     }
 
     private func stepRow(n: Int, title: String, body: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Text("\(n)")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
+                .frame(width: DesignTokens.Size.restoreStepCircle, height: DesignTokens.Size.restoreStepCircle)
                 .background(.indigo, in: Circle())
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(title).font(.subheadline.weight(.semibold))
                 Text(body).font(.footnote).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
     }
 
     private func bulletRow(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Text("\u{2022}")
                 .foregroundStyle(.secondary)
             Text(text)

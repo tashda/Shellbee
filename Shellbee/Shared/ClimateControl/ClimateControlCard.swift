@@ -62,7 +62,7 @@ struct ClimateControlCard: View {
             Color(.secondarySystemGroupedBackground)
             LinearGradient(
                 colors: [heroTint.opacity(isActive ? 0.18 : 0.06),
-                         heroTint.opacity(0.04)],
+                         heroTint.opacity(DesignTokens.Opacity.subtleFade)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -82,13 +82,13 @@ struct ClimateControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: heroIcon)
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(context.runningStateLabel)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.5)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .lineLimit(1)
         }
@@ -106,22 +106,22 @@ struct ClimateControlCard: View {
 
     @ViewBuilder
     private var heroValue: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
             Text(context.displayTemperature)
-                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroValue)
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
             // In snapshot mode (and when no interactive setpoint control is
             // shown), surface the target inside the hero block — otherwise the
             // setpoint row below already carries it.
             if let setpoint = context.activeSetpoint, !showsSetpointControl {
                 Text("Target \(formatTemp(setpoint))")
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.heroSubtitle)
                     .foregroundStyle(heroTint)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
             }
         }
     }
@@ -132,8 +132,8 @@ struct ClimateControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Setpoint row
@@ -146,13 +146,13 @@ struct ClimateControlCard: View {
 
     private var setpointRow: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: "target")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text("Target")
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
             }
             .foregroundStyle(.secondary)
@@ -168,10 +168,10 @@ struct ClimateControlCard: View {
                 }
 
                 Text(formatTemp(setpointDraft))
-                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.identityTileValue)
                     .monospacedDigit()
                     .foregroundStyle(heroTint)
-                    .frame(minWidth: 72)
+                    .frame(minWidth: DesignTokens.Size.climateSetpointMinWidth)
                     .contentTransition(.numericText(value: setpointDraft))
                     .animation(.snappy, value: setpointDraft)
 
@@ -188,10 +188,10 @@ struct ClimateControlCard: View {
     private func setpointButton(systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .bold))
+                .font(DesignTokens.Typography.climateActionIcon)
                 .foregroundStyle(heroTint)
-                .frame(width: 32, height: 32)
-                .background(heroTint.opacity(0.15), in: Circle())
+                .frame(width: DesignTokens.Size.climateActionButton, height: DesignTokens.Size.climateActionButton)
+                .background(heroTint.opacity(DesignTokens.Opacity.actionButtonFill), in: Circle())
         }
         .buttonStyle(.plain)
     }
@@ -201,13 +201,13 @@ struct ClimateControlCard: View {
     @ViewBuilder
     private func modeRow(modes: [String]) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: "dial.medium")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text("Mode")
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
             }
             .foregroundStyle(.secondary)
@@ -233,7 +233,7 @@ struct ClimateControlCard: View {
                 .padding(.horizontal, DesignTokens.Spacing.md)
                 .padding(.vertical, DesignTokens.Spacing.sm)
                 .background(
-                    isSelected ? chipTint.opacity(0.20) : Color(.tertiarySystemFill),
+                    isSelected ? chipTint.opacity(DesignTokens.Opacity.strongAccentFill) : Color(.tertiarySystemFill),
                     in: Capsule()
                 )
                 .foregroundStyle(isSelected ? chipTint : Color.primary)

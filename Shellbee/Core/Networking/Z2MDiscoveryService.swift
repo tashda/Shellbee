@@ -10,7 +10,7 @@ final class Z2MDiscoveryService {
     @MainActor private var scanTask: Task<Void, Never>?
 
     nonisolated private static let z2mPort: UInt16 = 8080
-    nonisolated private static let probeTimeout: TimeInterval = 1.5
+    nonisolated private static let probeTimeout: TimeInterval = AppConfig.Networking.discoveryProbeTimeout
     nonisolated private static let maxConcurrent = 48
 
     @MainActor

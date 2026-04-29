@@ -35,7 +35,7 @@ struct DocHeroCard<Extras: View>: View {
             HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
                 DeviceImageView(device: device, isAvailable: true, size: DesignTokens.Size.deviceActionSheetImage * 1.4)
                     .frame(width: DesignTokens.Size.deviceActionSheetImage * 1.5, height: DesignTokens.Size.deviceActionSheetImage * 1.5)
-                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                    .shadow(color: Color.black.opacity(DesignTokens.Opacity.hairline), radius: 8, x: 0, y: 4)
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                     if let eyebrow, !eyebrow.isEmpty {
@@ -69,17 +69,17 @@ struct DocHeroCard<Extras: View>: View {
 
     static var defaultGradient: [Color] {
         [
-            Color.accentColor.opacity(0.22),
-            Color.blue.opacity(0.14),
-            Color.blue.opacity(0.06)
+            Color.accentColor.opacity(DesignTokens.Opacity.mildOpaque),
+            Color.blue.opacity(DesignTokens.Opacity.mediumAccentFill),
+            Color.blue.opacity(DesignTokens.Opacity.offStateTint)
         ]
     }
 
     static var pairingGradient: [Color] {
         [
-            Color.blue.opacity(0.22),
-            Color.cyan.opacity(0.14),
-            Color.cyan.opacity(0.06)
+            Color.blue.opacity(DesignTokens.Opacity.mildOpaque),
+            Color.cyan.opacity(DesignTokens.Opacity.mediumAccentFill),
+            Color.cyan.opacity(DesignTokens.Opacity.offStateTint)
         ]
     }
 }

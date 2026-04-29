@@ -73,7 +73,7 @@ struct LightControlCard: View {
                 LinearGradient(
                     colors: [
                         (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(context.isOn ? 0.18 : 0.06),
-                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(0.04)
+                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(DesignTokens.Opacity.subtleFade)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -94,13 +94,13 @@ struct LightControlCard: View {
 
     @ViewBuilder private var interactiveContent: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(eyebrowLabel)
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(1)
             }
@@ -170,13 +170,13 @@ struct LightControlCard: View {
     private var snapshotHero: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text(eyebrowLabel)
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(0.5)
+                        .font(DesignTokens.Typography.eyebrowLabel)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                         .lineLimit(1)
                 }
@@ -192,20 +192,20 @@ struct LightControlCard: View {
     @ViewBuilder
     private var snapshotHeroValue: some View {
         if context.isOn, context.brightness != nil {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Text("\(context.brightnessPercent)")
-                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .font(DesignTokens.Typography.heroValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
                 Text("%")
-                    .font(.system(size: 18, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.heroUnit)
                     .foregroundStyle(.secondary)
             }
         } else {
             Text(context.isOn ? "On" : "Off")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroStateText)
                 .foregroundStyle(headerTint)
         }
     }
@@ -225,8 +225,8 @@ struct LightControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     private var hasColorOrTempInfo: Bool {
@@ -245,20 +245,20 @@ struct LightControlCard: View {
             )
         } else if isColorMode {
             HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: "paintpalette.fill")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text("Color")
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(0.5)
+                        .font(DesignTokens.Typography.eyebrowLabel)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                 }
                 .foregroundStyle(.secondary)
                 Spacer()
                 Circle()
                     .fill(context.displayColor)
-                    .frame(width: 22, height: 22)
+                    .frame(width: DesignTokens.Size.cardSymbol, height: DesignTokens.Size.cardSymbol)
                     .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
             }
         }
@@ -266,32 +266,32 @@ struct LightControlCard: View {
 
     private func snapshotInfoRow(icon: String, label: String, value: String, unit: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            HStack(spacing: 5) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.secondary)
             Spacer()
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.snapshotRowValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                 Text(unit)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.snapshotRowUnit)
                     .foregroundStyle(.secondary)
                 Circle()
                     .fill(context.displayColor)
-                    .frame(width: 18, height: 18)
+                    .frame(width: DesignTokens.Size.summaryRowSymbol, height: DesignTokens.Size.summaryRowSymbol)
                     .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
-                    .padding(.leading, 4)
+                    .padding(.leading, DesignTokens.Spacing.xs)
             }
         }
     }
@@ -306,7 +306,7 @@ struct LightControlCard: View {
     private func configButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(DesignTokens.Typography.sectionHeader)
                 .foregroundStyle(.primary)
                 .frame(width: DesignTokens.Size.lightControlButton, height: DesignTokens.Size.lightControlButton)
                 .contentShape(Circle())

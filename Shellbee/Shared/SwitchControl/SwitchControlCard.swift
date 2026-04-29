@@ -34,7 +34,7 @@ struct SwitchControlCard: View {
             LinearGradient(
                 colors: [
                     heroTint.opacity(context.isOn ? 0.18 : 0.06),
-                    heroTint.opacity(0.04)
+                    heroTint.opacity(DesignTokens.Opacity.subtleFade)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -56,13 +56,13 @@ struct SwitchControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: context.isOn ? "power.circle.fill" : "power.circle")
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(eyebrowLabel)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.5)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .lineLimit(1)
         }
@@ -76,7 +76,7 @@ struct SwitchControlCard: View {
 
     private var heroValue: some View {
         Text(context.isOn ? "On" : "Off")
-            .font(.system(size: 48, weight: .bold, design: .rounded))
+            .font(DesignTokens.Typography.heroStateText)
             .foregroundStyle(heroTint)
     }
 
@@ -115,8 +115,8 @@ struct SwitchControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Metering grid
@@ -179,28 +179,28 @@ private struct MeteringTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.featureTileValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 Text(unit)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.featureTileUnit)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

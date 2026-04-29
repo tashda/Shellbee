@@ -39,7 +39,7 @@ struct LockControlCard: View {
         ZStack {
             Color(.secondarySystemGroupedBackground)
             LinearGradient(
-                colors: [heroTint.opacity(0.18), heroTint.opacity(0.04)],
+                colors: [heroTint.opacity(DesignTokens.Opacity.onStateTint), heroTint.opacity(DesignTokens.Opacity.subtleFade)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -60,13 +60,13 @@ struct LockControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: context.isLocked ? "lock.fill" : "lock.open.fill")
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text("Lock")
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.5)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
         }
         .foregroundStyle(heroTint)
@@ -74,10 +74,10 @@ struct LockControlCard: View {
 
     private var heroValue: some View {
         Text(context.isLocked ? "Locked" : "Unlocked")
-            .font(.system(size: 48, weight: .bold, design: .rounded))
+            .font(DesignTokens.Typography.heroStateText)
             .foregroundStyle(heroTint)
             .lineLimit(1)
-            .minimumScaleFactor(0.7)
+            .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
     }
 
     private var statePill: some View {
@@ -91,8 +91,8 @@ struct LockControlCard: View {
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Action button
@@ -107,7 +107,7 @@ struct LockControlCard: View {
         } label: {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: context.isLocked ? "lock.open.fill" : "lock.fill")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(DesignTokens.Typography.formRowIconBold)
                 Text(context.isLocked ? "Unlock" : "Lock")
                     .font(.headline)
             }

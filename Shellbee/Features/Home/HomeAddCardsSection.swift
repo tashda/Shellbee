@@ -24,7 +24,7 @@ struct HomeAddCardsSection: View {
                                 Image(systemName: card.symbol)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(card.tint)
-                                    .frame(width: 22)
+                                    .frame(width: DesignTokens.Size.cardSymbol)
                                 Text(card.title)
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(.primary)
@@ -36,7 +36,7 @@ struct HomeAddCardsSection: View {
                         .buttonStyle(.plain)
 
                         if index < hidden.count - 1 {
-                            Divider().padding(.leading, 60)
+                            Divider().padding(.leading, DesignTokens.Size.homeAddDividerInset)
                         }
                     }
                 }

@@ -32,7 +32,7 @@ struct DeviceInfoCardView: View {
                 Text(label)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .frame(width: 90, alignment: .leading)
+                    .frame(width: DesignTokens.Size.docLabelColumnWidth, alignment: .leading)
 
                 Text(value)
                     .font(.subheadline)

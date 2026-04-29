@@ -21,16 +21,16 @@ struct StatusChip: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             if let symbol {
                 Image(systemName: symbol)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: DesignTokens.Size.compactChipSymbol, weight: .bold))
             }
 
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignTokens.Typography.eyebrowLabel)
                 .lineLimit(1)
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Size.chipVerticalPadding)
         .foregroundStyle(tint)
-        .background(tint.opacity(0.12), in: Capsule())
+        .background(tint.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
     }
 }

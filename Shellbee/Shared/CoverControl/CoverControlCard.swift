@@ -61,7 +61,7 @@ struct CoverControlCard: View {
             Color(.secondarySystemGroupedBackground)
             LinearGradient(
                 colors: [heroTint.opacity(isFullyClosed ? 0.06 : 0.18),
-                         heroTint.opacity(0.04)],
+                         heroTint.opacity(DesignTokens.Opacity.subtleFade)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -81,13 +81,13 @@ struct CoverControlCard: View {
     }
 
     private var heroEyebrow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open")
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(eyebrowLabel)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.5)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .lineLimit(1)
         }
@@ -102,37 +102,37 @@ struct CoverControlCard: View {
     @ViewBuilder
     private var heroValue: some View {
         if context.positionFeature != nil {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                     Text("\(Int(positionDraft.rounded()))")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .font(DesignTokens.Typography.heroValue)
                         .monospacedDigit()
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
                         .contentTransition(.numericText(value: positionDraft))
                         .animation(.snappy, value: positionDraft)
                     Text("%")
-                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.heroUnit)
                         .foregroundStyle(.secondary)
                 }
                 Text(context.displayState)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.heroSubtitle)
                     .foregroundStyle(heroTint)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
             }
         } else {
             Text(context.displayState)
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroStateText)
                 .foregroundStyle(heroTint)
         }
     }
 
     private var hairline: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
-            .frame(height: 0.5)
+            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
+            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Position slider
@@ -175,9 +175,9 @@ struct CoverControlCard: View {
         Button {
             if let p = context.statePayload(payload) { onSend(p) }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(DesignTokens.Typography.lightSecondaryIcon)
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
@@ -196,24 +196,24 @@ struct CoverControlCard: View {
         let writable = context.tiltFeature?.isWritable == true && mode == .interactive
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: 5) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: "rotate.3d")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text("Tilt")
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(0.5)
+                        .font(DesignTokens.Typography.eyebrowLabel)
+                        .tracking(DesignTokens.Typography.eyebrowTracking)
                         .textCase(.uppercase)
                 }
                 .foregroundStyle(.secondary)
                 Spacer()
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                     Text("\(Int(tiltDraft.rounded()))")
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .font(DesignTokens.Typography.snapshotRowValue)
                         .monospacedDigit()
                         .foregroundStyle(.primary)
                     Text("%")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.snapshotRowUnit)
                         .foregroundStyle(.secondary)
                 }
             }

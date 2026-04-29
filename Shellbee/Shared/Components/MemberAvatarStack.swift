@@ -6,11 +6,15 @@ struct MemberAvatarStack: View {
     var maxVisible: Int = 5
 
     private var overlap: CGFloat { size / 3 }
-    private var borderWidth: CGFloat { max(1.5, size * 0.063) }
-    private var placeholderFont: CGFloat { size * 0.375 }
-    private var badgeSize: CGFloat { size + 2 }
-    private var badgeFont: CGFloat { max(9, size * 0.44) }
-    private var badgePadding: CGFloat { size * 0.25 }
+    private var borderWidth: CGFloat {
+        max(DesignTokens.Ratio.memberAvatarBorderMin, size * DesignTokens.Ratio.memberAvatarBorder)
+    }
+    private var placeholderFont: CGFloat { size * DesignTokens.Ratio.memberAvatarFont }
+    private var badgeSize: CGFloat { size + DesignTokens.Spacing.xxs }
+    private var badgeFont: CGFloat {
+        max(DesignTokens.Ratio.memberAvatarBadgeFontMin, size * DesignTokens.Ratio.memberAvatarBadgeFont)
+    }
+    private var badgePadding: CGFloat { size * DesignTokens.Ratio.memberAvatarBadgePadding }
 
     var body: some View {
         HStack(spacing: -overlap) {

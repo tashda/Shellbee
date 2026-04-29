@@ -50,7 +50,7 @@ struct HomeLogRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
             badge
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 Text(entry.summaryTitle)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
@@ -75,11 +75,11 @@ struct HomeLogRow: View {
 
     private var badge: some View {
         Circle()
-            .fill(entry.level.color.opacity(0.18))
+            .fill(entry.level.color.opacity(DesignTokens.Opacity.onStateTint))
             .frame(width: Self.badgeSize, height: Self.badgeSize)
             .overlay {
                 Image(systemName: entry.category.systemImage)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(DesignTokens.Typography.sectionHeaderLabel)
                     .foregroundStyle(entry.level.color)
             }
     }

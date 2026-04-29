@@ -172,7 +172,7 @@ private struct InAppLinkUnavailableView: View {
 }
 
 #Preview {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
         DocInlineTextView(spans: [
             .text("Keep the bulb "),
             .bold("close to the coordinator"),

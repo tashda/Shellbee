@@ -38,7 +38,7 @@ struct GroupListRow: View {
             Text(title)
                 .font(.caption2)
                 .lineLimit(1)
-                .minimumScaleFactor(0.65)
+                .minimumScaleFactor(DesignTokens.Typography.scaleFactorAggressiveLight)
         }
         .frame(minWidth: DesignTokens.Size.deviceActionSheetImage)
     }

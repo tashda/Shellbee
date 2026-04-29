@@ -19,15 +19,16 @@ struct SplashScreenView: View {
                 Image(splashImageName)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
+                    .frame(width: DesignTokens.Size.splashIconLarge, height: DesignTokens.Size.splashIconLarge)
                     .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
-                    .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
+                    .shadow(color: .black.opacity(DesignTokens.Opacity.chipFill),
+                            radius: DesignTokens.Shadow.splashRadius, y: DesignTokens.Shadow.splashY)
                 .scaleEffect(isVisible ? 1 : 0.8)
                 .opacity(isVisible ? 1 : 0)
                 
                 Text("Shellbee")
                     .font(.system(size: DesignTokens.Size.splashTitle, weight: .bold, design: .rounded))
-                    .tracking(-1)
+                    .tracking(DesignTokens.Tracking.splashTitle)
                     .opacity(isVisible ? 1 : 0)
                     .offset(y: isVisible ? 0 : 10)
                 
@@ -45,7 +46,7 @@ struct SplashScreenView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.8)) {
+            withAnimation(.easeOut(duration: DesignTokens.Duration.pulseExpand)) {
                 isVisible = true
             }
         }

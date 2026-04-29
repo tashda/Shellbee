@@ -50,13 +50,13 @@ struct GenericExposeCard: View {
     /// name above the card already names what we're looking at, so a redundant
     /// "Controls" / "Device State" headline is just noise.
     private var snapshotHeader: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: "cpu")
-                .font(.system(size: 12, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .foregroundStyle(.tint)
             Text("Device State")
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(0.6)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -128,7 +128,7 @@ private struct GenericExposeRow: View {
 
     private var leadingIcon: some View {
         Image(systemName: meta.symbol)
-            .font(.system(size: 16, weight: .medium))
+            .font(DesignTokens.Typography.formRowIcon)
             .symbolRenderingMode(.hierarchical)
             .foregroundStyle(.secondary)
             .frame(width: iconWidth)
@@ -180,7 +180,7 @@ private struct GenericExposeRow: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
                         Text(prettify(current))
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption2.weight(.semibold))

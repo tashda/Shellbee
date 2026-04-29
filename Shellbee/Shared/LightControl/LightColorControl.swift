@@ -53,7 +53,7 @@ struct LightColorControl: View {
             Circle()
                 .fill(color)
                 .frame(width: Self.swatchSize, height: Self.swatchSize)
-                .overlay(Circle().strokeBorder(isSelected(color) ? Color.primary : Color.clear, lineWidth: 2))
+                .overlay(Circle().strokeBorder(isSelected(color) ? Color.primary : Color.clear, lineWidth: DesignTokens.Size.lightSelectionStroke))
                 .frame(maxWidth: .infinity)
                 .contentShape(Circle().inset(by: -8))
         }
@@ -68,7 +68,7 @@ struct LightColorControl: View {
                 .frame(width: Self.swatchSize, height: Self.swatchSize)
                 .overlay(
                     Image(systemName: "eyedropper.halffull")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(DesignTokens.Typography.sectionHeaderLabel)
                         .foregroundStyle(.secondary)
                 )
                 .frame(maxWidth: .infinity)

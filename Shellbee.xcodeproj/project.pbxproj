@@ -82,6 +82,7 @@
 				App/RootView.swift,
 				Assets.xcassets,
 				ContentView.swift,
+				Core/Config/AppConfig.swift,
 				Core/CrashReporting/CrashReportingConsent.swift,
 				Core/CrashReporting/CrashReportScrubber.swift,
 				Core/CrashReporting/PendingCrashSheet.swift,
@@ -114,6 +115,8 @@
 				Core/Networking/Z2MWebSocketClient.swift,
 				Core/Networking/Z2MWebSocketSessionDelegate.swift,
 				Core/Parsing/DeviceDocNormalizer.swift,
+				"Core/Parsing/DeviceDocNormalizer+Pairing.swift",
+				Core/Parsing/DeviceDocumentationModels.swift,
 				Core/Parsing/DocParser.swift,
 				Core/Parsing/FrontendReferenceRewriter.swift,
 				Core/Services/BundledDocStore.swift,
@@ -121,6 +124,11 @@
 				Core/Services/DocBrowserIndex.swift,
 				Core/Services/GuideDocService.swift,
 				Core/Store/AppStore.swift,
+				"Core/Store/AppStore+Devices.swift",
+				"Core/Store/AppStore+Events.swift",
+				"Core/Store/AppStore+Logs.swift",
+				"Core/Store/AppStore+Notifications.swift",
+				"Core/Store/AppStore+OTA.swift",
 				Core/Store/NotificationPreferences.swift,
 				Features/Bridge/PhilipsHueResetSheet.swift,
 				Features/Bridge/TouchlinkDeviceRow.swift,
@@ -196,6 +204,8 @@
 				Features/Logs/LogRowView.swift,
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
+				Features/Notifications/FastTrackBanner.swift,
+				Features/Notifications/InAppNotificationBanner.swift,
 				Features/Notifications/InAppNotificationOverlay.swift,
 				Features/Settings/AboutView.swift,
 				Features/Settings/AcknowledgementsView.swift,
@@ -210,6 +220,7 @@
 				Features/Settings/Developer/DeveloperSettings.swift,
 				Features/Settings/Developer/DeveloperSettingsView.swift,
 				Features/Settings/Developer/MQTTInspectorView.swift,
+				Features/Settings/Developer/SubscribeStore.swift,
 				Features/Settings/DeviceStatisticsView.swift,
 				Features/Settings/DocBrowserDetailView.swift,
 				Features/Settings/DocBrowserView.swift,
@@ -264,6 +275,8 @@
 				Shared/ExposeCardView.swift,
 				Shared/FanControl/FanControlCard.swift,
 				Shared/FanControl/FanControlContext.swift,
+				Shared/FanControl/FanExtraRow.swift,
+				Shared/FanControl/FanFeatureSections.swift,
 				Shared/GenericExposeCard/GenericExposeCard.swift,
 				"Shared/LightControl/Color+HexString.swift",
 				Shared/LightControl/LightAdvancedFeatureRow.swift,
@@ -809,7 +822,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -850,7 +863,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -890,7 +903,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -932,7 +945,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

@@ -12,9 +12,10 @@ struct GroupIconView: View {
                 .frame(width: size, height: size)
         } else {
             ZStack(alignment: .topLeading) {
-                DeviceImageView(device: memberDevices[0], isAvailable: true, size: size * 0.72)
-                DeviceImageView(device: memberDevices[1], isAvailable: true, size: size * 0.72)
-                    .offset(x: size * 0.28, y: size * 0.28)
+                DeviceImageView(device: memberDevices[0], isAvailable: true, size: size * DesignTokens.Ratio.groupIconMember)
+                DeviceImageView(device: memberDevices[1], isAvailable: true, size: size * DesignTokens.Ratio.groupIconMember)
+                    .offset(x: size * DesignTokens.Ratio.groupIconOffset,
+                            y: size * DesignTokens.Ratio.groupIconOffset)
             }
             .frame(width: size, height: size, alignment: .topLeading)
         }
@@ -22,9 +23,10 @@ struct GroupIconView: View {
 
     private var genericIcon: some View {
         Image(systemName: "square.on.square.fill")
-            .font(.system(size: size * 0.5, weight: .medium))
+            .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
             .foregroundStyle(.secondary)
             .frame(width: size, height: size)
-            .background(.fill.secondary, in: RoundedRectangle(cornerRadius: size * 0.28))
+            .background(.fill.secondary,
+                        in: RoundedRectangle(cornerRadius: size * DesignTokens.Ratio.groupIconCorner))
     }
 }

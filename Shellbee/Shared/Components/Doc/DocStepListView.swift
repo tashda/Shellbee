@@ -43,7 +43,7 @@ private struct DocStepRow: View {
                 }
                 if showConnector {
                     Rectangle()
-                        .fill(.tint.opacity(0.25))
+                        .fill(.tint.opacity(DesignTokens.Opacity.pressedAlpha))
                         .frame(width: DesignTokens.Size.docStepConnector)
                         .frame(maxHeight: .infinity)
                 }
@@ -54,7 +54,7 @@ private struct DocStepRow: View {
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
+                .padding(.top, DesignTokens.Spacing.xs)
                 .padding(.bottom, showConnector ? DesignTokens.Spacing.xl : 0)
         }
     }

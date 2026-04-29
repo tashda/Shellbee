@@ -16,7 +16,7 @@ struct DeviceMetricItem: View {
                 .font(.subheadline.bold())
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
                 .frame(height: DesignTokens.Size.deviceCardMetricValueHeight)
 
             Text(label)

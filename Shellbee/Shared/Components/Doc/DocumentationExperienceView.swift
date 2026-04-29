@@ -439,7 +439,7 @@ private struct DocumentationCalloutView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(DesignTokens.Spacing.md)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
+        .background(tint.opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
     }
 }
 

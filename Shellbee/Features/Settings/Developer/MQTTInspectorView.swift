@@ -32,146 +32,11 @@ struct MQTTInspectorView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 220)
+                .frame(width: DesignTokens.Size.inspectorTabPickerWidth)
             }
         }
         .onAppear { store.attach(session: environment.session) }
         .onDisappear { store.detach(session: environment.session) }
-    }
-}
-
-// MARK: - Model
-
-@Observable
-final class SubscribeStore {
-    var messages: [InspectorMessage] = []
-    var paused: Bool = false
-    var filter: String = ""
-    let bufferCap: Int = 1000
-
-    func attach(session: ConnectionSessionController) {
-        session.rawInboundTap = { [weak self] topic, payload in
-            guard let self, !self.paused else { return }
-            let msg = InspectorMessage(timestamp: .now, topic: topic, payload: payload)
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.messages.append(msg)
-                if self.messages.count > self.bufferCap {
-                    self.messages.removeFirst(self.messages.count - self.bufferCap)
-                }
-            }
-        }
-    }
-
-    func detach(session: ConnectionSessionController) {
-        session.rawInboundTap = nil
-    }
-
-    func clear() {
-        messages.removeAll()
-    }
-
-    var filtered: [InspectorMessage] {
-        let f = filter.trimmingCharacters(in: .whitespaces)
-        guard !f.isEmpty else { return messages }
-        return messages.filter { $0.topic.localizedCaseInsensitiveContains(f) }
-    }
-}
-
-struct InspectorMessage: Identifiable, Equatable {
-    let id = UUID()
-    let timestamp: Date
-    let topic: String
-    let payload: JSONValue
-
-    var prettyPayload: String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(payload),
-              let text = String(data: data, encoding: .utf8) else {
-            return ""
-        }
-        return text
-    }
-
-    /// Z2M log messages on `bridge/logging` carry a `level` field — surface
-    /// that color on the row icon to match the raw logs view.
-    var logLevelColor: Color {
-        guard topic == Z2MTopics.bridgeLogging,
-              let level = payload.object?["level"]?.stringValue,
-              let parsed = LogLevel(rawValue: level.lowercased()) else {
-            return .secondary
-        }
-        return parsed.color
-    }
-
-    var logLevelIcon: String {
-        guard topic == Z2MTopics.bridgeLogging,
-              let level = payload.object?["level"]?.stringValue,
-              let parsed = LogLevel(rawValue: level.lowercased()) else {
-            return "dot.radiowaves.up.forward"
-        }
-        return parsed.systemImage
-    }
-}
-
-// MARK: - JSON syntax highlighting
-
-enum JSONHighlighter {
-    static func attributed(_ source: String) -> AttributedString {
-        var out = AttributedString(source)
-        out.font = .caption.monospaced()
-        out.foregroundColor = .secondary
-
-        // Keys: "<word>" : → blue
-        if let regex = try? Regex<(Substring, Substring)>("\"([^\"\\\\]+)\"\\s*:") {
-            for match in source.matches(of: regex) {
-                let r = match.range
-                if let lower = AttributedString.Index(r.lowerBound, within: out),
-                   let upper = AttributedString.Index(r.upperBound, within: out) {
-                    out[lower..<upper].foregroundColor = .blue
-                }
-            }
-        }
-
-        // String values: : "..." or array element strings → green
-        if let regex = try? Regex<(Substring, Substring)>(":\\s*(\"[^\"\\\\]*\")") {
-            for match in source.matches(of: regex) {
-                let inner = match.output.1
-                let r = inner.startIndex..<inner.endIndex
-                if let lower = AttributedString.Index(r.lowerBound, within: out),
-                   let upper = AttributedString.Index(r.upperBound, within: out) {
-                    out[lower..<upper].foregroundColor = .green
-                }
-            }
-        }
-
-        // Numbers: ints / floats → orange
-        if let regex = try? Regex<(Substring, Substring)>("(?<![\\w-])(-?\\d+(?:\\.\\d+)?)") {
-            for match in source.matches(of: regex) {
-                let inner = match.output.1
-                let r = inner.startIndex..<inner.endIndex
-                if let lower = AttributedString.Index(r.lowerBound, within: out),
-                   let upper = AttributedString.Index(r.upperBound, within: out) {
-                    out[lower..<upper].foregroundColor = .orange
-                }
-            }
-        }
-
-        // Booleans / null → purple
-        for word in ["true", "false", "null"] {
-            if let regex = try? Regex<Substring>("\\b\(word)\\b") {
-                for match in source.matches(of: regex) {
-                    let r = match.range
-                    if let lower = AttributedString.Index(r.lowerBound, within: out),
-                       let upper = AttributedString.Index(r.upperBound, within: out) {
-                        out[lower..<upper].foregroundColor = .purple
-                    }
-                }
-            }
-        }
-
-        return out
     }
 }
 
@@ -233,10 +98,10 @@ private struct SubscribeView: View {
                 Text("Paused")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.orange.opacity(0.9), in: Capsule())
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, DesignTokens.Spacing.md)
+                    .padding(.vertical, DesignTokens.Spacing.sm)
+                    .background(.orange.opacity(DesignTokens.Opacity.banner), in: Capsule())
+                    .padding(.bottom, DesignTokens.Spacing.md)
             }
         }
     }
@@ -257,19 +122,19 @@ private struct MessageRow: View {
     @State private var expanded: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: message.logLevelIcon)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(message.logLevelColor)
-                    .frame(width: 14)
+                    .frame(width: DesignTokens.Size.logLevelIconWidth)
                 Text(message.topic)
                     .font(.system(.caption, design: .monospaced).weight(.bold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
-                Spacer(minLength: 8)
+                Spacer(minLength: DesignTokens.Spacing.sm)
                 Text(message.timestamp, format: .dateTime.hour().minute().second())
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.tertiary)
@@ -277,25 +142,25 @@ private struct MessageRow: View {
             Text(JSONHighlighter.attributed(message.prettyPayload))
                 .lineLimit(expanded ? nil : 6)
                 .textSelection(.enabled)
-                .padding(10)
+                .padding(DesignTokens.Size.inspectorPayloadInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous)
                         .fill(Color(.tertiarySystemFill))
                 )
-                .padding(.leading, 22)
+                .padding(.leading, DesignTokens.Size.cardSymbol)
             if message.prettyPayload.components(separatedBy: "\n").count > 6 {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() }
+                    withAnimation(.easeInOut(duration: DesignTokens.Duration.quickFade)) { expanded.toggle() }
                 } label: {
                     Text(expanded ? "Show less" : "Show more")
                         .font(.caption.weight(.medium))
                 }
                 .buttonStyle(.borderless)
-                .padding(.leading, 22)
+                .padding(.leading, DesignTokens.Size.cardSymbol)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
     }
 }
 

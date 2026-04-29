@@ -46,11 +46,11 @@ struct SensorCard: View {
     private var header: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "sensor.fill")
-                .font(.system(size: 12, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .foregroundStyle(.tint)
             Text("Sensor")
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(0.6)
+                .font(DesignTokens.Typography.eyebrowLabel)
+                .tracking(DesignTokens.Typography.eyebrowTracking)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -210,29 +210,29 @@ private struct SensorReadingTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: reading.icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(reading.label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .font(DesignTokens.Typography.eyebrowLabel)
+                    .tracking(DesignTokens.Typography.eyebrowTracking)
                     .textCase(.uppercase)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(reading.numericDisplayValue)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.featureTileValue)
                     .monospacedDigit()
                     .foregroundStyle(reading.valueColor)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
                 if let unit = reading.unitDisplay {
                     Text(unit)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.featureTileUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

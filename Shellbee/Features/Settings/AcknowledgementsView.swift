@@ -34,7 +34,7 @@ struct AcknowledgementsView: View {
                         Image(systemName: "heart.fill")
                             .font(.body)
                             .foregroundStyle(.pink)
-                            .frame(width: 28)
+                            .frame(width: DesignTokens.Size.settingsIconFrame)
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                             Text("Donate to Koenkk")
                                 .foregroundStyle(.primary)
@@ -61,7 +61,7 @@ struct AcknowledgementsView: View {
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
                     .font(.body)
                     .foregroundStyle(.green)
-                    .frame(width: 28)
+                    .frame(width: DesignTokens.Size.settingsIconFrame)
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     HStack(spacing: DesignTokens.Spacing.sm) {
                         Text(title)
@@ -70,7 +70,7 @@ struct AcknowledgementsView: View {
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, DesignTokens.Spacing.xs)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DesignTokens.Spacing.xxs)
                             .background(.quaternary, in: Capsule())
                     }
                     Text(subtitle)

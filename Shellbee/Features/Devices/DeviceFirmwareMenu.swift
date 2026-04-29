@@ -75,8 +75,9 @@ struct DeviceFirmwareMenu: View {
                 if updateCount > 0 && !bulkActive {
                     Circle()
                         .fill(Color.red)
-                        .frame(width: 8, height: 8)
-                        .offset(x: 4, y: -2)
+                        .frame(width: DesignTokens.Size.logLevelDotSize, height: DesignTokens.Size.logLevelDotSize)
+                        .offset(x: DesignTokens.Size.firmwareUpdateBadgeOffsetX,
+                                y: DesignTokens.Size.firmwareUpdateBadgeOffsetY)
                 }
             }
         }

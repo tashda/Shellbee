@@ -8,7 +8,7 @@ struct LogRowView: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             leadingVisual
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                     Text(entry.summaryTitle)
                         .font(.subheadline.bold())
@@ -34,7 +34,7 @@ struct LogRowView: View {
 
     private var leadingVisual: some View {
         let size = DesignTokens.Size.logRowDeviceImage
-        let badgeSize = size * 0.47
+        let badgeSize = size * DesignTokens.Ratio.logRowBadgeSize
 
         return ZStack(alignment: .bottomTrailing) {
             Circle()
@@ -42,25 +42,28 @@ struct LogRowView: View {
                 .frame(width: size, height: size)
                 .overlay {
                     Image(systemName: entry.category.systemImage)
-                        .font(.system(size: size * 0.38, weight: .semibold))
+                        .font(.system(size: size * DesignTokens.Typography.iconRatioSmall, weight: .semibold))
                         .foregroundStyle(iconForeground)
                 }
 
             if let device = resolvedDevice {
                 deviceThumbnail(device, size: badgeSize)
-                    .offset(x: 3, y: 3)
+                    .offset(x: DesignTokens.Size.logRowBadgeOffset,
+                            y: DesignTokens.Size.logRowBadgeOffset)
             }
         }
     }
 
     private var iconForeground: Color {
-        entry.level == .warning ? Color.black.opacity(0.75) : Color.white
+        entry.level == .warning ? Color.black.opacity(DesignTokens.Opacity.secondaryDim) : Color.white
     }
 
     private func deviceThumbnail(_ device: Device, size: CGFloat) -> some View {
         DeviceImageView(device: device, isAvailable: true, size: size)
             .clipShape(Circle())
-            .overlay(Circle().strokeBorder(Color(.systemBackground), lineWidth: max(1.5, size * 0.1)))
+            .overlay(Circle().strokeBorder(Color(.systemBackground),
+                                           lineWidth: max(DesignTokens.Ratio.logRowBadgeBorderMin,
+                                                          size * DesignTokens.Ratio.logRowBadgeBorder)))
     }
 
     private var resolvedDevice: Device? {
