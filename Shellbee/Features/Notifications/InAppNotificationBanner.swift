@@ -60,7 +60,7 @@ struct InAppNotificationBanner: View {
     private var header: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: notification.level.systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(DesignTokens.Typography.notificationLevelIcon)
                 .foregroundStyle(notification.level.color)
                 .frame(width: DesignTokens.Size.cardSymbol)
 

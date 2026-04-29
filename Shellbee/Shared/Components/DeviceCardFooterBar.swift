@@ -20,7 +20,7 @@ struct DeviceCardFooterBar: View {
     private func statCell(value: String, label: String, color: Color) -> some View {
         VStack(spacing: DesignTokens.Spacing.summaryRowVerticalPadding) {
             Text(value)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(DesignTokens.Typography.footerActionLabel)
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -45,11 +45,11 @@ struct DeviceCardFooterBar: View {
     private var powerStatValue: some View {
         if device.type == .endDevice, let battery = state.battery {
             Text("\(battery)%")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(DesignTokens.Typography.footerActionLabel)
                 .foregroundStyle(battery.batteryColor)
         } else {
             Text(normalizedPowerSource)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(DesignTokens.Typography.footerActionLabel)
                 .foregroundStyle(Color.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)

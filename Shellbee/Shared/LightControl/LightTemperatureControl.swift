@@ -65,7 +65,7 @@ struct LightTemperatureControl: View {
                             ))
                             .opacity(inRange ? 1 : 0.35)
                         Text(preset.label)
-                            .font(.system(size: 9, weight: .medium))
+                            .font(DesignTokens.Typography.sliderEndLabel)
                             .foregroundStyle(.secondary)
                     }
                 }

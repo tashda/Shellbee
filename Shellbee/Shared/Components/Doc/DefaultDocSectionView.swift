@@ -24,7 +24,7 @@ struct SectionHeader: View {
                     .frame(width: DesignTokens.Size.docSectionIconFrame,
                            height: DesignTokens.Size.docSectionIconFrame)
                 Image(systemName: iconName)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(DesignTokens.Typography.sectionHeader)
                     .foregroundStyle(iconColor)
             }
             Text(title)

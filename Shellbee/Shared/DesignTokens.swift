@@ -189,6 +189,8 @@ nonisolated enum DesignTokens {
 
         // MARK: Card titles & section labels
         static let cardTitle: Font = .system(size: 24, weight: .bold, design: .rounded)
+        // Smaller card title for the GroupCard header
+        static let compactCardTitle: Font = .system(size: 20, weight: .bold, design: .rounded)
         static let footerActionLabel: Font = .system(size: 13, weight: .semibold, design: .rounded)
         static let sectionHeader: Font = .system(size: 15, weight: .semibold)
 

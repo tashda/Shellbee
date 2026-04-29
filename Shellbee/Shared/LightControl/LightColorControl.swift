@@ -68,7 +68,7 @@ struct LightColorControl: View {
                 .frame(width: Self.swatchSize, height: Self.swatchSize)
                 .overlay(
                     Image(systemName: "eyedropper.halffull")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(DesignTokens.Typography.eyebrowLabelLarge)
                         .foregroundStyle(.secondary)
                 )
                 .frame(maxWidth: .infinity)

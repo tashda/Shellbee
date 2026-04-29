@@ -38,7 +38,7 @@ struct FanExtraRow: View {
 
     private var leadingIcon: some View {
         Image(systemName: meta.symbol)
-            .font(.system(size: 16, weight: .medium))
+            .font(DesignTokens.Typography.formRowIcon)
             .symbolRenderingMode(.hierarchical)
             .foregroundStyle(.secondary)
             .frame(width: iconWidth)

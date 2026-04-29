@@ -79,7 +79,7 @@ struct HomeLogRow: View {
             .frame(width: Self.badgeSize, height: Self.badgeSize)
             .overlay {
                 Image(systemName: entry.category.systemImage)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabelLarge)
                     .foregroundStyle(entry.level.color)
             }
     }

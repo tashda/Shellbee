@@ -96,10 +96,10 @@ struct LightControlCard: View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(eyebrowLabel)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
                     .lineLimit(1)
@@ -172,10 +172,10 @@ struct LightControlCard: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text(eyebrowLabel)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(DesignTokens.Typography.eyebrowLabel)
                         .tracking(0.5)
                         .textCase(.uppercase)
                         .lineLimit(1)
@@ -194,18 +194,18 @@ struct LightControlCard: View {
         if context.isOn, context.brightness != nil {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Text("\(context.brightnessPercent)")
-                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .font(DesignTokens.Typography.heroValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text("%")
-                    .font(.system(size: 18, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.heroUnit)
                     .foregroundStyle(.secondary)
             }
         } else {
             Text(context.isOn ? "On" : "Off")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroStateText)
                 .foregroundStyle(headerTint)
         }
     }
@@ -247,10 +247,10 @@ struct LightControlCard: View {
             HStack(alignment: .firstTextBaseline) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: "paintpalette.fill")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text("Color")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(DesignTokens.Typography.eyebrowLabel)
                         .tracking(0.5)
                         .textCase(.uppercase)
                 }
@@ -268,10 +268,10 @@ struct LightControlCard: View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
                     .lineLimit(2)
@@ -281,11 +281,11 @@ struct LightControlCard: View {
             Spacer()
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.snapshotRowValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                 Text(unit)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.snapshotRowUnit)
                     .foregroundStyle(.secondary)
                 Circle()
                     .fill(context.displayColor)
@@ -306,7 +306,7 @@ struct LightControlCard: View {
     private func configButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(DesignTokens.Typography.sectionHeader)
                 .foregroundStyle(.primary)
                 .frame(width: DesignTokens.Size.lightControlButton, height: DesignTokens.Size.lightControlButton)
                 .contentShape(Circle())

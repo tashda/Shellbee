@@ -62,10 +62,10 @@ struct LockControlCard: View {
     private var heroEyebrow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: context.isLocked ? "lock.fill" : "lock.open.fill")
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text("Lock")
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignTokens.Typography.eyebrowLabel)
                 .tracking(0.5)
                 .textCase(.uppercase)
         }
@@ -74,7 +74,7 @@ struct LockControlCard: View {
 
     private var heroValue: some View {
         Text(context.isLocked ? "Locked" : "Unlocked")
-            .font(.system(size: 48, weight: .bold, design: .rounded))
+            .font(DesignTokens.Typography.heroStateText)
             .foregroundStyle(heroTint)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
@@ -107,7 +107,7 @@ struct LockControlCard: View {
         } label: {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: context.isLocked ? "lock.open.fill" : "lock.fill")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(DesignTokens.Typography.formRowIconBold)
                 Text(context.isLocked ? "Unlock" : "Lock")
                     .font(.headline)
             }

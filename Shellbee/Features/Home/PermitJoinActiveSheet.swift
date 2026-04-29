@@ -45,12 +45,12 @@ struct PermitJoinActiveSheet: View {
 
             if let remaining {
                 Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
-                    .font(.system(size: 64, weight: .thin).monospacedDigit())
+                    .font(DesignTokens.Typography.permitJoinCountdown.monospacedDigit())
                     .foregroundStyle(.primary)
                     .contentTransition(.numericText(countsDown: true))
             } else {
                 Image(systemName: "dot.radiowaves.up.forward")
-                    .font(.system(size: 48))
+                    .font(DesignTokens.Typography.permitJoinSymbol)
                     .foregroundStyle(.green)
                     .symbolEffect(.pulse)
             }

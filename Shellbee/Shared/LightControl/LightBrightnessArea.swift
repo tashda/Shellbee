@@ -60,7 +60,7 @@ struct LightBrightnessArea: View {
     private var labelRow: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: isOn ? "lightbulb.max.fill" : "lightbulb.slash.fill")
-                .font(.system(size: 16, weight: .semibold))
+                .font(DesignTokens.Typography.formRowIconBold)
             Spacer()
             Text(isOn ? "\(brightnessPercent)%" : "Off")
                 .font(.subheadline.monospacedDigit().weight(.semibold))

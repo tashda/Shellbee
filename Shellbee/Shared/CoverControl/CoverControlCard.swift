@@ -83,10 +83,10 @@ struct CoverControlCard: View {
     private var heroEyebrow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open")
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(eyebrowLabel)
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignTokens.Typography.eyebrowLabel)
                 .tracking(0.5)
                 .textCase(.uppercase)
                 .lineLimit(1)
@@ -105,7 +105,7 @@ struct CoverControlCard: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                     Text("\(Int(positionDraft.rounded()))")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .font(DesignTokens.Typography.heroValue)
                         .monospacedDigit()
                         .foregroundStyle(.primary)
                         .lineLimit(1)
@@ -113,18 +113,18 @@ struct CoverControlCard: View {
                         .contentTransition(.numericText(value: positionDraft))
                         .animation(.snappy, value: positionDraft)
                     Text("%")
-                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.heroUnit)
                         .foregroundStyle(.secondary)
                 }
                 Text(context.displayState)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.heroSubtitle)
                     .foregroundStyle(heroTint)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
         } else {
             Text(context.displayState)
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroStateText)
                 .foregroundStyle(heroTint)
         }
     }
@@ -177,7 +177,7 @@ struct CoverControlCard: View {
         } label: {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(DesignTokens.Typography.lightSecondaryIcon)
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
@@ -198,10 +198,10 @@ struct CoverControlCard: View {
             HStack(alignment: .firstTextBaseline) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: "rotate.3d")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text("Tilt")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(DesignTokens.Typography.eyebrowLabel)
                         .tracking(0.5)
                         .textCase(.uppercase)
                 }
@@ -209,11 +209,11 @@ struct CoverControlCard: View {
                 Spacer()
                 HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                     Text("\(Int(tiltDraft.rounded()))")
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .font(DesignTokens.Typography.snapshotRowValue)
                         .monospacedDigit()
                         .foregroundStyle(.primary)
                     Text("%")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.snapshotRowUnit)
                         .foregroundStyle(.secondary)
                 }
             }

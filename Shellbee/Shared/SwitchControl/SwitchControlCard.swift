@@ -58,10 +58,10 @@ struct SwitchControlCard: View {
     private var heroEyebrow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: context.isOn ? "power.circle.fill" : "power.circle")
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(eyebrowLabel)
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignTokens.Typography.eyebrowLabel)
                 .tracking(0.5)
                 .textCase(.uppercase)
                 .lineLimit(1)
@@ -76,7 +76,7 @@ struct SwitchControlCard: View {
 
     private var heroValue: some View {
         Text(context.isOn ? "On" : "Off")
-            .font(.system(size: 48, weight: .bold, design: .rounded))
+            .font(DesignTokens.Typography.heroStateText)
             .foregroundStyle(heroTint)
     }
 
@@ -181,10 +181,10 @@ private struct MeteringTile: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
                     .lineLimit(2)
@@ -194,13 +194,13 @@ private struct MeteringTile: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.metricValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
                 Text(unit)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.metricUnit)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

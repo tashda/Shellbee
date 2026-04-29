@@ -21,11 +21,11 @@ struct StatusChip: View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             if let symbol {
                 Image(systemName: symbol)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: DesignTokens.Size.compactChipSymbol, weight: .bold))
             }
 
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignTokens.Typography.eyebrowLabel)
                 .lineLimit(1)
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)

@@ -44,13 +44,14 @@ struct SensorCard: View {
     }
 
     private var header: some View {
+        // NOTE: 12pt eyebrow vs 11pt elsewhere — see #36.A.
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "sensor.fill")
-                .font(.system(size: 12, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIconLarge)
                 .foregroundStyle(.tint)
             Text("Sensor")
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(0.6)
+                .font(DesignTokens.Typography.eyebrowLabelLarge)
+                .tracking(DesignTokens.Typography.eyebrowTrackingLoose)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -212,10 +213,10 @@ private struct SensorReadingTile: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: reading.icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(reading.label)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
                     .lineLimit(2)
@@ -225,14 +226,14 @@ private struct SensorReadingTile: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(reading.numericDisplayValue)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.metricValue)
                     .monospacedDigit()
                     .foregroundStyle(reading.valueColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
                 if let unit = reading.unitDisplay {
                     Text(unit)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.metricUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

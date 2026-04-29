@@ -156,10 +156,10 @@ struct FanControlCard: View {
     private var heroEyebrow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"))
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(hasAirSensors ? "Air Quality" : "Fan")
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignTokens.Typography.eyebrowLabel)
                 .tracking(0.5)
                 .textCase(.uppercase)
         }
@@ -173,19 +173,19 @@ struct FanControlCard: View {
                 if let pm = pm25Value {
                     HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                         Text(Int(pm.rounded()).formatted())
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .font(DesignTokens.Typography.heroValue)
                             .monospacedDigit()
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
                         Text(pm25Unit)
-                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .font(DesignTokens.Typography.heroUnit)
                             .foregroundStyle(.secondary)
                     }
                 }
                 if let aq = airQualityText {
                     Text(prettify(aq))
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .font(DesignTokens.Typography.heroSubtitle)
                         .foregroundStyle(heroTint)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
@@ -193,7 +193,7 @@ struct FanControlCard: View {
             }
         } else {
             Text(context.isOn ? "On" : "Off")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroStateText)
                 .foregroundStyle(heroTint)
         }
     }
@@ -332,17 +332,17 @@ struct FanControlCard: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Image(systemName: icon)
-                        .font(.system(size: 11, weight: .bold))
+                        .font(DesignTokens.Typography.eyebrowIcon)
                         .symbolRenderingMode(.hierarchical)
                     Text("Filter")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(DesignTokens.Typography.eyebrowLabel)
                         .tracking(0.5)
                         .textCase(.uppercase)
                 }
                 .foregroundStyle(tint)
 
                 Text(title)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.metricValue)
                     .foregroundStyle(tint)
                     .lineLimit(1)
             }
@@ -383,10 +383,10 @@ struct FanControlCard: View {
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
                     .lineLimit(2)
@@ -396,13 +396,13 @@ struct FanControlCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(parts.value)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.metricValue)
                     .monospacedDigit()
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
                 Text(parts.unit)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .font(DesignTokens.Typography.metricUnit)
                     .foregroundStyle(.secondary)
             }
         }
@@ -415,8 +415,8 @@ struct FanControlCard: View {
     private func sectionView(_ section: LayoutSection) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text(section.title)
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(0.6)
+                .font(DesignTokens.Typography.eyebrowLabelLarge)
+                .tracking(DesignTokens.Typography.eyebrowTrackingLoose)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
                 .padding(.leading, DesignTokens.Spacing.md)
@@ -492,7 +492,7 @@ private struct DisclosureRow: View {
         Button(action: action) {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(DesignTokens.Typography.formRowIcon)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.secondary)
                     .frame(width: iconWidth)

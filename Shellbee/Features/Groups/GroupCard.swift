@@ -37,7 +37,7 @@ struct GroupCard: View {
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(group.friendlyName)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(DesignTokens.Typography.compactCardTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -115,10 +115,10 @@ struct GroupCard: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
                     .lineLimit(1)
@@ -127,14 +127,14 @@ struct GroupCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.identityValue)
                     .monospacedDigit()
                     .foregroundStyle(color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
                 if let unit {
                     Text(unit)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.identityUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -155,7 +155,7 @@ struct GroupCard: View {
     @ViewBuilder
     private var nameView: some View {
         let label = Text(group.friendlyName)
-            .font(.system(size: 24, weight: .bold, design: .rounded))
+            .font(DesignTokens.Typography.cardTitle)
             .foregroundStyle(.primary)
             .lineLimit(1)
             .minimumScaleFactor(0.45)

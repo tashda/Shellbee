@@ -36,13 +36,14 @@ struct RemoteCard: View {
     }
 
     private var header: some View {
+        // NOTE: 12pt eyebrow vs 11pt elsewhere — see #36.A.
         HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "command")
-                .font(.system(size: 12, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIconLarge)
                 .foregroundStyle(.tint)
             Text("Remote")
-                .font(.system(size: 12, weight: .semibold))
-                .tracking(0.6)
+                .font(DesignTokens.Typography.eyebrowLabelLarge)
+                .tracking(DesignTokens.Typography.eyebrowTrackingLoose)
                 .textCase(.uppercase)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -85,10 +86,10 @@ private struct ReadingTile: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
                     .lineLimit(2)
@@ -98,14 +99,14 @@ private struct ReadingTile: View {
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(value)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.metricValue)
                     .monospacedDigit()
                     .foregroundStyle(valueColor)
                     .lineLimit(2)
                     .minimumScaleFactor(0.55)
                 if let unit {
                     Text(unit)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .font(DesignTokens.Typography.metricUnit)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

@@ -84,10 +84,10 @@ struct ClimateControlCard: View {
     private var heroEyebrow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
             Image(systemName: heroIcon)
-                .font(.system(size: 11, weight: .bold))
+                .font(DesignTokens.Typography.eyebrowIcon)
                 .symbolRenderingMode(.hierarchical)
             Text(context.runningStateLabel)
-                .font(.system(size: 11, weight: .semibold))
+                .font(DesignTokens.Typography.eyebrowLabel)
                 .tracking(0.5)
                 .textCase(.uppercase)
                 .lineLimit(1)
@@ -108,7 +108,7 @@ struct ClimateControlCard: View {
     private var heroValue: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
             Text(context.displayTemperature)
-                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .font(DesignTokens.Typography.heroValue)
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .lineLimit(1)
@@ -118,7 +118,7 @@ struct ClimateControlCard: View {
             // setpoint row below already carries it.
             if let setpoint = context.activeSetpoint, !showsSetpointControl {
                 Text("Target \(formatTemp(setpoint))")
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.heroSubtitle)
                     .foregroundStyle(heroTint)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -148,10 +148,10 @@ struct ClimateControlCard: View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: "target")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text("Target")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
             }
@@ -168,7 +168,7 @@ struct ClimateControlCard: View {
                 }
 
                 Text(formatTemp(setpointDraft))
-                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .font(DesignTokens.Typography.identityValue)
                     .monospacedDigit()
                     .foregroundStyle(heroTint)
                     .frame(minWidth: DesignTokens.Size.climateSetpointMinWidth)
@@ -188,7 +188,7 @@ struct ClimateControlCard: View {
     private func setpointButton(systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .bold))
+                .font(DesignTokens.Typography.climateActionIcon)
                 .foregroundStyle(heroTint)
                 .frame(width: DesignTokens.Size.climateActionButton, height: DesignTokens.Size.climateActionButton)
                 .background(heroTint.opacity(0.15), in: Circle())
@@ -203,10 +203,10 @@ struct ClimateControlCard: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 Image(systemName: "dial.medium")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(DesignTokens.Typography.eyebrowIcon)
                     .symbolRenderingMode(.hierarchical)
                 Text("Mode")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DesignTokens.Typography.eyebrowLabel)
                     .tracking(0.5)
                     .textCase(.uppercase)
             }
