@@ -141,11 +141,82 @@ nonisolated enum DesignTokens {
         static let statusPulse: Double = 1.8
         static let otaBadgeSpin: Double = 1.1
         static let pressedState: Double = 0.16
+        // Common SwiftUI .easeInOut / .snappy / withAnimation durations
+        static let quickFade: Double = 0.15
+        static let mediumAnimation: Double = 0.25
+        static let slowAnimation: Double = 0.6
+        static let pulseExpand: Double = 0.8
+        static let pulseFull: Double = 1.0
+        static let checkResultDisplay: Double = 3
+        static let pendingDeleteTimeout: Double = 15
     }
 
     nonisolated enum Typography {
         static let cardHeadline: Font = .title3.weight(.semibold)
         static let cardSubheadline: Font = .subheadline
+
+        // MARK: Eyebrow pattern (small uppercase label above metric values)
+        // Dominant value used in most card hero blocks. SensorCard, RemoteCard,
+        // and GenericExposeCard currently use the larger 12pt variant —
+        // tracked in #36. Once that's resolved one variant goes away.
+        static let eyebrowLabel: Font = .system(size: 11, weight: .semibold)
+        static let eyebrowIcon: Font = .system(size: 11, weight: .bold)
+        static let eyebrowLabelLarge: Font = .system(size: 12, weight: .semibold)
+        static let eyebrowIconLarge: Font = .system(size: 12, weight: .bold)
+        static let eyebrowTracking: CGFloat = 0.5
+        static let eyebrowTrackingLoose: CGFloat = 0.6
+
+        // MARK: Hero metric (the giant number/state on a card hero block)
+        static let heroValue: Font = .system(size: 56, weight: .bold, design: .rounded)
+        // Used for "On"/"Off"/"Unlocked"/"Closed" hero text when there's no
+        // numeric metric. Slightly smaller than heroValue (deliberate — see #36).
+        static let heroStateText: Font = .system(size: 48, weight: .bold, design: .rounded)
+        // Unit text rendered next to heroValue (e.g. the "%" after a brightness)
+        static let heroUnit: Font = .system(size: 18, weight: .medium, design: .rounded)
+        // Smaller subtitle text under the hero value (e.g. "Target 21.5°" under temperature)
+        static let heroSubtitle: Font = .system(size: 20, weight: .semibold, design: .rounded)
+
+        // MARK: Metric tile (a stat tile inside the card body)
+        static let metricValue: Font = .system(size: 30, weight: .semibold, design: .rounded)
+        static let metricUnit: Font = .system(size: 15, weight: .medium, design: .rounded)
+        // Identity-tile variant (smaller — used in DeviceCard / GroupCard).
+        // Whether 24/14 should be unified with 30/15 is tracked in #36.
+        static let identityValue: Font = .system(size: 24, weight: .semibold, design: .rounded)
+        static let identityUnit: Font = .system(size: 14, weight: .medium, design: .rounded)
+        // Snapshot-row variant (Light card colorSnapshotRow, Cover tilt row)
+        static let snapshotRowValue: Font = .system(size: 20, weight: .semibold, design: .rounded)
+        static let snapshotRowUnit: Font = .system(size: 13, weight: .medium, design: .rounded)
+
+        // MARK: Card titles & section labels
+        static let cardTitle: Font = .system(size: 24, weight: .bold, design: .rounded)
+        static let footerActionLabel: Font = .system(size: 13, weight: .semibold, design: .rounded)
+        static let sectionHeader: Font = .system(size: 15, weight: .semibold)
+
+        // MARK: Form / settings rows
+        static let formRowIcon: Font = .system(size: 16, weight: .medium)
+        static let formRowIconBold: Font = .system(size: 16, weight: .semibold)
+
+        // MARK: Misc one-offs
+        static let sliderEndLabel: Font = .system(size: 9, weight: .medium)
+        static let permitJoinCountdown: Font = .system(size: 64, weight: .thin)
+        static let permitJoinSymbol: Font = .system(size: 48)
+        // Notification banner level glyphs — sizes differ per #36.D.
+        static let notificationLevelIcon: Font = .system(size: 15, weight: .semibold)
+        static let fastTrackLevelIcon: Font = .system(size: 14, weight: .semibold)
+        // Climate setpoint +/- button glyph
+        static let climateActionIcon: Font = .system(size: 14, weight: .bold)
+        // Light card secondary glyphs (compass / palette icon overlays)
+        static let lightSecondaryIcon: Font = .system(size: 14, weight: .semibold)
+
+        // MARK: minimumScaleFactor presets (per Text element shrink budgets)
+        static let scaleFactorAggressive: CGFloat = 0.45
+        static let scaleFactorTight: CGFloat = 0.55
+        static let scaleFactorMedium: CGFloat = 0.6
+        static let scaleFactorRelaxed: CGFloat = 0.7
+        static let scaleFactorMild: CGFloat = 0.75
+        static let scaleFactorSubtle: CGFloat = 0.82
+        static let scaleFactorAggressiveLight: CGFloat = 0.65
+        static let scaleFactorMildLight: CGFloat = 0.72
     }
 
     nonisolated enum Opacity {
@@ -157,6 +228,28 @@ nonisolated enum DesignTokens {
         static let accentFill: Double = 0.2
         static let cardStroke: Double = 0.18
         static let glow: Double = 0.16
+        // The thin divider rule color tint used across cards
+        static let hairline: Double = 0.08
+        // Subtle gradient fade, off-state hue tint
+        static let subtleFade: Double = 0.04
+        // Off-state hero tint, "tertiaryLabel" gradient
+        static let offStateTint: Double = 0.06
+        static let onStateTint: Double = 0.18
+        // Climate action button background, color preview overlays
+        static let actionButtonFill: Double = 0.15
+        static let strongAccentFill: Double = 0.20
+        static let mediumAccentFill: Double = 0.14
+        // Notification background blur
+        static let banner: Double = 0.9
+        // Unique one-offs
+        static let veryFaint: Double = 0.03
+        static let veryLight: Double = 0.05
+        static let lightOpaque: Double = 0.10
+        static let mildOpaque: Double = 0.22
+        static let pressedAlpha: Double = 0.25
+        static let dimmedSurface: Double = 0.30
+        static let secondaryDim: Double = 0.75
+        static let secondaryFull: Double = 0.7
     }
 
 }
