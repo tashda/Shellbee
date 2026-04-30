@@ -22,10 +22,14 @@ struct PairingWizardView: View {
             List {
                 permitJoinSection
                 if !sessionDevices.isEmpty {
-                    Section("New Devices") {
+                    Section {
                         ForEach(sessionDevices, id: \.ieeeAddress) { device in
                             wizardRow(for: device)
                         }
+                    } header: {
+                        Text("New Devices")
+                    } footer: {
+                        Text("Swipe a device left or right for actions, or long-press for more options.")
                     }
                 }
             }
@@ -104,11 +108,31 @@ struct PairingWizardView: View {
         if isPermitOpen {
             Section {
                 NetworkOpenRow(permitEnd: environment.store.bridgeInfo?.permitJoinEnd)
+            } footer: {
+                if sessionDevices.isEmpty {
+                    networkOpenHint
+                }
             }
         } else {
             PermitJoinControls(onStart: { duration, target in
                 sendPermitJoin(duration: duration, deviceName: target)
             })
+        }
+    }
+
+    private var networkOpenHint: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Text("Put your device into pairing mode now. New devices appear below as they join.")
+            NavigationLink {
+                DocBrowserView()
+            } label: {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Image(systemName: "books.vertical")
+                    Text("Not sure how? Browse the device library")
+                }
+                .font(.footnote)
+            }
+            .padding(.top, DesignTokens.Spacing.xs)
         }
     }
 
@@ -127,6 +151,7 @@ struct PairingWizardView: View {
             checkResult: environment.store.deviceCheckResults[device.friendlyName],
             isDeleting: environment.store.pendingRemovals.contains(device.friendlyName),
             isIdentifying: environment.store.identifyInProgress.contains(device.friendlyName),
+            navigates: false,
             onRename: { deviceToRename = device },
             onRemove: { deviceToRemove = device },
             onReconfigure: { pendingDeviceAlert = .reconfigure(device) },

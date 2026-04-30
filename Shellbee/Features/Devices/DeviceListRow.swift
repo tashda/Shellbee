@@ -11,6 +11,10 @@ struct DeviceListRow: View {
     var checkResult: AppStore.DeviceCheckResult? = nil
     var isDeleting: Bool = false
     var isIdentifying: Bool = false
+    /// When `false` the row renders inline (no NavigationLink wrapper, no
+    /// chevron, no tap highlight). Used in the pairing wizard where there
+    /// is no device-detail navigation destination registered.
+    var navigates: Bool = true
     let onRename: () -> Void
     let onRemove: () -> Void
     let onReconfigure: () -> Void
@@ -52,17 +56,29 @@ struct DeviceListRow: View {
         #endif
     }
 
-    var body: some View {
-        NavigationLink(value: device) {
-            DeviceRowView(
-                device: device,
-                state: state,
-                isAvailable: isAvailable,
-                otaStatus: otaStatus,
-                checkResult: checkResult,
-                isDeleting: isDeleting
-            )
+    @ViewBuilder
+    private var rowBody: some View {
+        DeviceRowView(
+            device: device,
+            state: state,
+            isAvailable: isAvailable,
+            otaStatus: otaStatus,
+            checkResult: checkResult,
+            isDeleting: isDeleting
+        )
+    }
+
+    @ViewBuilder
+    private var rowContent: some View {
+        if navigates {
+            NavigationLink(value: device) { rowBody }
+        } else {
+            rowBody
         }
+    }
+
+    var body: some View {
+        rowContent
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if otaStatus?.phase == .scheduled, let onUnschedule {
                 Button(action: onUnschedule) {
