@@ -14,7 +14,11 @@ struct OnboardingView: View {
                 .navigationTitle(title(for: step))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    if step != .connect && step != .welcome {
+                    // Skip is available on the entry pages where the user
+                    // hasn't committed to anything yet (welcome, test). Hidden
+                    // on .connect (the user must attempt a connection) and
+                    // .done (Get Started is the only sensible action).
+                    if step == .welcome || step == .test {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Skip") { finish() }
                         }
@@ -80,24 +84,29 @@ private struct WelcomePage: View {
     let onContinue: () -> Void
 
     var body: some View {
-        VStack {
-            Spacer()
-            Image(colorScheme == .dark ? "SplashAppIconDark" : "SplashAppIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: DesignTokens.Size.permitJoinQR, height: DesignTokens.Size.permitJoinQR)
-                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        ZStack {
+            HomeBackgroundGradient()
+                .ignoresSafeArea()
 
-            VStack(spacing: DesignTokens.Spacing.sm) {
-                Text("Welcome to Shellbee")
-                    .font(.largeTitle.weight(.bold))
-                Text("A power tool for your Zigbee2MQTT mesh.")
-                    .foregroundStyle(.secondary)
+            VStack {
+                Spacer()
+                Image(colorScheme == .dark ? "SplashAppIconDark" : "SplashAppIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: DesignTokens.Size.permitJoinQR, height: DesignTokens.Size.permitJoinQR)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+
+                VStack(spacing: DesignTokens.Spacing.sm) {
+                    Text("Welcome to Shellbee")
+                        .font(.largeTitle.weight(.bold))
+                    Text("Let's get you connected.")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, DesignTokens.Spacing.xl)
+                Spacer()
             }
-            .padding(.top, DesignTokens.Spacing.xl)
-            Spacer()
+            .padding(.horizontal, DesignTokens.Spacing.xl)
         }
-        .padding(.horizontal, DesignTokens.Spacing.xl)
         .safeAreaInset(edge: .bottom) {
             Button("Continue", action: onContinue)
                 .buttonStyle(.borderedProminent)

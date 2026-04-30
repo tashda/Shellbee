@@ -75,44 +75,45 @@ struct ConnectionDiscoverySection: View {
 
     var body: some View {
         Section("Nearby Servers") {
+            // Render any servers found so far first — discovery streams hits
+            // as it goes, so a match should appear the moment the probe
+            // resolves rather than at the end of the /24 sweep.
+            ForEach(viewModel.discoveredEndpoints, id: \.self) { endpoint in
+                Button {
+                    viewModel.presentNewServer(prefilledHost: endpoint.host, prefilledPort: endpoint.port)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                            Text("\(endpoint.host):\(String(endpoint.port))")
+                                .foregroundStyle(.primary)
+                            Text(endpoint.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Scanning indicator stays alongside results so the user knows
+            // the sweep is still running even after the first match arrives.
             if viewModel.isScanning {
                 LabeledContent("Scanning") {
                     ProgressView()
                 }
-            } else if viewModel.discoveredEndpoints.isEmpty {
-                Button {
-                    viewModel.startDiscovery()
-                } label: {
-                    Label("Scan for Zigbee2MQTT", systemImage: "magnifyingglass")
-                        .foregroundStyle(.primary)
-                }
             } else {
-                ForEach(viewModel.discoveredEndpoints, id: \.self) { endpoint in
-                    Button {
-                        viewModel.presentNewServer(prefilledHost: endpoint.host, prefilledPort: endpoint.port)
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                                Text("\(endpoint.host):\(String(endpoint.port))")
-                                    .foregroundStyle(.primary)
-                                Text(endpoint.subtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-
                 Button {
                     viewModel.startDiscovery()
                 } label: {
-                    Text("Scan Again")
-                        .foregroundStyle(.primary)
+                    Label(
+                        viewModel.discoveredEndpoints.isEmpty ? "Scan for Zigbee2MQTT" : "Scan Again",
+                        systemImage: "magnifyingglass"
+                    )
+                    .foregroundStyle(.primary)
                 }
             }
         }
