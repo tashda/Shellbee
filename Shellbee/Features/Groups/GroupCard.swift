@@ -10,8 +10,17 @@ struct GroupCard: View {
     @State private var showAvatarPicker = false
     @State private var avatarSelection: [String] = []
 
+    /// Avatar reflects the @State selection so changes from the picker
+    /// re-render this view immediately. Falls back to first-two when no
+    /// selection or none of the stored IEEEs are still members.
     private var avatarDevices: [Device] {
-        GroupAvatarStore.resolvedDevices(for: group, members: memberDevices)
+        if !avatarSelection.isEmpty {
+            let pick = avatarSelection.compactMap { ieee in
+                memberDevices.first { $0.ieeeAddress == ieee }
+            }
+            if !pick.isEmpty { return Array(pick.prefix(2)) }
+        }
+        return Array(memberDevices.prefix(2))
     }
 
     var body: some View {
@@ -41,6 +50,9 @@ struct GroupCard: View {
                 memberDevices: memberDevices,
                 selectedIEEEs: $avatarSelection
             )
+        }
+        .onAppear {
+            avatarSelection = GroupAvatarStore.load(for: group)
         }
     }
 
@@ -88,7 +100,10 @@ struct GroupCard: View {
     private var identityRow: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
             Button {
-                avatarSelection = GroupAvatarStore.load(for: group)
+                let stored = GroupAvatarStore.load(for: group)
+                avatarSelection = stored.isEmpty
+                    ? Array(memberDevices.prefix(2).map(\.ieeeAddress))
+                    : stored
                 showAvatarPicker = true
             } label: {
                 GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceCardImage * 0.80)
