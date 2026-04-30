@@ -107,7 +107,10 @@ struct PairingWizardView: View {
     private var permitJoinSection: some View {
         if isPermitOpen {
             Section {
-                NetworkOpenRow(permitEnd: environment.store.bridgeInfo?.permitJoinEnd)
+                NetworkOpenRow(
+                    permitEnd: environment.store.bridgeInfo?.permitJoinEnd,
+                    target: environment.store.bridgeInfo?.permitJoinTarget
+                )
             } footer: {
                 if sessionDevices.isEmpty {
                     networkOpenHint
@@ -188,6 +191,17 @@ struct PairingWizardView: View {
         var payload: [String: JSONValue] = ["time": .int(duration), "value": .bool(duration > 0)]
         if let deviceName, !deviceName.isEmpty { payload["device"] = .string(deviceName) }
         environment.send(topic: Z2MTopics.Request.permitJoin, payload: .object(payload))
+
+        // Optimistically reflect the request in bridgeInfo so the wizard row
+        // updates the moment the user taps — the bridge's `permit_join`
+        // event will overwrite this with the authoritative state shortly.
+        if let info = environment.store.bridgeInfo {
+            environment.store.bridgeInfo = info.copyUpdatingPermitJoin(
+                enabled: duration > 0,
+                timeout: duration > 0 ? duration : nil,
+                target: duration > 0 ? deviceName : nil
+            )
+        }
     }
 }
 
@@ -244,6 +258,7 @@ private struct PermitJoinControls: View {
 
 private struct NetworkOpenRow: View {
     let permitEnd: Int?
+    let target: String?
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
@@ -255,8 +270,13 @@ private struct NetworkOpenRow: View {
                     .background(.green, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
                     .symbolEffect(.pulse)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Network is open")
-                        .foregroundStyle(.primary)
+                    if let target, !target.isEmpty {
+                        Text("Network is open via \(target)")
+                            .foregroundStyle(.primary)
+                    } else {
+                        Text("Network is open")
+                            .foregroundStyle(.primary)
+                    }
                     if let remaining {
                         Text(String(format: "%d:%02d remaining", remaining / 60, remaining % 60))
                             .font(.caption)

@@ -57,6 +57,19 @@ extension AppStore {
                     enqueueNotification(note)
                 }
             }
+            // Capture the via-router scope on permit_join events; bridge/info
+            // doesn't include this, so the wizard would otherwise have no
+            // way to show "open via Kitchen Relay".
+            if event.type == "permit_join", let info = bridgeInfo {
+                let permitted = event.data.object?["permitted"]?.boolValue ?? false
+                let time = event.data.object?["time"]?.numberValue.map(Int.init) ?? info.permitJoinTimeout
+                let target = event.data.object?["device"]?.stringValue
+                bridgeInfo = info.copyUpdatingPermitJoin(
+                    enabled: permitted,
+                    timeout: permitted ? time : nil,
+                    target: permitted ? target : nil
+                )
+            }
             if let ieee = event.data.object?["ieee_address"]?.stringValue {
                 switch event.type {
                 case "device_joined":
@@ -124,17 +137,10 @@ extension AppStore {
             handleOTACheckResponse(response)
         case .permitJoinChanged(let enabled, let remaining):
             if let info = bridgeInfo {
-                bridgeInfo = BridgeInfo(
-                    version: info.version,
-                    commit: info.commit,
-                    coordinator: info.coordinator,
-                    network: info.network,
-                    logLevel: info.logLevel,
-                    permitJoin: enabled,
-                    permitJoinTimeout: remaining,
-                    permitJoinEnd: remaining.map { Int(Date().timeIntervalSince1970 * 1000) + ($0 * 1000) },
-                    restartRequired: info.restartRequired,
-                    config: info.config
+                bridgeInfo = info.copyUpdatingPermitJoin(
+                    enabled: enabled,
+                    timeout: remaining,
+                    target: enabled ? info.permitJoinTarget : nil
                 )
             }
 

@@ -9,6 +9,12 @@ struct BridgeInfo: Codable, Sendable, Equatable {
     let permitJoin: Bool
     let permitJoinTimeout: Int?
     let permitJoinEnd: Int?
+    /// Friendly name of the router (or coordinator) the current permit-join
+    /// session is scoped to. `nil` when the network is open via all devices.
+    /// Z2M doesn't include this in `bridge/info` — we capture it from the
+    /// `bridge/event` `permit_join` payload and from our own outbound
+    /// requests to keep the wizard honest about scope.
+    let permitJoinTarget: String?
     let restartRequired: Bool
     let config: BridgeConfig?
 
@@ -29,6 +35,7 @@ struct BridgeInfo: Codable, Sendable, Equatable {
         logLevel = try container.decode(String.self, forKey: .logLevel)
         permitJoin = try container.decode(Bool.self, forKey: .permitJoin)
         permitJoinTimeout = try container.decodeIfPresent(Int.self, forKey: .permitJoinTimeout)
+        permitJoinTarget = nil
         restartRequired = try container.decode(Bool.self, forKey: .restartRequired)
         config = try container.decodeIfPresent(BridgeConfig.self, forKey: .config)
         
@@ -41,7 +48,7 @@ struct BridgeInfo: Codable, Sendable, Equatable {
     }
     
     // Also need an explicit memberwise init for Previews and AppStore updates
-    init(version: String, commit: String?, coordinator: CoordinatorInfo, network: NetworkInfo?, logLevel: String, permitJoin: Bool, permitJoinTimeout: Int?, permitJoinEnd: Int?, restartRequired: Bool, config: BridgeConfig?) {
+    init(version: String, commit: String?, coordinator: CoordinatorInfo, network: NetworkInfo?, logLevel: String, permitJoin: Bool, permitJoinTimeout: Int?, permitJoinEnd: Int?, permitJoinTarget: String? = nil, restartRequired: Bool, config: BridgeConfig?) {
         self.version = version
         self.commit = commit
         self.coordinator = coordinator
@@ -50,6 +57,7 @@ struct BridgeInfo: Codable, Sendable, Equatable {
         self.permitJoin = permitJoin
         self.permitJoinTimeout = permitJoinTimeout
         self.permitJoinEnd = permitJoinEnd
+        self.permitJoinTarget = permitJoinTarget
         self.restartRequired = restartRequired
         self.config = config
     }
@@ -64,8 +72,25 @@ struct BridgeInfo: Codable, Sendable, Equatable {
             permitJoin: permitJoin,
             permitJoinTimeout: permitJoinTimeout,
             permitJoinEnd: permitJoinEnd,
+            permitJoinTarget: permitJoinTarget,
             restartRequired: restartRequired ?? self.restartRequired,
             config: config ?? self.config
+        )
+    }
+
+    func copyUpdatingPermitJoin(enabled: Bool, timeout: Int?, target: String?) -> BridgeInfo {
+        BridgeInfo(
+            version: version,
+            commit: commit,
+            coordinator: coordinator,
+            network: network,
+            logLevel: logLevel,
+            permitJoin: enabled,
+            permitJoinTimeout: timeout,
+            permitJoinEnd: timeout.map { Int(Date().timeIntervalSince1970 * 1000) + ($0 * 1000) },
+            permitJoinTarget: target,
+            restartRequired: restartRequired,
+            config: config
         )
     }
 }
