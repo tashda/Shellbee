@@ -1,7 +1,7 @@
 import Foundation
 
 enum OnboardingStep: Int, CaseIterable, Identifiable {
-    case welcome, concepts, connect, test, done
+    case welcome, connect, test, done
     var id: Int { rawValue }
 
     static let storedIndexKey = "onboardingPageIndex"

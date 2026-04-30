@@ -3,42 +3,58 @@ import SwiftUI
 struct OnboardingConnectPage: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel: ConnectionViewModel?
-    @State private var draft = ConnectionEditorDraft()
-    let onConnectTapped: () -> Void
 
     var body: some View {
-        Form {
-            Section {
-                Text("Find your broker URL in Z2M's frontend at Settings → MQTT, or in your `configuration.yaml`. If your bridge is on the same network, the discovery scan on the previous screen would have found it.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            ConnectionServerSection(draft: $draft)
-
-            Section {
-                Button {
-                    if let viewModel, viewModel.connect(using: draft) {
-                        onConnectTapped()
-                    }
-                } label: {
-                    Label("Connect", systemImage: "bolt.fill")
-                        .frame(maxWidth: .infinity)
+        SwiftUI.Group {
+            if let viewModel {
+                List {
+                    ConnectionHistorySection(viewModel: viewModel)
+                    ConnectionDiscoverySection(viewModel: viewModel)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!draft.canConnect)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            } footer: {
-                Text("If Z2M auth is enabled, paste the token from `configuration.yaml` under `frontend.auth_token`. Leave blank if auth isn't configured.")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            viewModel.presentNewServer()
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("Add Server Manually")
+                    }
+                }
+                .sheet(isPresented: bindingForEditor(viewModel)) {
+                    NavigationStack {
+                        ConnectionEditorView(viewModel: viewModel)
+                    }
+                }
+                .alert("Connection Error", isPresented: errorBinding(viewModel)) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(viewModel.errorMessage ?? "")
+                }
+                .onAppear { viewModel.startDiscovery() }
+                .onDisappear { viewModel.stopDiscovery() }
+            } else {
+                ProgressView()
             }
         }
-        .scrollContentBackground(.hidden)
         .onAppear {
             if viewModel == nil {
                 viewModel = ConnectionViewModel(environment: environment)
             }
         }
+    }
+
+    private func bindingForEditor(_ viewModel: ConnectionViewModel) -> Binding<Bool> {
+        Binding(
+            get: { viewModel.isEditorPresented },
+            set: { viewModel.isEditorPresented = $0 }
+        )
+    }
+
+    private func errorBinding(_ viewModel: ConnectionViewModel) -> Binding<Bool> {
+        Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )
     }
 }

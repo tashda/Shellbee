@@ -3,123 +3,66 @@ import SwiftUI
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage(OnboardingStep.completedKey) private var completed: Bool = false
     @AppStorage(OnboardingStep.storedIndexKey) private var storedIndex: Int = 0
     @State private var step: OnboardingStep = .welcome
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                stepIndicator
-                    .padding(.top, DesignTokens.Spacing.md)
-
-                page
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, DesignTokens.Spacing.xl)
-
-                navigationBar
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.bottom, DesignTokens.Spacing.lg)
-            }
-            .navigationTitle(step == .welcome ? "" : title(for: step))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if step != .connect {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Skip") { finish() }
+            content
+                .navigationTitle(title(for: step))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if step != .connect && step != .welcome {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Skip") { finish() }
+                        }
                     }
                 }
-            }
-            .onAppear {
-                if let restored = OnboardingStep(rawValue: storedIndex) {
-                    step = restored
+                .onAppear {
+                    if let restored = OnboardingStep(rawValue: storedIndex) {
+                        step = restored
+                    }
                 }
-            }
-            .onChange(of: step) { _, newValue in
-                storedIndex = newValue.rawValue
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var page: some View {
-        switch step {
-        case .welcome:  WelcomePage()
-        case .concepts: ConceptsPage()
-        case .connect:  OnboardingConnectPage(onConnectTapped: { step = .test })
-        case .test:     OnboardingTestPage(onContinue: { step = .done }, onRetry: { step = .connect })
-        case .done:     DonePage()
-        }
-    }
-
-    private var stepIndicator: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            ForEach(OnboardingStep.allCases) { s in
-                Capsule()
-                    .fill(s.rawValue <= step.rawValue ? Color.accentColor : Color.secondary.opacity(0.25))
-                    .frame(width: s == step ? 22 : 8, height: 6)
-                    .animation(.spring(response: 0.3), value: step)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var navigationBar: some View {
-        HStack {
-            if step != .welcome && step != .test {
-                Button {
-                    if let prev = OnboardingStep(rawValue: step.rawValue - 1) { step = prev }
-                } label: {
-                    Label("Back", systemImage: "chevron.left")
-                        .labelStyle(.titleAndIcon)
+                .onChange(of: step) { _, newValue in
+                    storedIndex = newValue.rawValue
                 }
-                .buttonStyle(.bordered)
-            }
-
-            Spacer()
-
-            primaryButton
+                .onChange(of: environment.connectionState) { _, newState in
+                    // When the user kicks off a connection from the connect
+                    // step, advance to the test page so they can watch it
+                    // resolve (the test page auto-advances on success).
+                    guard step == .connect else { return }
+                    switch newState {
+                    case .connecting, .connected, .reconnecting:
+                        step = .test
+                    default:
+                        break
+                    }
+                }
         }
     }
 
     @ViewBuilder
-    private var primaryButton: some View {
+    private var content: some View {
         switch step {
-        case .welcome, .concepts:
-            Button {
-                if let next = OnboardingStep(rawValue: step.rawValue + 1) { step = next }
-            } label: {
-                Text("Continue")
-                    .fontWeight(.semibold)
-                    .frame(minWidth: 120)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+        case .welcome:
+            WelcomePage(onContinue: { step = .connect })
         case .connect:
-            // No primary button — the connect page provides its own Connect action.
-            EmptyView()
+            OnboardingConnectPage()
         case .test:
-            EmptyView()
+            OnboardingTestPage(onContinue: { step = .done }, onRetry: { step = .connect })
         case .done:
-            Button {
-                finish()
-            } label: {
-                Text("Get Started")
-                    .fontWeight(.semibold)
-                    .frame(minWidth: 120)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            DonePage(onFinish: finish)
         }
     }
 
     private func title(for step: OnboardingStep) -> String {
         switch step {
-        case .welcome:  "Welcome"
-        case .concepts: "How Zigbee Works"
-        case .connect:  "Connect to Z2M"
-        case .test:     "Testing Connection"
-        case .done:     "All Set"
+        case .welcome: ""
+        case .connect: "Connect"
+        case .test:    "Testing Connection"
+        case .done:    "All Set"
         }
     }
 
@@ -133,74 +76,36 @@ struct OnboardingView: View {
 // MARK: - Welcome page
 
 private struct WelcomePage: View {
-    var body: some View {
-        VStack(spacing: DesignTokens.Spacing.lg) {
-            Spacer()
-            Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.system(size: 72))
-                .foregroundStyle(.tint)
-                .symbolEffect(.pulse)
+    @Environment(\.colorScheme) private var colorScheme
+    let onContinue: () -> Void
 
-            VStack(spacing: DesignTokens.Spacing.md) {
+    var body: some View {
+        VStack {
+            Spacer()
+            Image(colorScheme == .dark ? "SplashAppIconDark" : "SplashAppIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: DesignTokens.Size.permitJoinQR, height: DesignTokens.Size.permitJoinQR)
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+
+            VStack(spacing: DesignTokens.Spacing.sm) {
                 Text("Welcome to Shellbee")
                     .font(.largeTitle.weight(.bold))
-                Text("A power tool for managing your Zigbee2MQTT mesh — devices, groups, OTA updates, and the network itself.")
-                    .multilineTextAlignment(.center)
+                Text("A power tool for your Zigbee2MQTT mesh.")
                     .foregroundStyle(.secondary)
-                Text("Not a smart-home companion. For day-to-day home control, use Apple Home or another app alongside Shellbee.")
-                    .font(.footnote)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, DesignTokens.Spacing.sm)
             }
+            .padding(.top, DesignTokens.Spacing.xl)
             Spacer()
         }
-    }
-}
-
-// MARK: - Concepts page
-
-private struct ConceptsPage: View {
-    private struct Concept {
-        let icon: String
-        let title: String
-        let body: String
-    }
-
-    private let concepts: [Concept] = [
-        .init(icon: "hub.hop.fill",
-              title: "Coordinator",
-              body: "The brain. Your USB stick or network adapter that talks Zigbee on behalf of Z2M."),
-        .init(icon: "router",
-              title: "Routers",
-              body: "Mains-powered devices (most bulbs, plugs) that relay messages and extend coverage."),
-        .init(icon: "leaf",
-              title: "End Devices",
-              body: "Battery-powered devices (sensors, buttons) that sleep most of the time and don't relay."),
-        .init(icon: "point.3.connected.trianglepath.dotted",
-              title: "The Mesh",
-              body: "Coordinator + routers form a self-healing network. End devices join it through whatever's nearby.")
-    ]
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: DesignTokens.Spacing.lg) {
-                ForEach(concepts, id: \.title) { concept in
-                    HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
-                        Image(systemName: concept.icon)
-                            .font(.system(size: 32))
-                            .foregroundStyle(.tint)
-                            .frame(width: 44)
-                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                            Text(concept.title).font(.headline)
-                            Text(concept.body)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, DesignTokens.Spacing.lg)
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .safeAreaInset(edge: .bottom) {
+            Button("Continue", action: onContinue)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.md)
         }
     }
 }
@@ -209,6 +114,7 @@ private struct ConceptsPage: View {
 
 private struct DonePage: View {
     @Environment(AppEnvironment.self) private var environment
+    let onFinish: () -> Void
 
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.lg) {
@@ -228,6 +134,16 @@ private struct DonePage: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+        }
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .safeAreaInset(edge: .bottom) {
+            Button("Get Started", action: onFinish)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.md)
         }
     }
 }
