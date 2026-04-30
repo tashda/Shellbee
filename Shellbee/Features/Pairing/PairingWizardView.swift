@@ -7,7 +7,7 @@ struct PairingWizardView: View {
     @State private var showCancelConfirm = false
     @State private var deviceToRename: Device?
     @State private var deviceToRemove: Device?
-    @State private var deviceForGroupPicker: Device?
+    @State private var pendingDeviceAlert: PendingDeviceAlert?
 
     private var isPermitOpen: Bool {
         environment.store.bridgeInfo?.permitJoin ?? false
@@ -19,10 +19,14 @@ struct PairingWizardView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            List {
                 permitJoinSection
                 if !sessionDevices.isEmpty {
-                    devicesSection
+                    Section("New Devices") {
+                        ForEach(sessionDevices, id: \.ieeeAddress) { device in
+                            wizardRow(for: device)
+                        }
+                    }
                 }
             }
             .navigationTitle("Add Devices")
@@ -35,6 +39,12 @@ struct PairingWizardView: View {
                         } else {
                             dismiss()
                         }
+                    }
+                }
+                if !sessionDevices.isEmpty {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                            .fontWeight(.semibold)
                     }
                 }
             }
@@ -65,8 +75,28 @@ struct PairingWizardView: View {
                     ]))
                 }
             }
-            .sheet(item: $deviceForGroupPicker) { device in
-                PairingAddToGroupSheet(device: device)
+            .alert(
+                pendingDeviceAlert?.title ?? "",
+                isPresented: Binding(
+                    get: { pendingDeviceAlert != nil },
+                    set: { if !$0 { pendingDeviceAlert = nil } }
+                ),
+                presenting: pendingDeviceAlert
+            ) { alert in
+                Button(alert.confirmTitle, role: alert.role) {
+                    switch alert {
+                    case .reconfigure(let device):
+                        environment.send(topic: Z2MTopics.Request.deviceConfigure,
+                                         payload: .object(["id": .string(device.friendlyName)]))
+                    case .interview(let device):
+                        environment.send(topic: Z2MTopics.Request.deviceInterview,
+                                         payload: .object(["id": .string(device.friendlyName)]))
+                    }
+                    pendingDeviceAlert = nil
+                }
+                Button("Cancel", role: .cancel) { pendingDeviceAlert = nil }
+            } message: { alert in
+                Text(alert.message)
             }
         }
     }
@@ -78,15 +108,6 @@ struct PairingWizardView: View {
         if isPermitOpen {
             Section {
                 NetworkOpenRow(permitEnd: environment.store.bridgeInfo?.permitJoinEnd)
-                Button(role: .destructive) {
-                    sendPermitJoin(duration: 0, deviceName: nil)
-                } label: {
-                    Label("Disable Join", systemImage: "stop.circle")
-                }
-            } footer: {
-                Text(sessionDevices.isEmpty
-                     ? "Put the device into pairing mode now. New devices appear below as they join."
-                     : "More devices can still join. Close the network when you're done.")
             }
         } else {
             PermitJoinControls(onStart: { duration, target in
@@ -95,84 +116,51 @@ struct PairingWizardView: View {
         }
     }
 
-    // MARK: - Devices section
+    // MARK: - Per-device row (reuses the live device list row)
 
     @ViewBuilder
-    private var devicesSection: some View {
-        ForEach(sessionDevices, id: \.ieeeAddress) { device in
-            Section {
-                DeviceJoinedHeader(device: device, status: model.interviewStatus(for: device))
-                deviceActions(for: device)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func deviceActions(for device: Device) -> some View {
-        let status = model.interviewStatus(for: device)
-        let interviewing = status == .running
-
-        if device.supportsIdentify {
-            Button {
-                environment.identifyDevice(device.friendlyName)
-            } label: {
-                let identifying = environment.store.identifyInProgress.contains(device.friendlyName)
-                actionRow(
-                    title: identifying ? "Identifying" : "Identify",
-                    systemImage: identifying ? "wave.3.right" : "wave.3.right.circle",
-                    tint: .teal
-                )
-            }
-            .disabled(interviewing || environment.store.identifyInProgress.contains(device.friendlyName))
-        }
-
-        Button {
-            deviceToRename = device
-        } label: {
-            actionRow(title: "Rename", systemImage: "pencil", tint: .orange)
-        }
-        .disabled(interviewing)
-
-        if !environment.store.groups.isEmpty {
-            Button {
-                deviceForGroupPicker = device
-            } label: {
-                actionRow(title: "Add to Group", systemImage: "rectangle.3.group", tint: .blue)
-            }
-            .disabled(interviewing)
-        }
-
-        if device.definition?.supportsOTA == true {
-            Button {
+    private func wizardRow(for device: Device) -> some View {
+        let state = environment.store.state(for: device.friendlyName)
+        let isAvailable = environment.store.isAvailable(device.friendlyName)
+        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        DeviceListRow(
+            device: device,
+            state: state,
+            isAvailable: isAvailable,
+            otaStatus: otaStatus,
+            checkResult: environment.store.deviceCheckResults[device.friendlyName],
+            isDeleting: environment.store.pendingRemovals.contains(device.friendlyName),
+            isIdentifying: environment.store.identifyInProgress.contains(device.friendlyName),
+            onRename: { deviceToRename = device },
+            onRemove: { deviceToRemove = device },
+            onReconfigure: { pendingDeviceAlert = .reconfigure(device) },
+            onInterview: { pendingDeviceAlert = .interview(device) },
+            onIdentify: { environment.identifyDevice(device.friendlyName) },
+            onUpdate: state.hasUpdateAvailable
+                ? {
+                    environment.store.startOTAUpdate(for: device.friendlyName)
+                    environment.send(topic: Z2MTopics.Request.deviceOTAUpdate,
+                                     payload: .object(["id": .string(device.friendlyName)]))
+                }
+                : nil,
+            onCheckUpdate: {
                 environment.store.startOTACheck(for: device.friendlyName)
-                environment.send(
-                    topic: Z2MTopics.Request.deviceOTACheck,
-                    payload: .object(["id": .string(device.friendlyName)])
-                )
-            } label: {
-                actionRow(title: "Check for Update", systemImage: "arrow.trianglehead.2.clockwise", tint: .indigo)
+                environment.send(topic: Z2MTopics.Request.deviceOTACheck,
+                                 payload: .object(["id": .string(device.friendlyName)]))
+            },
+            onSchedule: state.hasUpdateAvailable
+                ? {
+                    environment.store.startOTASchedule(for: device.friendlyName)
+                    environment.send(topic: Z2MTopics.Request.deviceOTASchedule,
+                                     payload: .object(["id": .string(device.friendlyName)]))
+                }
+                : nil,
+            onUnschedule: {
+                environment.store.cancelOTASchedule(for: device.friendlyName)
+                environment.send(topic: Z2MTopics.Request.deviceOTAUnschedule,
+                                 payload: .object(["id": .string(device.friendlyName)]))
             }
-            .disabled(interviewing)
-        }
-
-        Button(role: .destructive) {
-            deviceToRemove = device
-        } label: {
-            actionRow(title: "Remove", systemImage: "trash", tint: .red)
-        }
-        .disabled(interviewing)
-    }
-
-    private func actionRow(title: String, systemImage: String, tint: Color) -> some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: systemImage)
-                .foregroundStyle(.white)
-                .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                .background(tint, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-            Text(title)
-                .foregroundStyle(.primary)
-            Spacer()
-        }
+        )
     }
 
     private func sendPermitJoin(duration: Int, deviceName: String?) {
@@ -265,99 +253,6 @@ private struct NetworkOpenRow: View {
         guard let end = permitEnd else { return nil }
         let now = Int(date.timeIntervalSince1970 * 1000)
         return max((end - now) / 1000, 0)
-    }
-}
-
-// MARK: - Per-device header
-
-private struct DeviceJoinedHeader: View {
-    let device: Device
-    let status: PairingWizardModel.InterviewStatus
-
-    var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: status.systemImage)
-                .foregroundStyle(.white)
-                .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                .background(statusColor, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-                .symbolEffect(.pulse, options: .repeating, isActive: status == .running)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(device.friendlyName)
-                    .font(.headline)
-                Text(detailLine)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.vertical, DesignTokens.Spacing.xs)
-    }
-
-    private var detailLine: String {
-        let model = device.definition?.model ?? device.modelId ?? device.ieeeAddress
-        return "\(model) · \(status.label)"
-    }
-
-    private var statusColor: Color {
-        switch status {
-        case .completed: .green
-        case .running:   .orange
-        case .pending:   .gray
-        }
-    }
-}
-
-// MARK: - Add-to-group sheet
-
-private struct PairingAddToGroupSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(AppEnvironment.self) private var environment
-    let device: Device
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    if environment.store.groups.isEmpty {
-                        Text("No groups defined yet.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(environment.store.groups, id: \.id) { group in
-                            Button {
-                                add(to: group)
-                            } label: {
-                                HStack {
-                                    Text(group.friendlyName)
-                                        .foregroundStyle(.primary)
-                                    Spacer()
-                                    Text("\(group.members.count)")
-                                        .foregroundStyle(.secondary)
-                                        .font(.caption)
-                                }
-                            }
-                        }
-                    }
-                } footer: {
-                    Text("Adds \(device.friendlyName) to the selected group. Group commands sent to that group will then include this device.")
-                }
-            }
-            .navigationTitle("Add to Group")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private func add(to group: Group) {
-        environment.send(topic: Z2MTopics.Request.groupMembersAdd, payload: .object([
-            "group": .string(group.friendlyName),
-            "device": .string(device.friendlyName)
-        ]))
-        dismiss()
     }
 }
 
