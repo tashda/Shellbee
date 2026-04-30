@@ -31,6 +31,10 @@ final class AppStore {
     var touchlinkScanInProgress = false
     var touchlinkIdentifyInProgress = false
     var touchlinkResetInProgress = false
+    /// Friendly names of devices currently running an Identify (Zigbee
+    /// Identify cluster). The action is fire-and-forget, so the row clears
+    /// itself on a short timer rather than waiting for a response.
+    var identifyInProgress: Set<String> = []
     var pendingNotifications: [InAppNotification] = []
     var fastTrackNotifications: [InAppNotification] = []
     // Bumped whenever a new (non-coalesced) normal notification is enqueued.
@@ -80,8 +84,13 @@ final class AppStore {
         deviceStates = [:]
         deviceAvailability = [:]
         pendingRenames = []
-        deviceFirstSeen = [:]
-        UserDefaults.standard.removeObject(forKey: Self.firstSeenStoreKey)
+        // `deviceFirstSeen` is intentionally NOT cleared here. It's
+        // user-visible state ("Recently Added" in the device list) that
+        // should outlive a connection bounce or app restart, and the
+        // 30-minute window in DeviceListViewModel already self-prunes
+        // anything stale. Wiping it on every reconnect was killing the
+        // section the moment the app launched and re-established its
+        // session.
         otaUpdates = [:]
         logEntries = []
         operationErrors = []
@@ -93,6 +102,7 @@ final class AppStore {
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false
         touchlinkResetInProgress = false
+        identifyInProgress = []
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
     }
 

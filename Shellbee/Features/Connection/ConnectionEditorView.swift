@@ -23,15 +23,20 @@ struct ConnectionEditorView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Connect") {
-                    if viewModel.connect(using: draft) {
-                        dismiss()
-                    }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button("Connect") {
+                if viewModel.connect(using: draft) {
+                    dismiss()
                 }
-                .disabled(!draft.canConnect)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .fontWeight(.semibold)
+            .frame(maxWidth: .infinity)
+            .disabled(!draft.canConnect)
+            .padding(.horizontal, DesignTokens.Spacing.lg)
+            .padding(.vertical, DesignTokens.Spacing.md)
         }
     }
 }

@@ -10,10 +10,16 @@ struct DeviceListRow: View {
     let otaStatus: OTAUpdateStatus?
     var checkResult: AppStore.DeviceCheckResult? = nil
     var isDeleting: Bool = false
+    var isIdentifying: Bool = false
+    /// When `false` the row renders inline (no NavigationLink wrapper, no
+    /// chevron, no tap highlight). Used in the pairing wizard where there
+    /// is no device-detail navigation destination registered.
+    var navigates: Bool = true
     let onRename: () -> Void
     let onRemove: () -> Void
     let onReconfigure: () -> Void
     let onInterview: () -> Void
+    let onIdentify: () -> Void
     let onUpdate: (() -> Void)?
     let onCheckUpdate: () -> Void
     let onSchedule: (() -> Void)?
@@ -50,17 +56,29 @@ struct DeviceListRow: View {
         #endif
     }
 
-    var body: some View {
-        NavigationLink(value: device) {
-            DeviceRowView(
-                device: device,
-                state: state,
-                isAvailable: isAvailable,
-                otaStatus: otaStatus,
-                checkResult: checkResult,
-                isDeleting: isDeleting
-            )
+    @ViewBuilder
+    private var rowBody: some View {
+        DeviceRowView(
+            device: device,
+            state: state,
+            isAvailable: isAvailable,
+            otaStatus: otaStatus,
+            checkResult: checkResult,
+            isDeleting: isDeleting
+        )
+    }
+
+    @ViewBuilder
+    private var rowContent: some View {
+        if navigates {
+            NavigationLink(value: device) { rowBody }
+        } else {
+            rowBody
         }
+    }
+
+    var body: some View {
+        rowContent
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if otaStatus?.phase == .scheduled, let onUnschedule {
                 Button(action: onUnschedule) {
@@ -128,8 +146,22 @@ struct DeviceListRow: View {
                 Label("Interview", systemImage: "questionmark.circle")
             }
             .tint(.purple)
+            if device.supportsIdentify {
+                Button(action: onIdentify) {
+                    Label(isIdentifying ? "Identifying" : "Identify",
+                          systemImage: isIdentifying ? "wave.3.right" : "wave.3.right.circle")
+                }
+                .tint(.teal)
+                .disabled(isIdentifying)
+            }
         }
         .contextMenu {
+            if device.supportsIdentify {
+                Button(action: onIdentify) {
+                    Label("Identify", systemImage: "wave.3.right.circle")
+                }
+                .disabled(isIdentifying)
+            }
             Button(action: onRename) {
                 Label("Rename", systemImage: "pencil")
             }
@@ -200,6 +232,7 @@ struct DeviceListRow: View {
                 onRemove: {},
                 onReconfigure: {},
                 onInterview: {},
+                onIdentify: {},
                 onUpdate: {},
                 onCheckUpdate: {},
                 onSchedule: {},

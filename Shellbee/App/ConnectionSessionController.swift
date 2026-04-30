@@ -196,7 +196,7 @@ final class ConnectionSessionController {
             throw Z2MError.invalidURL
         }
 
-        let events = try await client.connect(url: url)
+        let events = try await client.connect(url: url, allowInvalidCertificates: config.allowInvalidCertificates)
         config.save()
         connectionState = .connected
         hasBeenConnected = true

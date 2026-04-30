@@ -101,8 +101,9 @@ final class DeviceListViewModel {
 
     /// A device counts as "Recently Added" if it is currently interviewing, or
     /// if its first-seen timestamp falls within this window. The window
-    /// survives app close/open via the timestamps persisted in `AppStore`.
-    static let recentWindow: TimeInterval = AppConfig.UX.recentDeviceWindow
+    /// survives app close/open via the timestamps persisted in `AppStore`,
+    /// and is user-configurable in Settings → General.
+    static var recentWindow: TimeInterval { AppConfig.UX.configuredRecentDeviceWindow }
 
     var hasActiveFilter: Bool {
         categoryFilter != nil || typeFilter != nil || vendorFilter != nil || statusFilter != .all

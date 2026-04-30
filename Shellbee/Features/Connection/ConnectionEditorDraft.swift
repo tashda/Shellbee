@@ -7,6 +7,7 @@ struct ConnectionEditorDraft {
     var useTLS: Bool
     var basePath: String
     var authToken: String
+    var allowInvalidCertificates: Bool
 
     init(
         name: String = "",
@@ -14,7 +15,8 @@ struct ConnectionEditorDraft {
         port: String = "8080",
         useTLS: Bool = false,
         basePath: String = "/",
-        authToken: String = ""
+        authToken: String = "",
+        allowInvalidCertificates: Bool = false
     ) {
         self.name = name
         self.host = host
@@ -22,6 +24,7 @@ struct ConnectionEditorDraft {
         self.useTLS = useTLS
         self.basePath = basePath
         self.authToken = authToken
+        self.allowInvalidCertificates = allowInvalidCertificates
     }
 
     var canConnect: Bool {

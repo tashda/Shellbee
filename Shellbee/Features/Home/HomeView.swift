@@ -6,10 +6,26 @@ struct HomeView: View {
     @State private var isPermitJoinConfigPresented = false
     @State private var isPermitJoinActivePresented = false
     @State private var showingRestartAlert = false
-    @State private var permitJoinStartTime: Date?
-    @State private var permitJoinDuration: Int = 0
-    @State private var permitJoinTargetName: String?
     @State private var showingMeshDetail = false
+
+    /// Active permit-join state derived from bridgeInfo so the toolbar
+    /// sheet shows the correct countdown / via-target regardless of where
+    /// permit-join was started (Home toolbar, Add Devices wizard, an
+    /// external Z2M client, etc.).
+    private var permitJoinTotalDuration: Int {
+        environment.store.bridgeInfo?.permitJoinTimeout ?? 0
+    }
+
+    private var permitJoinStartTime: Date? {
+        guard let end = environment.store.bridgeInfo?.permitJoinEnd,
+              permitJoinTotalDuration > 0 else { return nil }
+        let endSeconds = TimeInterval(end) / 1000
+        return Date(timeIntervalSince1970: endSeconds - TimeInterval(permitJoinTotalDuration))
+    }
+
+    private var permitJoinTargetName: String? {
+        environment.store.bridgeInfo?.permitJoinTarget
+    }
 
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
     @State private var showingAllLogs = false
@@ -141,7 +157,7 @@ struct HomeView: View {
             .sheet(isPresented: $isPermitJoinActivePresented) {
                 PermitJoinActiveSheet(
                     startTime: permitJoinStartTime,
-                    totalDuration: permitJoinDuration,
+                    totalDuration: permitJoinTotalDuration,
                     targetName: permitJoinTargetName,
                     onStop: { sendPermitJoin(duration: 0, deviceName: nil) }
                 )
@@ -151,13 +167,6 @@ struct HomeView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Restarting the bridge will apply pending configuration changes and temporarily disconnect all Zigbee devices.")
-            }
-            .onChange(of: snapshot.isPermitJoinActive) { _, isActive in
-                if !isActive {
-                    permitJoinStartTime = nil
-                    permitJoinDuration = 0
-                    permitJoinTargetName = nil
-                }
             }
         }
     }
@@ -223,18 +232,26 @@ struct HomeView: View {
     }
 
     private func startPermitJoin(duration: Int, deviceName: String?) {
-        permitJoinStartTime = Date()
-        permitJoinDuration = duration
-        permitJoinTargetName = deviceName?.isEmpty == false ? deviceName : nil
         sendPermitJoin(duration: duration, deviceName: deviceName)
     }
 
     private func sendPermitJoin(duration: Int, deviceName: String?) {
-        var payload: [String: JSONValue] = ["time": .int(duration)]
+        var payload: [String: JSONValue] = ["time": .int(duration), "value": .bool(duration > 0)]
         if let deviceName, !deviceName.isEmpty {
             payload["device"] = .string(deviceName)
         }
         environment.send(topic: Z2MTopics.Request.permitJoin, payload: .object(payload))
+
+        // Optimistically reflect the request in bridgeInfo so toolbar
+        // sheets / wizard / etc. update the moment the user taps,
+        // without waiting for the bridge round-trip.
+        if let info = environment.store.bridgeInfo {
+            environment.store.bridgeInfo = info.copyUpdatingPermitJoin(
+                enabled: duration > 0,
+                timeout: duration > 0 ? duration : nil,
+                target: duration > 0 ? deviceName : nil
+            )
+        }
     }
 }
 

@@ -11,6 +11,7 @@ struct ConnectionConfig: Codable, Sendable {
     var basePath: String
     var authToken: String?
     var name: String? = nil
+    var allowInvalidCertificates: Bool = false
 
     static let defaultPort = 8080
 
@@ -27,6 +28,7 @@ extension ConnectionConfig: Equatable, Hashable {
             && lhs.useTLS == rhs.useTLS
             && lhs.basePath == rhs.basePath
             && lhs.authToken == rhs.authToken
+            && lhs.allowInvalidCertificates == rhs.allowInvalidCertificates
     }
 
     func hash(into hasher: inout Hasher) {
@@ -35,6 +37,7 @@ extension ConnectionConfig: Equatable, Hashable {
         hasher.combine(useTLS)
         hasher.combine(basePath)
         hasher.combine(authToken)
+        hasher.combine(allowInvalidCertificates)
     }
 
     var webSocketURL: URL? {
@@ -106,7 +109,14 @@ extension ConnectionConfig {
     }
 
     var persistedSnapshot: PersistedSnapshot {
-        PersistedSnapshot(host: host, port: port, useTLS: useTLS, basePath: basePath, name: name)
+        PersistedSnapshot(
+            host: host,
+            port: port,
+            useTLS: useTLS,
+            basePath: basePath,
+            name: name,
+            allowInvalidCertificates: allowInvalidCertificates
+        )
     }
 
     static func persistToken(for config: ConnectionConfig) {
@@ -147,13 +157,36 @@ extension ConnectionConfig {
         let useTLS: Bool
         let basePath: String
         let name: String?
+        let allowInvalidCertificates: Bool
 
-        init(host: String, port: Int, useTLS: Bool, basePath: String, name: String? = nil) {
+        init(
+            host: String,
+            port: Int,
+            useTLS: Bool,
+            basePath: String,
+            name: String? = nil,
+            allowInvalidCertificates: Bool = false
+        ) {
             self.host = host
             self.port = port
             self.useTLS = useTLS
             self.basePath = basePath
             self.name = name
+            self.allowInvalidCertificates = allowInvalidCertificates
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case host, port, useTLS, basePath, name, allowInvalidCertificates
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            host = try c.decode(String.self, forKey: .host)
+            port = try c.decode(Int.self, forKey: .port)
+            useTLS = try c.decode(Bool.self, forKey: .useTLS)
+            basePath = try c.decode(String.self, forKey: .basePath)
+            name = try c.decodeIfPresent(String.self, forKey: .name)
+            allowInvalidCertificates = try c.decodeIfPresent(Bool.self, forKey: .allowInvalidCertificates) ?? false
         }
 
         var connectionConfig: ConnectionConfig {
@@ -172,7 +205,8 @@ extension ConnectionConfig {
                 useTLS: useTLS,
                 basePath: basePath,
                 authToken: ConnectionTokenKeychain.shared.token(for: lookup.secretLookupKey),
-                name: name
+                name: name,
+                allowInvalidCertificates: allowInvalidCertificates
             )
         }
     }

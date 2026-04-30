@@ -28,7 +28,10 @@ struct GroupCardHeader: View {
     }
 
     private var avatarArea: some View {
-        GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage)
+        GroupIconView(
+            memberDevices: GroupAvatarStore.resolvedDevices(for: group, members: memberDevices),
+            size: DesignTokens.Size.deviceCardImage
+        )
     }
 
     @ViewBuilder
