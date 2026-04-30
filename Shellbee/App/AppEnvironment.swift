@@ -108,6 +108,22 @@ final class AppEnvironment {
     /// Renames a device with an optimistic local update so the UI changes
     /// immediately. If the bridge rejects the rename, AppStore reverts the
     /// change when `bridge/response/device/rename` arrives with status="error".
+    /// Asks the device to physically identify itself (blink/beep) via the
+    /// Zigbee Identify cluster. Z2M exposes this as a writable enum property
+    /// `identify` with values `["identify"]`. Fire-and-forget — there's no
+    /// `bridge/response/.../identify` to await, so we surface the in-progress
+    /// state for ~3s in the UI before clearing it.
+    func identifyDevice(_ friendlyName: String) {
+        guard !store.identifyInProgress.contains(friendlyName) else { return }
+        store.identifyInProgress.insert(friendlyName)
+        sendDeviceState(friendlyName, payload: .object(["identify": .string("identify")]))
+
+        Task { [weak store] in
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run { store?.identifyInProgress.remove(friendlyName) }
+        }
+    }
+
     func renameDevice(from: String, to: String, homeassistantRename: Bool) {
         let trimmed = to.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != from else { return }

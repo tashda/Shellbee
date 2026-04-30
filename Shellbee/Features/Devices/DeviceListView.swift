@@ -213,10 +213,12 @@ private struct DeviceListContent: View {
             otaStatus: otaStatus,
             checkResult: environment.store.deviceCheckResults[device.friendlyName],
             isDeleting: environment.store.pendingRemovals.contains(device.friendlyName),
+            isIdentifying: environment.store.identifyInProgress.contains(device.friendlyName),
             onRename: { onRename(device) },
             onRemove: { onRemove(device) },
             onReconfigure: { onPendingAlert(.reconfigure(device)) },
             onInterview: { onPendingAlert(.interview(device)) },
+            onIdentify: { environment.identifyDevice(device.friendlyName) },
             onUpdate: state.hasUpdateAvailable
                 ? { viewModel.updateDevice(device, environment: environment) }
                 : nil,

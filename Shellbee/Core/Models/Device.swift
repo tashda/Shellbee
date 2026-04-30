@@ -28,6 +28,16 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
         return ints.isEmpty ? [1] : ints
     }
 
+    /// Whether the device exposes the Zigbee Identify cluster as a writable
+    /// property. Z2M renders this as `{ "name": "identify", "type": "enum",
+    /// "property": "identify", "access": 2, "values": ["identify"] }`.
+    var supportsIdentify: Bool {
+        guard let exposes = definition?.exposes else { return false }
+        return exposes.flattened.contains { expose in
+            expose.property == "identify" && expose.isWritable
+        }
+    }
+
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     static func == (lhs: Device, rhs: Device) -> Bool { lhs.ieeeAddress == rhs.ieeeAddress }
 

@@ -31,6 +31,10 @@ final class AppStore {
     var touchlinkScanInProgress = false
     var touchlinkIdentifyInProgress = false
     var touchlinkResetInProgress = false
+    /// Friendly names of devices currently running an Identify (Zigbee
+    /// Identify cluster). The action is fire-and-forget, so the row clears
+    /// itself on a short timer rather than waiting for a response.
+    var identifyInProgress: Set<String> = []
     var pendingNotifications: [InAppNotification] = []
     var fastTrackNotifications: [InAppNotification] = []
     // Bumped whenever a new (non-coalesced) normal notification is enqueued.
@@ -93,6 +97,7 @@ final class AppStore {
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false
         touchlinkResetInProgress = false
+        identifyInProgress = []
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
     }
 
