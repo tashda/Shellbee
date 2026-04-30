@@ -151,8 +151,12 @@ struct HomeBridgeCard: View {
             )
         }
         if snapshot.isPermitJoinActive {
-            let label = snapshot.permitJoinRemaining.map { "Permit Join open — \($0)s remaining" } ?? "Permit Join open"
-            HomeCardAlertRow(symbol: "person.crop.circle.badge.plus", title: label, color: .orange, action: nil)
+            // The countdown lives in the toolbar's active sheet (TimelineView
+            // reading from bridgeInfo). Mirroring it here updated only when
+            // the snapshot recomputed, which made the card look broken — and
+            // a static "open" badge is the right granularity for an at-a-glance
+            // status row anyway.
+            HomeCardAlertRow(symbol: "person.crop.circle.badge.plus", title: "Permit Join open", color: .orange, action: nil)
         }
         if let pct = health?.process?.memoryPercent, pct > 30 {
             HomeCardAlertRow(
