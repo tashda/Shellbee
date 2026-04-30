@@ -48,12 +48,8 @@ struct PairingWizardView: View {
                     }
                 }
             }
-            .confirmationDialog(
-                "Network is still open",
-                isPresented: $showCancelConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Keep Open", role: .cancel) { dismiss() }
+            .alert("Network is still open", isPresented: $showCancelConfirm) {
+                Button("Keep Open") { dismiss() }
                 Button("Close Network", role: .destructive) {
                     sendPermitJoin(duration: 0, deviceName: nil)
                     dismiss()
