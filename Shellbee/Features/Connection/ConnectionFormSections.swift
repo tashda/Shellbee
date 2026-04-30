@@ -153,10 +153,20 @@ struct ConnectionServerSection: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
+
+            if draft.useTLS {
+                Toggle("Allow Self-Signed Certificates", isOn: $draft.allowInvalidCertificates)
+            }
         } header: {
             Text("Server")
         } footer: {
-            Text("Shellbee connects to Zigbee2MQTT over WebSocket. Leave Base Path as “/” unless your server is behind a reverse proxy on a subpath.")
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text("Shellbee connects to Zigbee2MQTT over WebSocket. Leave Base Path as “/” unless your server is behind a reverse proxy on a subpath.")
+                if draft.useTLS && draft.allowInvalidCertificates {
+                    Text("Certificate validation is disabled for this server. The connection is encrypted, but anyone on the network path could impersonate the server. Only use on networks you trust.")
+                        .foregroundStyle(.orange)
+                }
+            }
         }
     }
 }

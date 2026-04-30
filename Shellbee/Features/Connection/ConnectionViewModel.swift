@@ -9,6 +9,7 @@ final class ConnectionViewModel {
     var useTLS = false
     var basePath = "/"
     var authToken = ""
+    var allowInvalidCertificates = false
 
     var discoveredHosts: [String] {
         Array(environment.discovery.discoveredHosts).sorted()
@@ -98,6 +99,7 @@ final class ConnectionViewModel {
         useTLS = false
         basePath = "/"
         authToken = ""
+        allowInvalidCertificates = false
         isEditorPresented = true
     }
 
@@ -114,7 +116,8 @@ final class ConnectionViewModel {
             port: port,
             useTLS: useTLS,
             basePath: basePath,
-            authToken: authToken
+            authToken: authToken,
+            allowInvalidCertificates: allowInvalidCertificates
         )
     }
 
@@ -148,6 +151,7 @@ final class ConnectionViewModel {
         useTLS = draft.useTLS
         basePath = draft.basePath
         authToken = draft.authToken
+        allowInvalidCertificates = draft.useTLS ? draft.allowInvalidCertificates : false
         return connectDraft()
     }
 
@@ -167,7 +171,8 @@ final class ConnectionViewModel {
             useTLS: useTLS,
             basePath: basePath.isEmpty ? "/" : basePath,
             authToken: authToken.isEmpty ? nil : authToken,
-            name: trimmedName.isEmpty ? nil : trimmedName
+            name: trimmedName.isEmpty ? nil : trimmedName,
+            allowInvalidCertificates: useTLS ? allowInvalidCertificates : false
         )
     }
 
@@ -199,5 +204,6 @@ final class ConnectionViewModel {
         useTLS = config.useTLS
         basePath = config.basePath
         authToken = config.authToken ?? ""
+        allowInvalidCertificates = config.allowInvalidCertificates
     }
 }
