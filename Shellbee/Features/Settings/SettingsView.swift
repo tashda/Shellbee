@@ -3,8 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
-    @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
+    @State private var showingRestartAlert = false
 
     var body: some View {
         NavigationStack {
@@ -173,9 +173,6 @@ struct SettingsView: View {
             NavigationLink { AppNotificationSettingsView() } label: {
                 settingsLabel(title: "Notifications", systemImage: "bell.badge.fill", color: .red)
             }
-            NavigationLink { AppPerformanceView() } label: {
-                settingsLabel(title: "Bulk OTA", systemImage: "arrow.down.circle.dotted", color: .blue)
-            }
             NavigationLink { AboutView() } label: {
                 settingsLabel(title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             }
@@ -196,11 +193,9 @@ struct SettingsView: View {
 
     private var dangerSection: some View {
         Section {
-            if environment.connectionState.isConnected {
-                Button("Restart Zigbee2MQTT", role: .destructive) {
-                    showingRestartAlert = true
-                }
-            }
+            // Restart Zigbee2MQTT lives on Settings → Server (`ServerDetailView`),
+            // alongside the rest of the bridge-level controls. Mirroring it
+            // here was a duplicate path with no extra surface area.
             Button("Disconnect", role: .destructive) {
                 showingDisconnectConfirmation = true
             }

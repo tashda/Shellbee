@@ -218,7 +218,6 @@
 				Features/Settings/AppGeneralView.swift,
 				Features/Settings/AppLiveActivitiesView.swift,
 				Features/Settings/AppNotificationSettingsView.swift,
-				Features/Settings/AppPerformanceView.swift,
 				Features/Settings/AvailabilitySettingsView.swift,
 				Features/Settings/Backup/BackupPayload.swift,
 				Features/Settings/Backup/BackupView.swift,
