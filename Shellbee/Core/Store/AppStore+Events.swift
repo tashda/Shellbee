@@ -4,7 +4,18 @@ extension AppStore {
     func apply(_ event: Z2MEvent) {
         switch event {
         case .bridgeInfo(let info):
-            bridgeInfo = info
+            // bridge/info doesn't include the permit_join target (Z2M only
+            // sends that on the bridge/event), so preserve our captured
+            // value when the snapshot says permit_join is still on.
+            if info.permitJoin, let previous = bridgeInfo, previous.permitJoinTarget != nil {
+                bridgeInfo = info.copyUpdatingPermitJoin(
+                    enabled: info.permitJoin,
+                    timeout: info.permitJoinTimeout,
+                    target: previous.permitJoinTarget
+                )
+            } else {
+                bridgeInfo = info
+            }
         case .bridgeState(let state):
             bridgeOnline = state == "online"
         case .devices(let list):
