@@ -43,10 +43,13 @@ nonisolated enum AppConfig {
         static let recentDeviceWindow: TimeInterval = recentDeviceWindowDefaultMinutes * 60
 
         /// User-facing key + options for the Recently-Added window picker
-        /// in Settings → General. Stored as minutes; 0 means "off".
+        /// in Settings → General. Stored as minutes. To hide the section
+        /// entirely the user toggles "Show Recents" off in the device
+        /// list's Sort menu — that's the single source of truth for
+        /// visibility, this picker only controls the window length.
         static let recentDeviceWindowKey = "DeviceList.recentWindowMinutes"
         static let recentDeviceWindowDefaultMinutes: TimeInterval = 30
-        static let recentDeviceWindowOptionsMinutes: [Int] = [0, 5, 15, 30, 60, 120, 240, 1440]
+        static let recentDeviceWindowOptionsMinutes: [Int] = [5, 15, 30, 60, 120, 240, 1440]
 
         /// Resolves the active window (in seconds) honoring the user's
         /// stored preference if any, falling back to the default.

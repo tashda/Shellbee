@@ -114,13 +114,11 @@ final class DeviceListViewModel {
     /// easy to spot the moment they start interviewing. Sorted by friendly
     /// name to keep order stable while interviews are in flight.
     func recentDevices(store: AppStore) -> [Device] {
-        let window = Self.recentWindow
-        let cutoff = Date().addingTimeInterval(-window)
+        let cutoff = Date().addingTimeInterval(-Self.recentWindow)
         return store.devices
             .filter { $0.type != .coordinator }
             .filter { device in
                 if device.interviewing { return true }
-                guard window > 0 else { return false }
                 if let joined = store.deviceFirstSeen[device.ieeeAddress], joined >= cutoff {
                     return true
                 }

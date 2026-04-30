@@ -40,7 +40,7 @@ struct AppGeneralView: View {
             } header: {
                 Text("Devices")
             } footer: {
-                Text("How long a freshly-paired device stays in the “Recently Added” section of the device list.")
+                Text("How long a freshly-paired device stays in the “Recently Added” section of the device list. To hide the section entirely, toggle “Show Recents” off in the Sort menu on the Devices tab.")
             }
 
             Section {
@@ -80,7 +80,6 @@ struct AppGeneralView: View {
 
     private func label(forMinutes minutes: Int) -> String {
         switch minutes {
-        case 0: return "Off"
         case 1..<60: return "\(minutes) min"
         case 60: return "1 hour"
         case 120: return "2 hours"
