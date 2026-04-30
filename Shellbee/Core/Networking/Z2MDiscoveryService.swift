@@ -2,14 +2,29 @@ import Foundation
 import Network
 import Darwin
 
+struct DiscoveredEndpoint: Hashable, Sendable {
+    let host: String
+    let port: UInt16
+
+    var subtitle: String {
+        switch port {
+        case 8099: "Home Assistant add-on"
+        case 8080: "Discovered on your local network"
+        default: "Port \(port)"
+        }
+    }
+}
+
 @Observable
 final class Z2MDiscoveryService {
-    @MainActor public var discoveredHosts: Set<String> = []
+    @MainActor public var discoveredEndpoints: Set<DiscoveredEndpoint> = []
     @MainActor public private(set) var isScanning: Bool = false
 
     @MainActor private var scanTask: Task<Void, Never>?
 
-    nonisolated private static let z2mPort: UInt16 = 8080
+    /// Probed in order. 8080 = standalone Docker default. 8099 = Home Assistant
+    /// community add-on default (zigbee2mqtt/hassio-zigbee2mqtt).
+    nonisolated private static let z2mPorts: [UInt16] = [8080, 8099]
     nonisolated private static let probeTimeout: TimeInterval = AppConfig.Networking.discoveryProbeTimeout
     nonisolated private static let maxConcurrent = 48
 
@@ -17,13 +32,13 @@ final class Z2MDiscoveryService {
     func start() {
         guard !isScanning else { return }
         isScanning = true
-        discoveredHosts.removeAll()
+        discoveredEndpoints.removeAll()
 
         scanTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
-            await Self.scan { host in
+            await Self.scan { endpoint in
                 Task { @MainActor [weak self] in
-                    self?.discoveredHosts.insert(host)
+                    self?.discoveredEndpoints.insert(endpoint)
                 }
             }
             await MainActor.run { self.isScanning = false }
@@ -39,7 +54,7 @@ final class Z2MDiscoveryService {
 
     // MARK: - Scan
 
-    nonisolated private static func scan(onFound: @Sendable @escaping (String) -> Void) async {
+    nonisolated private static func scan(onFound: @Sendable @escaping (DiscoveredEndpoint) -> Void) async {
         guard let localIP = localIPv4Address() else { return }
         let parts = localIP.split(separator: ".")
         guard parts.count == 4 else { return }
@@ -51,16 +66,18 @@ final class Z2MDiscoveryService {
             for i in 1...254 {
                 let host = "\(prefix).\(i)"
                 if host == localIP { continue }
-                group.addTask {
-                    await sem.acquire()
-                    if Task.isCancelled {
+                for port in z2mPorts {
+                    group.addTask {
+                        await sem.acquire()
+                        if Task.isCancelled {
+                            await sem.release()
+                            return
+                        }
+                        let isZ2M = await probe(host: host, port: port)
                         await sem.release()
-                        return
-                    }
-                    let isZ2M = await probe(host: host)
-                    await sem.release()
-                    if isZ2M {
-                        onFound(host)
+                        if isZ2M {
+                            onFound(DiscoveredEndpoint(host: host, port: port))
+                        }
                     }
                 }
             }
@@ -69,14 +86,14 @@ final class Z2MDiscoveryService {
 
     // MARK: - Probe
 
-    nonisolated private static func probe(host: String) async -> Bool {
+    nonisolated private static func probe(host: String, port: UInt16) async -> Bool {
         await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            guard let port = NWEndpoint.Port(rawValue: z2mPort) else {
+            guard let nwPort = NWEndpoint.Port(rawValue: port) else {
                 continuation.resume(returning: false)
                 return
             }
 
-            let conn = NWConnection(host: NWEndpoint.Host(host), port: port, using: .tcp)
+            let conn = NWConnection(host: NWEndpoint.Host(host), port: nwPort, using: .tcp)
             let state = ProbeState(continuation: continuation, connection: conn)
 
             let timeoutItem = DispatchWorkItem { state.finish(false) }
@@ -84,10 +101,11 @@ final class Z2MDiscoveryService {
             DispatchQueue.global().asyncAfter(deadline: .now() + probeTimeout, execute: timeoutItem)
 
             let hostCopy = host
+            let portCopy = port
             conn.stateUpdateHandler = { newState in
                 switch newState {
                 case .ready:
-                    let request = "GET / HTTP/1.1\r\nHost: \(hostCopy):\(z2mPort)\r\nUser-Agent: Shellbee\r\nConnection: close\r\n\r\n"
+                    let request = "GET / HTTP/1.1\r\nHost: \(hostCopy):\(portCopy)\r\nUser-Agent: Shellbee\r\nConnection: close\r\n\r\n"
                     if let data = request.data(using: .utf8) {
                         conn.send(content: data, completion: .contentProcessed({ _ in }))
                     }

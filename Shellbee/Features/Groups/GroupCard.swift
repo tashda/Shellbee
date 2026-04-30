@@ -7,6 +7,22 @@ struct GroupCard: View {
     var onRenameTapped: (() -> Void)? = nil
     var displayMode: DeviceIdentityDisplayMode = .prominent
 
+    @State private var showAvatarPicker = false
+    @State private var avatarSelection: [String] = []
+
+    /// Avatar reflects the @State selection so changes from the picker
+    /// re-render this view immediately. Falls back to first-two when no
+    /// selection or none of the stored IEEEs are still members.
+    private var avatarDevices: [Device] {
+        if !avatarSelection.isEmpty {
+            let pick = avatarSelection.compactMap { ieee in
+                memberDevices.first { $0.ieeeAddress == ieee }
+            }
+            if !pick.isEmpty { return Array(pick.prefix(2)) }
+        }
+        return Array(memberDevices.prefix(2))
+    }
+
     var body: some View {
         switch displayMode {
         case .prominent:
@@ -28,11 +44,21 @@ struct GroupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
                 radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        .sheet(isPresented: $showAvatarPicker) {
+            GroupAvatarPickerSheet(
+                group: group,
+                memberDevices: memberDevices,
+                selectedIEEEs: $avatarSelection
+            )
+        }
+        .onAppear {
+            avatarSelection = GroupAvatarStore.shared.selection(for: group)
+        }
     }
 
     private var compactHeader: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
-            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage * 0.68)
+            GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceCardImage * 0.68)
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -73,7 +99,17 @@ struct GroupCard: View {
 
     private var identityRow: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
-            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage * 0.80)
+            Button {
+                let stored = GroupAvatarStore.shared.selection(for: group)
+                avatarSelection = stored.isEmpty
+                    ? Array(memberDevices.prefix(2).map(\.ieeeAddress))
+                    : stored
+                showAvatarPicker = true
+            } label: {
+                GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceCardImage * 0.80)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Choose group avatar")
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 nameView

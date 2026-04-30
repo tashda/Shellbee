@@ -160,6 +160,8 @@
 				Features/Groups/AddGroupMemberDeviceRow.swift,
 				Features/Groups/AddGroupMembersSheet.swift,
 				Features/Groups/AddGroupSheet.swift,
+				Features/Groups/GroupAvatarPickerSheet.swift,
+				Features/Groups/GroupAvatarStore.swift,
 				Features/Groups/GroupCard.swift,
 				Features/Groups/GroupCardFooterBar.swift,
 				Features/Groups/GroupCardHeader.swift,
@@ -207,12 +209,17 @@
 				Features/Notifications/FastTrackBanner.swift,
 				Features/Notifications/InAppNotificationBanner.swift,
 				Features/Notifications/InAppNotificationOverlay.swift,
+				Features/Onboarding/OnboardingConnectPage.swift,
+				Features/Onboarding/OnboardingModel.swift,
+				Features/Onboarding/OnboardingTestPage.swift,
+				Features/Onboarding/OnboardingView.swift,
+				Features/Pairing/PairingWizardModel.swift,
+				Features/Pairing/PairingWizardView.swift,
 				Features/Settings/AboutView.swift,
 				Features/Settings/AcknowledgementsView.swift,
 				Features/Settings/AppGeneralView.swift,
 				Features/Settings/AppLiveActivitiesView.swift,
 				Features/Settings/AppNotificationSettingsView.swift,
-				Features/Settings/AppPerformanceView.swift,
 				Features/Settings/AvailabilitySettingsView.swift,
 				Features/Settings/Backup/BackupPayload.swift,
 				Features/Settings/Backup/BackupView.swift,
@@ -822,7 +829,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -863,7 +870,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -903,7 +910,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -945,7 +952,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

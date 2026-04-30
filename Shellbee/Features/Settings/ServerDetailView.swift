@@ -20,6 +20,11 @@ struct ServerDetailView: View {
                     CopyableRow(label: "Port", value: String(config.port))
                     CopyableRow(label: "URL", value: config.displayURL)
                     CopyableRow(label: "Protocol", value: config.useTLS ? "WSS (TLS)" : "WS (Plain)")
+                    if config.useTLS && config.allowInvalidCertificates {
+                        LabeledContent("Certificate") {
+                            Text("Self-signed allowed").foregroundStyle(.orange)
+                        }
+                    }
                     LabeledContent("Authentication") {
                         if let token = config.authToken, !token.isEmpty {
                             Text(String(repeating: "•", count: min(token.count, 12)))

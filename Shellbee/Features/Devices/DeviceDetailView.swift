@@ -302,6 +302,16 @@ struct DeviceDetailView: View {
                 }
             }
             Divider()
+            if device.supportsIdentify {
+                Button {
+                    environment.identifyDevice(device.friendlyName)
+                } label: {
+                    let identifying = environment.store.identifyInProgress.contains(device.friendlyName)
+                    Label(identifying ? "Identifying" : "Identify",
+                          systemImage: identifying ? "wave.3.right" : "wave.3.right.circle")
+                }
+                .disabled(environment.store.identifyInProgress.contains(device.friendlyName))
+            }
             Button { pendingDeviceAlert = .interview(device) } label: {
                 Label("Interview", systemImage: "questionmark.circle")
             }

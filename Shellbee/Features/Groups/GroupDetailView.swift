@@ -60,7 +60,11 @@ struct GroupDetailView: View {
                 BeautifulPayloadView(payload: groupState)
             }
 
-            GroupMembersSection(group: currentGroup) { memberToRemove = $0 }
+            GroupMembersSection(
+                group: currentGroup,
+                onRemove: { memberToRemove = $0 },
+                onAdd: { showAddMembers = true }
+            )
 
             GroupScenesSection(group: currentGroup, viewModel: viewModel)
         }

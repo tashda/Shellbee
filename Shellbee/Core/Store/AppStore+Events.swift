@@ -4,7 +4,33 @@ extension AppStore {
     func apply(_ event: Z2MEvent) {
         switch event {
         case .bridgeInfo(let info):
-            bridgeInfo = info
+            // bridge/info recomputes permitJoinEnd from `permit_join_timeout`
+            // every time it lands. Z2M's timeout doesn't tick down between
+            // snapshots, so each refresh would either jump the end forward
+            // (timeout still set) or zero it out (omitted on later snapshots),
+            // depending on the bridge — both look broken in the UI. When
+            // permit_join stays on, preserve the existing end and target;
+            // we only adopt the new ones once the bridge tells us
+            // permit_join has actually changed.
+            if info.permitJoin,
+               let previous = bridgeInfo,
+               previous.permitJoin {
+                bridgeInfo = BridgeInfo(
+                    version: info.version,
+                    commit: info.commit,
+                    coordinator: info.coordinator,
+                    network: info.network,
+                    logLevel: info.logLevel,
+                    permitJoin: true,
+                    permitJoinTimeout: previous.permitJoinTimeout,
+                    permitJoinEnd: previous.permitJoinEnd,
+                    permitJoinTarget: previous.permitJoinTarget,
+                    restartRequired: info.restartRequired,
+                    config: info.config
+                )
+            } else {
+                bridgeInfo = info
+            }
         case .bridgeState(let state):
             bridgeOnline = state == "online"
         case .devices(let list):
@@ -57,6 +83,19 @@ extension AppStore {
                     enqueueNotification(note)
                 }
             }
+            // Capture the via-router scope on permit_join events; bridge/info
+            // doesn't include this, so the wizard would otherwise have no
+            // way to show "open via Kitchen Relay".
+            if event.type == "permit_join", let info = bridgeInfo {
+                let permitted = event.data.object?["permitted"]?.boolValue ?? false
+                let time = event.data.object?["time"]?.numberValue.map(Int.init) ?? info.permitJoinTimeout
+                let target = event.data.object?["device"]?.stringValue
+                bridgeInfo = info.copyUpdatingPermitJoin(
+                    enabled: permitted,
+                    timeout: permitted ? time : nil,
+                    target: permitted ? target : nil
+                )
+            }
             if let ieee = event.data.object?["ieee_address"]?.stringValue {
                 switch event.type {
                 case "device_joined":
@@ -67,6 +106,41 @@ extension AppStore {
                 case "device_interview":
                     let name = event.data.object?["friendly_name"]?.stringValue ?? ieee
                     let status = event.data.object?["status"]?.stringValue
+
+                    // Mirror the interview status into our local `Device`
+                    // entry so any view observing `device.interviewing` /
+                    // `device.interviewCompleted` updates immediately —
+                    // without this the row only refreshes when the next
+                    // bridge/devices snapshot lands, which can be many
+                    // seconds later (or never if the wire path is slow).
+                    if let idx = devices.firstIndex(where: { $0.ieeeAddress == ieee }) {
+                        let friendlyName = devices[idx].friendlyName
+                        switch status {
+                        case "started":
+                            devices[idx].interviewing = true
+                            devices[idx].interviewCompleted = false
+                        case "successful":
+                            devices[idx].interviewing = false
+                            devices[idx].interviewCompleted = true
+                            // A device that just finished interviewing is by
+                            // definition online — Z2M only completes interview
+                            // when the device responds. Optimistically reflect
+                            // that so we don't render the row as offline /
+                            // greyed-out while we wait for the
+                            // <name>/availability publish to land. This is
+                            // particularly important after a remove + re-pair
+                            // in the same session, where the prior `false`
+                            // availability would otherwise stick until app
+                            // restart.
+                            deviceAvailability[friendlyName] = true
+                        case "failed":
+                            devices[idx].interviewing = false
+                            devices[idx].interviewCompleted = false
+                        default:
+                            break
+                        }
+                    }
+
                     Task { @MainActor in
                         switch status {
                         case "started":
@@ -101,17 +175,10 @@ extension AppStore {
             handleOTACheckResponse(response)
         case .permitJoinChanged(let enabled, let remaining):
             if let info = bridgeInfo {
-                bridgeInfo = BridgeInfo(
-                    version: info.version,
-                    commit: info.commit,
-                    coordinator: info.coordinator,
-                    network: info.network,
-                    logLevel: info.logLevel,
-                    permitJoin: enabled,
-                    permitJoinTimeout: remaining,
-                    permitJoinEnd: remaining.map { Int(Date().timeIntervalSince1970 * 1000) + ($0 * 1000) },
-                    restartRequired: info.restartRequired,
-                    config: info.config
+                bridgeInfo = info.copyUpdatingPermitJoin(
+                    enabled: enabled,
+                    timeout: remaining,
+                    target: enabled ? info.permitJoinTarget : nil
                 )
             }
 

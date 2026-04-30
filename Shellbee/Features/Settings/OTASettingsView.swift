@@ -11,6 +11,9 @@ struct OTASettingsView: View {
     @State private var imageBlockResponseDelay: Int = 250
     @State private var defaultMaximumDataSize: Int = 50
 
+    @AppStorage(OTABulkOperationQueue.concurrencyKey) private var bulkConcurrency: Int = OTABulkOperationQueue.defaultConcurrency
+    @AppStorage(OTABulkOperationQueue.checkTimeoutKey) private var bulkCheckTimeout: Int = OTABulkOperationQueue.defaultCheckTimeoutSeconds
+
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
@@ -60,6 +63,25 @@ struct OTASettingsView: View {
                 Text("Transfer Timing")
             } footer: {
                 Text("Advanced transfer settings. Request Timeout is how long to wait for each block response (default 150,000 ms). Block Delay adds a pause between blocks to reduce load. Block Size controls how many bytes are sent per block (default 50).")
+            }
+
+            Section {
+                InlineIntField(
+                    "Concurrency",
+                    value: $bulkConcurrency,
+                    unit: "requests",
+                    range: OTABulkOperationQueue.concurrencyRange
+                )
+                InlineIntField(
+                    "Device Timeout",
+                    value: $bulkCheckTimeout,
+                    unit: "s",
+                    range: OTABulkOperationQueue.checkTimeoutRange
+                )
+            } header: {
+                Text("Bulk Check")
+            } footer: {
+                Text("Controls how Shellbee paces \"Check All for Updates\". Higher concurrency finishes faster but can flood the Zigbee coordinator.")
             }
         }
         .navigationTitle("OTA Updates")

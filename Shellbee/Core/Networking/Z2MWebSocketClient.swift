@@ -40,7 +40,7 @@ actor Z2MWebSocketClient {
         )
     }
 
-    func connect(url: URL) async throws -> AsyncStream<Z2MSocketEvent> {
+    func connect(url: URL, allowInvalidCertificates: Bool = false) async throws -> AsyncStream<Z2MSocketEvent> {
         // Finish any in-progress stream so old for-await loops exit cleanly.
         currentContinuation?.finish()
         currentContinuation = nil
@@ -52,7 +52,7 @@ actor Z2MWebSocketClient {
         let wsTask = session.webSocketTask(with: url)
         wsTask.maximumMessageSize = Self.maximumFrameSize
         task = wsTask
-        delegate.setExpectedTask(wsTask)
+        delegate.setExpectedTask(wsTask, allowInvalidCertificates: allowInvalidCertificates)
         wsTask.resume()
 
         let firstMessage: URLSessionWebSocketTask.Message

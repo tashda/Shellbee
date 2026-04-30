@@ -75,44 +75,45 @@ struct ConnectionDiscoverySection: View {
 
     var body: some View {
         Section("Nearby Servers") {
+            // Render any servers found so far first — discovery streams hits
+            // as it goes, so a match should appear the moment the probe
+            // resolves rather than at the end of the /24 sweep.
+            ForEach(viewModel.discoveredEndpoints, id: \.self) { endpoint in
+                Button {
+                    viewModel.presentNewServer(prefilledHost: endpoint.host, prefilledPort: endpoint.port)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                            Text("\(endpoint.host):\(String(endpoint.port))")
+                                .foregroundStyle(.primary)
+                            Text(endpoint.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Scanning indicator stays alongside results so the user knows
+            // the sweep is still running even after the first match arrives.
             if viewModel.isScanning {
                 LabeledContent("Scanning") {
                     ProgressView()
                 }
-            } else if viewModel.discoveredHosts.isEmpty {
-                Button {
-                    viewModel.startDiscovery()
-                } label: {
-                    Label("Scan for Zigbee2MQTT", systemImage: "magnifyingglass")
-                        .foregroundStyle(.primary)
-                }
             } else {
-                ForEach(viewModel.discoveredHosts, id: \.self) { host in
-                    Button {
-                        viewModel.presentNewServer(prefilledHost: host)
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                                Text(host)
-                                    .foregroundStyle(.primary)
-                                Text("Discovered on your local network")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-
                 Button {
                     viewModel.startDiscovery()
                 } label: {
-                    Text("Scan Again")
-                        .foregroundStyle(.primary)
+                    Label(
+                        viewModel.discoveredEndpoints.isEmpty ? "Scan for Zigbee2MQTT" : "Scan Again",
+                        systemImage: "magnifyingglass"
+                    )
+                    .foregroundStyle(.primary)
                 }
             }
         }
@@ -153,10 +154,20 @@ struct ConnectionServerSection: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
+
+            if draft.useTLS {
+                Toggle("Allow Self-Signed Certificates", isOn: $draft.allowInvalidCertificates)
+            }
         } header: {
             Text("Server")
         } footer: {
-            Text("Shellbee connects to Zigbee2MQTT over WebSocket. Leave Base Path as “/” unless your server is behind a reverse proxy on a subpath.")
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text("Shellbee connects to Zigbee2MQTT over WebSocket. Leave Base Path as “/” unless your server is behind a reverse proxy on a subpath.")
+                if draft.useTLS && draft.allowInvalidCertificates {
+                    Text("Certificate validation is disabled for this server. The connection is encrypted, but anyone on the network path could impersonate the server. Only use on networks you trust.")
+                        .foregroundStyle(.orange)
+                }
+            }
         }
     }
 }

@@ -11,11 +11,13 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
     private let lock = NSLock()
     private var openState: OpenState = .idle
     private weak var expectedTask: URLSessionWebSocketTask?
+    private var allowInvalidCertificates: Bool = false
 
-    func setExpectedTask(_ task: URLSessionWebSocketTask) {
+    func setExpectedTask(_ task: URLSessionWebSocketTask, allowInvalidCertificates: Bool) {
         lock.lock()
         expectedTask = task
         openState = .idle
+        self.allowInvalidCertificates = allowInvalidCertificates
         lock.unlock()
     }
 
@@ -107,6 +109,29 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
     ) {
         guard webSocketTask === expectedTask else { return }
         resolveOpen(.failure(Z2MError.requestFailed("Connection closed before opening.")))
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let trust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        lock.lock()
+        let allow = allowInvalidCertificates
+        lock.unlock()
+
+        guard allow else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+
+        completionHandler(.useCredential, URLCredential(trust: trust))
     }
 
     func urlSession(
