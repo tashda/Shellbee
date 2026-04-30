@@ -160,6 +160,8 @@
 				Features/Groups/AddGroupMemberDeviceRow.swift,
 				Features/Groups/AddGroupMembersSheet.swift,
 				Features/Groups/AddGroupSheet.swift,
+				Features/Groups/GroupAvatarPickerSheet.swift,
+				Features/Groups/GroupAvatarStore.swift,
 				Features/Groups/GroupCard.swift,
 				Features/Groups/GroupCardFooterBar.swift,
 				Features/Groups/GroupCardHeader.swift,

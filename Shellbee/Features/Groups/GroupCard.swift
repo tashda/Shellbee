@@ -7,6 +7,13 @@ struct GroupCard: View {
     var onRenameTapped: (() -> Void)? = nil
     var displayMode: DeviceIdentityDisplayMode = .prominent
 
+    @State private var showAvatarPicker = false
+    @State private var avatarSelection: [String] = []
+
+    private var avatarDevices: [Device] {
+        GroupAvatarStore.resolvedDevices(for: group, members: memberDevices)
+    }
+
     var body: some View {
         switch displayMode {
         case .prominent:
@@ -28,6 +35,13 @@ struct GroupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
                 radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        .sheet(isPresented: $showAvatarPicker) {
+            GroupAvatarPickerSheet(
+                group: group,
+                memberDevices: memberDevices,
+                selectedIEEEs: $avatarSelection
+            )
+        }
     }
 
     private var compactHeader: some View {
@@ -73,7 +87,14 @@ struct GroupCard: View {
 
     private var identityRow: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
-            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage * 0.80)
+            Button {
+                avatarSelection = GroupAvatarStore.load(for: group)
+                showAvatarPicker = true
+            } label: {
+                GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceCardImage * 0.80)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Choose group avatar")
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 nameView
