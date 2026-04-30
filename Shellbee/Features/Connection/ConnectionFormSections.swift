@@ -79,7 +79,7 @@ struct ConnectionDiscoverySection: View {
                 LabeledContent("Scanning") {
                     ProgressView()
                 }
-            } else if viewModel.discoveredHosts.isEmpty {
+            } else if viewModel.discoveredEndpoints.isEmpty {
                 Button {
                     viewModel.startDiscovery()
                 } label: {
@@ -87,15 +87,15 @@ struct ConnectionDiscoverySection: View {
                         .foregroundStyle(.primary)
                 }
             } else {
-                ForEach(viewModel.discoveredHosts, id: \.self) { host in
+                ForEach(viewModel.discoveredEndpoints, id: \.self) { endpoint in
                     Button {
-                        viewModel.presentNewServer(prefilledHost: host)
+                        viewModel.presentNewServer(prefilledHost: endpoint.host, prefilledPort: endpoint.port)
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                                Text(host)
+                                Text("\(endpoint.host):\(String(endpoint.port))")
                                     .foregroundStyle(.primary)
-                                Text("Discovered on your local network")
+                                Text(endpoint.subtitle)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

@@ -11,8 +11,12 @@ final class ConnectionViewModel {
     var authToken = ""
     var allowInvalidCertificates = false
 
-    var discoveredHosts: [String] {
-        Array(environment.discovery.discoveredHosts).sorted()
+    var discoveredEndpoints: [DiscoveredEndpoint] {
+        Array(environment.discovery.discoveredEndpoints)
+            .sorted { lhs, rhs in
+                if lhs.host != rhs.host { return lhs.host < rhs.host }
+                return lhs.port < rhs.port
+            }
     }
 
     @MainActor
@@ -91,11 +95,11 @@ final class ConnectionViewModel {
         environment.connect(config: config)
     }
 
-    func presentNewServer(prefilledHost: String? = nil) {
+    func presentNewServer(prefilledHost: String? = nil, prefilledPort: UInt16? = nil) {
         editingConnection = nil
         name = ""
         host = prefilledHost ?? ""
-        port = "8080"
+        port = prefilledPort.map(String.init) ?? "8080"
         useTLS = false
         basePath = "/"
         authToken = ""
