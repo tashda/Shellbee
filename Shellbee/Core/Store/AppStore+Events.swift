@@ -114,6 +114,7 @@ extension AppStore {
                     // bridge/devices snapshot lands, which can be many
                     // seconds later (or never if the wire path is slow).
                     if let idx = devices.firstIndex(where: { $0.ieeeAddress == ieee }) {
+                        let friendlyName = devices[idx].friendlyName
                         switch status {
                         case "started":
                             devices[idx].interviewing = true
@@ -121,6 +122,17 @@ extension AppStore {
                         case "successful":
                             devices[idx].interviewing = false
                             devices[idx].interviewCompleted = true
+                            // A device that just finished interviewing is by
+                            // definition online — Z2M only completes interview
+                            // when the device responds. Optimistically reflect
+                            // that so we don't render the row as offline /
+                            // greyed-out while we wait for the
+                            // <name>/availability publish to land. This is
+                            // particularly important after a remove + re-pair
+                            // in the same session, where the prior `false`
+                            // availability would otherwise stick until app
+                            // restart.
+                            deviceAvailability[friendlyName] = true
                         case "failed":
                             devices[idx].interviewing = false
                             devices[idx].interviewCompleted = false
