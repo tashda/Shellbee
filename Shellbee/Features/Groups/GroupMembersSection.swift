@@ -4,15 +4,24 @@ struct GroupMembersSection: View {
     @Environment(AppEnvironment.self) private var environment
     let group: Group
     let onRemove: (GroupMember) -> Void
+    var onAdd: (() -> Void)? = nil
 
     var body: some View {
         Section("Members") {
             if group.members.isEmpty {
-                ContentUnavailableView(
-                    "No Members",
-                    systemImage: "person.2",
-                    description: Text("Add devices to this group.")
-                )
+                ContentUnavailableView {
+                    Label("No Members", systemImage: "person.2")
+                } description: {
+                    Text("Add devices to this group to control them together.")
+                } actions: {
+                    if let onAdd {
+                        Button(action: onAdd) {
+                            Label("Add Members", systemImage: "plus")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+                    }
+                }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
             } else {
