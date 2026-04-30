@@ -84,8 +84,13 @@ final class AppStore {
         deviceStates = [:]
         deviceAvailability = [:]
         pendingRenames = []
-        deviceFirstSeen = [:]
-        UserDefaults.standard.removeObject(forKey: Self.firstSeenStoreKey)
+        // `deviceFirstSeen` is intentionally NOT cleared here. It's
+        // user-visible state ("Recently Added" in the device list) that
+        // should outlive a connection bounce or app restart, and the
+        // 30-minute window in DeviceListViewModel already self-prunes
+        // anything stale. Wiping it on every reconnect was killing the
+        // section the moment the app launched and re-established its
+        // session.
         otaUpdates = [:]
         logEntries = []
         operationErrors = []
