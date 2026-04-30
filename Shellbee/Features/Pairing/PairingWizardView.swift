@@ -4,146 +4,175 @@ struct PairingWizardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var environment
     @State private var model = PairingWizardModel()
-
-    var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle(model.step.title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { dismiss() }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        nextButton
-                    }
-                }
-        }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        switch model.step {
-        case .permitJoin:
-            PairingPermitJoinStep()
-        case .discovery:
-            PairingDiscoveryStep(model: model)
-        case .actions:
-            PairingActionsStep(model: model)
-        }
-    }
-
-    @ViewBuilder
-    private var nextButton: some View {
-        switch model.step {
-        case .permitJoin:
-            Button("Next") { model.step = .discovery }
-        case .discovery:
-            let count = model.sessionDevices(in: environment.store).count
-            Button(count == 0 ? "Skip" : "Continue") { model.step = .actions }
-        case .actions:
-            Button("Done") { dismiss() }
-        }
-    }
-}
-
-// MARK: - Step 1: Permit Join
-
-private struct PairingPermitJoinStep: View {
-    @Environment(AppEnvironment.self) private var environment
-    @State private var duration: Int = 254
-    @State private var targetName: String?
+    @State private var showCancelConfirm = false
+    @State private var deviceToRename: Device?
+    @State private var deviceToRemove: Device?
+    @State private var deviceForGroupPicker: Device?
 
     private var isPermitOpen: Bool {
         environment.store.bridgeInfo?.permitJoin ?? false
     }
 
-    private var permitEnd: Int? {
-        environment.store.bridgeInfo?.permitJoinEnd
+    private var sessionDevices: [Device] {
+        model.sessionDevices(in: environment.store)
     }
 
     var body: some View {
-        Form {
-            if isPermitOpen {
-                Section {
-                    activeStatusRow
-                    Button(role: .destructive) {
-                        sendPermitJoin(duration: 0, deviceName: nil)
-                    } label: {
-                        Label("Disable Join", systemImage: "stop.circle")
-                    }
-                } footer: {
-                    Text("Put the device into pairing mode now. New devices will appear on the next step as they join.")
+        NavigationStack {
+            Form {
+                permitJoinSection
+                if !sessionDevices.isEmpty {
+                    devicesSection
                 }
-            } else {
-                Section {
-                    Picker("Duration", selection: $duration) {
-                        Text("1 min").tag(60)
-                        Text("2 min").tag(120)
-                        Text("3 min").tag(180)
-                        Text("~4 min").tag(254)
-                    }
-                    Picker("Via", selection: $targetName) {
-                        Text("All devices").tag(String?.none)
-                        ForEach(routerTargets) { device in
-                            Text(device.friendlyName).tag(String?.some(device.friendlyName))
+            }
+            .navigationTitle("Add Devices")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        if isPermitOpen {
+                            showCancelConfirm = true
+                        } else {
+                            dismiss()
                         }
                     }
-                } header: {
-                    Text("Open the network")
-                } footer: {
-                    Text("Zigbee networks support a maximum of 254 seconds per session. Routers can extend coverage to corners the coordinator can't reach.")
                 }
+            }
+            .confirmationDialog(
+                "Network is still open",
+                isPresented: $showCancelConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Keep Open", role: .cancel) { dismiss() }
+                Button("Close Network", role: .destructive) {
+                    sendPermitJoin(duration: 0, deviceName: nil)
+                    dismiss()
+                }
+            } message: {
+                Text("Devices can still join until the timer runs out. Close it now or leave it open in the background?")
+            }
+            .sheet(item: $deviceToRename) { device in
+                RenameDeviceSheet(device: device) { newName, updateHA in
+                    environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
+                }
+            }
+            .sheet(item: $deviceToRemove) { device in
+                RemoveDeviceSheet(device: device) { force, block in
+                    environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
+                        "id": .string(device.friendlyName),
+                        "force": .bool(force),
+                        "block": .bool(block)
+                    ]))
+                }
+            }
+            .sheet(item: $deviceForGroupPicker) { device in
+                PairingAddToGroupSheet(device: device)
+            }
+        }
+    }
 
-                Section {
-                    Button {
-                        sendPermitJoin(duration: duration, deviceName: targetName)
-                    } label: {
-                        Label("Start Permit Join", systemImage: "dot.radiowaves.up.forward")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+    // MARK: - Permit join section
+
+    @ViewBuilder
+    private var permitJoinSection: some View {
+        if isPermitOpen {
+            Section {
+                NetworkOpenRow(permitEnd: environment.store.bridgeInfo?.permitJoinEnd)
+                Button(role: .destructive) {
+                    sendPermitJoin(duration: 0, deviceName: nil)
+                } label: {
+                    Label("Disable Join", systemImage: "stop.circle")
                 }
+            } footer: {
+                Text(sessionDevices.isEmpty
+                     ? "Put the device into pairing mode now. New devices appear below as they join."
+                     : "More devices can still join. Close the network when you're done.")
+            }
+        } else {
+            PermitJoinControls(onStart: { duration, target in
+                sendPermitJoin(duration: duration, deviceName: target)
+            })
+        }
+    }
+
+    // MARK: - Devices section
+
+    @ViewBuilder
+    private var devicesSection: some View {
+        ForEach(sessionDevices, id: \.ieeeAddress) { device in
+            Section {
+                DeviceJoinedHeader(device: device, status: model.interviewStatus(for: device))
+                deviceActions(for: device)
             }
         }
     }
 
     @ViewBuilder
-    private var activeStatusRow: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            let remaining = remainingSeconds(at: ctx.date)
-            HStack {
-                Image(systemName: "dot.radiowaves.up.forward")
-                    .foregroundStyle(.green)
-                    .symbolEffect(.pulse)
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                    Text("Network is open")
-                        .font(.headline)
-                    if let remaining {
-                        Text(String(format: "%d:%02d remaining", remaining / 60, remaining % 60))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
+    private func deviceActions(for device: Device) -> some View {
+        let status = model.interviewStatus(for: device)
+        let interviewing = status == .running
+
+        if device.supportsIdentify {
+            Button {
+                environment.identifyDevice(device.friendlyName)
+            } label: {
+                let identifying = environment.store.identifyInProgress.contains(device.friendlyName)
+                actionRow(
+                    title: identifying ? "Identifying" : "Identify",
+                    systemImage: identifying ? "wave.3.right" : "wave.3.right.circle",
+                    tint: .teal
+                )
             }
-            .padding(.vertical, DesignTokens.Spacing.xs)
+            .disabled(interviewing || environment.store.identifyInProgress.contains(device.friendlyName))
         }
+
+        Button {
+            deviceToRename = device
+        } label: {
+            actionRow(title: "Rename", systemImage: "pencil", tint: .orange)
+        }
+        .disabled(interviewing)
+
+        if !environment.store.groups.isEmpty {
+            Button {
+                deviceForGroupPicker = device
+            } label: {
+                actionRow(title: "Add to Group", systemImage: "rectangle.3.group", tint: .blue)
+            }
+            .disabled(interviewing)
+        }
+
+        if device.definition?.supportsOTA == true {
+            Button {
+                environment.store.startOTACheck(for: device.friendlyName)
+                environment.send(
+                    topic: Z2MTopics.Request.deviceOTACheck,
+                    payload: .object(["id": .string(device.friendlyName)])
+                )
+            } label: {
+                actionRow(title: "Check for Update", systemImage: "arrow.trianglehead.2.clockwise", tint: .indigo)
+            }
+            .disabled(interviewing)
+        }
+
+        Button(role: .destructive) {
+            deviceToRemove = device
+        } label: {
+            actionRow(title: "Remove", systemImage: "trash", tint: .red)
+        }
+        .disabled(interviewing)
     }
 
-    private var routerTargets: [Device] {
-        environment.store.devices
-            .filter { $0.type == .router }
-            .sorted { $0.friendlyName.localizedCompare($1.friendlyName) == .orderedAscending }
-    }
-
-    private func remainingSeconds(at date: Date) -> Int? {
-        guard let end = permitEnd else { return nil }
-        let now = Int(date.timeIntervalSince1970 * 1000)
-        return max((end - now) / 1000, 0)
+    private func actionRow(title: String, systemImage: String, tint: Color) -> some View {
+        HStack(spacing: DesignTokens.Spacing.md) {
+            Image(systemName: systemImage)
+                .foregroundStyle(.white)
+                .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
+                .background(tint, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
+            Text(title)
+                .foregroundStyle(.primary)
+            Spacer()
+        }
     }
 
     private func sendPermitJoin(duration: Int, deviceName: String?) {
@@ -153,138 +182,132 @@ private struct PairingPermitJoinStep: View {
     }
 }
 
-// MARK: - Step 2: Discovery
+// MARK: - Permit-join controls (network closed)
 
-private struct PairingDiscoveryStep: View {
+private struct PermitJoinControls: View {
     @Environment(AppEnvironment.self) private var environment
-    let model: PairingWizardModel
+    @State private var duration: Int = 254
+    @State private var targetName: String?
+    let onStart: (Int, String?) -> Void
 
     var body: some View {
-        let devices = model.sessionDevices(in: environment.store)
-
-        Form {
-            Section {
-                LabeledContent("Found") {
-                    Text("\(devices.count) device\(devices.count == 1 ? "" : "s")")
-                        .contentTransition(.numericText())
-                        .monospacedDigit()
-                }
-            } footer: {
-                Text(devices.isEmpty
-                     ? "Devices that join during this session will appear here. If nothing shows up, make sure the device is in pairing mode and re-open the network on the previous step."
-                     : "These devices joined during this pairing session. Continue to set them up.")
+        Section {
+            Picker("Duration", selection: $duration) {
+                Text("1 min").tag(60)
+                Text("2 min").tag(120)
+                Text("3 min").tag(180)
+                Text("~4 min").tag(254)
             }
+            Picker("Via", selection: $targetName) {
+                Text("All devices").tag(String?.none)
+                ForEach(routerTargets, id: \.ieeeAddress) { device in
+                    Text(device.friendlyName).tag(String?.some(device.friendlyName))
+                }
+            }
+        } header: {
+            Text("Open the network")
+        } footer: {
+            Text("Put the device into pairing mode after you start. Routers can extend coverage to corners the coordinator can't reach.")
+        }
 
-            if !devices.isEmpty {
-                Section("Joined") {
-                    ForEach(devices, id: \.ieeeAddress) { device in
-                        joinedRow(for: device)
+        Section {
+            Button {
+                onStart(duration, targetName)
+            } label: {
+                Label("Start Permit Join", systemImage: "dot.radiowaves.up.forward")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+        }
+    }
+
+    private var routerTargets: [Device] {
+        environment.store.devices
+            .filter { $0.type == .router }
+            .sorted { $0.friendlyName.localizedCompare($1.friendlyName) == .orderedAscending }
+    }
+}
+
+// MARK: - Network-open status row
+
+private struct NetworkOpenRow: View {
+    let permitEnd: Int?
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            let remaining = remainingSeconds(at: ctx.date)
+            HStack(spacing: DesignTokens.Spacing.md) {
+                Image(systemName: "dot.radiowaves.up.forward")
+                    .foregroundStyle(.white)
+                    .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
+                    .background(.green, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
+                    .symbolEffect(.pulse)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Network is open")
+                        .foregroundStyle(.primary)
+                    if let remaining {
+                        Text(String(format: "%d:%02d remaining", remaining / 60, remaining % 60))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .contentTransition(.numericText(countsDown: true))
                     }
                 }
+                Spacer()
             }
         }
     }
 
-    @ViewBuilder
-    private func joinedRow(for device: Device) -> some View {
-        let status = model.interviewStatus(for: device)
+    private func remainingSeconds(at date: Date) -> Int? {
+        guard let end = permitEnd else { return nil }
+        let now = Int(date.timeIntervalSince1970 * 1000)
+        return max((end - now) / 1000, 0)
+    }
+}
+
+// MARK: - Per-device header
+
+private struct DeviceJoinedHeader: View {
+    let device: Device
+    let status: PairingWizardModel.InterviewStatus
+
+    var body: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
             Image(systemName: status.systemImage)
-                .foregroundStyle(status == .completed ? .green : .secondary)
+                .foregroundStyle(.white)
+                .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
+                .background(statusColor, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
                 .symbolEffect(.pulse, options: .repeating, isActive: status == .running)
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(device.friendlyName)
                     .font(.headline)
-                Text(device.modelId ?? device.definition?.model ?? device.ieeeAddress)
-                    .font(.subheadline)
+                Text(detailLine)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Text(status.label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
-}
 
-// MARK: - Step 3: Actions
-
-private struct PairingActionsStep: View {
-    @Environment(AppEnvironment.self) private var environment
-    let model: PairingWizardModel
-    @State private var deviceToRename: Device?
-    @State private var deviceToAddToGroup: Device?
-
-    var body: some View {
-        let devices = model.sessionDevices(in: environment.store)
-
-        Form {
-            if devices.isEmpty {
-                Section {
-                    ContentUnavailableView(
-                        "No new devices",
-                        systemImage: "tray",
-                        description: Text("No devices joined during this session. You can close the wizard or go back to open the network again.")
-                    )
-                }
-            } else {
-                ForEach(devices, id: \.ieeeAddress) { device in
-                    deviceSection(for: device)
-                }
-            }
-        }
-        .sheet(item: $deviceToRename) { device in
-            RenameDeviceSheet(device: device) { newName, updateHA in
-                environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
-            }
-        }
-        .sheet(item: $deviceToAddToGroup) { device in
-            PairingAddToGroupSheet(device: device)
-        }
+    private var detailLine: String {
+        let model = device.definition?.model ?? device.modelId ?? device.ieeeAddress
+        return "\(model) · \(status.label)"
     }
 
-    @ViewBuilder
-    private func deviceSection(for device: Device) -> some View {
-        Section {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(device.friendlyName)
-                    .font(.headline)
-                Text(device.modelId ?? device.definition?.model ?? device.ieeeAddress)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.vertical, DesignTokens.Spacing.xs)
-
-            if device.supportsIdentify {
-                Button {
-                    environment.identifyDevice(device.friendlyName)
-                } label: {
-                    let identifying = environment.store.identifyInProgress.contains(device.friendlyName)
-                    Label(identifying ? "Identifying" : "Identify",
-                          systemImage: identifying ? "wave.3.right" : "wave.3.right.circle")
-                }
-                .disabled(environment.store.identifyInProgress.contains(device.friendlyName))
-            }
-
-            Button {
-                deviceToRename = device
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-
-            if !environment.store.groups.isEmpty {
-                Button {
-                    deviceToAddToGroup = device
-                } label: {
-                    Label("Add to Group", systemImage: "rectangle.3.group")
-                }
-            }
+    private var statusColor: Color {
+        switch status {
+        case .completed: .green
+        case .running:   .orange
+        case .pending:   .gray
         }
     }
 }
 
-// MARK: - Add to Group sheet
+// MARK: - Add-to-group sheet
 
 private struct PairingAddToGroupSheet: View {
     @Environment(\.dismiss) private var dismiss

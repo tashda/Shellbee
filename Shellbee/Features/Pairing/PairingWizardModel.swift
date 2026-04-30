@@ -2,21 +2,6 @@ import Foundation
 
 @Observable
 final class PairingWizardModel {
-    enum Step: Int, CaseIterable, Identifiable {
-        case permitJoin, discovery, actions
-        var id: Int { rawValue }
-
-        var title: String {
-            switch self {
-            case .permitJoin: "Open Network"
-            case .discovery:  "Devices"
-            case .actions:    "Set Up"
-            }
-        }
-    }
-
-    var step: Step = .permitJoin
-
     /// Stamped when the wizard opens. Drives the "is this device part of
     /// THIS pairing session?" filter — anything whose first-seen timestamp
     /// predates this is from a previous session and not in scope.

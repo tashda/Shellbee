@@ -67,6 +67,29 @@ extension AppStore {
                 case "device_interview":
                     let name = event.data.object?["friendly_name"]?.stringValue ?? ieee
                     let status = event.data.object?["status"]?.stringValue
+
+                    // Mirror the interview status into our local `Device`
+                    // entry so any view observing `device.interviewing` /
+                    // `device.interviewCompleted` updates immediately —
+                    // without this the row only refreshes when the next
+                    // bridge/devices snapshot lands, which can be many
+                    // seconds later (or never if the wire path is slow).
+                    if let idx = devices.firstIndex(where: { $0.ieeeAddress == ieee }) {
+                        switch status {
+                        case "started":
+                            devices[idx].interviewing = true
+                            devices[idx].interviewCompleted = false
+                        case "successful":
+                            devices[idx].interviewing = false
+                            devices[idx].interviewCompleted = true
+                        case "failed":
+                            devices[idx].interviewing = false
+                            devices[idx].interviewCompleted = false
+                        default:
+                            break
+                        }
+                    }
+
                     Task { @MainActor in
                         switch status {
                         case "started":

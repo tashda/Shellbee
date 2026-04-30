@@ -13,8 +13,8 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
     var powerSource: String?
     var modelId: String?
     var manufacturer: String?
-    let interviewCompleted: Bool
-    let interviewing: Bool
+    var interviewCompleted: Bool
+    var interviewing: Bool
     var softwareBuildId: String?
     var dateCode: String?
     var endpoints: [String: JSONValue]?
