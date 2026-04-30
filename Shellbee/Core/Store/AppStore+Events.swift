@@ -4,14 +4,29 @@ extension AppStore {
     func apply(_ event: Z2MEvent) {
         switch event {
         case .bridgeInfo(let info):
-            // bridge/info doesn't include the permit_join target (Z2M only
-            // sends that on the bridge/event), so preserve our captured
-            // value when the snapshot says permit_join is still on.
-            if info.permitJoin, let previous = bridgeInfo, previous.permitJoinTarget != nil {
-                bridgeInfo = info.copyUpdatingPermitJoin(
-                    enabled: info.permitJoin,
-                    timeout: info.permitJoinTimeout,
-                    target: previous.permitJoinTarget
+            // bridge/info recomputes permitJoinEnd from `permit_join_timeout`
+            // every time it lands. Z2M's timeout doesn't tick down between
+            // snapshots, so each refresh would either jump the end forward
+            // (timeout still set) or zero it out (omitted on later snapshots),
+            // depending on the bridge — both look broken in the UI. When
+            // permit_join stays on, preserve the existing end and target;
+            // we only adopt the new ones once the bridge tells us
+            // permit_join has actually changed.
+            if info.permitJoin,
+               let previous = bridgeInfo,
+               previous.permitJoin {
+                bridgeInfo = BridgeInfo(
+                    version: info.version,
+                    commit: info.commit,
+                    coordinator: info.coordinator,
+                    network: info.network,
+                    logLevel: info.logLevel,
+                    permitJoin: true,
+                    permitJoinTimeout: previous.permitJoinTimeout,
+                    permitJoinEnd: previous.permitJoinEnd,
+                    permitJoinTarget: previous.permitJoinTarget,
+                    restartRequired: info.restartRequired,
+                    config: info.config
                 )
             } else {
                 bridgeInfo = info

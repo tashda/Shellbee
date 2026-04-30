@@ -101,8 +101,9 @@ final class DeviceListViewModel {
 
     /// A device counts as "Recently Added" if it is currently interviewing, or
     /// if its first-seen timestamp falls within this window. The window
-    /// survives app close/open via the timestamps persisted in `AppStore`.
-    static let recentWindow: TimeInterval = AppConfig.UX.recentDeviceWindow
+    /// survives app close/open via the timestamps persisted in `AppStore`,
+    /// and is user-configurable in Settings → General.
+    static var recentWindow: TimeInterval { AppConfig.UX.configuredRecentDeviceWindow }
 
     var hasActiveFilter: Bool {
         categoryFilter != nil || typeFilter != nil || vendorFilter != nil || statusFilter != .all
@@ -113,11 +114,13 @@ final class DeviceListViewModel {
     /// easy to spot the moment they start interviewing. Sorted by friendly
     /// name to keep order stable while interviews are in flight.
     func recentDevices(store: AppStore) -> [Device] {
-        let cutoff = Date().addingTimeInterval(-Self.recentWindow)
+        let window = Self.recentWindow
+        let cutoff = Date().addingTimeInterval(-window)
         return store.devices
             .filter { $0.type != .coordinator }
             .filter { device in
                 if device.interviewing { return true }
+                guard window > 0 else { return false }
                 if let joined = store.deviceFirstSeen[device.ieeeAddress], joined >= cutoff {
                     return true
                 }

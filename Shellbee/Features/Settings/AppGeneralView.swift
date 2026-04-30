@@ -3,6 +3,7 @@ import SwiftUI
 struct AppGeneralView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
+    @AppStorage(AppConfig.UX.recentDeviceWindowKey) private var recentDeviceWindowMinutes: Int = Int(AppConfig.UX.recentDeviceWindowDefaultMinutes)
     @AppStorage(ConnectionSessionController.maxReconnectAttemptsKey) private var maxReconnectAttempts: Int = ConnectionSessionController.defaultMaxReconnectAttempts
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var consent = CrashReportingConsent.shared
@@ -28,6 +29,18 @@ struct AppGeneralView: View {
                 Text("Home")
             } footer: {
                 Text("Number of recent events shown on the Home page.")
+            }
+
+            Section {
+                Picker("Recently Added Window", selection: $recentDeviceWindowMinutes) {
+                    ForEach(AppConfig.UX.recentDeviceWindowOptionsMinutes, id: \.self) { minutes in
+                        Text(label(forMinutes: minutes)).tag(minutes)
+                    }
+                }
+            } header: {
+                Text("Devices")
+            } footer: {
+                Text("How long a freshly-paired device stays in the “Recently Added” section of the device list.")
             }
 
             Section {
@@ -63,6 +76,20 @@ struct AppGeneralView: View {
             }
         }
         .navigationTitle("General")
+    }
+
+    private func label(forMinutes minutes: Int) -> String {
+        switch minutes {
+        case 0: return "Off"
+        case 1..<60: return "\(minutes) min"
+        case 60: return "1 hour"
+        case 120: return "2 hours"
+        case 240: return "4 hours"
+        case 1440: return "1 day"
+        default:
+            let hours = minutes / 60
+            return hours == 1 ? "1 hour" : "\(hours) hours"
+        }
     }
 }
 

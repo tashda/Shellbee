@@ -35,10 +35,25 @@ nonisolated enum AppConfig {
         /// multiple log lines) reads as one notification, not four.
         static let notificationCoalesceWindow: TimeInterval = 1.5
 
-        /// How long after a device first joins the network it shows the
-        /// "Recently Added" badge in the device list. 30 minutes covers
-        /// most pairing → naming → first-test workflows without lingering
-        /// on the homepage forever.
-        static let recentDeviceWindow: TimeInterval = 30 * 60
+        /// Default window after a device first joins the network during
+        /// which it appears in the "Recently Added" section of the device
+        /// list. User-overridable via Settings → General; this default
+        /// covers most pairing → naming → first-test workflows without
+        /// lingering forever.
+        static let recentDeviceWindow: TimeInterval = recentDeviceWindowDefaultMinutes * 60
+
+        /// User-facing key + options for the Recently-Added window picker
+        /// in Settings → General. Stored as minutes; 0 means "off".
+        static let recentDeviceWindowKey = "DeviceList.recentWindowMinutes"
+        static let recentDeviceWindowDefaultMinutes: TimeInterval = 30
+        static let recentDeviceWindowOptionsMinutes: [Int] = [0, 5, 15, 30, 60, 120, 240, 1440]
+
+        /// Resolves the active window (in seconds) honoring the user's
+        /// stored preference if any, falling back to the default.
+        static var configuredRecentDeviceWindow: TimeInterval {
+            let raw = UserDefaults.standard.object(forKey: recentDeviceWindowKey) as? Int
+            let minutes = raw.map(TimeInterval.init) ?? recentDeviceWindowDefaultMinutes
+            return minutes * 60
+        }
     }
 }
