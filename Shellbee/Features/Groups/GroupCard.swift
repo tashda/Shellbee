@@ -58,7 +58,7 @@ struct GroupCard: View {
 
     private var compactHeader: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
-            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceCardImage * 0.68)
+            GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceCardImage * 0.68)
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
