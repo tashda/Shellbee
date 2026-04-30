@@ -9,21 +9,19 @@ struct GroupMembersSection: View {
     var body: some View {
         Section("Members") {
             if group.members.isEmpty {
-                ContentUnavailableView {
-                    Label("No Members", systemImage: "person.2")
-                } description: {
-                    Text("Add devices to this group to control them together.")
-                } actions: {
-                    if let onAdd {
-                        Button(action: onAdd) {
-                            Label("Add Members", systemImage: "plus")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.regular)
-                    }
-                }
+                ContentUnavailableView(
+                    "No Members",
+                    systemImage: "person.2",
+                    description: Text("Add devices to this group to control them together.")
+                )
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
+
+                if let onAdd {
+                    Button(action: onAdd) {
+                        Label("Add Members", systemImage: "plus")
+                    }
+                }
             } else {
                 ForEach(group.members, id: \.ieeeAddress) { member in
                     let device = environment.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
