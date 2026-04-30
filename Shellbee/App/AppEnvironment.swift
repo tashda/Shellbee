@@ -120,7 +120,9 @@ final class AppEnvironment {
 
         Task { [weak store] in
             try? await Task.sleep(for: .seconds(3))
-            await MainActor.run { store?.identifyInProgress.remove(friendlyName) }
+            await MainActor.run {
+                _ = store?.identifyInProgress.remove(friendlyName)
+            }
         }
     }
 
