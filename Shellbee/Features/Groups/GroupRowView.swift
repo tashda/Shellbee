@@ -32,7 +32,7 @@ struct GroupRowView: View {
 
     private var groupLeadingVisual: some View {
         GroupIconView(
-            memberDevices: GroupAvatarStore.resolvedDevices(for: group, members: memberDevices),
+            memberDevices: GroupAvatarStore.shared.resolvedDevices(for: group, members: memberDevices),
             size: DesignTokens.Size.summaryRowSymbolFrame
         )
     }

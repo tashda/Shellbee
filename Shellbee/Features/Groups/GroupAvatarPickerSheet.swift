@@ -91,6 +91,6 @@ struct GroupAvatarPickerSheet: View {
     }
 
     private func save() {
-        GroupAvatarStore.save(selectedIEEEs, for: group)
+        GroupAvatarStore.shared.save(selectedIEEEs, for: group)
     }
 }

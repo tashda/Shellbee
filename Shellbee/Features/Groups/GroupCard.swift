@@ -52,7 +52,7 @@ struct GroupCard: View {
             )
         }
         .onAppear {
-            avatarSelection = GroupAvatarStore.load(for: group)
+            avatarSelection = GroupAvatarStore.shared.selection(for: group)
         }
     }
 
@@ -100,7 +100,7 @@ struct GroupCard: View {
     private var identityRow: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
             Button {
-                let stored = GroupAvatarStore.load(for: group)
+                let stored = GroupAvatarStore.shared.selection(for: group)
                 avatarSelection = stored.isEmpty
                     ? Array(memberDevices.prefix(2).map(\.ieeeAddress))
                     : stored

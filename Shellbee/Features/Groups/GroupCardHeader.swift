@@ -29,7 +29,7 @@ struct GroupCardHeader: View {
 
     private var avatarArea: some View {
         GroupIconView(
-            memberDevices: GroupAvatarStore.resolvedDevices(for: group, members: memberDevices),
+            memberDevices: GroupAvatarStore.shared.resolvedDevices(for: group, members: memberDevices),
             size: DesignTokens.Size.deviceCardImage
         )
     }
