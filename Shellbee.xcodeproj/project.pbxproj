@@ -205,6 +205,8 @@
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
 				Features/Notifications/FastTrackBanner.swift,
+				Features/Pairing/PairingWizardModel.swift,
+				Features/Pairing/PairingWizardView.swift,
 				Features/Notifications/InAppNotificationBanner.swift,
 				Features/Notifications/InAppNotificationOverlay.swift,
 				Features/Settings/AboutView.swift,

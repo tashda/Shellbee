@@ -7,6 +7,7 @@ struct DeviceListView: View {
     @State private var deviceToRename: Device?
     @State private var deviceToRemove: Device?
     @State private var pendingDeviceAlert: PendingDeviceAlert?
+    @State private var showPairingWizard = false
 
     private var isGrouped: Bool {
         viewModel.groupByCategory && !viewModel.hasActiveFilter && viewModel.searchText.isEmpty
@@ -31,6 +32,12 @@ struct DeviceListView: View {
             .searchToolbarBehavior(.minimize)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showPairingWizard = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add Device")
                     DeviceFilterMenu(viewModel: viewModel, store: environment.store)
                     DeviceFirmwareMenu()
                     sortMenu
@@ -61,6 +68,10 @@ struct DeviceListView: View {
                 environment.pendingDeviceNavigation = nil
                 pushDeviceResettingPath(device)
             }
+        }
+        .sheet(isPresented: $showPairingWizard) {
+            PairingWizardView()
+                .environment(environment)
         }
         .sheet(item: $deviceToRename) { device in
             RenameDeviceSheet(device: device) { newName, updateHA in
