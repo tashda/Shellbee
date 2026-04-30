@@ -5,6 +5,8 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isInitializing = true
     @State private var pendingCrash: PendingCrash?
+    @AppStorage(OnboardingStep.completedKey) private var onboardingCompleted: Bool = false
+    @State private var showOnboarding = false
 
     var body: some View {
         ZStack {
@@ -25,6 +27,19 @@ struct RootView: View {
                 onAlwaysShare: { SentryService.shared.enableAlwaysShareAndSendPending() },
                 onDiscard: { SentryService.shared.discardPending() }
             )
+        }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView()
+                .environment(environment)
+        }
+        .onChange(of: isInitializing) { _, stillInitializing in
+            // First-launch only. Defer until splash dismisses so the cover
+            // doesn't fight the splash transition.
+            guard !stillInitializing,
+                  !onboardingCompleted,
+                  environment.connectionConfig == nil
+            else { return }
+            showOnboarding = true
         }
         .task {
             // Start the environment (auto-connect if config exists)

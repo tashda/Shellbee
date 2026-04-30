@@ -5,6 +5,7 @@ struct SettingsView: View {
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
+    @State private var showOnboarding = false
 
     var body: some View {
         NavigationStack {
@@ -43,6 +44,10 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("The app returns to the setup screen. Your server address is remembered.")
+            }
+            .sheet(isPresented: $showOnboarding) {
+                OnboardingView()
+                    .environment(environment)
             }
         }
     }
@@ -175,6 +180,11 @@ struct SettingsView: View {
             }
             NavigationLink { AppPerformanceView() } label: {
                 settingsLabel(title: "Bulk OTA", systemImage: "arrow.down.circle.dotted", color: .blue)
+            }
+            Button {
+                showOnboarding = true
+            } label: {
+                settingsLabel(title: "Show Welcome Wizard", systemImage: "sparkles", color: .yellow)
             }
             NavigationLink { AboutView() } label: {
                 settingsLabel(title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
