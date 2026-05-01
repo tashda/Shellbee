@@ -41,13 +41,7 @@ struct LogsView: View {
                         }
                     }
             } else {
-                TabView(selection: $mode) {
-                    ActivityLogContent(viewModel: activityVM)
-                        .tag(LogMode.activity)
-                    BridgeLogView(viewModel: bridgeVM)
-                        .tag(LogMode.log)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                modeContent
                 .navigationTitle("Logs")
                 .navigationBarTitleDisplayMode(.inline)
                 .searchable(text: searchBinding, prompt: searchPrompt)
@@ -56,6 +50,7 @@ struct LogsView: View {
                     LogDetailView(entry: entry)
                 }
                 .minimizeSearchToolbarIfAvailable()
+                .toolbar(.hidden, for: .tabBar)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         Picker("Mode", selection: $mode) {
@@ -82,6 +77,16 @@ struct LogsView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var modeContent: some View {
+        switch mode {
+        case .activity:
+            ActivityLogContent(viewModel: activityVM)
+        case .log:
+            BridgeLogView(viewModel: bridgeVM)
         }
     }
 
@@ -115,10 +120,12 @@ private struct ActivityLogContent: View {
         let entries = viewModel.filteredEntries(store: environment.store)
         List {
             ForEach(entries) { entry in
-                NavigationLink {
-                    LogDetailView(entry: entry)
-                } label: {
+                ZStack {
                     LogRowView(entry: entry)
+                    NavigationLink {
+                        LogDetailView(entry: entry)
+                    } label: { EmptyView() }
+                    .opacity(0)
                 }
             }
         }

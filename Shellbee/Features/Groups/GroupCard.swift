@@ -77,24 +77,14 @@ struct GroupCard: View {
 
             Spacer(minLength: DesignTokens.Spacing.sm)
 
-            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.sm) {
-                statusPill
-                Text(scenesTitle == "—" ? "No scenes" : "\(scenesTitle) scenes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
         }
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
     }
 
     private var identityRow: some View {

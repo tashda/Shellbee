@@ -70,19 +70,13 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     }
 
     var parsedMessageKind: MessageKind {
-        // Find the topic and payload within single quotes
-        // We look for: topic '([^']+)' and payload '([^']*)'
         let topicPattern = /topic '([^']+)'/
-        let payloadPattern = /payload '([^']*)'/
-        
         guard let topicMatch = message.firstMatch(of: topicPattern) else { return .simple }
         let topic = String(topicMatch.1)
-        
-        guard let payloadMatch = message.firstMatch(of: payloadPattern) else {
+
+        guard let payloadStr = Self.extractPayload(from: message) else {
             return .mqttPublish(device: topic, topic: topic, payload: [:])
         }
-        
-        let payloadStr = String(payloadMatch.1)
         var payload: [String: JSONValue] = [:]
         
         if let data = payloadStr.data(using: .utf8),
@@ -105,7 +99,48 @@ struct LogEntry: Identifiable, Sendable, Hashable {
         if device.hasPrefix("zigbee2mqtt/") {
             device = String(device.dropFirst("zigbee2mqtt/".count))
         }
+        // Bridge responses/events carry the real subject inside the payload.
+        // Examples:
+        //   bridge/response/device/ota_update/check  → payload.data.id
+        //   bridge/response/device/configure         → payload.data.id
+        //   bridge/response/device/rename            → payload.data.to (post-rename name)
+        //   bridge/event                             → payload.data.friendly_name
+        if device.hasPrefix("bridge/") {
+            if let resolved = Self.resolveBridgeSubject(topic: device, payload: payload) {
+                device = resolved
+            }
+        }
         return .mqttPublish(device: device, topic: topic, payload: payload)
+    }
+
+    /// Extract the JSON payload from a z2m log line of the form
+    /// `... topic '<topic>', payload '<json>'` where the JSON itself can contain
+    /// single quotes (e.g. `'office_remote'`, `didn't`). The payload always runs
+    /// from `payload '` to the final single quote in the string.
+    static func extractPayload(from message: String) -> String? {
+        guard let range = message.range(of: "payload '") else { return nil }
+        let afterOpen = range.upperBound
+        guard let lastQuote = message.lastIndex(of: "'"), lastQuote > afterOpen else {
+            return nil
+        }
+        return String(message[afterOpen..<lastQuote])
+    }
+
+    private static func resolveBridgeSubject(topic: String, payload: [String: JSONValue]) -> String? {
+        if case .object(let data) = payload["data"] ?? .null {
+            if topic.hasSuffix("/rename"), case .string(let to) = data["to"] ?? .null {
+                return to
+            }
+            if case .string(let id) = data["id"] ?? .null { return id }
+            if case .string(let fn) = data["friendly_name"] ?? .null { return fn }
+        }
+        if case .string(let fn) = payload["friendly_name"] ?? .null { return fn }
+        // Error responses: device name only appears quoted inside `error`.
+        if case .string(let err) = payload["error"] ?? .null {
+            let pattern = /'([^']+)'/
+            if let m = err.firstMatch(of: pattern) { return String(m.1) }
+        }
+        return nil
     }
 
     var summaryTitle: String {

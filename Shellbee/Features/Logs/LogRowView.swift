@@ -12,6 +12,7 @@ struct LogRowView: View {
                 HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                     Text(entry.summaryTitle)
                         .font(.subheadline.bold())
+                        .foregroundStyle(titleColor)
                         .lineLimit(1)
                     Spacer(minLength: DesignTokens.Spacing.sm)
                     absoluteTimestamp
@@ -30,54 +31,104 @@ struct LogRowView: View {
         .padding(.vertical, DesignTokens.Spacing.summaryRowVerticalPadding)
     }
 
+    // MARK: - Title tint
+
+    private var titleColor: Color {
+        switch entry.level {
+        case .error: return .red
+        case .warning: return .orange
+        default: return .primary
+        }
+    }
+
     // MARK: - Leading visual
+
+    private enum Subject {
+        case device(Device)
+        case group(Group, members: [Device])
+        case none
+    }
+
+    private var subject: Subject {
+        let candidate: String?
+        if let ctx = entry.context, !ctx.devices.isEmpty {
+            candidate = ctx.devices.first?.friendlyName
+        } else if let n = entry.deviceName {
+            candidate = n
+        } else if case .mqttPublish(let d, _, _) = entry.parsedMessageKind {
+            candidate = d
+        } else {
+            candidate = nil
+        }
+        guard let name = candidate else { return .none }
+        if let device = environment.store.device(named: name) { return .device(device) }
+        if let group = environment.store.group(named: name) {
+            return .group(group, members: environment.store.memberDevices(of: group))
+        }
+        return .none
+    }
 
     private var leadingVisual: some View {
         let size = DesignTokens.Size.logRowDeviceImage
         let badgeSize = size * DesignTokens.Ratio.logRowBadgeSize
+        let hasSubject: Bool
+        switch subject {
+        case .device, .group: hasSubject = true
+        case .none: hasSubject = false
+        }
 
         return ZStack(alignment: .bottomTrailing) {
-            Circle()
-                .fill(entry.level.color)
-                .frame(width: size, height: size)
-                .overlay {
-                    Image(systemName: entry.category.systemImage)
-                        .font(.system(size: size * DesignTokens.Typography.iconRatioSmall, weight: .semibold))
-                        .foregroundStyle(iconForeground)
-                }
+            avatar(size: size)
 
-            if let device = resolvedDevice {
-                deviceThumbnail(device, size: badgeSize)
+            if hasSubject {
+                categoryBadge(size: badgeSize)
                     .offset(x: DesignTokens.Size.logRowBadgeOffset,
                             y: DesignTokens.Size.logRowBadgeOffset)
             }
         }
     }
 
-    private var iconForeground: Color {
-        entry.level == .warning ? Color.black.opacity(DesignTokens.Opacity.secondaryDim) : Color.white
-    }
-
-    private func deviceThumbnail(_ device: Device, size: CGFloat) -> some View {
-        DeviceImageView(device: device, isAvailable: true, size: size)
-            .clipShape(Circle())
-            .overlay(Circle().strokeBorder(Color(.systemBackground),
-                                           lineWidth: max(DesignTokens.Ratio.logRowBadgeBorderMin,
-                                                          size * DesignTokens.Ratio.logRowBadgeBorder)))
-    }
-
-    private var resolvedDevice: Device? {
-        let name: String?
-        if let ctx = entry.context, !ctx.devices.isEmpty {
-            name = ctx.devices.first?.friendlyName
-        } else if let n = entry.deviceName {
-            name = n
-        } else if case .mqttPublish(let d, _, _) = entry.parsedMessageKind {
-            name = d
-        } else {
-            name = nil
+    @ViewBuilder
+    private func avatar(size: CGFloat) -> some View {
+        switch subject {
+        case .device(let device):
+            DeviceImageView(device: device, isAvailable: true, size: size)
+                .frame(width: size, height: size)
+        case .group(_, let members):
+            GroupIconView(memberDevices: Array(members.prefix(2)), size: size)
+                .frame(width: size, height: size)
+        case .none:
+            Circle()
+                .fill(entry.category.chipTint)
+                .frame(width: size, height: size)
+                .overlay {
+                    Image(systemName: entry.category.systemImage)
+                        .font(.system(size: size * DesignTokens.Typography.iconRatioSmall, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
         }
-        return name.flatMap { environment.store.device(named: $0) }
+    }
+
+    private func categoryBadge(size: CGFloat) -> some View {
+        let stroke = max(DesignTokens.Ratio.logRowBadgeBorderMin,
+                         size * DesignTokens.Ratio.logRowBadgeBorder)
+        let inner = size - stroke * 2
+        return Circle()
+            .fill(Color(.systemBackground))
+            .frame(width: size, height: size)
+            .overlay {
+                Circle()
+                    .fill(entry.category.chipTint)
+                    .frame(width: inner, height: inner)
+                    .overlay {
+                        Image(systemName: entry.category.systemImage)
+                            .resizable()
+                            .scaledToFit()
+                            .font(.system(size: 1, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(inner * 0.22)
+                    }
+            }
     }
 
     // MARK: - Timestamps

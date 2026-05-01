@@ -54,6 +54,7 @@ struct LogContext: Sendable {
 
     enum LogAction: Sendable {
         case mqttPublish
+        case bridgeResponse
         case stateChange
         case bindSuccess, bindFailure, unbind
         case groupAdd, groupRemove
