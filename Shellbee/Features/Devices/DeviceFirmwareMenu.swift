@@ -68,7 +68,6 @@ struct DeviceFirmwareMenu: View {
             ZStack(alignment: .topTrailing) {
                 if bulkActive {
                     ProgressView()
-                        .controlSize(.small)
                 } else {
                     Image(systemName: "arrow.up.circle")
                 }
