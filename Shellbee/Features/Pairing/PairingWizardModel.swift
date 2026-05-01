@@ -47,7 +47,7 @@ final class PairingWizardModel {
         var systemImage: String {
             switch self {
             case .pending:   "hourglass"
-            case .running:   "arrow.trianglehead.2.clockwise"
+            case .running:   "arrow.triangle.2.circlepath"
             case .completed: "checkmark.circle.fill"
             }
         }

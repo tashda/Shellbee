@@ -61,6 +61,8 @@ extension AppStore {
             )
             // MQTT publish for a known device/group state topic is redundant — the
             // .deviceState event creates a richer stateChange entry for the same update.
+            // Bridge responses (.bridgeResponse) are *not* redundant — they carry distinct
+            // payload (status, source URL, etc.) that the device-state event doesn't.
             if case .mqttPublish = ctx.action,
                let deviceName = ctx.primaryDevice?.friendlyName,
                knownNames.contains(deviceName) {

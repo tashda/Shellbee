@@ -112,7 +112,7 @@ struct DeviceUpgradeBadgeView: View {
         case .updating: return "arrow.down"
         case .checking: return "magnifyingglass"
         case .scheduled: return "clock.badge"
-        default: return "arrow.trianglehead.2.clockwise"
+        default: return "arrow.triangle.2.circlepath"
         }
     }
 }

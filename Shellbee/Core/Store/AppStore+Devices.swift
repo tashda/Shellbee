@@ -5,6 +5,16 @@ extension AppStore {
         devices.first { $0.friendlyName == friendlyName }
     }
 
+    func group(named friendlyName: String) -> Group? {
+        groups.first { $0.friendlyName == friendlyName }
+    }
+
+    func memberDevices(of group: Group) -> [Device] {
+        group.members.compactMap { member in
+            devices.first { $0.ieeeAddress == member.ieeeAddress }
+        }
+    }
+
     func state(for friendlyName: String) -> [String: JSONValue] {
         deviceStates[friendlyName] ?? [:]
     }

@@ -32,7 +32,7 @@ struct BeautifulRow: View {
             } else if s.hasPrefix("http"), let url = URL(string: s) {
                 URLRow(url: url)
             } else {
-                Text(s).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                Text(s).font(.subheadline).foregroundStyle(.secondary)
             }
         case .int(let i):
             Text(verbatim: unit != nil ? "\(i)\(unit!)" : "\(i)")

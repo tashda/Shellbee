@@ -89,7 +89,7 @@ struct OTAUpdateActivityWidget: Widget {
                 OTAProgressRing(
                     progress: context.state.progress,
                     phase: context.state.phase,
-                    symbol: "arrow.trianglehead.2.clockwise.circle.fill",
+                    symbol: "arrow.triangle.2.circlepath.circle.fill",
                     size: 22
                 )
             }
@@ -324,7 +324,7 @@ private let previewOTAAttributes = OTAUpdateActivityAttributes(identifier: "ota-
 private extension OTAUpdateActivityAttributes.ContentState {
     var primarySymbol: String {
         switch phase {
-        case .active:    return "arrow.trianglehead.2.clockwise.circle.fill"
+        case .active:    return "arrow.triangle.2.circlepath.circle.fill"
         case .completed: return "checkmark.circle.fill"
         case .failed:    return "xmark.circle.fill"
         }
@@ -332,6 +332,6 @@ private extension OTAUpdateActivityAttributes.ContentState {
 
     var compactSymbol: String {
         if activeCount == 1, let sym = items.first?.categorySymbol { return sym }
-        return "arrow.trianglehead.2.clockwise.circle.fill"
+        return "arrow.triangle.2.circlepath.circle.fill"
     }
 }

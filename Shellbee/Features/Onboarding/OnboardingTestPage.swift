@@ -47,7 +47,7 @@ struct OnboardingTestPage: View {
         case .connected:
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-                .symbolEffect(.bounce)
+                .bounceSymbolEffectIfAvailable()
         case .failed, .lost:
             Image(systemName: "xmark.circle.fill")
                 .foregroundStyle(.red)

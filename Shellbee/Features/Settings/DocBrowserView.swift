@@ -54,7 +54,7 @@ struct DocBrowserView: View {
         .navigationTitle("Device Library")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $searchText, prompt: "Search model, vendor, description")
-        .searchToolbarBehavior(.minimize)
+        .minimizeSearchToolbarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 DocBrowserFilterMenu(
@@ -334,7 +334,7 @@ private struct ManufacturerFilterSheet: View {
                 }
             }
             .searchable(text: $search, prompt: "Search manufacturers")
-            .searchToolbarBehavior(.minimize)
+            .minimizeSearchToolbarIfAvailable()
             .navigationTitle("Manufacturer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

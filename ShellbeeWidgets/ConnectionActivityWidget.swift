@@ -15,7 +15,7 @@ struct ConnectionActivityWidget: Widget {
                         .foregroundStyle(context.state.phase.accentColor)
                         .symbolEffect(
                             .variableColor.iterative,
-                            options: .repeat(.continuous),
+                            options: .repeating,
                             isActive: context.state.phase == .reconnecting
                         )
                         .padding(.leading, DesignTokens.Spacing.xs)
@@ -41,7 +41,7 @@ struct ConnectionActivityWidget: Widget {
                     .foregroundStyle(context.state.phase.accentColor)
                     .symbolEffect(
                         .variableColor.iterative,
-                        options: .repeat(.continuous),
+                        options: .repeating,
                         isActive: context.state.phase == .reconnecting
                     )
                     .symbolEffect(.bounce, value: context.state.phase)
@@ -64,7 +64,7 @@ struct ConnectionActivityWidget: Widget {
                     .foregroundStyle(context.state.phase.accentColor)
                     .symbolEffect(
                         .variableColor.iterative,
-                        options: .repeat(.continuous),
+                        options: .repeating,
                         isActive: context.state.phase == .reconnecting
                     )
             }
@@ -84,7 +84,7 @@ private struct ConnectionLockScreenView: View {
                 .foregroundStyle(context.state.phase.accentColor)
                 .symbolEffect(
                     .variableColor.iterative,
-                    options: .repeat(.continuous),
+                    options: .repeating,
                     isActive: context.state.phase == .reconnecting
                 )
 

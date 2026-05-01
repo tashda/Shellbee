@@ -18,7 +18,7 @@ struct FastTrackBanner: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
-        .glassEffect(in: Capsule(style: .continuous))
+        .glassEffectIfAvailable(in: Capsule(style: .continuous))
         .shadow(
             color: .black.opacity(DesignTokens.Shadow.floatingOpacity),
             radius: DesignTokens.Shadow.floatingRadius,

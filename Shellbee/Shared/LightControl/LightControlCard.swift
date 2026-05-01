@@ -312,7 +312,7 @@ struct LightControlCard: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .glassEffect(in: Circle())
+        .glassEffectIfAvailable(in: Circle())
     }
 
     private func togglePower() {
@@ -332,6 +332,7 @@ struct LightControlCard: View {
         return context.supportsWhiteControls ? .white : .color
     }
 }
+
 
 #Preview {
     ScrollView {

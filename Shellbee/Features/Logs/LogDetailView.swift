@@ -35,7 +35,7 @@ struct LogDetailView: View {
     }
 
     private static let stateMetadataKeys: Set<String> = [
-        "linkquality", "last_seen", "update", "update_available", "device"
+        "linkquality", "last_seen", "update", "update_available", "device", "elapsed"
     ]
 
     private var logTimeState: [String: JSONValue]? {
@@ -52,11 +52,28 @@ struct LogDetailView: View {
         return nil
     }
 
+    private var resolvedGroup: Group? {
+        let candidate: String?
+        if let ctx = entry.context, !ctx.devices.isEmpty {
+            candidate = ctx.devices.first?.friendlyName
+        } else if let n = entry.deviceName {
+            candidate = n
+        } else if case .mqttPublish(let d, _, _) = entry.parsedMessageKind {
+            candidate = d
+        } else {
+            candidate = nil
+        }
+        guard let name = candidate else { return nil }
+        // Only resolve as group when no real device exists with that name
+        if environment.store.device(named: name) != nil { return nil }
+        return environment.store.group(named: name)
+    }
+
     var body: some View {
         List {
-            metadataSection
-
-            if displayDevices.count == 1, let (_, device) = displayDevices.first {
+            if let group = resolvedGroup {
+                singleGroupSection(group)
+            } else if displayDevices.count == 1, let (_, device) = displayDevices.first {
                 singleDeviceSection(device)
             } else if displayDevices.count > 1 {
                 LogDetailDevicesSection(devices: displayDevices)
@@ -72,6 +89,18 @@ struct LogDetailView: View {
         .navigationTitle(headerTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 0) {
+                    Text(headerTitle)
+                        .font(.headline)
+                    Text(timestampSubtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(headerTitle), \(timestampSubtitle)")
+            }
             if let doneAction {
                 if entry.category != .stateChange {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -101,6 +130,30 @@ struct LogDetailView: View {
     }
 
     @ViewBuilder
+    private func singleGroupSection(_ group: Group) -> some View {
+        let members = environment.store.memberDevices(of: group)
+        let groupState = members.reduce(into: [String: JSONValue]()) { acc, d in
+            for (k, v) in environment.store.state(for: d.friendlyName) where acc[k] == nil {
+                acc[k] = v
+            }
+        }
+        Section {
+            ZStack {
+                GroupCard(
+                    group: group,
+                    memberDevices: members,
+                    state: groupState,
+                    displayMode: .compact
+                )
+                NavigationLink(destination: GroupDetailView(group: group)) { EmptyView() }
+                    .opacity(0)
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+        }
+    }
+
+    @ViewBuilder
     private func singleDeviceSection(_ device: Device) -> some View {
         Section {
             ZStack {
@@ -118,7 +171,7 @@ struct LogDetailView: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
-        if let state = logTimeState {
+        if let state = exposesScopedState(for: device) {
             Section {
                 ExposeCardView(device: device, state: state, mode: .snapshot)
                     .listRowInsets(EdgeInsets())
@@ -127,20 +180,34 @@ struct LogDetailView: View {
         }
     }
 
-    private var metadataSection: some View {
-        Section {
-            Label {
-                Text(entry.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute().second())
-                    .monospacedDigit()
-            } icon: {
-                Image(systemName: entry.level.systemImage)
-                    .foregroundStyle(entry.level.color)
+    /// Filter `logTimeState` to only the keys that are actual exposes of this
+    /// device. For bridge responses (payload `{data, error, status}`), nothing
+    /// matches and we return nil — so the device section just shows the hero
+    /// card. For real state publishes / state-change diffs, the payload keys
+    /// match exposes and we render the relevant control card with those values.
+    private func exposesScopedState(for device: Device) -> [String: JSONValue]? {
+        guard let state = logTimeState else { return nil }
+        let exposeProps: Set<String> = Set(
+            (device.definition?.exposes ?? []).flattenedLeaves.compactMap {
+                $0.property ?? $0.name
             }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+        )
+        let scoped = state.filter { exposeProps.contains($0.key) }
+        return scoped.isEmpty ? nil : scoped
+    }
+
+    private var timestampSubtitle: String {
+        let cal = Calendar.current
+        let day: String
+        if cal.isDateInToday(entry.timestamp) {
+            day = "Today"
+        } else if cal.isDateInYesterday(entry.timestamp) {
+            day = "Yesterday"
+        } else {
+            day = entry.timestamp.formatted(.dateTime.month(.abbreviated).day())
         }
-        .listSectionSeparator(.hidden)
-        .listSectionSpacing(.compact)
+        let time = entry.timestamp.formatted(.dateTime.hour().minute().second())
+        return "\(day) at \(time)"
     }
 
     private var jsonSection: some View {
@@ -167,7 +234,9 @@ struct LogDetailView: View {
         if !changes.isEmpty {
             LogDetailChangesSection(changes: changes)
         }
-        if !payload.isEmpty {
+        // Skip the full-payload snapshot for state-change events — the diff is
+        // what actually happened, the rest is noise.
+        if !payload.isEmpty && entry.category != .stateChange {
             BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
         }
         if changes.isEmpty && payload.isEmpty {

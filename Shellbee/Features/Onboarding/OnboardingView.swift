@@ -131,7 +131,7 @@ private struct DonePage: View {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 80))
                 .foregroundStyle(.green)
-                .symbolEffect(.bounce)
+                .bounceSymbolEffectIfAvailable()
             Text("You're all set")
                 .font(.largeTitle.weight(.bold))
             let count = environment.store.devices.count

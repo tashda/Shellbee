@@ -40,6 +40,19 @@ struct LogMapperEngine {
         if let m = message.firstMatch(of: Z2MLogPatterns.mqttPublish) {
             var name = String(m.topic)
             if name.hasPrefix("zigbee2mqtt/") { name = String(name.dropFirst("zigbee2mqtt/".count)) }
+            // Bridge responses/events carry the real subject inside the payload.
+            // Parse `payload '<json>'` from the message to surface it.
+            if name.hasPrefix("bridge/"),
+               let resolved = bridgeSubject(in: message, topic: name, knownDevices: knownDevices) {
+                return oneDevice(resolved, .bridgeResponse)
+            }
+            // Sub-topics like "<device>/action" or "<device>/availability" should
+            // attribute to the parent device so the redundant publish row dedupes
+            // against the .deviceState event (handled in AppStore+Events).
+            if let slash = name.firstIndex(of: "/") {
+                let parent = String(name[..<slash])
+                if knownDevices.contains(parent) { return oneDevice(parent, .mqttPublish) }
+            }
             return oneDevice(name, .mqttPublish)
         }
         // Fallback: scan all 'quoted' tokens against known device/group names
@@ -58,7 +71,7 @@ struct LogMapperEngine {
         _ previous: [String: JSONValue],
         _ next: [String: JSONValue]
     ) -> [LogContext.StateChange] {
-        let excluded: Set<String> = ["last_seen", "update", "update_available", "device"]
+        let excluded: Set<String> = ["last_seen", "update", "update_available", "device", "elapsed"]
         var changes: [LogContext.StateChange] = []
         let keys = Set(previous.keys).union(next.keys).subtracting(excluded)
 
@@ -69,6 +82,9 @@ struct LogMapperEngine {
 
             // Null-valued entries mean "not active" — not a meaningful change to surface
             if case .null = curr ?? .null { continue }
+            // z2m clears momentary triggers like `action` by publishing an empty
+            // string — that's not a meaningful change either.
+            if case .string(let s) = curr, s.isEmpty { continue }
 
             if case .object(let pObj) = prev, case .object(let cObj) = curr {
                 let subKeys = Set(pObj.keys).union(cObj.keys)
@@ -144,15 +160,66 @@ struct LogMapperEngine {
             if property == "brightness" { return "\(Int((Double(i) / 254.0 * 100).rounded()))%" }
             if property == "color_temp" { return "\(Int((1_000_000.0 / Double(i)).rounded()))K" }
             if property == "battery" || property == "humidity" { return "\(i)%" }
+            if Self.minuteDurationProps.contains(property) { return formatMinutesDuration(Double(i)) }
             return "\(i)"
         case .double(let d):
             if property == "temperature" { return String(format: "%.1f°", d) }
+            if Self.minuteDurationProps.contains(property) { return formatMinutesDuration(d) }
             return d.formatted(.number.precision(.fractionLength(0...2)))
         default: return value.stringified
         }
     }
 
+    private static let minuteDurationProps: Set<String> = ["filter_age", "device_age"]
+
+    private static func formatMinutesDuration(_ minutes: Double) -> String {
+        let total = Int(minutes.rounded())
+        if total < 60 { return "\(total) min" }
+        let hours = total / 60
+        if hours < 48 { return "\(hours) h" }
+        let days = hours / 24
+        if days < 60 { return "\(days) d" }
+        let months = days / 30
+        return "\(months) mo"
+    }
+
     // MARK: - Private
+
+    /// Extract the subject of a `bridge/...` MQTT publish from the embedded payload.
+    /// Examples:
+    ///   bridge/response/device/ota_update/check  → payload.data.id
+    ///   bridge/response/device/rename            → payload.data.to
+    ///   bridge/event                             → payload.data.friendly_name
+    /// On error responses (`status: "error"`) z2m clears `data` and the device name
+    /// only appears inside the human-readable `error` string, e.g.
+    ///   {"data":{},"error":"Failed ... for 'office_remote' ...","status":"error"}
+    /// In that case we scan the error string for a quoted token that matches a
+    /// known device name.
+    private static func bridgeSubject(
+        in message: String, topic: String, knownDevices: Set<String>
+    ) -> String? {
+        guard let payloadStr = LogEntry.extractPayload(from: message) else { return nil }
+        guard let data = payloadStr.data(using: .utf8),
+              let payload = try? JSONDecoder().decode([String: JSONValue].self, from: data) else {
+            return nil
+        }
+        if case .object(let inner) = payload["data"] ?? .null {
+            if topic.hasSuffix("/rename"), case .string(let to) = inner["to"] ?? .null {
+                return to
+            }
+            if case .string(let id) = inner["id"] ?? .null { return id }
+            if case .string(let fn) = inner["friendly_name"] ?? .null { return fn }
+        }
+        if case .string(let fn) = payload["friendly_name"] ?? .null { return fn }
+        // Error path: scan payload.error for a quoted token matching a known device.
+        if case .string(let err) = payload["error"] ?? .null {
+            for m in err.matches(of: Z2MLogPatterns.singleQuoted) {
+                let token = String(m.name)
+                if knownDevices.contains(token) { return token }
+            }
+        }
+        return nil
+    }
 
     private static func oneDevice(_ name: String, _ action: LogContext.LogAction) -> LogContext {
         LogContext(devices: [.init(friendlyName: name, role: .subject)], stateChanges: [], action: action)
