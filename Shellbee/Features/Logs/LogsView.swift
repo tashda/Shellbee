@@ -55,7 +55,7 @@ struct LogsView: View {
                 .navigationDestination(item: $autoOpenedEntry) { entry in
                     LogDetailView(entry: entry)
                 }
-                .searchToolbarBehavior(.minimize)
+                .minimizeSearchToolbarIfAvailable()
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         Picker("Mode", selection: $mode) {

@@ -15,7 +15,7 @@ struct InterviewActivityWidget: Widget {
                         .foregroundStyle(context.state.phase.accentColor)
                         .symbolEffect(
                             .variableColor.iterative,
-                            options: .repeat(.continuous),
+                            options: .repeating,
                             isActive: context.state.phase == .interviewing
                         )
                         .padding(.leading, DesignTokens.Spacing.xs)
@@ -41,7 +41,7 @@ struct InterviewActivityWidget: Widget {
                     .foregroundStyle(context.state.phase.accentColor)
                     .symbolEffect(
                         .variableColor.iterative,
-                        options: .repeat(.continuous),
+                        options: .repeating,
                         isActive: context.state.phase == .interviewing
                     )
             } compactTrailing: {
@@ -55,7 +55,7 @@ struct InterviewActivityWidget: Widget {
                     .foregroundStyle(context.state.phase.accentColor)
                     .symbolEffect(
                         .variableColor.iterative,
-                        options: .repeat(.continuous),
+                        options: .repeating,
                         isActive: context.state.phase == .interviewing
                     )
             }
@@ -75,7 +75,7 @@ private struct InterviewLockScreenView: View {
                 .foregroundStyle(context.state.phase.accentColor)
                 .symbolEffect(
                     .variableColor.iterative,
-                    options: .repeat(.continuous),
+                    options: .repeating,
                     isActive: context.state.phase == .interviewing
                 )
 

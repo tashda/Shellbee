@@ -39,7 +39,7 @@ struct DeviceListRow: View {
             return ("OTA not supported", "xmark.circle")
         }
         if otaStatus?.phase == .checking {
-            return ("Checking", "arrow.trianglehead.2.clockwise")
+            return ("Checking", "arrow.triangle.2.circlepath")
         }
         if otaStatus?.isActive == true {
             return ("Updating", "arrow.up.circle")
@@ -92,7 +92,7 @@ struct DeviceListRow: View {
                 .tint(.gray)
             } else {
                 Button(action: onCheckUpdate) {
-                    Label("Check", systemImage: "arrow.trianglehead.2.clockwise")
+                    Label("Check", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .tint(.blue)
                 if isBatteryPowered {
@@ -174,7 +174,7 @@ struct DeviceListRow: View {
             if supportsOTA {
                 Divider()
                 Button(action: onCheckUpdate) {
-                    Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
+                    Label("Check for Update", systemImage: "arrow.triangle.2.circlepath")
                 }
                 if otaStatus?.phase == .scheduled, let onUnschedule {
                     Button(action: onUnschedule) {

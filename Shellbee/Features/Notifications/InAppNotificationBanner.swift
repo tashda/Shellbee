@@ -30,7 +30,7 @@ struct InAppNotificationBanner: View {
         // iOS 26 floating tab bar uses a continuous capsule; per Apple HIG
         // (Tab bars — floating accessories), floating UI above the tab bar
         // should match its silhouette. Expanded uses a rounded rect for body room.
-        .glassEffect(
+        .glassEffectIfAvailable(
             in: isExpanded
                 ? AnyShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
                 : AnyShape(Capsule(style: .continuous))
@@ -122,13 +122,13 @@ struct InAppNotificationBanner: View {
                 Button(action: onGoToDevice) {
                     Label("Device", systemImage: "sensor.tag.radiowaves.forward.fill")
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButtonStyleIfAvailable()
                 .controlSize(.small)
             } else if !notification.logEntryIDs.isEmpty {
                 Button(action: onGoToLog) {
                     Label("Log", systemImage: "list.bullet.rectangle.portrait")
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButtonStyleIfAvailable()
                 .controlSize(.small)
             }
 
@@ -136,14 +136,14 @@ struct InAppNotificationBanner: View {
                 Button(action: onGoToLog) {
                     Label("Log", systemImage: "list.bullet.rectangle.portrait")
                 }
-                .buttonStyle(.glass)
+                .glassButtonStyleIfAvailable()
                 .controlSize(.small)
             }
 
             Button(action: onCopyMessage) {
                 Label("Copy", systemImage: "doc.on.doc")
             }
-            .buttonStyle(.glass)
+            .glassButtonStyleIfAvailable()
             .controlSize(.small)
 
             Spacer(minLength: 0)

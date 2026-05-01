@@ -280,7 +280,7 @@ struct DeviceDetailView: View {
                     }
                 } else if !otaActive {
                     Button { checkForUpdate(device) } label: {
-                        Label("Check for Update", systemImage: "arrow.trianglehead.2.clockwise")
+                        Label("Check for Update", systemImage: "arrow.triangle.2.circlepath")
                     }
                     if hasUpdateAvailable {
                         if isBattery {

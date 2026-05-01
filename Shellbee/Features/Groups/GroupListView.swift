@@ -30,7 +30,7 @@ struct GroupListView: View {
                 DeviceDetailView(device: device)
             }
             .searchable(text: $viewModel.searchText, prompt: "Search")
-            .searchToolbarBehavior(.minimize)
+            .minimizeSearchToolbarIfAvailable()
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {

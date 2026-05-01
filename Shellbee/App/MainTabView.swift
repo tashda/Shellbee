@@ -4,22 +4,21 @@ struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var tabSelection: AppTab = .home
 
-    var body: some View {
-        TabView(selection: $tabSelection) {
-            Tab("Home", systemImage: "house.fill", value: AppTab.home) {
-                HomeView()
-            }
-            Tab("Devices", systemImage: "sensor.tag.radiowaves.forward.fill", value: AppTab.devices) {
-                DeviceListView()
-            }
-            Tab("Groups", systemImage: "square.on.square.fill", value: AppTab.groups) {
-                GroupListView()
-            }
-            Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
-                SettingsView()
-            }
-            .badge(environment.store.bridgeInfo?.restartRequired == true ? Text("!") : nil)
+    init() {
+        // iOS 26 has the new floating glass tab bar from the Tab { } builder,
+        // which we don't want to disturb. On iOS 17/18 the classic UITabBar
+        // goes transparent at the scroll edge by default; force opaque so it
+        // always shows the system fill instead of fading into content.
+        if #unavailable(iOS 26.0) {
+            let appearance = UITabBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            UITabBar.appearance().standardAppearance = appearance
+            UITabBar.appearance().scrollEdgeAppearance = appearance
         }
+    }
+
+    var body: some View {
+        tabContent
         .overlay(alignment: .bottom) {
             InAppNotificationOverlay()
                 .safeAreaPadding(.bottom)
@@ -42,6 +41,42 @@ struct MainTabView: View {
         }
     }
 
+    @ViewBuilder
+    private var tabContent: some View {
+        if #available(iOS 18.0, *) {
+            TabView(selection: $tabSelection) {
+                Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+                    HomeView()
+                }
+                Tab("Devices", systemImage: "sensor.tag.radiowaves.forward.fill", value: AppTab.devices) {
+                    DeviceListView()
+                }
+                Tab("Groups", systemImage: "square.on.square.fill", value: AppTab.groups) {
+                    GroupListView()
+                }
+                Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
+                    SettingsView()
+                }
+                .badge(environment.store.bridgeInfo?.restartRequired == true ? Text("!") : nil)
+            }
+        } else {
+            TabView(selection: $tabSelection) {
+                HomeView()
+                    .tabItem { Label("Home", systemImage: "house.fill") }
+                    .tag(AppTab.home)
+                DeviceListView()
+                    .tabItem { Label("Devices", systemImage: "sensor.tag.radiowaves.forward.fill") }
+                    .tag(AppTab.devices)
+                GroupListView()
+                    .tabItem { Label("Groups", systemImage: "square.on.square.fill") }
+                    .tag(AppTab.groups)
+                SettingsView()
+                    .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                    .tag(AppTab.settings)
+                    .badge(environment.store.bridgeInfo?.restartRequired == true ? Text("!") : nil)
+            }
+        }
+    }
 }
 
 private struct LogSheetHost: View {

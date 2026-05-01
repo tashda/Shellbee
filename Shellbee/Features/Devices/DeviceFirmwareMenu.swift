@@ -51,7 +51,7 @@ struct DeviceFirmwareMenu: View {
                 }
                 environment.otaBulkQueue.enqueue(names, kind: .check)
             } label: {
-                Label("Check All for Updates\(otaCount > 0 ? " (\(otaCount))" : "")", systemImage: "arrow.trianglehead.2.clockwise")
+                Label("Check All for Updates\(otaCount > 0 ? " (\(otaCount))" : "")", systemImage: "arrow.triangle.2.circlepath")
             }
             .disabled(otaCount == 0 || bulkActive)
 

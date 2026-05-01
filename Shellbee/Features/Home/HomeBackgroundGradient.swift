@@ -26,54 +26,86 @@ struct HomeBackgroundGradient: View {
         )
     }
 
+    @ViewBuilder
     private var lightMesh: some View {
-        MeshGradient(
-            width: 3,
-            height: 3,
-            points: [
-                [0.00, 0.00], [0.55, 0.00], [1.00, 0.00],
-                [0.00, 0.45], [0.60, 0.50], [1.00, 0.55],
-                [0.00, 1.00], [0.45, 1.00], [1.00, 1.00]
-            ],
-            colors: [
-                signatureLight,  signaturePale, signatureCool,
-                signatureMint,   signature,     signatureBlue,
-                signatureDeep,   signature,     signaturePale
-            ],
-            smoothsColors: true
-        )
-        .overlay(
-            LinearGradient(
-                colors: [.white.opacity(DesignTokens.Opacity.dimmedSurface), .clear],
-                startPoint: .top,
-                endPoint: .center
+        if #available(iOS 18.0, *) {
+            MeshGradient(
+                width: 3,
+                height: 3,
+                points: [
+                    [0.00, 0.00], [0.55, 0.00], [1.00, 0.00],
+                    [0.00, 0.45], [0.60, 0.50], [1.00, 0.55],
+                    [0.00, 1.00], [0.45, 1.00], [1.00, 1.00]
+                ],
+                colors: [
+                    signatureLight,  signaturePale, signatureCool,
+                    signatureMint,   signature,     signatureBlue,
+                    signatureDeep,   signature,     signaturePale
+                ],
+                smoothsColors: true
             )
-        )
+            .overlay(
+                LinearGradient(
+                    colors: [.white.opacity(DesignTokens.Opacity.dimmedSurface), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            )
+        } else {
+            LinearGradient(
+                colors: [signatureLight, signature, signatureDeep],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .overlay(
+                LinearGradient(
+                    colors: [.white.opacity(DesignTokens.Opacity.dimmedSurface), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            )
+        }
     }
 
+    @ViewBuilder
     private var darkMesh: some View {
-        MeshGradient(
-            width: 3,
-            height: 3,
-            points: [
-                [0.00, 0.00], [0.55, 0.00], [1.00, 0.00],
-                [0.00, 0.45], [0.60, 0.50], [1.00, 0.55],
-                [0.00, 1.00], [0.45, 1.00], [1.00, 1.00]
-            ],
-            colors: [
-                darkLight,  darkPale,  darkCool,
-                darkMint,   darkBase,  darkBlue,
-                darkDeep,   darkBase,  darkPale
-            ],
-            smoothsColors: true
-        )
-        .overlay(
-            LinearGradient(
-                colors: [.black.opacity(DesignTokens.Opacity.pressedAlpha), .clear],
-                startPoint: .top,
-                endPoint: .center
+        if #available(iOS 18.0, *) {
+            MeshGradient(
+                width: 3,
+                height: 3,
+                points: [
+                    [0.00, 0.00], [0.55, 0.00], [1.00, 0.00],
+                    [0.00, 0.45], [0.60, 0.50], [1.00, 0.55],
+                    [0.00, 1.00], [0.45, 1.00], [1.00, 1.00]
+                ],
+                colors: [
+                    darkLight,  darkPale,  darkCool,
+                    darkMint,   darkBase,  darkBlue,
+                    darkDeep,   darkBase,  darkPale
+                ],
+                smoothsColors: true
             )
-        )
+            .overlay(
+                LinearGradient(
+                    colors: [.black.opacity(DesignTokens.Opacity.pressedAlpha), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            )
+        } else {
+            LinearGradient(
+                colors: [darkLight, darkBase, darkDeep],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .overlay(
+                LinearGradient(
+                    colors: [.black.opacity(DesignTokens.Opacity.pressedAlpha), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            )
+        }
     }
 
     private let signature      = Color(red: 227/255, green: 238/255, blue: 238/255)
