@@ -82,11 +82,25 @@ struct LogsView: View {
 
     @ViewBuilder
     private var modeContent: some View {
-        switch mode {
-        case .activity:
-            ActivityLogContent(viewModel: activityVM)
-        case .log:
-            BridgeLogView(viewModel: bridgeVM)
+        let position = Binding<LogMode?>(
+            get: { mode },
+            set: { if let new = $0, new != mode { mode = new } }
+        )
+        GeometryReader { geo in
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 0) {
+                    ActivityLogContent(viewModel: activityVM)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .id(LogMode.activity)
+                    BridgeLogView(viewModel: bridgeVM)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .id(LogMode.log)
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+            .scrollIndicators(.hidden)
+            .scrollPosition(id: position)
         }
     }
 
