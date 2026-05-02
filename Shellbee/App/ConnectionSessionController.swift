@@ -136,6 +136,7 @@ final class ConnectionSessionController {
         hasBeenConnected = false
         errorMessage = nil
         store.reset()
+        store.clearActiveBridge()
         await teardownTask.value
     }
 
@@ -201,6 +202,7 @@ final class ConnectionSessionController {
         connectionState = .connected
         hasBeenConnected = true
         store.isConnected = true
+        store.setActiveBridge(config.id)
         history.add(config)
         requestInitialState()
         return events

@@ -11,10 +11,12 @@ final class AppStore {
     var isConnected = false
     var deviceStates: [String: [String: JSONValue]] = [:]
     var deviceAvailability: [String: Bool] = [:]
-    // First-seen timestamps keyed by ieeeAddress. Drives the "Recently Added"
-    // section in the device list and is persisted across launches so the
-    // 30-minute window keeps counting while the app is closed.
-    var deviceFirstSeen: [String: Date] = [:]
+    /// First-seen timestamps for the *active* bridge, keyed by ieeeAddress.
+    /// Drives the "Recently Added" section in the device list. Persisted
+    /// per-bridge under `AppStore.deviceFirstSeenByBridge` so the same IEEE
+    /// can have independent first-seen times across bridges (a real concern:
+    /// the same device model exists on multiple Z2M networks).
+    private(set) var deviceFirstSeen: [String: Date] = [:]
     // Optimistic renames awaiting bridge confirmation. Used to roll back if z2m
     // returns status="error" for the rename request.
     var pendingRenames: [(from: String, to: String)] = []
@@ -22,7 +24,20 @@ final class AppStore {
     // bridge/response/device/remove for. Drives the "Deleting" badge and
     // disables further swipe-deletes on the same row.
     var pendingRemovals: Set<String> = []
+    /// Per-bridge first-seen storage. Keyed by `ConnectionConfig.id`. The
+    /// active bridge's slot is mirrored to `deviceFirstSeen` so existing
+    /// read sites continue to work without a bridgeID parameter.
+    private var firstSeenByBridge: [UUID: [String: Date]] = [:]
+    /// The currently-active bridge id, set by `ConnectionSessionController` on
+    /// successful connect. While nil (idle / pre-first-connect), first-seen
+    /// mutations are silently dropped — there's no bridge to attribute them to.
+    private(set) var activeBridgeID: UUID?
     private static let firstSeenStoreKey = "AppStore.deviceFirstSeen"
+    private static let firstSeenByBridgeStoreKey = "AppStore.deviceFirstSeenByBridge"
+    /// Legacy first-seen data loaded from the pre-multi-bridge format. Migrated
+    /// into `firstSeenByBridge` under the first bridge id we see via
+    /// `setActiveBridge(_:)` and then cleared.
+    private var pendingLegacyFirstSeen: [String: Date]?
     var otaUpdates: [String: OTAUpdateStatus] = [:]
     var logEntries: [LogEntry] = []
     var rawLogEntries: [LogEntry] = []
@@ -69,11 +84,13 @@ final class AppStore {
     static let coalesceWindow: TimeInterval = AppConfig.UX.notificationCoalesceWindow
 
     init() {
-        if let raw = UserDefaults.standard.dictionary(forKey: Self.firstSeenStoreKey) as? [String: Double] {
-            deviceFirstSeen = raw.mapValues { Date(timeIntervalSince1970: $0) }
-        }
+        loadFirstSeen()
     }
 
+    /// Clears all bridge-scoped state in preparation for a fresh connection
+    /// (either a switch or a reconnect). `deviceFirstSeen` is preserved per
+    /// bridge in `firstSeenByBridge` and re-mirrored when `setActiveBridge`
+    /// runs.
     func reset() {
         devices = []
         groups = []
@@ -84,13 +101,6 @@ final class AppStore {
         deviceStates = [:]
         deviceAvailability = [:]
         pendingRenames = []
-        // `deviceFirstSeen` is intentionally NOT cleared here. It's
-        // user-visible state ("Recently Added" in the device list) that
-        // should outlive a connection bounce or app restart, and the
-        // 30-minute window in DeviceListViewModel already self-prunes
-        // anything stale. Wiping it on every reconnect was killing the
-        // section the moment the app launched and re-established its
-        // session.
         otaUpdates = [:]
         logEntries = []
         operationErrors = []
@@ -103,24 +113,80 @@ final class AppStore {
         touchlinkIdentifyInProgress = false
         touchlinkResetInProgress = false
         identifyInProgress = []
+        // `deviceFirstSeen` itself is rebuilt by `setActiveBridge` after the
+        // next successful connect — so we clear the published mirror here so
+        // the UI doesn't briefly show the prior bridge's "Recently Added"
+        // entries while reconnecting.
+        deviceFirstSeen = [:]
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
+    }
+
+    // MARK: - Active bridge tracking
+
+    /// Called by the session controller after a successful connection. Loads
+    /// this bridge's first-seen slot into the published `deviceFirstSeen`
+    /// mirror, and migrates any pending legacy data into this bridge's slot.
+    func setActiveBridge(_ id: UUID) {
+        if let legacy = pendingLegacyFirstSeen, !legacy.isEmpty {
+            // Merge legacy data under this bridge — first connect after upgrade
+            // attributes everything to whichever bridge the user reached first.
+            firstSeenByBridge[id, default: [:]].merge(legacy) { existing, _ in existing }
+            pendingLegacyFirstSeen = nil
+            persistFirstSeen()
+        }
+        activeBridgeID = id
+        deviceFirstSeen = firstSeenByBridge[id] ?? [:]
+    }
+
+    /// Called on disconnect (not on simple reconnect). Clears the active
+    /// pointer; the published mirror has already been cleared by `reset`.
+    func clearActiveBridge() {
+        activeBridgeID = nil
     }
 
     // MARK: - First-seen persistence
 
+    private func loadFirstSeen() {
+        // Prefer the new partitioned format.
+        if let data = UserDefaults.standard.data(forKey: Self.firstSeenByBridgeStoreKey),
+           let decoded = try? JSONDecoder().decode([String: [String: Double]].self, from: data) {
+            for (key, ieeeMap) in decoded {
+                guard let id = UUID(uuidString: key) else { continue }
+                firstSeenByBridge[id] = ieeeMap.mapValues { Date(timeIntervalSince1970: $0) }
+            }
+            return
+        }
+
+        // Fall back to legacy format. Stash it for migration into whichever
+        // bridge becomes active first.
+        if let raw = UserDefaults.standard.dictionary(forKey: Self.firstSeenStoreKey) as? [String: Double] {
+            pendingLegacyFirstSeen = raw.mapValues { Date(timeIntervalSince1970: $0) }
+        }
+    }
+
     private func persistFirstSeen() {
-        let raw = deviceFirstSeen.mapValues { $0.timeIntervalSince1970 }
-        UserDefaults.standard.set(raw, forKey: Self.firstSeenStoreKey)
+        let encodable: [String: [String: Double]] = firstSeenByBridge.reduce(into: [:]) { acc, entry in
+            acc[entry.key.uuidString] = entry.value.mapValues { $0.timeIntervalSince1970 }
+        }
+        guard let data = try? JSONEncoder().encode(encodable) else { return }
+        UserDefaults.standard.set(data, forKey: Self.firstSeenByBridgeStoreKey)
+        // Drop the legacy key now that we've written the new format.
+        UserDefaults.standard.removeObject(forKey: Self.firstSeenStoreKey)
     }
 
     func recordFirstSeen(ieee: String, overwrite: Bool = false) {
-        if !overwrite, deviceFirstSeen[ieee] != nil { return }
-        deviceFirstSeen[ieee] = Date()
+        guard let id = activeBridgeID else { return }
+        if !overwrite, firstSeenByBridge[id]?[ieee] != nil { return }
+        let now = Date()
+        firstSeenByBridge[id, default: [:]][ieee] = now
+        deviceFirstSeen[ieee] = now
         persistFirstSeen()
     }
 
     func removeFirstSeen(ieee: String) {
-        guard deviceFirstSeen.removeValue(forKey: ieee) != nil else { return }
+        guard let id = activeBridgeID else { return }
+        guard firstSeenByBridge[id]?.removeValue(forKey: ieee) != nil else { return }
+        deviceFirstSeen.removeValue(forKey: ieee)
         persistFirstSeen()
     }
 }
