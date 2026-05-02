@@ -93,10 +93,12 @@ final class ConnectionHistory {
 
         if let index = connections.firstIndex(where: { $0.sameEndpoint(as: config) }) {
             // Preserve the existing entry's id so external references (active session,
-            // default-bridge pointer) stay valid.
+            // default-bridge pointer) stay valid. Move-to-front matches the legacy
+            // recency semantics covered by ConnectionHistoryTests.
             var merged = config
             merged.id = connections[index].id
-            connections[index] = merged
+            connections.remove(at: index)
+            connections.insert(merged, at: 0)
             save()
             return
         }

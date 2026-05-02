@@ -178,7 +178,7 @@ extension ConnectionConfig {
         let idWasMinted: Bool
 
         init(
-            id: UUID,
+            id: UUID = UUID(),
             host: String,
             port: Int,
             useTLS: Bool,
