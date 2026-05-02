@@ -37,6 +37,54 @@ final class AppEnvironment {
         registry.primary?.controller
     }
 
+    // MARK: - Merged multi-bridge accessors
+    //
+    // These return aggregated data across every connected bridge so the UI can
+    // render "all devices everywhere" without per-screen plumbing. Each result
+    // carries enough bridge metadata for the renderer to attribute rows back
+    // to their source. UI code that wants merged display reads these; UI that
+    // remains scoped to the focused bridge keeps using `.store.devices` etc.
+
+    /// Every device across every connected bridge, tagged with its source.
+    /// Useful for the Devices tab in merged mode.
+    var allDevices: [BridgeBoundDevice] {
+        registry.orderedSessions.flatMap { session in
+            session.store.devices.map { device in
+                BridgeBoundDevice(bridgeID: session.bridgeID, bridgeName: session.displayName, device: device)
+            }
+        }
+    }
+
+    /// Every group across every connected bridge.
+    var allGroups: [BridgeBoundGroup] {
+        registry.orderedSessions.flatMap { session in
+            session.store.groups.map { group in
+                BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: group)
+            }
+        }
+    }
+
+    /// Every log entry across every connected bridge, sorted newest first.
+    var allLogEntries: [BridgeBoundLogEntry] {
+        registry.orderedSessions
+            .flatMap { session in
+                session.store.logEntries.map {
+                    BridgeBoundLogEntry(bridgeID: session.bridgeID, bridgeName: session.displayName, entry: $0)
+                }
+            }
+            .sorted { $0.entry.timestamp > $1.entry.timestamp }
+    }
+
+    /// Look up which bridge owns a device with the given friendly name. Returns
+    /// the first match — friendly names are unique within a single Z2M
+    /// instance but can collide across bridges (a real concern for users with
+    /// multiple identical device fleets).
+    func bridge(forDevice friendlyName: String) -> BridgeSession? {
+        registry.orderedSessions.first { session in
+            session.store.devices.contains { $0.friendlyName == friendlyName }
+        }
+    }
+
     var connectionState: ConnectionSessionController.State {
         session?.connectionState ?? .idle
     }
