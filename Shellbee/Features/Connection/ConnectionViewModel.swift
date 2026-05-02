@@ -149,6 +149,20 @@ final class ConnectionViewModel {
 
     @discardableResult
     func connect(using draft: ConnectionEditorDraft) -> Bool {
+        applyDraft(draft)
+        return connectDraft()
+    }
+
+    /// Save the current draft to the saved-bridges list without connecting.
+    /// Used by the "Add Bridge" flow in `SavedBridgesView` so registering an
+    /// additional bridge doesn't disrupt the active session.
+    @discardableResult
+    func save(using draft: ConnectionEditorDraft) -> Bool {
+        applyDraft(draft)
+        return saveServer()
+    }
+
+    private func applyDraft(_ draft: ConnectionEditorDraft) {
         name = draft.name
         host = draft.host
         port = draft.port
@@ -156,7 +170,6 @@ final class ConnectionViewModel {
         basePath = draft.basePath
         authToken = draft.authToken
         allowInvalidCertificates = draft.useTLS ? draft.allowInvalidCertificates : false
-        return connectDraft()
     }
 
     func cancel() async {

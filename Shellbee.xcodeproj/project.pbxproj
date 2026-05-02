@@ -240,6 +240,7 @@
 				Features/Settings/NetworkAccessSettingsView.swift,
 				Features/Settings/NetworkSettingsView.swift,
 				Features/Settings/OTASettingsView.swift,
+				Features/Settings/SavedBridgesView.swift,
 				Features/Settings/SerialSettingsView.swift,
 				Features/Settings/ServerDetailView.swift,
 				Features/Settings/SettingsView.swift,

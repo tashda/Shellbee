@@ -53,9 +53,18 @@ struct SettingsView: View {
                 settingsLabel(title: "Server", systemImage: "wifi", color: serverIconColor)
                     .badge(environment.connectionConfig?.displayName ?? "Not configured")
             }
+            NavigationLink { SavedBridgesView() } label: {
+                settingsLabel(title: "Saved Bridges", systemImage: "list.bullet", color: .blue)
+                    .badge(savedBridgesBadge)
+            }
         } header: {
             Text("Connection")
         }
+    }
+
+    private var savedBridgesBadge: String {
+        let count = environment.history.connections.count
+        return count == 0 ? "" : "\(count)"
     }
 
     private var serverIconColor: Color {

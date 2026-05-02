@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-struct ConnectionConfig: Codable, Sendable {
+struct ConnectionConfig: Codable, Sendable, Identifiable {
     private static let savedConfigKey = "lastSuccessfulConnectionConfig"
     private static let legacySavedConfigKey = "connectionConfig"
 
