@@ -1,13 +1,19 @@
 import Foundation
 
 @Observable
+@MainActor
 final class AppEnvironment {
-    let store = AppStore()
     let discovery = Z2MDiscoveryService()
     let history = ConnectionHistory()
-    let session: ConnectionSessionController
-    let otaBulkQueue: OTABulkOperationQueue
+    let registry: BridgeRegistry
     let notificationPreferences = NotificationPreferences()
+    /// Per-bridge OTA queues. Each bridge's bulk-OTA work runs independently —
+    /// a 200-device check on bridge A doesn't serialize bridge B's update.
+    private var otaQueues: [UUID: OTABulkOperationQueue] = [:]
+    /// Fallback empty store returned by `store` while no bridge is connected.
+    /// Keeps every read-site that touches `environment.store.devices` etc.
+    /// crash-free during the brief window between launch and first connect.
+    private let fallbackStore = AppStore()
     var selectedTab: AppTab = .home
     var pendingDeviceFilter: DeviceQuickFilter?
     var pendingLogSheet: LogSheetRequest?
@@ -15,70 +21,98 @@ final class AppEnvironment {
     private var hasStarted = false
 
     init() {
-        let store = self.store
-        let session = ConnectionSessionController(store: store, history: history)
-        self.session = session
-        let queue = OTABulkOperationQueue(
-            sender: { [session] topic, payload in
-                session.send(topic: topic, payload: payload)
-            },
-            onCompletion: { [weak store] summary in
-                store?.enqueueOTABulkSummary(summary)
-            }
-        )
-        self.otaBulkQueue = queue
-        store.otaResponseForwarding = { [weak queue] name, success, kind in
-            queue?.handleResponse(friendlyName: name, success: success, kind: kind)
-        }
-        let prefs = notificationPreferences
-        store.notificationFilter = { [weak store] notification in
-            guard let category = notification.category else { return true }
-            let bridgeLevel = store?.bridgeInfo?.logLevel
-            return prefs.isEnabled(category, bridgeLogLevel: bridgeLevel)
-        }
+        let registry = BridgeRegistry(history: history)
+        self.registry = registry
+        wireNotificationFilter(into: fallbackStore)
+    }
+
+    /// The focused bridge's store. Falls back to an empty store while no
+    /// bridge is connected so the UI can read it safely on cold start.
+    var store: AppStore {
+        registry.primary?.store ?? fallbackStore
+    }
+
+    /// The focused bridge's session controller, if any.
+    var session: ConnectionSessionController? {
+        registry.primary?.controller
     }
 
     var connectionState: ConnectionSessionController.State {
-        session.connectionState
+        session?.connectionState ?? .idle
     }
 
     var connectionConfig: ConnectionConfig? {
-        session.connectionConfig
+        session?.connectionConfig
     }
 
     var hasBeenConnected: Bool {
-        session.hasBeenConnected
+        session?.hasBeenConnected ?? false
     }
 
     var errorMessage: String? {
-        session.errorMessage
+        session?.errorMessage
+    }
+
+    /// The OTA bulk queue for the focused bridge. Lazily created on first
+    /// access per bridge so that newly-connected bridges get their own queue.
+    var otaBulkQueue: OTABulkOperationQueue {
+        guard let primary = registry.primary else {
+            return makeOrFetchQueue(for: fallbackStore, bridgeID: nil)
+        }
+        return makeOrFetchQueue(for: primary.store, bridgeID: primary.bridgeID)
     }
 
     static var maxReconnectAttempts: Int { ConnectionSessionController.configuredMaxReconnectAttempts }
 
+    /// Connect to a bridge. Existing sessions stay live — connecting a new
+    /// bridge never tears down others. The first session connected becomes
+    /// the focused (primary) bridge automatically.
     func connect(config: ConnectionConfig) {
         selectedTab = .home
-        session.connect(config: config)
+        let isFirst = registry.primary == nil
+        registry.connect(config: config)
+        if let session = registry.session(for: config.id) {
+            wireNotificationFilter(into: session.store)
+            ensureQueueWired(for: session)
+        }
+        if isFirst, let primary = registry.primary {
+            registry.setPrimary(primary.bridgeID)
+        }
+    }
+
+    /// Disconnect a single bridge. Other bridges remain connected.
+    func disconnect(bridgeID: UUID) async {
+        otaQueues.removeValue(forKey: bridgeID)
+        await registry.disconnect(bridgeID: bridgeID)
+    }
+
+    /// Disconnect every bridge — used by "forget" / sign-out flows.
+    func disconnectAll() async {
+        otaQueues.removeAll()
+        await registry.disconnectAll()
+    }
+
+    /// Legacy: disconnects the focused bridge only (back-compat for callers
+    /// that haven't been ported to multi-bridge yet).
+    func disconnect() async {
+        guard let id = registry.primaryBridgeID else { return }
+        await disconnect(bridgeID: id)
     }
 
     func cancelConnection() async {
-        await session.cancelConnection()
-    }
-
-    func disconnect() async {
-        await session.disconnect()
+        await session?.cancelConnection()
     }
 
     func forgetServer() async {
-        await session.forgetServer()
+        await session?.forgetServer()
     }
 
     func retryFromLost() {
-        session.retryFromLost()
+        session?.retryFromLost()
     }
 
     func clearErrorMessage() {
-        session.clearErrorMessage()
+        session?.clearErrorMessage()
     }
 
     func restartBridge() {
@@ -91,8 +125,17 @@ final class AppEnvironment {
         try? await Task.sleep(for: .milliseconds(600))
     }
 
+    /// Send a request to the focused bridge. Per-bridge routing comes via
+    /// `send(bridge:topic:payload:)`.
     func send(topic: String, payload: JSONValue) {
-        session.send(topic: topic, payload: payload)
+        session?.send(topic: topic, payload: payload)
+    }
+
+    /// Send a request explicitly to a specific bridge. Used by per-bridge
+    /// settings screens, the OTA queue, and any UI that needs to address
+    /// something other than the focused bridge.
+    func send(bridge bridgeID: UUID, topic: String, payload: JSONValue) {
+        registry.session(for: bridgeID)?.controller.send(topic: topic, payload: payload)
     }
 
     /// Sends a `bridge/request/options` request with the payload wrapped in
@@ -105,15 +148,10 @@ final class AppEnvironment {
         send(topic: Z2MTopics.deviceSet(friendlyName), payload: payload)
     }
 
-    /// Renames a device with an optimistic local update so the UI changes
-    /// immediately. If the bridge rejects the rename, AppStore reverts the
-    /// change when `bridge/response/device/rename` arrives with status="error".
     /// Asks the device to physically identify itself (blink/beep) via the
-    /// Zigbee Identify cluster. Z2M exposes this as a writable enum property
-    /// `identify` with values `["identify"]`. Fire-and-forget — there's no
-    /// `bridge/response/.../identify` to await, so we surface the in-progress
-    /// state for ~3s in the UI before clearing it.
+    /// Zigbee Identify cluster.
     func identifyDevice(_ friendlyName: String) {
+        let store = self.store
         guard !store.identifyInProgress.contains(friendlyName) else { return }
         store.identifyInProgress.insert(friendlyName)
         sendDeviceState(friendlyName, payload: .object(["identify": .string("identify")]))
@@ -154,7 +192,6 @@ final class AppEnvironment {
         if env["UI_TEST_MODE"] == "1" {
             if env["UI_TEST_CLEAR_SAVED_SERVER"] == "1" {
                 ConnectionConfig.clear()
-                session.connectionConfig = nil
                 return
             }
             if let host = env["UI_TEST_Z2M_HOST"],
@@ -166,12 +203,61 @@ final class AppEnvironment {
             }
         }
 
-        // If the user has marked a saved bridge as the default, prefer that
-        // over the "last successful" config. The default is the explicit
-        // user choice; last-successful is just a fallback for users who
-        // haven't promoted any bridge yet.
-        if let preferred = history.defaultBridge ?? connectionConfig {
-            connect(config: preferred)
+        // Auto-connect to every saved bridge that the user has explicitly
+        // marked for auto-connect. Falls back to the default bridge, then to
+        // the legacy last-successful config.
+        let toConnect = autoConnectTargets()
+        for config in toConnect {
+            connect(config: config)
         }
+    }
+
+    private func autoConnectTargets() -> [ConnectionConfig] {
+        let auto = history.connections.filter { history.isAutoConnect($0) }
+        if !auto.isEmpty { return auto }
+        if let preferred = history.defaultBridge { return [preferred] }
+        if let last = ConnectionConfig.load() { return [last] }
+        return []
+    }
+
+    /// Set up notification filtering on a freshly-created store so notifications
+    /// from that bridge are routed through the user's global preferences.
+    private func wireNotificationFilter(into store: AppStore) {
+        let prefs = notificationPreferences
+        store.notificationFilter = { [weak store] notification in
+            guard let category = notification.category else { return true }
+            let bridgeLevel = store?.bridgeInfo?.logLevel
+            return prefs.isEnabled(category, bridgeLogLevel: bridgeLevel)
+        }
+    }
+
+    private func ensureQueueWired(for session: BridgeSession) {
+        _ = makeOrFetchQueue(for: session.store, bridgeID: session.bridgeID)
+    }
+
+    private func makeOrFetchQueue(for store: AppStore, bridgeID: UUID?) -> OTABulkOperationQueue {
+        if let bridgeID, let existing = otaQueues[bridgeID] {
+            return existing
+        }
+        let queue = OTABulkOperationQueue(
+            sender: { [weak self, bridgeID] topic, payload in
+                guard let self else { return }
+                if let bridgeID {
+                    self.send(bridge: bridgeID, topic: topic, payload: payload)
+                } else {
+                    self.send(topic: topic, payload: payload)
+                }
+            },
+            onCompletion: { [weak store] summary in
+                store?.enqueueOTABulkSummary(summary)
+            }
+        )
+        store.otaResponseForwarding = { [weak queue] name, success, kind in
+            queue?.handleResponse(friendlyName: name, success: success, kind: kind)
+        }
+        if let bridgeID {
+            otaQueues[bridgeID] = queue
+        }
+        return queue
     }
 }

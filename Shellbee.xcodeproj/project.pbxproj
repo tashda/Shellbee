@@ -104,6 +104,8 @@
 				Core/Models/LogSheetRequest.swift,
 				Core/Models/NotificationCategory.swift,
 				Core/Models/TouchlinkDevice.swift,
+				Core/Networking/BridgeRegistry.swift,
+				Core/Networking/BridgeSession.swift,
 				Core/Networking/ConnectionConfig.swift,
 				Core/Networking/NetworkPathMonitor.swift,
 				Core/Networking/OTABulkOperationQueue.swift,

@@ -5,8 +5,14 @@ import SwiftUI
 final class ConnectionHistory {
     private(set) var connections: [ConnectionConfig] = []
     private(set) var defaultBridgeID: UUID?
+    /// Bridges marked for auto-connect on app launch. Phase 2 multi-bridge:
+    /// every bridge in this set is connected concurrently at start. If empty,
+    /// the app falls back to the default bridge, then to the legacy
+    /// last-successful config.
+    private(set) var autoConnectIDs: Set<UUID> = []
     private let key = "connectionHistory"
     private let defaultIDKey = "savedBridges.defaultID"
+    private let autoConnectKey = "savedBridges.autoConnectIDs"
 
     init() {
         load()
@@ -15,6 +21,9 @@ final class ConnectionHistory {
     func load() {
         if let raw = UserDefaults.standard.string(forKey: defaultIDKey) {
             defaultBridgeID = UUID(uuidString: raw)
+        }
+        if let strings = UserDefaults.standard.array(forKey: autoConnectKey) as? [String] {
+            autoConnectIDs = Set(strings.compactMap { UUID(uuidString: $0) })
         }
 
         guard let data = UserDefaults.standard.data(forKey: key) else {
@@ -49,6 +58,25 @@ final class ConnectionHistory {
             defaultBridgeID = nil
             UserDefaults.standard.removeObject(forKey: defaultIDKey)
         }
+        // Drop auto-connect entries that no longer correspond to a saved bridge.
+        let validIDs = Set(connections.map(\.id))
+        autoConnectIDs.formIntersection(validIDs)
+        let autoArray = autoConnectIDs.map { $0.uuidString }
+        UserDefaults.standard.set(autoArray, forKey: autoConnectKey)
+    }
+
+    func isAutoConnect(_ config: ConnectionConfig) -> Bool {
+        autoConnectIDs.contains(config.id)
+    }
+
+    func setAutoConnect(_ config: ConnectionConfig, _ enabled: Bool) {
+        guard connections.contains(where: { $0.id == config.id }) else { return }
+        if enabled {
+            autoConnectIDs.insert(config.id)
+        } else {
+            autoConnectIDs.remove(config.id)
+        }
+        save()
     }
 
     /// Insert or update an entry. Dedup priority:

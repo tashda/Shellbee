@@ -36,6 +36,11 @@ final class ConnectionSessionController {
     private let client = Z2MWebSocketClient()
     private let router = Z2MMessageRouter()
     private let pathMonitor = NetworkPathMonitor()
+    /// Identifies which saved bridge this controller represents. Tagged onto
+    /// every `Z2MEvent` before it's applied to the store (Phase 2 multi-bridge),
+    /// and used as the dedup key for Live Activities so multiple bridges don't
+    /// collide on a single activity slot.
+    let bridgeID: UUID
 
     private var sessionTask: Task<Void, Never>?
     private var pathObserverTask: Task<Void, Never>?
@@ -61,9 +66,10 @@ final class ConnectionSessionController {
         UserDefaults.standard.object(forKey: connectionLiveActivityEnabledKey) as? Bool ?? true
     }
 
-    init(store: AppStore, history: ConnectionHistory) {
+    init(store: AppStore, history: ConnectionHistory, bridgeID: UUID = UUID()) {
         self.store = store
         self.history = history
+        self.bridgeID = bridgeID
         startPathObserver()
     }
 

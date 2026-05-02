@@ -35,8 +35,8 @@ struct MQTTInspectorView: View {
                 .frame(width: DesignTokens.Size.inspectorTabPickerWidth)
             }
         }
-        .onAppear { store.attach(session: environment.session) }
-        .onDisappear { store.detach(session: environment.session) }
+        .onAppear { if let session = environment.session { store.attach(session: session) } }
+        .onDisappear { if let session = environment.session { store.detach(session: session) } }
     }
 }
 
