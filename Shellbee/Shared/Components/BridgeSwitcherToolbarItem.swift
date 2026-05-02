@@ -1,19 +1,19 @@
 import SwiftUI
 
-/// Drop-in toolbar content that renders a bridge picker in the navigation bar's
-/// principal slot when the user has multiple saved bridges. Single-bridge users
-/// see nothing — the screen's regular `navigationTitle` shows through.
+/// Drop-in toolbar content that shows a focus picker when more than one
+/// bridge is currently connected. Each bridge maintains its own live
+/// WebSocket; switching focus is instantaneous (no reconnect, no data
+/// loss) because we're just rebinding which bridge's data the legacy
+/// single-bridge UI surfaces.
 ///
-/// Selecting a different saved bridge calls `environment.connect(config:)`,
-/// which tears down the prior session and resets the store before connecting.
-/// Reconnects in flight surface as an inline progress indicator next to the
-/// bridge name.
+/// Hides itself when only one bridge (or none) is connected — single-bridge
+/// users see no extra chrome.
 struct BridgeSwitcherToolbarItem: ToolbarContent {
     @Environment(AppEnvironment.self) private var environment
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            if environment.history.connections.count >= 2 {
+            if environment.registry.sessions.values.filter(\.isConnected).count >= 2 {
                 BridgeSwitcherMenu()
             } else {
                 EmptyView()
@@ -27,16 +27,19 @@ private struct BridgeSwitcherMenu: View {
 
     var body: some View {
         Menu {
-            ForEach(environment.history.connections) { config in
-                Button {
-                    select(config)
-                } label: {
-                    HStack {
-                        Text(config.displayName)
-                        if isActive(config) {
-                            Image(systemName: "checkmark")
+            Section("Focus on") {
+                ForEach(environment.registry.orderedSessions, id: \.bridgeID) { session in
+                    Button {
+                        environment.registry.setPrimary(session.bridgeID)
+                    } label: {
+                        HStack {
+                            Text(session.displayName)
+                            if isFocused(session) {
+                                Image(systemName: "checkmark")
+                            }
                         }
                     }
+                    .disabled(!session.isConnected)
                 }
             }
             Divider()
@@ -47,10 +50,9 @@ private struct BridgeSwitcherMenu: View {
             }
         } label: {
             HStack(spacing: DesignTokens.Spacing.xxs) {
-                if isReconnecting {
-                    ProgressView()
-                        .controlSize(.small)
-                }
+                Circle()
+                    .fill(focusColor)
+                    .frame(width: 8, height: 8)
                 Text(activeName)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
@@ -60,26 +62,20 @@ private struct BridgeSwitcherMenu: View {
             }
             .foregroundStyle(.primary)
         }
-        .accessibilityLabel("Switch bridge")
+        .accessibilityLabel("Switch focused bridge")
     }
 
     private var activeName: String {
-        environment.connectionConfig?.displayName ?? "Select Bridge"
+        environment.registry.primary?.displayName ?? "No Bridge"
     }
 
-    private var isReconnecting: Bool {
-        switch environment.connectionState {
-        case .connecting, .reconnecting: true
-        default: false
-        }
+    private var focusColor: Color {
+        guard let primary = environment.registry.primary else { return .gray }
+        if primary.isConnected { return .green }
+        return .orange
     }
 
-    private func isActive(_ config: ConnectionConfig) -> Bool {
-        environment.connectionConfig?.id == config.id
-    }
-
-    private func select(_ config: ConnectionConfig) {
-        guard !isActive(config) else { return }
-        environment.connect(config: config)
+    private func isFocused(_ session: BridgeSession) -> Bool {
+        environment.registry.primaryBridgeID == session.bridgeID
     }
 }
