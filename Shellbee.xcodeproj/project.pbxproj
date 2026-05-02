@@ -255,6 +255,7 @@
 				Shared/Compat/iOS26Compat.swift,
 				Shared/Components/BeautifulPayloadView.swift,
 				Shared/Components/BeautifulRow.swift,
+				Shared/Components/BridgeSwitcherToolbarItem.swift,
 				Shared/Components/CopyableRow.swift,
 				Shared/Components/DeviceExtras.swift,
 				Shared/Components/DeviceFeatureSectionRow.swift,

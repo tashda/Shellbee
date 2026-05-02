@@ -32,6 +32,7 @@ struct GroupListView: View {
             .searchable(text: $viewModel.searchText, prompt: "Search")
             .minimizeSearchToolbarIfAvailable()
             .toolbar {
+                BridgeSwitcherToolbarItem()
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showAddGroup = true

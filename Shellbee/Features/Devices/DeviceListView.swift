@@ -31,6 +31,7 @@ struct DeviceListView: View {
             .searchable(text: $viewModel.searchText, prompt: "Search")
             .minimizeSearchToolbarIfAvailable()
             .toolbar {
+                BridgeSwitcherToolbarItem()
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showPairingWizard = true

@@ -52,6 +52,7 @@ struct LogsView: View {
                 .minimizeSearchToolbarIfAvailable()
                 .toolbar(.hidden, for: .tabBar)
                 .toolbar {
+                    BridgeSwitcherToolbarItem()
                     ToolbarItem(placement: .principal) {
                         Picker("Mode", selection: $mode) {
                             ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
