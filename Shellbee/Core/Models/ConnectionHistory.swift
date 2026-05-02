@@ -4,13 +4,19 @@ import SwiftUI
 @Observable
 final class ConnectionHistory {
     private(set) var connections: [ConnectionConfig] = []
+    private(set) var defaultBridgeID: UUID?
     private let key = "connectionHistory"
+    private let defaultIDKey = "savedBridges.defaultID"
 
     init() {
         load()
     }
 
     func load() {
+        if let raw = UserDefaults.standard.string(forKey: defaultIDKey) {
+            defaultBridgeID = UUID(uuidString: raw)
+        }
+
         guard let data = UserDefaults.standard.data(forKey: key) else {
             return
         }
@@ -24,7 +30,9 @@ final class ConnectionHistory {
         }
 
         if let decoded = try? JSONDecoder().decode([ConnectionConfig.PersistedSnapshot].self, from: data) {
+            let needsResave = decoded.contains { $0.idWasMinted }
             connections = decoded.map(\.connectionConfig)
+            if needsResave { save() }
         }
     }
 
@@ -35,16 +43,43 @@ final class ConnectionHistory {
         for config in connections {
             ConnectionConfig.persistToken(for: config)
         }
+        if let id = defaultBridgeID, connections.contains(where: { $0.id == id }) {
+            UserDefaults.standard.set(id.uuidString, forKey: defaultIDKey)
+        } else {
+            defaultBridgeID = nil
+            UserDefaults.standard.removeObject(forKey: defaultIDKey)
+        }
     }
 
+    /// Insert or update an entry. Dedup priority:
+    /// 1. Same `id` → replace in place (preserves position so re-saves don't shuffle).
+    /// 2. Same endpoint + name (`sameEndpoint(as:)`) → treat as a re-add of the same bridge,
+    ///    preserve the existing entry's id and replace.
+    /// 3. Otherwise → insert at top, trim to 10.
     func add(_ config: ConnectionConfig) {
-        // Remove existing duplicate for the exact endpoint definition.
-        connections.removeAll { matches($0, config) }
-        // Add to top
+        if let index = connections.firstIndex(where: { $0.id == config.id }) {
+            connections[index] = config
+            save()
+            return
+        }
+
+        if let index = connections.firstIndex(where: { $0.sameEndpoint(as: config) }) {
+            // Preserve the existing entry's id so external references (active session,
+            // default-bridge pointer) stay valid.
+            var merged = config
+            merged.id = connections[index].id
+            connections[index] = merged
+            save()
+            return
+        }
+
         connections.insert(config, at: 0)
-        // Keep only top 10
         if connections.count > 10 {
-            connections = Array(connections.prefix(10))
+            let trimmed = Array(connections.prefix(10))
+            for removed in connections.suffix(connections.count - 10) {
+                ConnectionConfig.removeToken(for: removed)
+            }
+            connections = trimmed
         }
         save()
     }
@@ -59,8 +94,8 @@ final class ConnectionHistory {
     }
 
     func remove(_ config: ConnectionConfig) {
-        let removed = connections.filter { matches($0, config) }
-        connections.removeAll { matches($0, config) }
+        let removed = connections.filter { $0.id == config.id || $0.sameEndpoint(as: config) }
+        connections.removeAll { $0.id == config.id || $0.sameEndpoint(as: config) }
         for entry in removed {
             ConnectionConfig.removeToken(for: entry)
         }
@@ -68,21 +103,62 @@ final class ConnectionHistory {
     }
 
     func update(_ config: ConnectionConfig) {
-        if let index = connections.firstIndex(where: { matches($0, config) }) {
+        if let index = connections.firstIndex(where: { $0.id == config.id }) {
             connections[index] = config
             save()
         }
     }
 
+    /// Replace the original entry with a new config. Preserves the original's id
+    /// so external references (active session, default pointer) remain valid even
+    /// when host/port/name changed in the editor.
     func replace(_ original: ConnectionConfig, with updated: ConnectionConfig) {
-        remove(original)
-        add(updated)
+        var merged = updated
+        merged.id = original.id
+        if let index = connections.firstIndex(where: { $0.id == original.id }) {
+            // If endpoint changed, the old token is now orphaned at the old lookup key.
+            if !connections[index].sameEndpoint(as: merged) {
+                ConnectionConfig.removeToken(for: connections[index])
+            }
+            connections[index] = merged
+            save()
+        } else {
+            add(merged)
+        }
     }
 
-    private func matches(_ lhs: ConnectionConfig, _ rhs: ConnectionConfig) -> Bool {
-        lhs.host == rhs.host
-            && lhs.port == rhs.port
-            && lhs.useTLS == rhs.useTLS
-            && lhs.basePath == rhs.basePath
+    /// Move an entry to the top of the list. Used by the saved-bridges screen
+    /// for explicit reordering.
+    func pin(_ config: ConnectionConfig) {
+        guard let index = connections.firstIndex(where: { $0.id == config.id }), index != 0 else { return }
+        let entry = connections.remove(at: index)
+        connections.insert(entry, at: 0)
+        save()
+    }
+
+    /// Update only the human-readable name on an existing entry.
+    func rename(_ config: ConnectionConfig, to newName: String?) {
+        guard let index = connections.firstIndex(where: { $0.id == config.id }) else { return }
+        let trimmed = newName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        connections[index].name = (trimmed?.isEmpty == false) ? trimmed : nil
+        save()
+    }
+
+    /// Mark a saved bridge as the default — auto-connect target on app start.
+    /// Pass `nil` to clear.
+    func setDefault(_ config: ConnectionConfig?) {
+        if let config {
+            guard connections.contains(where: { $0.id == config.id }) else { return }
+            defaultBridgeID = config.id
+        } else {
+            defaultBridgeID = nil
+        }
+        save()
+    }
+
+    /// The saved bridge marked as default, if any.
+    var defaultBridge: ConnectionConfig? {
+        guard let id = defaultBridgeID else { return nil }
+        return connections.first(where: { $0.id == id })
     }
 }

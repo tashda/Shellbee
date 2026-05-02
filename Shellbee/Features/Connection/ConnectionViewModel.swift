@@ -170,6 +170,7 @@ final class ConnectionViewModel {
     func buildConfig() -> ConnectionConfig {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         return ConnectionConfig(
+            id: editingConnection?.id ?? UUID(),
             host: host.trimmingCharacters(in: .whitespaces),
             port: Int(port) ?? ConnectionConfig.defaultPort,
             useTLS: useTLS,
