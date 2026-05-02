@@ -233,6 +233,7 @@ final class ConnectionSessionController {
         store.isConnected = true
         store.setActiveBridge(config.id, name: config.displayName)
         history.add(config)
+        SentryService.shared.recordBridgeEvent("connected", bridgeName: config.displayName)
         requestInitialState()
         return events
     }
@@ -320,6 +321,8 @@ final class ConnectionSessionController {
     private func handleFailure(_ message: String) async {
         errorMessage = message
         store.isConnected = false
+        let bridgeName = connectionConfig?.displayName ?? "unknown"
+        SentryService.shared.recordBridgeEvent("connection failed: \(message)", bridgeName: bridgeName, level: .warning)
         let wasActive = connectionState.isConnected
         let wasReconnecting: Bool
         if case .reconnecting = connectionState { wasReconnecting = true } else { wasReconnecting = false }

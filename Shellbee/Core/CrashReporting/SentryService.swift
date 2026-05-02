@@ -78,6 +78,36 @@ final class SentryService {
         hasPendingCrash = false
     }
 
+    /// Records a connection-lifecycle event for the named bridge. Surfaces in
+    /// Sentry breadcrumbs alongside the bridge name so multi-bridge crash
+    /// reports show which network was involved at the time of failure.
+    /// Bridge names are user-readable strings — do not include tokens or
+    /// other secrets.
+    func recordBridgeEvent(_ message: String, bridgeName: String, level: BridgeEventLevel = .info) {
+        #if canImport(Sentry)
+        #if !DEBUG
+        let breadcrumb = Breadcrumb(level: level.sentryLevel, category: "bridge")
+        breadcrumb.message = "\(message) (\(bridgeName))"
+        breadcrumb.data = ["bridge": bridgeName]
+        SentrySDK.addBreadcrumb(breadcrumb)
+        #endif
+        #endif
+    }
+
+    enum BridgeEventLevel {
+        case info, warning, error
+
+        #if canImport(Sentry)
+        var sentryLevel: SentryLevel {
+            switch self {
+            case .info: .info
+            case .warning: .warning
+            case .error: .error
+            }
+        }
+        #endif
+    }
+
     func enableAlwaysShareAndSendPending() {
         consent.alwaysShare = true
         approveAndSendPending()
