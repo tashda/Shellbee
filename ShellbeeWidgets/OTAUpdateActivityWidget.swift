@@ -39,6 +39,12 @@ struct OTAUpdateActivityWidget: Widget {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                        if !context.attributes.bridgeDisplayName.isEmpty {
+                            Text(context.attributes.bridgeDisplayName)
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
@@ -122,6 +128,12 @@ private struct OTALockScreenView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                    if !context.attributes.bridgeDisplayName.isEmpty {
+                        Text(context.attributes.bridgeDisplayName)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer()

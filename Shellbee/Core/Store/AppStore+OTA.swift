@@ -16,7 +16,7 @@ extension AppStore {
             progress: nil,
             remaining: nil
         )
-        OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices)
+        OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices, bridgeID: activeBridgeID, bridgeDisplayName: activeBridgeName)
     }
 
     func startOTACheck(for friendlyName: String) {
@@ -62,12 +62,12 @@ extension AppStore {
         case .idle:
             otaUpdates.removeValue(forKey: deviceName)
             if previous?.isActive == true, activeOTAUpdates.isEmpty {
-                OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: true)
+                OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: true, bridgeID: activeBridgeID)
                 return
             }
         }
 
-        OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices)
+        OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices, bridgeID: activeBridgeID, bridgeDisplayName: activeBridgeName)
     }
 
     func handleOTAResponse(_ response: DeviceOTAUpdateResponse) {
@@ -80,9 +80,9 @@ extension AppStore {
         otaUpdates.removeValue(forKey: deviceName)
 
         if activeOTAUpdates.isEmpty {
-            OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: false)
+            OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: false, bridgeID: activeBridgeID)
         } else {
-            OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices)
+            OTAUpdateLiveActivityCoordinator.shared.sync(with: activeOTAUpdates, devices: devices, bridgeID: activeBridgeID, bridgeDisplayName: activeBridgeName)
         }
     }
 

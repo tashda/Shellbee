@@ -1,5 +1,11 @@
 import Foundation
 
+/// Manages OTA Live Activities. Phase 2 multi-bridge: each connected bridge
+/// gets its own OTA activity (identifier `"ota-updates-<bridgeID>"`) so two
+/// bridges running simultaneous upgrades surface as two distinct activities
+/// rather than colliding on one. The coordinator stays a singleton because
+/// ActivityKit itself is process-wide; per-bridge state lives in
+/// `visibleBridges`.
 @MainActor
 final class OTAUpdateLiveActivityCoordinator {
     static let shared = OTAUpdateLiveActivityCoordinator()
@@ -8,8 +14,9 @@ final class OTAUpdateLiveActivityCoordinator {
         (existing: OTAUpdateActivityAttributes, requested: OTAUpdateActivityAttributes) in
         existing.identifier == requested.identifier
     }
-    private let attributes = OTAUpdateActivityAttributes(identifier: "ota-updates")
-    private var isVisible = false
+    /// Bridge ids whose activities are currently presented. Lets us decide
+    /// between `present` and `update` per bridge without re-querying ActivityKit.
+    private var visibleBridges: Set<UUID> = []
 
     private init() {}
 
@@ -25,9 +32,14 @@ final class OTAUpdateLiveActivityCoordinator {
         UserDefaults.standard.object(forKey: ConnectionSessionController.otaScheduledLiveActivityEnabledKey) as? Bool ?? false
     }
 
-    func sync(with statuses: [OTAUpdateStatus], devices: [Device] = []) {
+    func sync(
+        with statuses: [OTAUpdateStatus],
+        devices: [Device] = [],
+        bridgeID: UUID? = nil,
+        bridgeDisplayName: String = ""
+    ) {
         guard Self.isEnabled else {
-            if isVisible { clearAll() }
+            if !visibleBridges.isEmpty { clearAll() }
             return
         }
         let scheduledEnabled = Self.isScheduledEnabled
@@ -41,9 +53,12 @@ final class OTAUpdateLiveActivityCoordinator {
                 return lhs.deviceName.localizedCompare(rhs.deviceName) == .orderedAscending
             }
 
+        let attributes = makeAttributes(bridgeID: bridgeID, bridgeDisplayName: bridgeDisplayName)
+        let key = bridgeID ?? defaultKey
+
         guard !activeStatuses.isEmpty else {
-            if isVisible {
-                clearAll()
+            if visibleBridges.contains(key) {
+                clear(bridgeID: bridgeID)
             }
             return
         }
@@ -57,17 +72,18 @@ final class OTAUpdateLiveActivityCoordinator {
             symbolMap: symbolMap
         )
 
-        Task {
-            if isVisible {
+        let alreadyVisible = visibleBridges.contains(key)
+        Task { [attributes] in
+            if alreadyVisible {
                 await controller.update(state: content)
             } else {
-                isVisible = true
                 await controller.present(attributes: attributes, state: content)
             }
         }
+        visibleBridges.insert(key)
     }
 
-    func finish(for deviceName: String, success: Bool) {
+    func finish(for deviceName: String, success: Bool, bridgeID: UUID? = nil) {
         let state = OTAUpdateActivityAttributes.ContentState(
             phase: success ? .completed : .failed,
             activeCount: 0,
@@ -85,7 +101,8 @@ final class OTAUpdateLiveActivityCoordinator {
             ]
         )
 
-        isVisible = false
+        let key = bridgeID ?? defaultKey
+        visibleBridges.remove(key)
 
         Task {
             await controller.finish(
@@ -97,11 +114,39 @@ final class OTAUpdateLiveActivityCoordinator {
         }
     }
 
+    /// Tear down a single bridge's activity. Other bridges' activities stay.
+    func clear(bridgeID: UUID?) {
+        let key = bridgeID ?? defaultKey
+        guard visibleBridges.remove(key) != nil else { return }
+        let cancelState = OTAUpdateActivityAttributes.ContentState(
+            phase: .completed,
+            activeCount: 0,
+            headline: "",
+            detail: "",
+            progress: nil,
+            items: []
+        )
+        Task {
+            await controller.cancel(with: cancelState)
+        }
+    }
+
     func clearAll() {
-        isVisible = false
+        visibleBridges.removeAll()
         Task {
             await LiveActivityController<OTAUpdateActivityAttributes>.endAllActivities()
         }
+    }
+
+    // MARK: - Helpers
+
+    /// Sentinel UUID for "no bridge id supplied" — keeps the legacy
+    /// single-bridge `sync(with:)` callers working with a stable key.
+    private let defaultKey = UUID(uuid: (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))
+
+    private func makeAttributes(bridgeID: UUID?, bridgeDisplayName: String) -> OTAUpdateActivityAttributes {
+        let id = bridgeID.map { "ota-updates-\($0.uuidString)" } ?? "ota-updates"
+        return OTAUpdateActivityAttributes(identifier: id, bridgeDisplayName: bridgeDisplayName)
     }
 
     private func contentState(

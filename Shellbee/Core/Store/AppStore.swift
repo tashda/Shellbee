@@ -32,6 +32,10 @@ final class AppStore {
     /// successful connect. While nil (idle / pre-first-connect), first-seen
     /// mutations are silently dropped — there's no bridge to attribute them to.
     private(set) var activeBridgeID: UUID?
+    /// Friendly bridge name (`ConnectionConfig.displayName`). Carried alongside
+    /// `activeBridgeID` so per-bridge surfaces (Live Activities, notifications)
+    /// can show user-readable attribution without a registry round-trip.
+    private(set) var activeBridgeName: String = ""
     private static let firstSeenStoreKey = "AppStore.deviceFirstSeen"
     private static let firstSeenByBridgeStoreKey = "AppStore.deviceFirstSeenByBridge"
     /// Legacy first-seen data loaded from the pre-multi-bridge format. Migrated
@@ -126,7 +130,7 @@ final class AppStore {
     /// Called by the session controller after a successful connection. Loads
     /// this bridge's first-seen slot into the published `deviceFirstSeen`
     /// mirror, and migrates any pending legacy data into this bridge's slot.
-    func setActiveBridge(_ id: UUID) {
+    func setActiveBridge(_ id: UUID, name: String = "") {
         if let legacy = pendingLegacyFirstSeen, !legacy.isEmpty {
             // Merge legacy data under this bridge — first connect after upgrade
             // attributes everything to whichever bridge the user reached first.
@@ -135,6 +139,7 @@ final class AppStore {
             persistFirstSeen()
         }
         activeBridgeID = id
+        activeBridgeName = name
         deviceFirstSeen = firstSeenByBridge[id] ?? [:]
     }
 
@@ -142,6 +147,7 @@ final class AppStore {
     /// pointer; the published mirror has already been cleared by `reset`.
     func clearActiveBridge() {
         activeBridgeID = nil
+        activeBridgeName = ""
     }
 
     // MARK: - First-seen persistence

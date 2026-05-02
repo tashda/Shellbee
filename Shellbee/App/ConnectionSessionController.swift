@@ -231,7 +231,7 @@ final class ConnectionSessionController {
         connectionState = .connected
         hasBeenConnected = true
         store.isConnected = true
-        store.setActiveBridge(config.id)
+        store.setActiveBridge(config.id, name: config.displayName)
         history.add(config)
         requestInitialState()
         return events
