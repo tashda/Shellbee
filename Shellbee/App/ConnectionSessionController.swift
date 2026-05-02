@@ -245,12 +245,11 @@ final class ConnectionSessionController {
         var attempt = 1
         var delay = Self.baseReconnectDelay
         let coordinator = ConnectionLiveActivityCoordinator.shared
-        let label = config.displayName
         let maxAttempts = Self.configuredMaxReconnectAttempts
         let liveActivityEnabled = Self.connectionLiveActivityEnabled
 
         if liveActivityEnabled {
-            coordinator.show(host: label, phase: .reconnecting, attempt: 1, maxAttempts: maxAttempts)
+            coordinator.show(bridge: config, phase: .reconnecting, attempt: 1, maxAttempts: maxAttempts)
         }
 
         while !Task.isCancelled {

@@ -6,15 +6,25 @@ final class ConnectionLiveActivityCoordinator {
 
     private let controller = LiveActivityController<ConnectionActivityAttributes> {
         (existing: ConnectionActivityAttributes, requested: ConnectionActivityAttributes) in
+        // Dedup by host+name pair. Same host with different names (multi-bridge
+        // use case where two saved bridges live on the same LAN endpoint) gets
+        // distinct activities; a reconnect to the same bridge replaces.
         existing.serverHost == requested.serverHost
+            && existing.bridgeDisplayName == requested.bridgeDisplayName
     }
 
     private init() {}
 
-    func show(host: String, phase: ConnectionActivityAttributes.ContentState.Phase, attempt: Int, maxAttempts: Int) {
+    /// Present an activity for `bridge`. Prefer this over the host-only overload —
+    /// it carries the bridge's display name into the attributes.
+    func show(bridge: ConnectionConfig, phase: ConnectionActivityAttributes.ContentState.Phase, attempt: Int, maxAttempts: Int) {
+        let attributes = ConnectionActivityAttributes(
+            serverHost: bridge.host,
+            bridgeDisplayName: bridge.displayName
+        )
         Task {
             await controller.present(
-                attributes: ConnectionActivityAttributes(serverHost: host),
+                attributes: attributes,
                 state: ConnectionActivityAttributes.ContentState(
                     phase: phase,
                     attempt: attempt,
