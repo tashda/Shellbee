@@ -166,8 +166,12 @@ final class AppEnvironment {
             }
         }
 
-        if let config = connectionConfig {
-            connect(config: config)
+        // If the user has marked a saved bridge as the default, prefer that
+        // over the "last successful" config. The default is the explicit
+        // user choice; last-successful is just a fallback for users who
+        // haven't promoted any bridge yet.
+        if let preferred = history.defaultBridge ?? connectionConfig {
+            connect(config: preferred)
         }
     }
 }
