@@ -7,17 +7,44 @@ struct GroupListView: View {
     @State private var groupToRemove: Group?
     @State private var showAddGroup = false
 
+    private var isMergedMode: Bool {
+        environment.registry.sessions.values.filter(\.isConnected).count >= 2
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                let groups = viewModel.filteredGroups(store: environment.store)
-                ForEach(groups) { group in
-                    GroupListRow(
-                        group: group,
-                        memberDevices: memberDevices(for: group),
-                        onRename: { groupToRename = group },
-                        onRemove: { groupToRemove = group }
-                    )
+                if isMergedMode {
+                    let merged = mergedFilteredGroups()
+                    ForEach(merged) { item in
+                        HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
+                            GroupListRow(
+                                group: item.group,
+                                memberDevices: mergedMembers(for: item),
+                                onRename: { groupToRename = item.group },
+                                onRemove: { groupToRemove = item.group }
+                            )
+                            BridgeBadge(
+                                bridgeName: item.bridgeName,
+                                isFocused: environment.registry.primaryBridgeID == item.bridgeID
+                            )
+                        }
+                        .simultaneousGesture(TapGesture().onEnded {
+                            if environment.registry.primaryBridgeID != item.bridgeID {
+                                environment.registry.setPrimary(item.bridgeID)
+                            }
+                        })
+                    }
+                } else {
+                    let groups = viewModel.filteredGroups(store: environment.store)
+                    ForEach(groups) { group in
+                        GroupListRow(
+                            group: group,
+                            memberDevices: memberDevices(for: group),
+                            onRename: { groupToRename = group },
+                            onRemove: { groupToRemove = group }
+                        )
+                    }
                 }
             }
             .listStyle(.insetGrouped)
@@ -102,6 +129,24 @@ struct GroupListView: View {
     private func memberDevices(for group: Group) -> [Device] {
         let ieees = Set(group.members.map(\.ieeeAddress))
         return environment.store.devices.filter { ieees.contains($0.ieeeAddress) }
+    }
+
+    private func mergedMembers(for item: BridgeBoundGroup) -> [Device] {
+        let session = environment.registry.session(for: item.bridgeID)
+        let ieees = Set(item.group.members.map(\.ieeeAddress))
+        return session?.store.devices.filter { ieees.contains($0.ieeeAddress) } ?? []
+    }
+
+    private func mergedFilteredGroups() -> [BridgeBoundGroup] {
+        let q = viewModel.searchText.lowercased()
+        return environment.registry.orderedSessions
+            .flatMap { session -> [BridgeBoundGroup] in
+                let groups = q.isEmpty
+                    ? session.store.groups
+                    : session.store.groups.filter { $0.friendlyName.lowercased().contains(q) }
+                return groups.map { BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: $0) }
+            }
+            .sorted { $0.group.friendlyName.localizedCompare($1.group.friendlyName) == .orderedAscending }
     }
 }
 

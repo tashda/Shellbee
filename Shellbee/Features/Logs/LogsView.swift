@@ -71,7 +71,16 @@ struct LogsView: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(role: .destructive) {
-                            environment.store.clearLogs()
+                            // In merged-multi-bridge mode, clear every bridge's
+                            // logs so the visible list is fully reset. Single-
+                            // bridge mode keeps the legacy single-store behavior.
+                            if environment.registry.sessions.count >= 2 {
+                                for session in environment.registry.orderedSessions {
+                                    session.store.clearLogs()
+                                }
+                            } else {
+                                environment.store.clearLogs()
+                            }
                         } label: {
                             Image(systemName: "trash")
                         }
@@ -131,7 +140,20 @@ private struct ActivityLogContent: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: LogsViewModel
 
+    private var isMergedMode: Bool {
+        environment.registry.sessions.values.filter(\.isConnected).count >= 2
+    }
+
     var body: some View {
+        if isMergedMode {
+            mergedList
+        } else {
+            singleBridgeList
+        }
+    }
+
+    @ViewBuilder
+    private var singleBridgeList: some View {
         let entries = viewModel.filteredEntries(store: environment.store)
         List {
             ForEach(entries) { entry in
@@ -156,6 +178,64 @@ private struct ActivityLogContent: View {
                 ContentUnavailableView.search(text: viewModel.searchText)
             }
         }
+    }
+
+    @ViewBuilder
+    private var mergedList: some View {
+        // Run each bridge's entries through the viewModel's filter using that
+        // bridge's own store (so device/group lookups in filters resolve
+        // correctly), then merge by timestamp.
+        let bound = mergedFilteredEntries()
+        List {
+            ForEach(bound) { item in
+                ZStack {
+                    HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
+                        LogRowView(entry: item.entry)
+                        BridgeBadge(
+                            bridgeName: item.bridgeName,
+                            isFocused: environment.registry.primaryBridgeID == item.bridgeID
+                        )
+                    }
+                    NavigationLink {
+                        LogDetailView(entry: item.entry)
+                    } label: { EmptyView() }
+                    .opacity(0)
+                    .simultaneousGesture(TapGesture().onEnded {
+                        // Switch focus before pushing detail so the destination
+                        // resolves device/group references against the right
+                        // bridge's store.
+                        if environment.registry.primaryBridgeID != item.bridgeID {
+                            environment.registry.setPrimary(item.bridgeID)
+                        }
+                    })
+                }
+            }
+        }
+        .listStyle(.plain)
+        .overlay {
+            if environment.allLogEntries.isEmpty {
+                ContentUnavailableView(
+                    "No Logs",
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Text("Log entries will appear as bridges generate them in real time.")
+                )
+            } else if bound.isEmpty && (viewModel.hasActiveFilter || !viewModel.searchText.isEmpty) {
+                ContentUnavailableView.search(text: viewModel.searchText)
+            }
+        }
+    }
+
+    private func mergedFilteredEntries() -> [BridgeBoundLogEntry] {
+        let perBridge = environment.registry.orderedSessions.flatMap { session -> [BridgeBoundLogEntry] in
+            viewModel.filteredEntries(store: session.store).map { entry in
+                BridgeBoundLogEntry(
+                    bridgeID: session.bridgeID,
+                    bridgeName: session.displayName,
+                    entry: entry
+                )
+            }
+        }
+        return perBridge.sorted { $0.entry.timestamp > $1.entry.timestamp }
     }
 }
 
