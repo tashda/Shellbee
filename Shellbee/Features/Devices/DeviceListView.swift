@@ -168,7 +168,22 @@ private struct DeviceListContent: View {
     let onRemove: (Device) -> Void
     let onPendingAlert: (PendingDeviceAlert) -> Void
 
+    private var isMergedMode: Bool {
+        environment.registry.sessions.values.filter(\.isConnected).count >= 2
+    }
+
     var body: some View {
+        if isMergedMode {
+            mergedList
+        } else {
+            singleBridgeList
+        }
+    }
+
+    // MARK: - Single-bridge mode (legacy path, unchanged)
+
+    @ViewBuilder
+    private var singleBridgeList: some View {
         List {
             if isGrouped {
                 if viewModel.showRecents {
@@ -176,7 +191,7 @@ private struct DeviceListContent: View {
                     if !recents.isEmpty {
                         Section {
                             ForEach(recents, id: \.ieeeAddress) { device in
-                                deviceRow(for: device)
+                                deviceRow(for: device, store: environment.store, bridgeName: nil)
                             }
                         } header: {
                             Text("Recently Added")
@@ -187,7 +202,7 @@ private struct DeviceListContent: View {
                 ForEach(grouped, id: \.0) { (category, devices) in
                     Section {
                         ForEach(devices) { device in
-                            deviceRow(for: device)
+                            deviceRow(for: device, store: environment.store, bridgeName: nil)
                         }
                     } header: {
                         Text(category.label)
@@ -196,7 +211,7 @@ private struct DeviceListContent: View {
             } else {
                 let devices = viewModel.filteredDevices(store: environment.store)
                 ForEach(devices) { device in
-                    deviceRow(for: device)
+                    deviceRow(for: device, store: environment.store, bridgeName: nil)
                 }
             }
         }
@@ -213,32 +228,191 @@ private struct DeviceListContent: View {
         }
     }
 
+    // MARK: - Merged multi-bridge mode
+
     @ViewBuilder
-    private func deviceRow(for device: Device) -> some View {
-        let state = environment.store.state(for: device.friendlyName)
-        let isAvailable = environment.store.isAvailable(device.friendlyName)
-        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+    private var mergedList: some View {
+        let allBound = filteredMergedDevices()
+        List {
+            if viewModel.showRecents {
+                let recents = recentMergedDevices()
+                if !recents.isEmpty {
+                    Section {
+                        ForEach(recents) { bound in
+                            mergedRow(for: bound)
+                        }
+                    } header: {
+                        Text("Recently Added")
+                    }
+                }
+            }
+
+            if isGrouped {
+                let grouped = Dictionary(grouping: allBound) { $0.device.category }
+                ForEach(Device.Category.allCases.filter { grouped[$0] != nil }, id: \.self) { category in
+                    Section {
+                        ForEach(grouped[category] ?? []) { bound in
+                            mergedRow(for: bound)
+                        }
+                    } header: {
+                        Text(category.label)
+                    }
+                }
+            } else {
+                ForEach(allBound) { bound in
+                    mergedRow(for: bound)
+                }
+            }
+        }
+        .overlay {
+            if environment.allDevices.isEmpty {
+                ContentUnavailableView(
+                    "No Devices",
+                    systemImage: "cpu",
+                    description: Text("Devices will appear once a bridge is connected.")
+                )
+            } else if !viewModel.searchText.isEmpty && allBound.isEmpty {
+                ContentUnavailableView.search(text: viewModel.searchText)
+            }
+        }
+    }
+
+    /// Apply search to the aggregated multi-bridge list. Status / category /
+    /// vendor / type filters intentionally degrade to all-pass in merged mode —
+    /// those filters are designed around per-bridge state semantics; doing
+    /// proper merged filtering belongs in a follow-up.
+    private func filteredMergedDevices() -> [BridgeBoundDevice] {
+        let q = viewModel.searchText.lowercased()
+        let all = environment.allDevices.filter { $0.device.type != .coordinator }
+        let filtered: [BridgeBoundDevice] = q.isEmpty
+            ? all
+            : all.filter { bound in
+                bound.device.friendlyName.lowercased().contains(q)
+                    || bound.device.description?.lowercased().contains(q) == true
+                    || bound.device.definition?.vendor.lowercased().contains(q) == true
+                    || bound.device.definition?.model.lowercased().contains(q) == true
+                    || bound.bridgeName.lowercased().contains(q)
+            }
+        return sortedMerged(filtered)
+    }
+
+    private func recentMergedDevices() -> [BridgeBoundDevice] {
+        let cutoff = Date().addingTimeInterval(-DeviceListViewModel.recentWindow)
+        return environment.allDevices
+            .filter { $0.device.type != .coordinator }
+            .filter { bound in
+                if bound.device.interviewing { return true }
+                let store = environment.registry.session(for: bound.bridgeID)?.store
+                if let joined = store?.deviceFirstSeen[bound.device.ieeeAddress], joined >= cutoff {
+                    return true
+                }
+                return false
+            }
+            .sorted { lhs, rhs in
+                let lStore = environment.registry.session(for: lhs.bridgeID)?.store
+                let rStore = environment.registry.session(for: rhs.bridgeID)?.store
+                let lt = lStore?.deviceFirstSeen[lhs.device.ieeeAddress] ?? .distantPast
+                let rt = rStore?.deviceFirstSeen[rhs.device.ieeeAddress] ?? .distantPast
+                if lt != rt { return lt > rt }
+                return lhs.device.friendlyName.localizedCompare(rhs.device.friendlyName) == .orderedAscending
+            }
+    }
+
+    private func sortedMerged(_ items: [BridgeBoundDevice]) -> [BridgeBoundDevice] {
+        items.sorted { a, b in
+            switch viewModel.sortOrder {
+            case .name, .lastSeen:
+                let cmp = a.device.friendlyName.localizedCompare(b.device.friendlyName)
+                return viewModel.sortAscending ? cmp == .orderedAscending : cmp == .orderedDescending
+            case .linkQuality:
+                let aStore = environment.registry.session(for: a.bridgeID)?.store
+                let bStore = environment.registry.session(for: b.bridgeID)?.store
+                let aLQI = aStore?.state(for: a.device.friendlyName).linkQuality ?? -1
+                let bLQI = bStore?.state(for: b.device.friendlyName).linkQuality ?? -1
+                return viewModel.sortAscending ? aLQI > bLQI : aLQI < bLQI
+            case .battery:
+                let aStore = environment.registry.session(for: a.bridgeID)?.store
+                let bStore = environment.registry.session(for: b.bridgeID)?.store
+                let aBatt = aStore?.state(for: a.device.friendlyName).battery ?? 101
+                let bBatt = bStore?.state(for: b.device.friendlyName).battery ?? 101
+                return viewModel.sortAscending ? aBatt < bBatt : aBatt > bBatt
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func mergedRow(for bound: BridgeBoundDevice) -> some View {
+        if let session = environment.registry.session(for: bound.bridgeID) {
+            // Route the row's actions at the device's own bridge — not the
+            // currently-focused one. Each action calls
+            // `environment.send(bridge:topic:payload:)` so the request lands on
+            // the right WebSocket regardless of focus.
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
+                deviceRow(for: bound.device, store: session.store, bridgeName: bound.bridgeName, bridgeID: bound.bridgeID)
+                BridgeBadge(
+                    bridgeName: bound.bridgeName,
+                    isFocused: environment.registry.primaryBridgeID == bound.bridgeID
+                )
+            }
+            .simultaneousGesture(TapGesture().onEnded {
+                if environment.registry.primaryBridgeID != bound.bridgeID {
+                    environment.registry.setPrimary(bound.bridgeID)
+                }
+            })
+        }
+    }
+
+    // MARK: - Row composition
+
+    @ViewBuilder
+    private func deviceRow(
+        for device: Device,
+        store: AppStore,
+        bridgeName: String?,
+        bridgeID: UUID? = nil
+    ) -> some View {
+        let state = store.state(for: device.friendlyName)
+        let isAvailable = store.isAvailable(device.friendlyName)
+        let otaStatus = store.otaStatus(for: device.friendlyName)
         DeviceListRow(
             device: device,
             state: state,
             isAvailable: isAvailable,
             otaStatus: otaStatus,
-            checkResult: environment.store.deviceCheckResults[device.friendlyName],
-            isDeleting: environment.store.pendingRemovals.contains(device.friendlyName),
-            isIdentifying: environment.store.identifyInProgress.contains(device.friendlyName),
+            checkResult: store.deviceCheckResults[device.friendlyName],
+            isDeleting: store.pendingRemovals.contains(device.friendlyName),
+            isIdentifying: store.identifyInProgress.contains(device.friendlyName),
             onRename: { onRename(device) },
             onRemove: { onRemove(device) },
             onReconfigure: { onPendingAlert(.reconfigure(device)) },
             onInterview: { onPendingAlert(.interview(device)) },
-            onIdentify: { environment.identifyDevice(device.friendlyName) },
+            onIdentify: {
+                if let bridgeID {
+                    // Route identify to the device's bridge in merged mode.
+                    if !store.identifyInProgress.contains(device.friendlyName) {
+                        store.identifyInProgress.insert(device.friendlyName)
+                        environment.send(
+                            bridge: bridgeID,
+                            topic: Z2MTopics.deviceSet(device.friendlyName),
+                            payload: .object(["identify": .string("identify")])
+                        )
+                        Task { [weak store] in
+                            try? await Task.sleep(for: .seconds(3))
+                            await MainActor.run { _ = store?.identifyInProgress.remove(device.friendlyName) }
+                        }
+                    }
+                } else {
+                    environment.identifyDevice(device.friendlyName)
+                }
+            },
             onUpdate: state.hasUpdateAvailable
-                ? { viewModel.updateDevice(device, environment: environment) }
+                ? { viewModel.updateDevice(device, environment: environment, bridgeID: bridgeID) }
                 : nil,
-            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment) },
+            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment, bridgeID: bridgeID) },
             onSchedule: state.hasUpdateAvailable
-                ? { viewModel.scheduleDeviceUpdate(device, environment: environment) }
+                ? { viewModel.scheduleDeviceUpdate(device, environment: environment, bridgeID: bridgeID) }
                 : nil,
-            onUnschedule: { viewModel.unscheduleDeviceUpdate(device, environment: environment) }
+            onUnschedule: { viewModel.unscheduleDeviceUpdate(device, environment: environment, bridgeID: bridgeID) }
         )
     }
 }

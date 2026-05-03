@@ -202,46 +202,70 @@ final class DeviceListViewModel {
         }
     }
 
-    func updateDevice(_ device: Device, environment: AppEnvironment) {
+    /// Resolve the right `(store, send)` pair for a device action. In
+    /// single-bridge mode `bridgeID` is nil and we use the focused bridge.
+    /// In merged-multi-bridge mode the caller passes the device's bridge so
+    /// the action lands on the right WebSocket and mutates the right store.
+    private func resolveTarget(
+        bridgeID: UUID?,
+        environment: AppEnvironment
+    ) -> (store: AppStore, send: (String, JSONValue) -> Void) {
+        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
+            return (
+                session.store,
+                { topic, payload in environment.send(bridge: bridgeID, topic: topic, payload: payload) }
+            )
+        }
+        return (
+            environment.store,
+            { topic, payload in environment.send(topic: topic, payload: payload) }
+        )
+    }
+
+    func updateDevice(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
         Haptics.impact(.medium)
-        environment.store.startOTAUpdate(for: device.friendlyName)
-        environment.send(
-            topic: Z2MTopics.Request.deviceOTAUpdate,
-            payload: .object(["id": .string(device.friendlyName)])
+        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        target.store.startOTAUpdate(for: device.friendlyName)
+        target.send(
+            Z2MTopics.Request.deviceOTAUpdate,
+            .object(["id": .string(device.friendlyName)])
         )
     }
 
-    func checkDeviceUpdate(_ device: Device, environment: AppEnvironment) {
+    func checkDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
         Haptics.impact(.light)
-        environment.store.startOTACheck(for: device.friendlyName)
-        environment.send(
-            topic: Z2MTopics.Request.deviceOTACheck,
-            payload: .object(["id": .string(device.friendlyName)])
+        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        target.store.startOTACheck(for: device.friendlyName)
+        target.send(
+            Z2MTopics.Request.deviceOTACheck,
+            .object(["id": .string(device.friendlyName)])
         )
     }
 
-    func scheduleDeviceUpdate(_ device: Device, environment: AppEnvironment) {
+    func scheduleDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
         Haptics.impact(.medium)
-        environment.store.startOTASchedule(for: device.friendlyName)
-        environment.send(
-            topic: Z2MTopics.Request.deviceOTASchedule,
-            payload: .object(["id": .string(device.friendlyName)])
+        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        target.store.startOTASchedule(for: device.friendlyName)
+        target.send(
+            Z2MTopics.Request.deviceOTASchedule,
+            .object(["id": .string(device.friendlyName)])
         )
     }
 
-    func unscheduleDeviceUpdate(_ device: Device, environment: AppEnvironment) {
+    func unscheduleDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
         Haptics.impact(.light)
-        environment.store.cancelOTASchedule(for: device.friendlyName)
-        environment.send(
-            topic: Z2MTopics.Request.deviceOTAUnschedule,
-            payload: .object(["id": .string(device.friendlyName)])
+        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        target.store.cancelOTASchedule(for: device.friendlyName)
+        target.send(
+            Z2MTopics.Request.deviceOTAUnschedule,
+            .object(["id": .string(device.friendlyName)])
         )
         // Z2M leaves update.state at "idle" after unschedule — re-check so
         // the device returns to "available" and stays in the Updates filter.
-        environment.store.startOTACheck(for: device.friendlyName)
-        environment.send(
-            topic: Z2MTopics.Request.deviceOTACheck,
-            payload: .object(["id": .string(device.friendlyName)])
+        target.store.startOTACheck(for: device.friendlyName)
+        target.send(
+            Z2MTopics.Request.deviceOTACheck,
+            .object(["id": .string(device.friendlyName)])
         )
     }
 
