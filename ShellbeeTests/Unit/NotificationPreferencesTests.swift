@@ -1,10 +1,11 @@
 import XCTest
 @testable import Shellbee
 
-final class NotificationPreferencesTests: XCTestCase, @unchecked Sendable {
+@MainActor
+final class NotificationPreferencesTests: XCTestCase {
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         UserDefaults.standard.removeObject(forKey: "notificationPreferences.enabledCategories")
         UserDefaults.standard.removeObject(forKey: "notificationPreferences.followLogLevelOverride")
     }

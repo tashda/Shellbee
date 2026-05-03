@@ -1,18 +1,19 @@
 import XCTest
 @testable import Shellbee
 
+@MainActor
 final class ConnectionHistoryTests: XCTestCase {
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
+        ConnectionConfig.clearPersistedSecretsForTests()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-        super.tearDown()
+        ConnectionConfig.clearPersistedSecretsForTests()
+        try await super.tearDown()
     }
 
     // MARK: - add

@@ -9,7 +9,7 @@
     }
   ],
   "defaultOptions" : {
-    "codeCoverage" : false,
+    "codeCoverage" : true,
     "targetForVariableExpansion" : {
       "containerPath" : "container:Shellbee.xcodeproj",
       "identifier" : "0A9D450C2F96077A00DF6DF5",

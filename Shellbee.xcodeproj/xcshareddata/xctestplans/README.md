@@ -32,12 +32,13 @@ as the fix.
 | Test | Reason |
 |---|---|
 | `Z2MIntegrationTests` (entire class) | Requires the docker z2m bridge on `localhost:8080`, which Fast CI does not start. Runs in Full CI instead. |
-| `ConnectionHistoryTests` (entire class) | `setUp()` calls `MainActor.assumeIsolated { … }` from a nonisolated context; Xcode 26.3 turns this into a SIGABRT at runtime. Fix: migrate to `async throws setUp` and drop the assume-isolated call. |
-| `HomeLayoutStoreTests` (entire class) | Test methods instantiate `HomeLayoutStore` (`@Observable` → implicit `@MainActor`) from a class that XCTest launches through a nonisolated bridge on Xcode 26.3, crashing the host app before the test body runs. Fix: restructure the class's isolation. |
-| `NotificationPreferencesTests` (entire class) | Sync `setUp()` on a nonisolated class with `@MainActor` test methods — Xcode 26.3 fails to bridge isolation and crashes. Fix: mark the class `@MainActor` and migrate setUp/tearDown. |
 | `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
 | `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
 | `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
+
+### Recently un-skipped
+
+`ConnectionHistoryTests`, `HomeLayoutStoreTests`, and `NotificationPreferencesTests` were previously skipped due to Xcode 26.3 isolation bugs in their `setUp()` paths. Resolved by marking the classes `@MainActor` and converting setUp/tearDown to `async throws`. Tracked in #83.
 
 ### How to remove an entry
 

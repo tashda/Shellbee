@@ -9,7 +9,7 @@
     }
   ],
   "defaultOptions" : {
-    "codeCoverage" : false,
+    "codeCoverage" : true,
     "maximumTestExecutionTimeAllowance" : 60,
     "targetForVariableExpansion" : {
       "containerPath" : "container:Shellbee.xcodeproj",
@@ -24,9 +24,6 @@
       "skippedTests" : [
         "ConnectionConfigTests\/testSaveAndLoad()",
         "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
-        "ConnectionHistoryTests",
-        "HomeLayoutStoreTests",
-        "NotificationPreferencesTests",
         "Z2MIntegrationTests"
       ],
       "target" : {

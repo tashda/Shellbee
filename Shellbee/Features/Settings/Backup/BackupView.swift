@@ -105,7 +105,7 @@ struct BackupView: View {
         case .idle:
             Text("Backs up Z2M configuration and coordinator state via the bridge. Save the resulting zip to Files, iCloud Drive, or AirDrop.")
         case .running:
-            Text("Working…")
+            Text("Working")
         case .success:
             Text("Backup ready. Use Share Backup to save it.")
         case .failed(let reason):
