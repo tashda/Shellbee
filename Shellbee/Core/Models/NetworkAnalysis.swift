@@ -14,7 +14,7 @@ enum DeviceCondition: String, CaseIterable, Sendable {
     case updatesAvailable = "Updates Available"
     case online           = "Online"
     case offline          = "Offline"
-    case availabilityOff  = "Availability off"
+    case availabilityOff  = "Untracked"
     case batteryLow       = "Low Battery"
     case weakSignal       = "Bad Signal"
     case interviewing     = "Interviewing"

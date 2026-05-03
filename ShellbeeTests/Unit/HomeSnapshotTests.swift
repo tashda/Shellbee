@@ -52,19 +52,16 @@ final class HomeSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.availabilityOffDevices, 1)
     }
 
-    func testAvailabilityDisabledInBridgeConfigDoesNotCountOffline() {
-        let store = AppStore()
-        let remote = DeviceFixture.remote(
+    func testAvailabilityOffDeviceDoesNotCountOffline() {
+        var remote = DeviceFixture.remote(
             ieee: "0x00000000000000f1",
             name: "Untracked Remote"
         )
-        store.apply(.devices([remote]))
-        store.apply(.bridgeInfo(BridgeInfoFixture.withDeviceAvailabilityDisabled()))
-        store.apply(.deviceAvailability(friendlyName: remote.friendlyName, available: false))
+        remote.availability = .bool(false)
 
         let snapshot = makeSnapshot(
-            devices: store.devices,
-            availability: store.deviceAvailability,
+            devices: [remote],
+            availability: [remote.friendlyName: false],
             states: [:]
         )
 

@@ -19,7 +19,7 @@ enum DeviceFilter: Hashable {
         case .category(let c): return c.label
         case .updatesAvailable: return "Updates"
         case .offline:          return "Offline"
-        case .availabilityOff:  return "Availability off"
+        case .availabilityOff:  return "Untracked"
         case .batteryLow:       return "Low Battery"
         case .weakSignal:       return "Bad Signal"
         case .interviewing:     return "Interviewing"
@@ -53,7 +53,7 @@ enum DeviceStatusFilter: String, CaseIterable, Hashable {
     case all              = "All"
     case online           = "Online"
     case offline          = "Offline"
-    case availabilityOff  = "Availability off"
+    case availabilityOff  = "Untracked"
     case updatesAvailable = "Updates Available"
     case batteryLow       = "Low Battery"
     case weakSignal       = "Bad Signal"
