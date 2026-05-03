@@ -333,6 +333,37 @@ enum StateFixture {
     }
 }
 
+// MARK: - Bridge info builders
+
+enum BridgeInfoFixture {
+    @MainActor
+    static func withDeviceAvailabilityDisabled(
+        ieee: String = "0x00000000000000f1",
+        friendlyName: String = "Untracked Remote"
+    ) -> BridgeInfo {
+        let json = """
+        {
+          "version": "2.1.0",
+          "commit": "abc",
+          "coordinator": {"ieee_address": "0x0000000000000000", "type": "zStack30x", "meta": {}},
+          "network": {"channel": 11, "pan_id": 6754, "extended_pan_id": "0xdd"},
+          "log_level": "info",
+          "permit_join": false,
+          "restart_required": false,
+          "config": {
+            "devices": {
+              "\(ieee)": {
+                "friendly_name": "\(friendlyName)",
+                "availability": false
+              }
+            }
+          }
+        }
+        """
+        return try! JSONDecoder().decode(BridgeInfo.self, from: Data(json.utf8))
+    }
+}
+
 // MARK: - Z2M WebSocket frame builders
 
 enum FrameFixture {

@@ -59,6 +59,27 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     }
 
     @MainActor
+    func testAvailabilityDisabledDeviceIsExcludedFromOnlineAndOfflineFilters() {
+        let remote = DeviceFixture.remote(
+            ieee: "0x00000000000000f1",
+            name: "Untracked Remote"
+        )
+        store.apply(.devices([remote]))
+        store.apply(.bridgeInfo(BridgeInfoFixture.withDeviceAvailabilityDisabled()))
+        store.apply(.deviceAvailability(friendlyName: remote.friendlyName, available: false))
+
+        vm.statusFilter = .offline
+        XCTAssertTrue(vm.filteredDevices(store: store).isEmpty)
+
+        vm.statusFilter = .online
+        XCTAssertTrue(vm.filteredDevices(store: store).isEmpty)
+
+        vm.statusFilter = .availabilityOff
+        let result = vm.filteredDevices(store: store)
+        XCTAssertEqual(result.map(\.friendlyName), [remote.friendlyName])
+    }
+
+    @MainActor
     func testFilterUpdatesAvailable() {
         store.apply(.deviceState(
             friendlyName: "Living Room Light",

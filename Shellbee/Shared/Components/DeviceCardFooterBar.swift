@@ -85,12 +85,17 @@ struct DeviceCardFooterBar: View {
             return "Interviewing"
         }
 
+        if !device.availabilityTrackingEnabled {
+            return "Untracked"
+        }
+
         return isAvailable ? "Online" : "Offline"
     }
 
     private var statusColor: Color {
         if otaStatus?.isActive == true { return .blue }
         if device.interviewing { return .orange }
+        if !device.availabilityTrackingEnabled { return .secondary }
         return isAvailable ? .green : .red
     }
 
@@ -154,4 +159,3 @@ struct DeviceCardFooterBar: View {
     .padding()
     .background(Color(.secondarySystemGroupedBackground))
 }
-
