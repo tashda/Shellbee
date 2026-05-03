@@ -30,3 +30,15 @@ struct BridgeBoundLogEntry: Identifiable, Hashable {
 
     var id: String { "\(bridgeID.uuidString):\(entry.id)" }
 }
+
+/// In-app notification paired with the bridge it originated from. Lets the
+/// overlay show bridge attribution and route dismissal back to the originating
+/// bridge's store. Equatable but not Hashable — `InAppNotification` itself
+/// isn't Hashable.
+struct BridgeBoundNotification: Identifiable, Equatable {
+    let bridgeID: UUID
+    let bridgeName: String
+    let notification: InAppNotification
+
+    var id: String { "\(bridgeID.uuidString):\(notification.id.uuidString)" }
+}

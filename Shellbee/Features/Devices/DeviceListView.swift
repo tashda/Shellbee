@@ -31,7 +31,6 @@ struct DeviceListView: View {
             .searchable(text: $viewModel.searchText, prompt: "Search")
             .minimizeSearchToolbarIfAvailable()
             .toolbar {
-                BridgeSwitcherToolbarItem()
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showPairingWizard = true
@@ -343,22 +342,18 @@ private struct DeviceListContent: View {
     @ViewBuilder
     private func mergedRow(for bound: BridgeBoundDevice) -> some View {
         if let session = environment.registry.session(for: bound.bridgeID) {
-            // Route the row's actions at the device's own bridge — not the
-            // currently-focused one. Each action calls
-            // `environment.send(bridge:topic:payload:)` so the request lands on
-            // the right WebSocket regardless of focus.
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
-                deviceRow(for: bound.device, store: session.store, bridgeName: bound.bridgeName, bridgeID: bound.bridgeID)
-                BridgeBadge(
-                    bridgeName: bound.bridgeName,
-                    isFocused: environment.registry.primaryBridgeID == bound.bridgeID
-                )
-            }
-            .simultaneousGesture(TapGesture().onEnded {
-                if environment.registry.primaryBridgeID != bound.bridgeID {
-                    environment.registry.setPrimary(bound.bridgeID)
-                }
-            })
+            // The row body itself owns its NavigationLink (DeviceListRow does
+            // it internally), so the multi-bridge variant just renders the
+            // row directly. The bridge color dot is embedded inside
+            // DeviceRowView so it doesn't break the row's tap → push behavior.
+            // A simultaneous tap gesture flips focus to the device's bridge so
+            // DeviceDetailView reads from the right store on push.
+            deviceRow(for: bound.device, store: session.store, bridgeName: bound.bridgeName, bridgeID: bound.bridgeID)
+                .simultaneousGesture(TapGesture().onEnded {
+                    if environment.registry.primaryBridgeID != bound.bridgeID {
+                        environment.registry.setPrimary(bound.bridgeID)
+                    }
+                })
         }
     }
 
@@ -382,6 +377,8 @@ private struct DeviceListContent: View {
             checkResult: store.deviceCheckResults[device.friendlyName],
             isDeleting: store.pendingRemovals.contains(device.friendlyName),
             isIdentifying: store.identifyInProgress.contains(device.friendlyName),
+            bridgeID: bridgeID,
+            bridgeName: bridgeName ?? "",
             onRename: { onRename(device) },
             onRemove: { onRemove(device) },
             onReconfigure: { onPendingAlert(.reconfigure(device)) },

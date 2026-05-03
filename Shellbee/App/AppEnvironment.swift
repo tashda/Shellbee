@@ -85,6 +85,72 @@ final class AppEnvironment {
         }
     }
 
+    /// All pending in-app notifications across every bridge. Tagged so the
+    /// overlay can show bridge attribution on the banner and route dismissal
+    /// back to the originating bridge's store.
+    var allPendingNotifications: [BridgeBoundNotification] {
+        registry.orderedSessions.flatMap { session in
+            session.store.pendingNotifications.map {
+                BridgeBoundNotification(bridgeID: session.bridgeID, bridgeName: session.displayName, notification: $0)
+            }
+        }
+    }
+
+    /// Total count of pending notifications across every bridge — drives the
+    /// overlay's haptic + auto-dismiss scheduling without forcing the overlay
+    /// to flatten the merged list every render.
+    var totalPendingNotifications: Int {
+        registry.orderedSessions.reduce(0) { $0 + $1.store.pendingNotifications.count }
+    }
+
+    /// Pop the latest non-fast-track notification from whichever bridge holds
+    /// the most recent one. Used when the overlay dismisses a banner.
+    func popLatestPendingNotification() {
+        // The overlay shows newest-first across bridges. Find the bridge with
+        // the most-recently-enqueued notification and pop from there.
+        var latestBridge: BridgeSession?
+        var latestCount = 0
+        for session in registry.orderedSessions {
+            let count = session.store.pendingNotifications.count
+            if count > latestCount {
+                latestBridge = session
+                latestCount = count
+            }
+        }
+        if let store = latestBridge?.store, !store.pendingNotifications.isEmpty {
+            store.pendingNotifications.removeLast()
+        }
+    }
+
+    /// Clear every bridge's pending notifications. Used when the user
+    /// dismisses the entire stack.
+    func clearAllPendingNotifications() {
+        for session in registry.orderedSessions {
+            session.store.pendingNotifications.removeAll()
+        }
+    }
+
+    /// Pop the next fast-track notification from whichever bridge has one.
+    /// Fast-track is "show this once briefly" (e.g., "Copied").
+    func popNextFastTrackNotification() -> BridgeBoundNotification? {
+        for session in registry.orderedSessions {
+            if let next = session.store.popFastTrackNotification() {
+                return BridgeBoundNotification(
+                    bridgeID: session.bridgeID,
+                    bridgeName: session.displayName,
+                    notification: next
+                )
+            }
+        }
+        return nil
+    }
+
+    /// True if any bridge has fast-track notifications waiting. Used by the
+    /// overlay to drive its scheduler.
+    var hasFastTrackNotifications: Bool {
+        registry.orderedSessions.contains { !$0.store.fastTrackNotifications.isEmpty }
+    }
+
     var connectionState: ConnectionSessionController.State {
         session?.connectionState ?? .idle
     }

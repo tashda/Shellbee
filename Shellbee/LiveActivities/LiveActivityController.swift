@@ -45,6 +45,14 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         await Self.updateMatchingActivities(for: trackedAttributes, state: state, matches: matches)
     }
 
+    /// Multi-activity variant: target the activity whose attributes match
+    /// `attributes`, ignoring `trackedAttributes`. Used by Phase 2 multi-bridge
+    /// coordinators where N concurrent activities exist (one per bridge) and a
+    /// caller must address one specifically rather than the most-recent.
+    func update(attributes: Attributes, state: Attributes.ContentState) async {
+        await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
+    }
+
     func finish(state: Attributes.ContentState, displayFor duration: Double) async {
         guard let trackedAttributes else { return }
         endTask?.cancel()
@@ -63,6 +71,17 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         }
     }
 
+    /// Multi-activity variant of `finish` — targets `attributes` directly.
+    func finish(attributes: Attributes, state: Attributes.ContentState, displayFor duration: Double) async {
+        await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
+
+        Task {
+            let visibleDuration = max(duration, DesignTokens.Duration.liveActivityMinimumVisible)
+            try? await Task.sleep(for: .seconds(visibleDuration))
+            await Self.endMatchingActivities(for: attributes, state: state, matches: matches)
+        }
+    }
+
     func cancel(with state: Attributes.ContentState) async {
         guard let trackedAttributes else { return }
         endTask?.cancel()
@@ -76,6 +95,15 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
                 state: state,
                 matches: matches
             )
+        }
+    }
+
+    /// Multi-activity variant of `cancel` — targets `attributes` directly.
+    func cancel(attributes: Attributes, with state: Attributes.ContentState) async {
+        Task {
+            await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
+            try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivityCancel))
+            await Self.endMatchingActivities(for: attributes, state: state, matches: matches)
         }
     }
 

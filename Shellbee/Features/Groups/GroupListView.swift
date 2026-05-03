@@ -17,16 +17,13 @@ struct GroupListView: View {
                 if isMergedMode {
                     let merged = mergedFilteredGroups()
                     ForEach(merged) { item in
-                        HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
+                        HStack(spacing: DesignTokens.Spacing.sm) {
+                            BridgeColorDot(bridgeID: item.bridgeID, bridgeName: item.bridgeName)
                             GroupListRow(
                                 group: item.group,
                                 memberDevices: mergedMembers(for: item),
                                 onRename: { groupToRename = item.group },
                                 onRemove: { groupToRemove = item.group }
-                            )
-                            BridgeBadge(
-                                bridgeName: item.bridgeName,
-                                isFocused: environment.registry.primaryBridgeID == item.bridgeID
                             )
                         }
                         .simultaneousGesture(TapGesture().onEnded {
@@ -59,7 +56,6 @@ struct GroupListView: View {
             .searchable(text: $viewModel.searchText, prompt: "Search")
             .minimizeSearchToolbarIfAvailable()
             .toolbar {
-                BridgeSwitcherToolbarItem()
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showAddGroup = true

@@ -37,8 +37,14 @@ struct InAppNotificationOverlay: View {
         }
     }
 
+    /// Merged stack across every connected bridge so notifications from a
+    /// non-focused bridge still surface. In single-bridge mode this collapses
+    /// to the focused bridge's `pendingNotifications` (identical behavior).
     private var stack: [InAppNotification] {
-        environment.store.pendingNotifications
+        if environment.registry.sessions.values.filter(\.isConnected).count >= 2 {
+            return environment.allPendingNotifications.map(\.notification)
+        }
+        return environment.store.pendingNotifications
     }
 
     private var pages: [NotificationPage] {
@@ -198,9 +204,17 @@ struct InAppNotificationOverlay: View {
     }
 
     private func dismissTop() {
-        guard !environment.store.pendingNotifications.isEmpty else { return }
-        removalStyle = .vertical
-        environment.store.pendingNotifications.removeLast()
+        // In multi-bridge mode the stack merges across bridges; pop from
+        // whichever bridge has the most-recently-enqueued notification.
+        if environment.registry.sessions.values.filter(\.isConnected).count >= 2 {
+            guard environment.totalPendingNotifications > 0 else { return }
+            removalStyle = .vertical
+            environment.popLatestPendingNotification()
+        } else {
+            guard !environment.store.pendingNotifications.isEmpty else { return }
+            removalStyle = .vertical
+            environment.store.pendingNotifications.removeLast()
+        }
         scheduleDismissIfPossible()
         resetRemovalStyleSoon()
     }
@@ -210,7 +224,11 @@ struct InAppNotificationOverlay: View {
         autoDismissTask?.cancel()
         removalStyle = .vertical
         isExpanded = false
-        environment.store.pendingNotifications.removeAll()
+        if environment.registry.sessions.values.filter(\.isConnected).count >= 2 {
+            environment.clearAllPendingNotifications()
+        } else {
+            environment.store.pendingNotifications.removeAll()
+        }
         resetRemovalStyleSoon()
     }
 
@@ -271,7 +289,14 @@ struct InAppNotificationOverlay: View {
     // MARK: - Fast-track lane
 
     private func showNextFastTrack() {
-        guard let notification = environment.store.popFastTrackNotification() else { return }
+        let isMulti = environment.registry.sessions.values.filter(\.isConnected).count >= 2
+        let notification: InAppNotification?
+        if isMulti {
+            notification = environment.popNextFastTrackNotification()?.notification
+        } else {
+            notification = environment.store.popFastTrackNotification()
+        }
+        guard let notification else { return }
         currentFastTrack = notification
         fastTrackVisible = true
         fastTrackTask?.cancel()
@@ -283,7 +308,10 @@ struct InAppNotificationOverlay: View {
                 Task {
                     try? await Task.sleep(for: .milliseconds(250))
                     currentFastTrack = nil
-                    if !environment.store.fastTrackNotifications.isEmpty {
+                    let stillHasFast = isMulti
+                        ? environment.hasFastTrackNotifications
+                        : !environment.store.fastTrackNotifications.isEmpty
+                    if stillHasFast {
                         showNextFastTrack()
                     }
                 }

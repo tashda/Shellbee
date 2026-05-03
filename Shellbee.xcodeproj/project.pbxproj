@@ -259,6 +259,7 @@
 				Shared/Components/BeautifulPayloadView.swift,
 				Shared/Components/BeautifulRow.swift,
 				Shared/Components/BridgeBadge.swift,
+				Shared/Components/BridgeColor.swift,
 				Shared/Components/BridgeSwitcherToolbarItem.swift,
 				Shared/Components/CopyableRow.swift,
 				Shared/Components/DeviceExtras.swift,

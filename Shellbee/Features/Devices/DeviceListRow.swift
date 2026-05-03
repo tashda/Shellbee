@@ -15,6 +15,10 @@ struct DeviceListRow: View {
     /// chevron, no tap highlight). Used in the pairing wizard where there
     /// is no device-detail navigation destination registered.
     var navigates: Bool = true
+    /// Phase 2 multi-bridge: source-bridge tag for the colored dot. Nil in
+    /// single-bridge mode.
+    var bridgeID: UUID? = nil
+    var bridgeName: String = ""
     let onRename: () -> Void
     let onRemove: () -> Void
     let onReconfigure: () -> Void
@@ -64,7 +68,9 @@ struct DeviceListRow: View {
             isAvailable: isAvailable,
             otaStatus: otaStatus,
             checkResult: checkResult,
-            isDeleting: isDeleting
+            isDeleting: isDeleting,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName
         )
     }
 

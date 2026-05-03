@@ -174,7 +174,6 @@ struct HomeView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                BridgeSwitcherToolbarItem()
                 if layout.isEditing {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Done") {

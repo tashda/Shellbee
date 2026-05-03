@@ -52,7 +52,6 @@ struct LogsView: View {
                 .minimizeSearchToolbarIfAvailable()
                 .toolbar(.hidden, for: .tabBar)
                 .toolbar {
-                    BridgeSwitcherToolbarItem()
                     ToolbarItem(placement: .principal) {
                         Picker("Mode", selection: $mode) {
                             ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -189,12 +188,9 @@ private struct ActivityLogContent: View {
         List {
             ForEach(bound) { item in
                 ZStack {
-                    HStack(alignment: .center, spacing: DesignTokens.Spacing.xs) {
+                    HStack(spacing: DesignTokens.Spacing.sm) {
+                        BridgeColorDot(bridgeID: item.bridgeID, bridgeName: item.bridgeName)
                         LogRowView(entry: item.entry)
-                        BridgeBadge(
-                            bridgeName: item.bridgeName,
-                            isFocused: environment.registry.primaryBridgeID == item.bridgeID
-                        )
                     }
                     NavigationLink {
                         LogDetailView(entry: item.entry)

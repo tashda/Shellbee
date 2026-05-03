@@ -181,7 +181,11 @@ final class ConnectionSessionController {
         sessionTask = nil
         store.isConnected = false
         connectionState = .idle
-        ConnectionLiveActivityCoordinator.shared.cancel()
+        // Cancel only this bridge's Live Activity — other connected bridges'
+        // activities stay alive in multi-bridge mode.
+        if let config = connectionConfig {
+            ConnectionLiveActivityCoordinator.shared.cancel(bridge: config)
+        }
 
         return Task { [client] in
             await client.disconnect()
@@ -284,10 +288,14 @@ final class ConnectionSessionController {
             coordinator.show(bridge: config, phase: .reconnecting, attempt: 1, maxAttempts: maxAttempts)
         }
 
+        // Capture for use in catch / finish — `config` is what we care about,
+        // unchanged across reconnect attempts.
+        let activityBridge = config
+
         while !Task.isCancelled {
             if attempt > maxAttempts {
                 if liveActivityEnabled {
-                    coordinator.finish(.failed, displayFor: 3)
+                    coordinator.finish(bridge: activityBridge, .failed, displayFor: 3)
                 }
                 await handleFailure(reason.isEmpty ? "Connection lost" : reason)
                 return nil
@@ -301,7 +309,7 @@ final class ConnectionSessionController {
             do {
                 let events = try await establishConnection(config: config)
                 if liveActivityEnabled {
-                    coordinator.finish(.connected, displayFor: 2.5)
+                    coordinator.finish(bridge: activityBridge, .connected, displayFor: 2.5)
                 }
                 return events
             } catch is CancellationError {
@@ -310,7 +318,7 @@ final class ConnectionSessionController {
                 attempt += 1
                 delay = min(delay * 2, Self.maxReconnectDelay)
                 if liveActivityEnabled {
-                    coordinator.update(phase: .reconnecting, attempt: attempt, maxAttempts: maxAttempts)
+                    coordinator.update(bridge: activityBridge, phase: .reconnecting, attempt: attempt, maxAttempts: maxAttempts)
                 }
             }
         }

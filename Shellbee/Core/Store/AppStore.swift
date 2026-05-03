@@ -37,7 +37,14 @@ final class AppStore {
     /// can show user-readable attribution without a registry round-trip.
     private(set) var activeBridgeName: String = ""
     private static let firstSeenStoreKey = "AppStore.deviceFirstSeen"
+    /// Legacy single-blob key (one big dict) — read once on first launch after
+    /// the per-bridge migration and then dropped. Replaced by `firstSeenKey(for:)`
+    /// which writes one record per bridge so two stores running concurrently
+    /// can't race the read-modify-write loop.
     private static let firstSeenByBridgeStoreKey = "AppStore.deviceFirstSeenByBridge"
+    private static func firstSeenKey(for bridgeID: UUID) -> String {
+        "AppStore.deviceFirstSeen.\(bridgeID.uuidString)"
+    }
     /// Legacy first-seen data loaded from the pre-multi-bridge format. Migrated
     /// into `firstSeenByBridge` under the first bridge id we see via
     /// `setActiveBridge(_:)` and then cleared.
@@ -122,7 +129,10 @@ final class AppStore {
         // the UI doesn't briefly show the prior bridge's "Recently Added"
         // entries while reconnecting.
         deviceFirstSeen = [:]
-        OTAUpdateLiveActivityCoordinator.shared.clearAll()
+        // Multi-bridge: only clear THIS bridge's OTA activity; other bridges'
+        // activities stay alive. activeBridgeID is preserved here — it's
+        // cleared explicitly via `clearActiveBridge()` only on disconnect.
+        OTAUpdateLiveActivityCoordinator.shared.clear(bridgeID: activeBridgeID)
     }
 
     // MARK: - Active bridge tracking
@@ -131,16 +141,26 @@ final class AppStore {
     /// this bridge's first-seen slot into the published `deviceFirstSeen`
     /// mirror, and migrates any pending legacy data into this bridge's slot.
     func setActiveBridge(_ id: UUID, name: String = "") {
+        // Lazy load this bridge's slot from disk if we don't have it yet.
+        // Each store touches only its own slot, so two concurrent bridges
+        // can each load and persist independently without racing.
+        if firstSeenByBridge[id] == nil {
+            firstSeenByBridge[id] = Self.loadFirstSeenSlot(for: id)
+        }
         if let legacy = pendingLegacyFirstSeen, !legacy.isEmpty {
             // Merge legacy data under this bridge — first connect after upgrade
             // attributes everything to whichever bridge the user reached first.
             firstSeenByBridge[id, default: [:]].merge(legacy) { existing, _ in existing }
             pendingLegacyFirstSeen = nil
-            persistFirstSeen()
         }
         activeBridgeID = id
         activeBridgeName = name
         deviceFirstSeen = firstSeenByBridge[id] ?? [:]
+        // Persist now (handles legacy migration too) — safe because
+        // persistFirstSeen only writes activeBridgeID's slot.
+        if pendingLegacyFirstSeen == nil && firstSeenByBridge[id]?.isEmpty == false {
+            persistFirstSeen()
+        }
     }
 
     /// Called on disconnect (not on simple reconnect). Clears the active
@@ -153,31 +173,58 @@ final class AppStore {
     // MARK: - First-seen persistence
 
     private func loadFirstSeen() {
-        // Prefer the new partitioned format.
+        // Migration path — try the old single-blob `byBridge` key. If found,
+        // split it into per-bridge keys and clear the blob. Each per-bridge
+        // store from this point on touches only its own UserDefaults key, so
+        // concurrent connects can't race the persistence layer.
         if let data = UserDefaults.standard.data(forKey: Self.firstSeenByBridgeStoreKey),
            let decoded = try? JSONDecoder().decode([String: [String: Double]].self, from: data) {
             for (key, ieeeMap) in decoded {
                 guard let id = UUID(uuidString: key) else { continue }
                 firstSeenByBridge[id] = ieeeMap.mapValues { Date(timeIntervalSince1970: $0) }
+                let asDouble = ieeeMap
+                if let payload = try? JSONEncoder().encode(asDouble) {
+                    UserDefaults.standard.set(payload, forKey: Self.firstSeenKey(for: id))
+                }
             }
+            UserDefaults.standard.removeObject(forKey: Self.firstSeenByBridgeStoreKey)
             return
         }
 
-        // Fall back to legacy format. Stash it for migration into whichever
-        // bridge becomes active first.
+        // Walk every per-bridge key — UserDefaults doesn't expose a prefix query,
+        // but `firstSeenByBridge` is initialised lazily per-bridge in
+        // `setActiveBridge` (it reads its own slot from disk on demand).
+        // For pre-existing data populated outside this run, do nothing here.
+
+        // Final fall-back: legacy single-tenant format. Stash it for migration
+        // into whichever bridge becomes active first.
         if let raw = UserDefaults.standard.dictionary(forKey: Self.firstSeenStoreKey) as? [String: Double] {
             pendingLegacyFirstSeen = raw.mapValues { Date(timeIntervalSince1970: $0) }
         }
     }
 
+    /// Persist only the active bridge's slot — never touch other bridges'
+    /// keys. Each per-bridge store is the sole writer for its own key, so
+    /// concurrent multi-bridge writes never race.
     private func persistFirstSeen() {
-        let encodable: [String: [String: Double]] = firstSeenByBridge.reduce(into: [:]) { acc, entry in
-            acc[entry.key.uuidString] = entry.value.mapValues { $0.timeIntervalSince1970 }
-        }
+        guard let id = activeBridgeID else { return }
+        let slot = firstSeenByBridge[id] ?? [:]
+        let encodable = slot.mapValues { $0.timeIntervalSince1970 }
         guard let data = try? JSONEncoder().encode(encodable) else { return }
-        UserDefaults.standard.set(data, forKey: Self.firstSeenByBridgeStoreKey)
-        // Drop the legacy key now that we've written the new format.
+        UserDefaults.standard.set(data, forKey: Self.firstSeenKey(for: id))
+        // Drop the legacy single-tenant key once a per-bridge write exists.
         UserDefaults.standard.removeObject(forKey: Self.firstSeenStoreKey)
+    }
+
+    /// Read this bridge's slot from UserDefaults. Used by `setActiveBridge` so
+    /// each per-bridge store loads its own slot on demand rather than holding
+    /// a copy of every other bridge's data.
+    private static func loadFirstSeenSlot(for id: UUID) -> [String: Date] {
+        guard let data = UserDefaults.standard.data(forKey: firstSeenKey(for: id)),
+              let raw = try? JSONDecoder().decode([String: Double].self, from: data) else {
+            return [:]
+        }
+        return raw.mapValues { Date(timeIntervalSince1970: $0) }
     }
 
     func recordFirstSeen(ieee: String, overwrite: Bool = false) {
