@@ -5,6 +5,12 @@ struct SettingsView: View {
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var showingDisconnectConfirmation = false
     @State private var showingRestartAlert = false
+    /// Connection editor state for the toolbar `+` button. Used in multi-bridge
+    /// mode to add a new saved bridge without leaving Settings.
+    @State private var editorViewModel: ConnectionViewModel?
+    @State private var renameTarget: ConnectionConfig?
+    @State private var renameDraft: String = ""
+    @State private var removeConfirmation: ConnectionConfig?
 
     /// Phase 2 multi-bridge: when the user has more than one saved bridge, the
     /// top-level Settings page swaps to the merged layout — every per-bridge
@@ -23,6 +29,43 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .toolbar {
+                if isMultiBridge {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { presentNewBridgeEditor() } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("Add Bridge")
+                    }
+                }
+            }
+            .sheet(item: editorBinding) { vm in
+                NavigationStack {
+                    ConnectionEditorView(viewModel: vm, mode: .save)
+                }
+            }
+            .alert("Rename Bridge", isPresented: renameAlertBinding, presenting: renameTarget) { config in
+                TextField("Name", text: $renameDraft)
+                    .textInputAutocapitalization(.words)
+                Button("Save") {
+                    let trimmed = renameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    environment.history.rename(config, to: trimmed.isEmpty ? nil : trimmed)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in
+                Text("Choose a friendly name. Leave blank to use the host.")
+            }
+            .alert("Remove Bridge?", isPresented: removeAlertBinding, presenting: removeConfirmation) { config in
+                Button("Remove", role: .destructive) {
+                    Task {
+                        await environment.disconnect(bridgeID: config.id)
+                        environment.history.remove(config)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { config in
+                Text("\(config.displayName) will be disconnected and removed from your saved bridges. Its auth token is deleted from the keychain.")
+            }
             .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
                 Button("Restart", role: .destructive) { environment.restartBridge() }
                 Button("Cancel", role: .cancel) {}
@@ -45,14 +88,6 @@ struct SettingsView: View {
     @ViewBuilder
     private var multiBridgeLayout: some View {
         bridgesSection
-        Section {
-            NavigationLink { SavedBridgesView() } label: {
-                settingsLabel(title: "Saved Bridges", systemImage: "list.bullet", color: .blue)
-                    .badge("\(environment.history.connections.count)")
-            }
-        } header: {
-            Text("Connection")
-        }
 
         Section {
             NavigationLink { DocBrowserView() } label: {
@@ -72,49 +107,72 @@ struct SettingsView: View {
     @ViewBuilder
     private var bridgesSection: some View {
         Section {
-            ForEach(environment.history.connections) { config in
-                NavigationLink { BridgeSettingsView(bridgeID: config.id) } label: {
-                    bridgeRowLabel(for: config)
-                }
+            ForEach(sortedConnections) { config in
+                BridgeSettingsRow(
+                    config: config,
+                    onEdit: { presentEditor(for: config) },
+                    onRename: {
+                        renameDraft = config.name ?? ""
+                        renameTarget = config
+                    },
+                    onRemove: { removeConfirmation = config }
+                )
             }
         } header: {
             Text("Bridges")
         } footer: {
-            Text("Each connected Zigbee2MQTT instance has its own configuration. Tap a bridge to manage its settings.")
+            Text("Each Zigbee2MQTT instance has its own configuration. Tap a bridge to manage its settings, or toggle Connect to bring it online.")
         }
     }
 
-    private func bridgeRowLabel(for config: ConnectionConfig) -> some View {
-        let session = environment.registry.session(for: config.id)
-        return HStack(spacing: DesignTokens.Spacing.sm) {
-            BridgeColorDot(bridgeID: config.id, bridgeName: config.displayName, size: 12)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(config.displayName)
-                    .foregroundStyle(.primary)
-                Text(stateSubtitle(for: session))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            if session?.store.bridgeInfo?.restartRequired == true {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .accessibilityLabel("Restart required")
-            }
+    /// Default bridge sorts to the top, then alphabetical by name. Mirrors the
+    /// expectation that the user's primary bridge is the easiest to reach.
+    private var sortedConnections: [ConnectionConfig] {
+        let connections = environment.history.connections
+        guard let defaultID = environment.history.defaultBridgeID,
+              let idx = connections.firstIndex(where: { $0.id == defaultID }),
+              idx != 0 else {
+            return connections
         }
+        var copy = connections
+        let entry = copy.remove(at: idx)
+        copy.insert(entry, at: 0)
+        return copy
     }
 
-    private func stateSubtitle(for session: BridgeSession?) -> String {
-        switch session?.connectionState {
-        case .connected: "Connected"
-        case .connecting: "Connecting"
-        case .reconnecting(let n): "Reconnecting (attempt \(n))"
-        case .failed(let msg): msg
-        case .lost(let msg): "Lost: \(msg)"
-        default: "Disconnected"
-        }
+    // MARK: - Bridge editor flow
+
+    private func presentNewBridgeEditor() {
+        let vm = ConnectionViewModel(environment: environment)
+        vm.presentNewServer()
+        editorViewModel = vm
+    }
+
+    private func presentEditor(for config: ConnectionConfig) {
+        let vm = ConnectionViewModel(environment: environment)
+        vm.presentEditor(for: config)
+        editorViewModel = vm
+    }
+
+    private var editorBinding: Binding<ConnectionViewModel?> {
+        Binding(
+            get: { editorViewModel?.isEditorPresented == true ? editorViewModel : nil },
+            set: { if $0 == nil { editorViewModel = nil } }
+        )
+    }
+
+    private var renameAlertBinding: Binding<Bool> {
+        Binding(
+            get: { renameTarget != nil },
+            set: { if !$0 { renameTarget = nil } }
+        )
+    }
+
+    private var removeAlertBinding: Binding<Bool> {
+        Binding(
+            get: { removeConfirmation != nil },
+            set: { if !$0 { removeConfirmation = nil } }
+        )
     }
 
     // MARK: - Single-bridge layout (legacy)
@@ -339,6 +397,160 @@ struct SettingsView: View {
                 .padding(.vertical, DesignTokens.Spacing.xs)
             }
             .buttonStyle(.plain)
+        }
+    }
+}
+
+// MARK: - Bridge row (multi-bridge Settings root)
+
+/// Rich row for the Bridges section: color dot, name, URL, live status
+/// subtitle, default star, restart-required indicator, and a Connect /
+/// Disconnect toggle. The whole row is a NavigationLink to that bridge's
+/// settings page; the Toggle is its own hit-target inside the link, so
+/// tapping the toggle never accidentally drills in.
+private struct BridgeSettingsRow: View {
+    let config: ConnectionConfig
+    let onEdit: () -> Void
+    let onRename: () -> Void
+    let onRemove: () -> Void
+
+    @Environment(AppEnvironment.self) private var environment
+
+    private var session: BridgeSession? {
+        environment.registry.session(for: config.id)
+    }
+
+    private var isConnected: Bool { session?.isConnected ?? false }
+    private var isConnecting: Bool {
+        switch session?.connectionState {
+        case .connecting, .reconnecting: true
+        default: false
+        }
+    }
+    private var isDefault: Bool { environment.history.defaultBridgeID == config.id }
+    private var isAutoConnect: Bool { environment.history.isAutoConnect(config) }
+    private var restartRequired: Bool { session?.store.bridgeInfo?.restartRequired == true }
+
+    var body: some View {
+        NavigationLink {
+            BridgeSettingsView(bridgeID: config.id)
+        } label: {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                statusDot
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
+                        Text(config.displayName)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                        if isDefault {
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.yellow)
+                                .accessibilityLabel("Default bridge")
+                        }
+                        if restartRequired {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                                .accessibilityLabel("Restart required")
+                        }
+                    }
+                    Text(config.displayURL)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Text(stateLabel)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                connectToggle
+            }
+        }
+        .contextMenu {
+            Button {
+                environment.history.setDefault(isDefault ? nil : config)
+            } label: {
+                Label(isDefault ? "Unset Default" : "Set Default", systemImage: isDefault ? "star.slash" : "star")
+            }
+            Button {
+                environment.history.setAutoConnect(config, !isAutoConnect)
+            } label: {
+                Label(isAutoConnect ? "Disable Auto-Connect" : "Enable Auto-Connect",
+                      systemImage: isAutoConnect ? "bolt.slash" : "bolt")
+            }
+            Button(action: onEdit) {
+                Label("Edit", systemImage: "pencil")
+            }
+            Button(action: onRename) {
+                Label("Rename", systemImage: "character.cursor.ibeam")
+            }
+            Divider()
+            Button(role: .destructive, action: onRemove) {
+                Label("Remove", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive, action: onRemove) {
+                Label("Remove", systemImage: "trash")
+            }
+            Button(action: onEdit) {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(.blue)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button {
+                environment.history.setDefault(isDefault ? nil : config)
+            } label: {
+                Label(isDefault ? "Unpin" : "Default",
+                      systemImage: isDefault ? "star.slash" : "star")
+            }
+            .tint(.yellow)
+        }
+    }
+
+    @ViewBuilder
+    private var statusDot: some View {
+        let color: Color = {
+            if isConnected { return .green }
+            if isConnecting { return .orange }
+            switch session?.connectionState {
+            case .failed, .lost: return .red
+            default: return Color(.systemGray3)
+            }
+        }()
+        Circle()
+            .fill(color)
+            .frame(width: DesignTokens.Size.statusDot, height: DesignTokens.Size.statusDot)
+    }
+
+    private var connectToggle: some View {
+        let isOn = Binding(
+            get: { isConnected || isConnecting },
+            set: { newValue in
+                if newValue {
+                    environment.connect(config: config)
+                } else {
+                    Task { await environment.disconnect(bridgeID: config.id) }
+                }
+            }
+        )
+        return Toggle("", isOn: isOn)
+            .labelsHidden()
+            .accessibilityLabel(isConnected ? "Disconnect \(config.displayName)" : "Connect \(config.displayName)")
+    }
+
+    private var stateLabel: String {
+        switch session?.connectionState {
+        case .connected: return "Connected"
+        case .connecting: return "Connecting"
+        case .reconnecting(let n): return "Reconnecting (attempt \(n))"
+        case .failed(let msg): return msg
+        case .lost(let msg): return "Lost: \(msg)"
+        case .idle, .none:
+            return isAutoConnect ? "Auto-connect on launch" : "Disconnected"
         }
     }
 }
