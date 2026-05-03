@@ -107,6 +107,27 @@ struct BridgeConfig: Codable, Sendable, Equatable {
     let passlist: [String]?
     let blocklist: [String]?
     let groups: [String: [String: JSONValue]]?
+    let devices: [String: DeviceConfig]?
+
+    func availabilityTrackingEnabled(for device: Device) -> Bool {
+        guard let devices else { return true }
+        let config = devices[device.ieeeAddress]
+            ?? devices[device.ieeeAddress.lowercased()]
+            ?? devices[device.ieeeAddress.uppercased()]
+            ?? devices[device.friendlyName]
+            ?? devices.values.first { $0.friendlyName == device.friendlyName }
+        return config?.availability?.boolValue != false
+    }
+
+    struct DeviceConfig: Codable, Sendable, Equatable {
+        let friendlyName: String?
+        let availability: JSONValue?
+
+        enum CodingKeys: String, CodingKey {
+            case friendlyName = "friendly_name"
+            case availability
+        }
+    }
 
     struct AdvancedConfig: Codable, Sendable, Equatable {
         let logLevel: String?

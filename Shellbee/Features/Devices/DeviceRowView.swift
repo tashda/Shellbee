@@ -73,6 +73,11 @@ struct DeviceRowView: View {
                 .foregroundStyle(.blue)
         } else if let checkResult {
             checkResultLabel(checkResult)
+        } else if !device.availabilityTrackingEnabled {
+            Label("Untracked", systemImage: "minus.circle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
         } else if !isAvailable {
             Text("Offline")
                 .font(.caption.weight(.medium))

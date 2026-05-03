@@ -8,6 +8,7 @@ enum DeviceQuickFilter: Hashable {
     case all
     case online
     case offline
+    case availabilityOff
     case batteryLow
     case weakSignal
     case interviewing

@@ -7,6 +7,7 @@ enum DeviceFilter: Hashable {
     case category(Device.Category)
     case updatesAvailable
     case offline
+    case availabilityOff
     case batteryLow
     case weakSignal
     case interviewing
@@ -18,6 +19,7 @@ enum DeviceFilter: Hashable {
         case .category(let c): return c.label
         case .updatesAvailable: return "Updates"
         case .offline:          return "Offline"
+        case .availabilityOff:  return "Untracked"
         case .batteryLow:       return "Low Battery"
         case .weakSignal:       return "Bad Signal"
         case .interviewing:     return "Interviewing"
@@ -31,6 +33,7 @@ enum DeviceFilter: Hashable {
         case .category(let c): return c.systemImage
         case .updatesAvailable: return "arrow.down.circle.fill"
         case .offline:          return "wifi.slash"
+        case .availabilityOff:  return "minus.circle"
         case .batteryLow:       return "battery.25"
         case .weakSignal:       return "wifi.exclamationmark"
         case .interviewing:     return "waveform.path.ecg"
@@ -50,6 +53,7 @@ enum DeviceStatusFilter: String, CaseIterable, Hashable {
     case all              = "All"
     case online           = "Online"
     case offline          = "Offline"
+    case availabilityOff  = "Untracked"
     case updatesAvailable = "Updates Available"
     case batteryLow       = "Low Battery"
     case weakSignal       = "Bad Signal"
@@ -61,6 +65,7 @@ enum DeviceStatusFilter: String, CaseIterable, Hashable {
         case .all:              return "circle.grid.2x2"
         case .online:           return "wifi"
         case .offline:          return "wifi.slash"
+        case .availabilityOff:  return "minus.circle"
         case .updatesAvailable: return "arrow.down.circle"
         case .batteryLow:       return "battery.25"
         case .weakSignal:       return "wifi.exclamationmark"
@@ -74,6 +79,7 @@ enum DeviceStatusFilter: String, CaseIterable, Hashable {
         case .all:              return nil
         case .online:           return .online
         case .offline:          return .offline
+        case .availabilityOff:  return .availabilityOff
         case .updatesAvailable: return .updatesAvailable
         case .batteryLow:       return .batteryLow
         case .weakSignal:       return .weakSignal
@@ -168,7 +174,7 @@ final class DeviceListViewModel {
             condition.matches(
                 device: $0,
                 state: store.state(for: $0.friendlyName),
-                isAvailable: store.isAvailable($0.friendlyName),
+                availabilityStatus: store.availabilityStatus(for: $0.friendlyName),
                 otaStatus: store.otaStatus(for: $0.friendlyName)
             )
         }.count
@@ -195,6 +201,7 @@ final class DeviceListViewModel {
         case .all:              break
         case .online:           statusFilter = .online
         case .offline:          statusFilter = .offline
+        case .availabilityOff:  statusFilter = .availabilityOff
         case .updatesAvailable: statusFilter = .updatesAvailable
         case .batteryLow:       statusFilter = .batteryLow
         case .weakSignal:       statusFilter = .weakSignal
@@ -313,7 +320,7 @@ final class DeviceListViewModel {
             condition.matches(
                 device: $0,
                 state: store.state(for: $0.friendlyName),
-                isAvailable: store.isAvailable($0.friendlyName),
+                availabilityStatus: store.availabilityStatus(for: $0.friendlyName),
                 otaStatus: store.otaStatus(for: $0.friendlyName)
             )
         }

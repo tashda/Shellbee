@@ -36,6 +36,41 @@ final class HomeSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.endDeviceCount, 1, "sensor is an end device")
     }
 
+    func testAvailabilityDisabledDeviceDoesNotCountOffline() {
+        var remote = DeviceFixture.remote(name: "Untracked Remote")
+        remote.options = ["availability": .bool(false)]
+
+        let snapshot = makeSnapshot(
+            devices: [remote],
+            availability: [remote.friendlyName: false],
+            states: [:]
+        )
+
+        XCTAssertEqual(snapshot.totalDevices, 1)
+        XCTAssertEqual(snapshot.onlineDevices, 0)
+        XCTAssertEqual(snapshot.offlineDevices, 0)
+        XCTAssertEqual(snapshot.availabilityOffDevices, 1)
+    }
+
+    func testAvailabilityOffDeviceDoesNotCountOffline() {
+        var remote = DeviceFixture.remote(
+            ieee: "0x00000000000000f1",
+            name: "Untracked Remote"
+        )
+        remote.availability = .bool(false)
+
+        let snapshot = makeSnapshot(
+            devices: [remote],
+            availability: [remote.friendlyName: false],
+            states: [:]
+        )
+
+        XCTAssertEqual(snapshot.totalDevices, 1)
+        XCTAssertEqual(snapshot.onlineDevices, 0)
+        XCTAssertEqual(snapshot.offlineDevices, 0)
+        XCTAssertEqual(snapshot.availabilityOffDevices, 1)
+    }
+
     // Behavior: averageLinkQuality is the integer mean of linkQuality
     // values reported across non-coordinator devices, and is nil when
     // no device reports a linkQuality. This powers Mesh → Average LQI.
@@ -115,6 +150,7 @@ final class HomeSnapshotTests: XCTestCase {
 
     private func makeSnapshot(
         devices: [Device],
+        availability: [String: Bool] = [:],
         states: [String: [String: JSONValue]],
         panID: Int? = nil,
         isPermitJoinActive: Bool = false,
@@ -122,7 +158,7 @@ final class HomeSnapshotTests: XCTestCase {
     ) -> HomeSnapshot {
         HomeSnapshot(
             devices: devices,
-            availability: [:],
+            availability: availability,
             states: states,
             isConnected: true,
             isBridgeOnline: true,

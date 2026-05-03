@@ -116,6 +116,34 @@ final class AppStoreTests: XCTestCase, @unchecked Sendable {
         XCTAssertFalse(store.isAvailable("unknown"))
     }
 
+    @MainActor
+    func testAvailabilityDisabledDeviceIsUntracked() {
+        var remote = DeviceFixture.remote(name: "Untracked Remote")
+        remote.options = ["availability": .bool(false)]
+
+        store.apply(.devices([remote]))
+        store.apply(.deviceAvailability(friendlyName: remote.friendlyName, available: false))
+
+        XCTAssertEqual(store.availabilityStatus(for: remote.friendlyName), .untracked)
+        XCTAssertTrue(store.isAvailable(remote.friendlyName))
+    }
+
+    @MainActor
+    func testAvailabilityDisabledInBridgeConfigIsUntracked() {
+        let remote = DeviceFixture.remote(
+            ieee: "0x00000000000000f1",
+            name: "Untracked Remote"
+        )
+
+        store.apply(.devices([remote]))
+        store.apply(.bridgeInfo(BridgeInfoFixture.withDeviceAvailabilityDisabled()))
+        store.apply(.deviceAvailability(friendlyName: remote.friendlyName, available: false))
+
+        XCTAssertEqual(store.availabilityStatus(for: remote.friendlyName), .untracked)
+        XCTAssertFalse(store.devices[0].availabilityTrackingEnabled)
+        XCTAssertTrue(store.isAvailable(remote.friendlyName))
+    }
+
     // MARK: - logs
 
     @MainActor
