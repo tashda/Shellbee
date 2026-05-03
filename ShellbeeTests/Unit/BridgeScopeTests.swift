@@ -10,29 +10,13 @@ import XCTest
 /// returns a scope, and reads/writes against an unknown id are no-ops with
 /// empty-store reads. Tests assert behavior via `isConnected` /
 /// `session != nil` rather than scope nullability.
-final class BridgeScopeTests: XCTestCase {
-
-    override func setUp() {
-        super.setUp()
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-    }
-
-    override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-        super.tearDown()
-    }
+final class BridgeScopeTests: MultiBridgeTestCase {
 
     // MARK: - resolution
 
     @MainActor
     func testScopeForUnknownIDIsLenientNoSession() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let scope = env.scope(for: UUID())
         XCTAssertNil(scope.session, "Unknown id has no live session")
         XCTAssertFalse(scope.isConnected)
@@ -41,7 +25,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testScopeForKnownIDResolvesToThatSession() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
 
@@ -52,7 +36,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testSelectedScopeFollowsRegistryPrimary() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let first = makeConfig(name: "Main")
         let second = makeConfig(name: "Lab")
         env.connect(config: first)
@@ -66,7 +50,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testSelectedScopeNilWhenNoBridges() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         XCTAssertNil(env.selectedScope)
     }
 
@@ -74,7 +58,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testEachScopeReadsFromItsOwnStore() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let a = makeConfig(name: "A")
         let b = makeConfig(name: "B")
         env.connect(config: a)
@@ -88,7 +72,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testIdentifyDeviceMutatesScopedStoreOnly() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let a = makeConfig(name: "A")
         let b = makeConfig(name: "B")
         env.connect(config: a)
@@ -106,7 +90,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testIdentifyDeviceDeDupesPerBridge() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
         let scope = env.scope(for: cfg.id)
@@ -120,7 +104,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testRenameDeviceTriggersOptimisticRenameInScopedStoreOnly() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let a = makeConfig(name: "A")
         let b = makeConfig(name: "B")
         env.connect(config: a)
@@ -152,7 +136,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testScopeIDEqualsBridgeID() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
         let scope = env.scope(for: cfg.id)
@@ -161,7 +145,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testScopeIsConnectedReflectsSessionState() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
         let scope = env.scope(for: cfg.id)
@@ -175,7 +159,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testScopeAfterDisconnectFallsBackToEmptyStore() async {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
         let scope = env.scope(for: cfg.id)
@@ -200,7 +184,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testOTABulkQueueForReturnsDistinctQueuesPerBridge() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let a = makeConfig(name: "A")
         let b = makeConfig(name: "B")
         env.connect(config: a)
@@ -216,7 +200,7 @@ final class BridgeScopeTests: XCTestCase {
 
     @MainActor
     func testOTABulkQueueForUnknownBridgeReturnsNil() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         XCTAssertNil(env.otaBulkQueue(for: UUID()))
     }
 

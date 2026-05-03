@@ -1,38 +1,20 @@
 import XCTest
 @testable import Shellbee
 
-final class BridgeRegistryTests: XCTestCase {
-
-    override func setUp() {
-        super.setUp()
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-    }
-
-    override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-        super.tearDown()
-    }
+final class BridgeRegistryTests: MultiBridgeTestCase {
 
     // MARK: - basic shape
 
-    @MainActor
     func testEmptyRegistryHasNoPrimary() {
-        let registry = BridgeRegistry(history: ConnectionHistory())
+        let registry = makeRegistry(history: ConnectionHistory())
         XCTAssertNil(registry.primaryBridgeID)
         XCTAssertNil(registry.primary)
         XCTAssertTrue(registry.sessions.isEmpty)
     }
 
-    @MainActor
     func testConnectCreatesSessionAndBecomesPrimary() {
         let history = ConnectionHistory()
-        let registry = BridgeRegistry(history: history)
+        let registry = makeRegistry(history: history)
         let cfg = makeConfig(name: "Main")
 
         registry.connect(config: cfg)
@@ -42,10 +24,9 @@ final class BridgeRegistryTests: XCTestCase {
         XCTAssertNotNil(registry.session(for: cfg.id))
     }
 
-    @MainActor
     func testSecondConnectKeepsExistingSessionAndPrimary() {
         let history = ConnectionHistory()
-        let registry = BridgeRegistry(history: history)
+        let registry = makeRegistry(history: history)
         let first = makeConfig(name: "Main")
         let second = makeConfig(name: "Lab")
 
@@ -59,10 +40,9 @@ final class BridgeRegistryTests: XCTestCase {
         XCTAssertEqual(registry.primaryBridgeID, originalPrimary)
     }
 
-    @MainActor
     func testReConnectingSameBridgeReusesSession() {
         let history = ConnectionHistory()
-        let registry = BridgeRegistry(history: history)
+        let registry = makeRegistry(history: history)
         let cfg = makeConfig(name: "Main")
 
         registry.connect(config: cfg)
@@ -74,17 +54,15 @@ final class BridgeRegistryTests: XCTestCase {
         XCTAssertTrue(firstSessionRef === secondSessionRef)
     }
 
-    @MainActor
     func testSetPrimaryNoOpForUnknownID() {
-        let registry = BridgeRegistry(history: ConnectionHistory())
+        let registry = makeRegistry(history: ConnectionHistory())
         let unknown = UUID()
         registry.setPrimary(unknown)
         XCTAssertNil(registry.primaryBridgeID)
     }
 
-    @MainActor
     func testSetPrimarySwitchesFocus() {
-        let registry = BridgeRegistry(history: ConnectionHistory())
+        let registry = makeRegistry(history: ConnectionHistory())
         let first = makeConfig(name: "Main")
         let second = makeConfig(name: "Lab")
         registry.connect(config: first)
@@ -94,9 +72,8 @@ final class BridgeRegistryTests: XCTestCase {
         XCTAssertEqual(registry.primaryBridgeID, second.id)
     }
 
-    @MainActor
     func testOrderedSessionsSortsByDisplayName() {
-        let registry = BridgeRegistry(history: ConnectionHistory())
+        let registry = makeRegistry(history: ConnectionHistory())
         registry.connect(config: makeConfig(name: "Zebra"))
         registry.connect(config: makeConfig(name: "Alpha"))
         registry.connect(config: makeConfig(name: "Mango"))
@@ -105,9 +82,8 @@ final class BridgeRegistryTests: XCTestCase {
         XCTAssertEqual(names, ["Alpha", "Mango", "Zebra"])
     }
 
-    @MainActor
     func testDisconnectAllClearsRegistry() async {
-        let registry = BridgeRegistry(history: ConnectionHistory())
+        let registry = makeRegistry(history: ConnectionHistory())
         registry.connect(config: makeConfig(name: "A"))
         registry.connect(config: makeConfig(name: "B"))
 

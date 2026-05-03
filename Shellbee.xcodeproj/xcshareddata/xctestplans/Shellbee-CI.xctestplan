@@ -22,7 +22,6 @@
     {
       "parallelizable" : false,
       "skippedTests" : [
-        "BridgeRegistryTests",
         "ConnectionConfigTests\/testSaveAndLoad()",
         "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
         "Z2MIntegrationTests"

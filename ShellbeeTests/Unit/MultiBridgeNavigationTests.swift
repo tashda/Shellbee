@@ -6,29 +6,13 @@ import XCTest
 /// the routing primitives (`scope(for:)`, `BridgeBoundDevice`, route values)
 /// that the new view layer depends on. UI-level integration is covered by
 /// the manual smoke testing playbook in CLAUDE.md.
-final class MultiBridgeNavigationTests: XCTestCase {
-
-    override func setUp() {
-        super.setUp()
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-    }
-
-    override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-        super.tearDown()
-    }
+final class MultiBridgeNavigationTests: MultiBridgeTestCase {
 
     // MARK: - Detail routing reads from passed bridgeID, not focus
 
     @MainActor
     func testScopeForNonFocusedBridgeReadsCorrectStore() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let a = makeConfig(name: "A")
         let b = makeConfig(name: "B")
         env.connect(config: a)
@@ -59,7 +43,7 @@ final class MultiBridgeNavigationTests: XCTestCase {
 
     @MainActor
     func testSameDeviceNameOnTwoBridgesResolvesByBridgeID() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let a = makeConfig(name: "A")
         let b = makeConfig(name: "B")
         env.connect(config: a)
@@ -86,7 +70,7 @@ final class MultiBridgeNavigationTests: XCTestCase {
 
     @MainActor
     func testIdentifyOnRoutedBridgeDoesNotLeakAcross() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let a = makeConfig(name: "A")
         let b = makeConfig(name: "B")
         env.connect(config: a)

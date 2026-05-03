@@ -4,33 +4,13 @@ import XCTest
 /// Smoke tests for the merged multi-bridge accessors that the device, group,
 /// log, and home views rely on. Two bridges connect, populate their per-bridge
 /// stores, and we assert the aggregated views see both.
-final class MultiBridgeAggregationTests: XCTestCase {
-
-    override func setUp() {
-        super.setUp()
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        UserDefaults.standard.removeObject(forKey: "AppStore.deviceFirstSeenByBridge")
-        UserDefaults.standard.removeObject(forKey: "AppStore.deviceFirstSeen")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-    }
-
-    override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "connectionHistory")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.defaultID")
-        UserDefaults.standard.removeObject(forKey: "savedBridges.autoConnectIDs")
-        UserDefaults.standard.removeObject(forKey: "AppStore.deviceFirstSeenByBridge")
-        UserDefaults.standard.removeObject(forKey: "AppStore.deviceFirstSeen")
-        MainActor.assumeIsolated { ConnectionConfig.clearPersistedSecretsForTests() }
-        super.tearDown()
-    }
+final class MultiBridgeAggregationTests: MultiBridgeTestCase {
 
     // MARK: - AppEnvironment.allDevices
 
     @MainActor
     func testAllDevicesAggregatesAcrossSessions() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
         env.connect(config: cfgA)
@@ -54,7 +34,7 @@ final class MultiBridgeAggregationTests: XCTestCase {
 
     @MainActor
     func testAllDevicesIDNamespacingAvoidsCollision() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
         env.connect(config: cfgA)
@@ -75,7 +55,7 @@ final class MultiBridgeAggregationTests: XCTestCase {
 
     @MainActor
     func testAllLogEntriesSortedNewestFirst() {
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
         env.connect(config: cfgA)
@@ -104,7 +84,7 @@ final class MultiBridgeAggregationTests: XCTestCase {
         // The replacement is `allDevices`: every entry already carries its
         // source bridge id, so attribution is unambiguous and routing by
         // bridge id is the only correct option.
-        let env = AppEnvironment()
+        let env = makeEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
         env.connect(config: cfgA)
