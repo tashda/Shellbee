@@ -14,23 +14,31 @@ struct GroupDetailView: View {
     @State private var menuDestination: GroupMenuDestination?
     let group: Group
 
+    /// Multi-bridge: every action against this group routes to the bridge
+    /// that owns it. Group ids are scoped per Z2M instance, so we resolve
+    /// from the registry on each access.
+    private var bridgeID: UUID? {
+        environment.bridge(forGroup: group.id)?.bridgeID
+    }
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+
     private var currentGroup: Group {
-        environment.store.groups.first { $0.id == group.id } ?? group
+        scope.store.groups.first { $0.id == group.id } ?? group
     }
 
     private var memberDevices: [Device] {
         currentGroup.members.compactMap { member in
-            environment.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
+            scope.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
         }
     }
 
     private var groupState: [String: JSONValue] {
-        viewModel.synthesizedState(for: currentGroup, environment: environment)
+        viewModel.synthesizedState(for: currentGroup, environment: environment, bridgeID: bridgeID)
     }
 
     private var groupLightContext: LightControlContext? {
         for member in currentGroup.members {
-            guard let device = environment.store.devices.first(where: { $0.ieeeAddress == member.ieeeAddress }) else { continue }
+            guard let device = scope.store.devices.first(where: { $0.ieeeAddress == member.ieeeAddress }) else { continue }
             if let ctx = LightControlContext(device: device, state: groupState) { return ctx }
         }
         return nil
@@ -51,7 +59,7 @@ struct GroupDetailView: View {
             if let lightContext = groupLightContext {
                 Section {
                     LightControlCard(context: lightContext, mode: .interactive) { payload in
-                        environment.sendDeviceState(currentGroup.friendlyName, payload: payload)
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -103,17 +111,17 @@ struct GroupDetailView: View {
         }
         .sheet(isPresented: $showAddMembers) {
             AddGroupMembersSheet(group: currentGroup) { selections in
-                viewModel.addMembers(selections.map { ($0.0, $0.1) }, to: currentGroup, environment: environment)
+                viewModel.addMembers(selections.map { ($0.0, $0.1) }, to: currentGroup, environment: environment, bridgeID: bridgeID)
             }
         }
         .sheet(isPresented: $showAddScene) {
             AddSceneSheet { name in
-                viewModel.addScene(name: name, in: currentGroup, environment: environment)
+                viewModel.addScene(name: name, in: currentGroup, environment: environment, bridgeID: bridgeID)
             }
         }
         .sheet(isPresented: $showRenameSheet) {
             RenameGroupSheet(group: currentGroup, memberDevices: memberDevices) { newName in
-                environment.send(topic: Z2MTopics.Request.groupRename, payload: .object([
+                scope.send(topic: Z2MTopics.Request.groupRename, payload: .object([
                     "from": .string(currentGroup.friendlyName),
                     "to": .string(newName)
                 ]))
@@ -126,7 +134,7 @@ struct GroupDetailView: View {
         ) {
             Button("Remove", role: .destructive) {
                 if let member = memberToRemove {
-                    viewModel.removeMember(member, from: currentGroup, environment: environment)
+                    viewModel.removeMember(member, from: currentGroup, environment: environment, bridgeID: bridgeID)
                     memberToRemove = nil
                 }
             }
@@ -135,7 +143,7 @@ struct GroupDetailView: View {
             }
         } message: {
             if let member = memberToRemove {
-                let name = environment.store.devices
+                let name = scope.store.devices
                     .first { $0.ieeeAddress == member.ieeeAddress }?.friendlyName ?? member.ieeeAddress
                 Text("Remove \(name) from this group?")
             }

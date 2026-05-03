@@ -12,6 +12,13 @@ final class GroupListViewModel {
     var searchText = ""
     var sortOrder: GroupSortOrder = .id
     var sortAscending = true
+    /// Multi-bridge: when set, the merged group list filters to a single
+    /// bridge. Ignored in single-bridge mode.
+    var bridgeFilter: UUID? = nil
+
+    var hasActiveFilter: Bool {
+        bridgeFilter != nil
+    }
 
     func filteredGroups(store: AppStore) -> [Group] {
         var groups = store.groups
@@ -28,11 +35,15 @@ final class GroupListViewModel {
         return sorted(groups)
     }
 
-    func addGroup(name: String, id: Int?, environment: AppEnvironment) {
+    func addGroup(name: String, id: Int?, environment: AppEnvironment, bridgeID: UUID? = nil) {
         Haptics.impact(.medium)
         var payload: [String: JSONValue] = ["friendly_name": .string(name)]
         if let id { payload["id"] = .int(id) }
-        environment.send(topic: Z2MTopics.Request.groupAdd, payload: .object(payload))
+        if let bridgeID {
+            environment.send(bridge: bridgeID, topic: Z2MTopics.Request.groupAdd, payload: .object(payload))
+        } else {
+            environment.send(topic: Z2MTopics.Request.groupAdd, payload: .object(payload))
+        }
     }
 
     func renameGroup(_ group: Group, to newName: String, environment: AppEnvironment) {

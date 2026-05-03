@@ -222,7 +222,10 @@ private struct ActivityLogContent: View {
     }
 
     private func mergedFilteredEntries() -> [BridgeBoundLogEntry] {
-        let perBridge = environment.registry.orderedSessions.flatMap { session -> [BridgeBoundLogEntry] in
+        let sessions = environment.registry.orderedSessions.filter { session in
+            viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true
+        }
+        let perBridge = sessions.flatMap { session -> [BridgeBoundLogEntry] in
             viewModel.filteredEntries(store: session.store).map { entry in
                 BridgeBoundLogEntry(
                     bridgeID: session.bridgeID,

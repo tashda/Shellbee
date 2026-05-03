@@ -65,6 +65,9 @@ struct GroupListView: View {
                     .accessibilityLabel("Add Group")
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    if isMergedMode {
+                        bridgeFilterMenu
+                    }
                     sortMenu
                 }
             }
@@ -82,9 +85,10 @@ struct GroupListView: View {
             }
         }
         .sheet(isPresented: $showAddGroup) {
-            AddGroupSheet { name, id in
-                viewModel.addGroup(name: name, id: id, environment: environment)
+            AddGroupSheet { name, id, bridgeID in
+                viewModel.addGroup(name: name, id: id, environment: environment, bridgeID: bridgeID)
             }
+            .environment(environment)
         }
         .sheet(item: $groupToRename) { group in
             RenameGroupSheet(group: group, memberDevices: memberDevices(for: group)) { newName in
@@ -95,6 +99,31 @@ struct GroupListView: View {
             RemoveGroupSheet(group: group, memberDevices: memberDevices(for: group)) { force in
                 viewModel.removeGroup(group, force: force, environment: environment)
             }
+        }
+    }
+
+    private var bridgeFilterMenu: some View {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        return Menu {
+            Picker("Bridge", selection: $viewModel.bridgeFilter) {
+                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
+                    .tag(UUID?.none)
+                ForEach(connected, id: \.bridgeID) { session in
+                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
+                }
+            }
+            .pickerStyle(.inline)
+            if viewModel.bridgeFilter != nil {
+                Divider()
+                Button(role: .destructive) {
+                    viewModel.bridgeFilter = nil
+                } label: {
+                    Label("Clear Filter", systemImage: "xmark.circle")
+                }
+            }
+        } label: {
+            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                .symbolVariant(viewModel.bridgeFilter != nil ? .fill : .none)
         }
     }
 
@@ -135,7 +164,10 @@ struct GroupListView: View {
 
     private func mergedFilteredGroups() -> [BridgeBoundGroup] {
         let q = viewModel.searchText.lowercased()
-        return environment.registry.orderedSessions
+        let sessions = environment.registry.orderedSessions.filter { session in
+            viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true
+        }
+        return sessions
             .flatMap { session -> [BridgeBoundGroup] in
                 let groups = q.isEmpty
                     ? session.store.groups

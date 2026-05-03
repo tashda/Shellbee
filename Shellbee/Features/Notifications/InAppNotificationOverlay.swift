@@ -274,6 +274,12 @@ struct InAppNotificationOverlay: View {
 
     private func goToDevice(for page: NotificationPage) {
         guard let name = page.occurrence.deviceName else { return }
+        // Multi-bridge: a notification can come from any bridge. Resolve which
+        // bridge owns this device so DeviceDetailView reads the right store.
+        if let bridge = environment.bridge(forDevice: name),
+           environment.registry.primaryBridgeID != bridge.bridgeID {
+            environment.registry.setPrimary(bridge.bridgeID)
+        }
         environment.pendingDeviceNavigation = name
         environment.selectedTab = .devices
         autoDismissTask?.cancel()

@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var isPermitJoinConfigPresented = false
     @State private var isPermitJoinActivePresented = false
     @State private var showingRestartAlert = false
+    @State private var pendingRestartBridgeID: UUID?
     @State private var showingMeshDetail = false
 
     /// Active permit-join state derived from bridgeInfo so the toolbar
@@ -30,6 +31,26 @@ struct HomeView: View {
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
     @State private var showingAllLogs = false
     @State private var layout = HomeLayoutStore()
+
+    /// Per-bridge entries for the Home Bridge card. Always includes every
+    /// session — even ones that are reconnecting or offline — so the card can
+    /// surface their status. In single-bridge mode this is just one entry, and
+    /// the card renders the legacy layout.
+    private var bridgeCardEntries: [HomeBridgeCardEntry] {
+        let primaryID = environment.registry.primaryBridgeID
+        return environment.registry.orderedSessions.map { session in
+            HomeBridgeCardEntry(
+                id: session.bridgeID,
+                name: session.displayName,
+                isFocused: session.bridgeID == primaryID,
+                connectionState: session.connectionState,
+                isWebSocketConnected: session.store.isConnected,
+                isBridgeOnline: session.store.bridgeOnline,
+                info: session.store.bridgeInfo,
+                health: session.store.bridgeHealth
+            )
+        }
+    }
 
     private var snapshot: HomeSnapshot {
         // Phase 2 multi-bridge: with 2+ bridges connected, aggregate every
@@ -196,19 +217,27 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $isPermitJoinConfigPresented) {
-                PermitJoinSheet(devices: environment.store.devices, onConfirm: startPermitJoin)
+                PermitJoinSheet(onConfirm: startPermitJoin)
+                    .environment(environment)
             }
             .sheet(isPresented: $isPermitJoinActivePresented) {
                 PermitJoinActiveSheet(
                     startTime: permitJoinStartTime,
                     totalDuration: permitJoinTotalDuration,
                     targetName: permitJoinTargetName,
-                    onStop: { sendPermitJoin(duration: 0, deviceName: nil) }
+                    onStop: { sendPermitJoin(duration: 0, deviceName: nil, bridgeID: nil) }
                 )
             }
             .alert("Restart Bridge?", isPresented: $showingRestartAlert) {
-                Button("Restart", role: .destructive) { environment.restartBridge() }
-                Button("Cancel", role: .cancel) {}
+                Button("Restart", role: .destructive) {
+                    if let id = pendingRestartBridgeID {
+                        environment.restartBridge(id)
+                    } else {
+                        environment.restartBridge()
+                    }
+                    pendingRestartBridgeID = nil
+                }
+                Button("Cancel", role: .cancel) { pendingRestartBridgeID = nil }
             } message: {
                 Text("Restarting the bridge will apply pending configuration changes and temporarily disconnect all Zigbee devices.")
             }
@@ -220,11 +249,16 @@ struct HomeView: View {
         switch id {
         case .bridge:
             HomeBridgeCard(
-                snapshot: snapshot,
-                health: environment.store.bridgeHealth,
-                serverName: environment.connectionConfig?.name,
-                connectionState: environment.connectionState,
-                onRestart: { showingRestartAlert = true }
+                entries: bridgeCardEntries,
+                onRestart: { id in
+                    pendingRestartBridgeID = id
+                    showingRestartAlert = true
+                },
+                onSelectBridge: bridgeCardEntries.count >= 2 ? { id in
+                    if environment.registry.primaryBridgeID != id {
+                        environment.registry.setPrimary(id)
+                    }
+                } : nil
             )
         case .devices:
             HomeDevicesCard(snapshot: snapshot) {
@@ -275,22 +309,31 @@ struct HomeView: View {
         .padding(.vertical, DesignTokens.Spacing.xxl)
     }
 
-    private func startPermitJoin(duration: Int, deviceName: String?) {
-        sendPermitJoin(duration: duration, deviceName: deviceName)
+    private func startPermitJoin(duration: Int, deviceName: String?, bridgeID: UUID?) {
+        sendPermitJoin(duration: duration, deviceName: deviceName, bridgeID: bridgeID)
     }
 
-    private func sendPermitJoin(duration: Int, deviceName: String?) {
+    private func sendPermitJoin(duration: Int, deviceName: String?, bridgeID: UUID?) {
         var payload: [String: JSONValue] = ["time": .int(duration), "value": .bool(duration > 0)]
         if let deviceName, !deviceName.isEmpty {
             payload["device"] = .string(deviceName)
         }
-        environment.send(topic: Z2MTopics.Request.permitJoin, payload: .object(payload))
+        // Route to the user-selected bridge in multi-bridge mode; fall back to
+        // the focused bridge when nothing's specified (single-bridge path).
+        let store: AppStore
+        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
+            environment.send(bridge: bridgeID, topic: Z2MTopics.Request.permitJoin, payload: .object(payload))
+            store = session.store
+        } else {
+            environment.send(topic: Z2MTopics.Request.permitJoin, payload: .object(payload))
+            store = environment.store
+        }
 
-        // Optimistically reflect the request in bridgeInfo so toolbar
-        // sheets / wizard / etc. update the moment the user taps,
+        // Optimistically reflect the request in the targeted bridge's info so
+        // the toolbar sheet / wizard / etc. update the moment the user taps,
         // without waiting for the bridge round-trip.
-        if let info = environment.store.bridgeInfo {
-            environment.store.bridgeInfo = info.copyUpdatingPermitJoin(
+        if let info = store.bridgeInfo {
+            store.bridgeInfo = info.copyUpdatingPermitJoin(
                 enabled: duration > 0,
                 timeout: duration > 0 ? duration : nil,
                 target: duration > 0 ? deviceName : nil

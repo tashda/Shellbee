@@ -90,6 +90,9 @@ final class DeviceListViewModel {
     var typeFilter: DeviceType? = nil
     var vendorFilter: String? = nil
     var statusFilter: DeviceStatusFilter = .all
+    /// Multi-bridge: when set, the merged device list is filtered to a single
+    /// bridge. Ignored in single-bridge mode.
+    var bridgeFilter: UUID? = nil
     var sortOrder: DeviceSortOrder = .name
     var sortAscending = true
     var groupByCategory = true
@@ -106,7 +109,7 @@ final class DeviceListViewModel {
     static var recentWindow: TimeInterval { AppConfig.UX.configuredRecentDeviceWindow }
 
     var hasActiveFilter: Bool {
-        categoryFilter != nil || typeFilter != nil || vendorFilter != nil || statusFilter != .all
+        categoryFilter != nil || typeFilter != nil || vendorFilter != nil || statusFilter != .all || bridgeFilter != nil
     }
 
     /// Devices currently interviewing or whose interview hasn't completed.

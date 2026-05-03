@@ -6,8 +6,16 @@ struct DeviceBindView: View {
     @State private var showAddSheet = false
     @State private var bindingToRemove: ParsedBinding?
 
+    /// Multi-bridge: resolve the bridge that owns this device so reads and
+    /// writes stay scoped to the right network. Falls back to the focused
+    /// bridge in single-bridge mode.
+    private var bridgeID: UUID? {
+        environment.bridge(forDevice: device.friendlyName)?.bridgeID
+    }
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+
     private var currentDevice: Device {
-        environment.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
+        scope.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
     }
 
     private var bindings: [ParsedBinding] {
@@ -66,13 +74,13 @@ struct DeviceBindView: View {
 
     @ViewBuilder
     private func bindingRow(_ binding: ParsedBinding) -> some View {
-        let targetDevice = environment.store.devices.first { $0.ieeeAddress == binding.targetIEEE }
+        let targetDevice = scope.store.devices.first { $0.ieeeAddress == binding.targetIEEE }
         if let targetDevice {
             NavigationLink(destination: DeviceDetailView(device: targetDevice)) {
-                BindingRow(binding: binding, store: environment.store)
+                BindingRow(binding: binding, store: scope.store)
             }
         } else {
-            BindingRow(binding: binding, store: environment.store)
+            BindingRow(binding: binding, store: scope.store)
         }
     }
 
@@ -84,12 +92,12 @@ struct DeviceBindView: View {
         if !clusters.isEmpty {
             payload["clusters"] = .array(clusters.map { .string($0) })
         }
-        environment.send(topic: Z2MTopics.Request.deviceBind, payload: .object(payload))
+        scope.send(topic: Z2MTopics.Request.deviceBind, payload: .object(payload))
     }
 
     private func unbind(_ binding: ParsedBinding) {
         let target = resolveTarget(binding)
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.deviceUnbind,
             payload: .object([
                 "from": .string(currentDevice.friendlyName),
@@ -101,11 +109,11 @@ struct DeviceBindView: View {
 
     private func resolveTarget(_ binding: ParsedBinding) -> String {
         if binding.targetType == "group" {
-            return environment.store.groups
+            return scope.store.groups
                 .first { $0.id == binding.groupId }?.friendlyName
                 ?? "group_\(binding.groupId ?? 0)"
         }
-        return environment.store.devices
+        return scope.store.devices
             .first { $0.ieeeAddress == binding.targetIEEE }?.friendlyName
             ?? binding.targetIEEE ?? "coordinator"
     }

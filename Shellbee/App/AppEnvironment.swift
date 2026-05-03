@@ -85,6 +85,23 @@ final class AppEnvironment {
         }
     }
 
+    /// Look up which bridge owns a group with the given id. Group ids are
+    /// scoped to a single Z2M instance, so the same numeric id can exist on
+    /// multiple bridges — first-match resolution returns the focused bridge's
+    /// owner first when both contain it.
+    func bridge(forGroup groupID: Int) -> BridgeSession? {
+        // Prefer the focused bridge's match if any, then fall back to others
+        // — keeps multi-bridge group navigation aligned with the user's
+        // current focus when both bridges have a group with the same id.
+        if let primary = registry.primary,
+           primary.store.groups.contains(where: { $0.id == groupID }) {
+            return primary
+        }
+        return registry.orderedSessions.first { session in
+            session.store.groups.contains { $0.id == groupID }
+        }
+    }
+
     /// All pending in-app notifications across every bridge. Tagged so the
     /// overlay can show bridge attribution on the banner and route dismissal
     /// back to the originating bridge's store.

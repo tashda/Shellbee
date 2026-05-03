@@ -2,17 +2,22 @@ import SwiftUI
 
 struct PermitJoinSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var environment
 
-    let devices: [Device]
-    let onConfirm: (Int, String?) -> Void
-
+    /// Phase 2 multi-bridge: target bridge for permit-join. Nil = focused
+    /// bridge (single-bridge fallback). The picker auto-selects on appear
+    /// when more than one bridge is connected.
+    @State private var bridgeID: UUID?
     @State private var targetName: String?
     @State private var durationChoice = DurationChoice.max
     @State private var customDuration = 120
 
+    let onConfirm: (_ duration: Int, _ target: String?, _ bridgeID: UUID?) -> Void
+
     var body: some View {
         NavigationStack {
             Form {
+                bridgeSection
                 durationSection
                 targetSection
             }
@@ -22,6 +27,18 @@ struct PermitJoinSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder
+    private var bridgeSection: some View {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        if connected.count >= 2 {
+            Section {
+                BridgePicker(selection: $bridgeID)
+            } footer: {
+                Text("Permit Join opens this bridge's network only. Other bridges remain closed.")
+            }
+        }
     }
 
     private var durationSection: some View {
@@ -54,11 +71,16 @@ struct PermitJoinSheet: View {
         } footer: {
             Text("The coordinator and any router can allow new devices to join your network.")
         }
+        .onChange(of: bridgeID) { _, _ in
+            // Reset the via-target when the user picks a different bridge —
+            // the prior bridge's router list isn't valid anymore.
+            targetName = nil
+        }
     }
 
     private var actionBar: some View {
         Button {
-            onConfirm(selectedDuration, targetName)
+            onConfirm(selectedDuration, targetName, bridgeID)
             dismiss()
         } label: {
             Text("Start Permit Join")
@@ -73,8 +95,16 @@ struct PermitJoinSheet: View {
         .background(.ultraThinMaterial)
     }
 
+    /// Routers + coordinator from the selected bridge's store. Falls back to
+    /// the focused bridge when `bridgeID` is nil.
     private var joinTargets: [Device] {
-        devices
+        let store: AppStore
+        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
+            store = session.store
+        } else {
+            store = environment.store
+        }
+        return store.devices
             .filter { $0.type == .coordinator || $0.type == .router }
             .sorted { lhs, rhs in
                 if lhs.type != rhs.type { return lhs.type == .coordinator }
@@ -114,12 +144,6 @@ struct PermitJoinSheet: View {
 }
 
 #Preview {
-    PermitJoinSheet(
-        devices: [
-            .preview, .fallbackPreview,
-            Device(ieeeAddress: "0x003", type: .router, networkAddress: 3, supported: true,
-                   friendlyName: "Kitchen Relay", disabled: false, definition: nil,
-                   powerSource: "mains", interviewCompleted: true, interviewing: false)
-        ]
-    ) { _, _ in }
+    PermitJoinSheet { _, _, _ in }
+        .environment(AppEnvironment())
 }

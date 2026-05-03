@@ -282,7 +282,10 @@ private struct DeviceListContent: View {
     /// proper merged filtering belongs in a follow-up.
     private func filteredMergedDevices() -> [BridgeBoundDevice] {
         let q = viewModel.searchText.lowercased()
-        let all = environment.allDevices.filter { $0.device.type != .coordinator }
+        var all = environment.allDevices.filter { $0.device.type != .coordinator }
+        if let bridgeID = viewModel.bridgeFilter {
+            all = all.filter { $0.bridgeID == bridgeID }
+        }
         let filtered: [BridgeBoundDevice] = q.isEmpty
             ? all
             : all.filter { bound in

@@ -3,11 +3,19 @@ import SwiftUI
 struct LogFilterMenu: View {
     @Bindable var viewModel: LogsViewModel
     let store: AppStore
+    @Environment(AppEnvironment.self) private var environment
     @State private var deviceSheetPresented = false
     @State private var namespaceSnapshot: [String] = []
 
+    private var connectedSessions: [BridgeSession] {
+        environment.registry.orderedSessions.filter(\.isConnected)
+    }
+
     var body: some View {
         Menu {
+            if connectedSessions.count >= 2 {
+                bridgeMenu
+            }
             levelMenu
             categoryMenu
             if !namespaceSnapshot.isEmpty { namespaceMenu }
@@ -35,6 +43,26 @@ struct LogFilterMenu: View {
                 selectedDevices: $viewModel.selectedDevices,
                 logDevices: viewModel.availableDevices(store: store)
             )
+        }
+    }
+
+    private var bridgeMenu: some View {
+        Menu {
+            Picker("Bridge", selection: $viewModel.bridgeFilter) {
+                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
+                    .tag(UUID?.none)
+                ForEach(connectedSessions, id: \.bridgeID) { session in
+                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            if let id = viewModel.bridgeFilter,
+               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
+                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
+            } else {
+                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
+            }
         }
     }
 

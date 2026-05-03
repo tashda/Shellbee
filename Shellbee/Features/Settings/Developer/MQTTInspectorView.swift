@@ -4,6 +4,10 @@ struct MQTTInspectorView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var selectedTab: Tab = .subscribe
     @State private var store = SubscribeStore()
+    /// Phase 2 multi-bridge: which bridge's WebSocket the inspector is wired
+    /// to. Defaults to the focused bridge; the picker (only visible when 2+
+    /// bridges are connected) lets the user re-attach to a different one.
+    @State private var bridgeID: UUID?
 
     enum Tab: String, CaseIterable, Identifiable, Hashable {
         case subscribe = "Subscribe"
@@ -12,19 +16,20 @@ struct MQTTInspectorView: View {
     }
 
     var body: some View {
-        ZStack {
-            switch selectedTab {
-            case .subscribe:
-                SubscribeView(store: store)
-            case .publish:
-                PublishView()
+        VStack(spacing: 0) {
+            bridgePickerBar
+            ZStack {
+                switch selectedTab {
+                case .subscribe:
+                    SubscribeView(store: store)
+                case .publish:
+                    PublishView(bridgeID: bridgeID)
+                }
             }
         }
         .navigationTitle("MQTT Inspector")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // Fixed-width principal keeps the segmented picker in the same
-            // place regardless of how many trailing items the active tab has.
             ToolbarItem(placement: .principal) {
                 Picker("Mode", selection: $selectedTab) {
                     ForEach(Tab.allCases) { tab in
@@ -35,8 +40,51 @@ struct MQTTInspectorView: View {
                 .frame(width: DesignTokens.Size.inspectorTabPickerWidth)
             }
         }
-        .onAppear { if let session = environment.session { store.attach(session: session) } }
-        .onDisappear { if let session = environment.session { store.detach(session: session) } }
+        .onAppear { attachToCurrentBridge() }
+        .onDisappear { detachCurrentBridge() }
+        .onChange(of: bridgeID) { _, _ in
+            detachCurrentBridge()
+            store.clear()
+            attachToCurrentBridge()
+        }
+    }
+
+    @ViewBuilder
+    private var bridgePickerBar: some View {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        if connected.count >= 2 {
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                Text("Bridge")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                BridgePicker(selection: $bridgeID, hideWhenSingle: false)
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+            }
+            .padding(.horizontal, DesignTokens.Spacing.lg)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(.ultraThinMaterial)
+        }
+    }
+
+    private func sessionForCurrent() -> ConnectionSessionController? {
+        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
+            return session.controller
+        }
+        return environment.session
+    }
+
+    private func attachToCurrentBridge() {
+        if let session = sessionForCurrent() {
+            store.attach(session: session)
+        }
+    }
+
+    private func detachCurrentBridge() {
+        if let session = sessionForCurrent() {
+            store.detach(session: session)
+        }
     }
 }
 
@@ -168,6 +216,8 @@ private struct MessageRow: View {
 
 private struct PublishView: View {
     @Environment(AppEnvironment.self) private var environment
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
     @State private var topic: String = ""
     @State private var payload: String = ""
     @State private var showWarning: Bool = false
@@ -254,7 +304,7 @@ private struct PublishView: View {
     }
 
     private func sendNow() {
-        environment.send(topic: topic, payload: parsedPayload())
+        scope.send(topic: topic, payload: parsedPayload())
         lastResult = "Published at \(Date.now.formatted(date: .omitted, time: .standard))"
         Haptics.impact(.light)
     }

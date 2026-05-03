@@ -9,9 +9,15 @@ struct AddGroupMembersSheet: View {
     @State private var selectedDevices: [String: Int] = [:]
     @State private var searchText = ""
 
+    /// Multi-bridge: resolve the group's bridge so we only show devices that
+    /// can actually be added (z2m can't add cross-bridge group members).
+    private var bridgeStore: AppStore {
+        environment.bridge(forGroup: group.id)?.store ?? environment.store
+    }
+
     private var eligibleDevices: [Device] {
         let memberIEEEs = Set(group.members.map(\.ieeeAddress))
-        return environment.store.devices
+        return bridgeStore.devices
             .filter { $0.type != .coordinator && !memberIEEEs.contains($0.ieeeAddress) }
             .sorted { $0.friendlyName.localizedCaseInsensitiveCompare($1.friendlyName) == .orderedAscending }
     }
@@ -49,7 +55,7 @@ struct AddGroupMembersSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
                         let selections = selectedDevices.compactMap { ieee, endpoint -> (Device, Int)? in
-                            guard let device = environment.store.devices.first(where: { $0.ieeeAddress == ieee }) else { return nil }
+                            guard let device = bridgeStore.devices.first(where: { $0.ieeeAddress == ieee }) else { return nil }
                             return (device, endpoint)
                         }
                         onConfirm(selections)

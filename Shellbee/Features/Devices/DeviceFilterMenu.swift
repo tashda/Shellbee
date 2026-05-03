@@ -4,10 +4,18 @@ struct DeviceFilterMenu: View {
     @Bindable var viewModel: DeviceListViewModel
     let store: AppStore
 
+    @Environment(AppEnvironment.self) private var environment
     @State private var snapshot = DeviceFilterMenuSnapshot.empty
+
+    private var connectedSessions: [BridgeSession] {
+        environment.registry.orderedSessions.filter(\.isConnected)
+    }
 
     var body: some View {
         Menu {
+            if connectedSessions.count >= 2 {
+                bridgeMenu
+            }
             Menu {
                 Picker("Status", selection: statusSelection) {
                     ForEach(snapshot.statuses, id: \.filter) { item in
@@ -91,6 +99,7 @@ struct DeviceFilterMenu: View {
                     viewModel.categoryFilter = nil
                     viewModel.vendorFilter = nil
                     viewModel.typeFilter = nil
+                    viewModel.bridgeFilter = nil
                     refreshSnapshot()
                 } label: {
                     Label("Clear Filters", systemImage: "xmark.circle")
@@ -142,6 +151,26 @@ struct DeviceFilterMenu: View {
                 refreshSnapshot()
             }
         )
+    }
+
+    private var bridgeMenu: some View {
+        Menu {
+            Picker("Bridge", selection: $viewModel.bridgeFilter) {
+                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
+                    .tag(UUID?.none)
+                ForEach(connectedSessions, id: \.bridgeID) { session in
+                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            if let id = viewModel.bridgeFilter,
+               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
+                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
+            } else {
+                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
+            }
+        }
     }
 
     private func refreshSnapshot() {

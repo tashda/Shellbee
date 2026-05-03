@@ -39,12 +39,20 @@ struct AddBindingSheet: View {
 
     private var availableClusters: [String] { Self.bindableClusters(from: device) }
 
+    /// Multi-bridge: bind candidates must come from the SAME bridge as
+    /// `device` — z2m can't bind across networks. Resolves the source bridge
+    /// from the registry, falling back to the focused store.
+    private var sourceStore: AppStore {
+        environment.bridge(forDevice: device.friendlyName)?.store ?? environment.store
+    }
+
     private var bindableDevices: [Device] {
         let myOut = Set(availableClusters)
-        return environment.store.devices
+        let store = sourceStore
+        return store.devices
             .filter { d in
                 guard d.ieeeAddress != device.ieeeAddress, d.type != .coordinator else { return false }
-                guard environment.store.isAvailable(d.friendlyName) else { return false }
+                guard store.isAvailable(d.friendlyName) else { return false }
                 guard !myOut.isEmpty, !(d.endpoints ?? [:]).isEmpty else { return true }
                 return !myOut.intersection(Self.inputClusters(from: d)).isEmpty
             }
