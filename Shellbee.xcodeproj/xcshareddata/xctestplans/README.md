@@ -34,6 +34,9 @@ as the fix.
 | `Z2MIntegrationTests` (entire class) | Requires the docker z2m bridge on `localhost:8080`, which Fast CI does not start. Runs in Full CI instead. |
 | `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
 | `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
+| `ConnectionHistoryTests/testHistoryLoadsTokenFromKeychain()` | Same Keychain limitation — round-trips a token through `SecItem*` from a single test process. |
+| `ConnectionHistoryTests/testHistoryMigratesLegacyEntriesToKeychain()` | Same Keychain limitation. |
+| `ConnectionHistoryTests/testRemoveAtOffsetsRemovesPersistedToken()` | Same Keychain limitation. |
 | `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
 
 ### Recently un-skipped
