@@ -19,8 +19,30 @@ extension AppStore {
         deviceStates[friendlyName] ?? [:]
     }
 
+    func availabilityStatus(for friendlyName: String) -> DeviceAvailabilityStatus {
+        if let device = device(named: friendlyName),
+           device.availabilityTrackingEnabled == false
+                || bridgeInfo?.config?.availabilityTrackingEnabled(for: device) == false {
+            return .untracked
+        }
+        return (deviceAvailability[friendlyName] ?? false) ? .online : .offline
+    }
+
     func isAvailable(_ friendlyName: String) -> Bool {
-        deviceAvailability[friendlyName] ?? false
+        availabilityStatus(for: friendlyName).isAvailable
+    }
+
+    func applyingConfiguredAvailability(to device: Device) -> Device {
+        guard bridgeInfo?.config?.availabilityTrackingEnabled(for: device) == false else {
+            return device
+        }
+        var updated = device
+        updated.availability = .bool(false)
+        return updated
+    }
+
+    func syncConfiguredAvailability() {
+        devices = devices.map(applyingConfiguredAvailability)
     }
 
     /// Apply a rename to local state immediately so the UI updates without

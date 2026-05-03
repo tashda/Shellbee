@@ -31,6 +31,7 @@ extension AppStore {
             } else {
                 bridgeInfo = info
             }
+            syncConfiguredAvailability()
         case .bridgeState(let state):
             bridgeOnline = state == "online"
         case .devices(let list):
@@ -45,7 +46,7 @@ extension AppStore {
                     recordFirstSeen(ieee: device.ieeeAddress)
                 }
             }
-            devices = list
+            devices = list.map(applyingConfiguredAvailability)
         case .groups(let list):
             groups = list
         case .logMessage(let msg):

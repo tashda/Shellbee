@@ -5,6 +5,8 @@ struct HomeSnapshot: Sendable {
     let isBridgeOnline: Bool
     let totalDevices: Int
     let onlineDevices: Int
+    let offlineDevices: Int
+    let availabilityOffDevices: Int
     let routerCount: Int
     let endDeviceCount: Int
     let unsupportedDevices: Int
@@ -26,10 +28,6 @@ struct HomeSnapshot: Sendable {
     let isPermitJoinActive: Bool
     let permitJoinRemaining: Int?
     let restartRequired: Bool
-
-    var offlineDevices: Int {
-        max(totalDevices - onlineDevices, 0)
-    }
 
     var releaseURL: URL? {
         guard let bridgeVersion else { return nil }
@@ -67,7 +65,17 @@ struct HomeSnapshot: Sendable {
         let nonCoordinatorDevices = devices.filter { $0.type != .coordinator }
 
         totalDevices = nonCoordinatorDevices.count
-        onlineDevices = nonCoordinatorDevices.filter { availability[$0.friendlyName] ?? false }.count
+        onlineDevices = nonCoordinatorDevices.filter {
+            $0.availabilityTrackingEnabled
+                && availability[$0.friendlyName] == true
+        }.count
+        offlineDevices = nonCoordinatorDevices.filter {
+            $0.availabilityTrackingEnabled
+                && availability[$0.friendlyName] != true
+        }.count
+        availabilityOffDevices = nonCoordinatorDevices.filter {
+            !$0.availabilityTrackingEnabled
+        }.count
         routerCount = nonCoordinatorDevices.filter { $0.type == .router }.count
         endDeviceCount = nonCoordinatorDevices.filter { $0.type == .endDevice }.count
         unsupportedDevices = nonCoordinatorDevices.filter { !$0.supported }.count

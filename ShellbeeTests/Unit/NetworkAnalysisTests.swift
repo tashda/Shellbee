@@ -29,6 +29,22 @@ final class NetworkAnalysisTests: XCTestCase {
         ))
     }
 
+    @MainActor
+
+    func testAvailabilityOffOnlyMatchesUntrackedDevices() {
+        let device = dev()
+
+        XCTAssertTrue(DeviceCondition.availabilityOff.matches(
+            device: device, state: [:], availabilityStatus: .untracked
+        ))
+        XCTAssertFalse(DeviceCondition.online.matches(
+            device: device, state: [:], availabilityStatus: .untracked
+        ))
+        XCTAssertFalse(DeviceCondition.offline.matches(
+            device: device, state: [:], availabilityStatus: .untracked
+        ))
+    }
+
     // MARK: - batteryLow (threshold = 20)
 
     @MainActor

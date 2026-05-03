@@ -19,8 +19,14 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
     var dateCode: String?
     var endpoints: [String: JSONValue]?
     var options: [String: JSONValue]?
+    var availability: JSONValue? = nil
 
     var id: String { ieeeAddress }
+
+    var availabilityTrackingEnabled: Bool {
+        availability?.boolValue != false
+            && options?["availability"]?.boolValue != false
+    }
 
     var availableEndpoints: [Int] {
         guard let keys = endpoints?.keys, !keys.isEmpty else { return [1] }
@@ -51,7 +57,7 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
         case interviewCompleted = "interview_completed"
         case softwareBuildId = "software_build_id"
         case dateCode = "date_code"
-        case endpoints, options
+        case endpoints, options, availability
     }
 }
 
