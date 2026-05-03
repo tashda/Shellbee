@@ -3,8 +3,8 @@ import SwiftUI
 struct HomeAssistantSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var enabled: Bool = false
     @State private var discoveryTopic: String = "homeassistant"
@@ -91,6 +91,6 @@ struct HomeAssistantSettingsView: View {
 
 #Preview {
     NavigationStack {
-        HomeAssistantSettingsView().environment(AppEnvironment())
+        HomeAssistantSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

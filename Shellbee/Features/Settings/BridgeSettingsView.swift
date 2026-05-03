@@ -11,8 +11,10 @@ struct BridgeSettingsView: View {
 
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
+    @State private var editorViewModel: ConnectionViewModel?
+    @State private var removeConfirmation: ConnectionConfig?
 
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
     private var session: BridgeSession? { environment.registry.session(for: bridgeID) }
     private var config: ConnectionConfig? { session?.config }
     private var displayName: String { session?.displayName ?? "Bridge" }
@@ -36,6 +38,22 @@ struct BridgeSettingsView: View {
         }
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: editorBinding) { vm in
+            NavigationStack {
+                ConnectionEditorView(viewModel: vm, mode: .save)
+            }
+        }
+        .alert("Remove Bridge?", isPresented: removeAlertBinding, presenting: removeConfirmation) { config in
+            Button("Remove", role: .destructive) {
+                Task {
+                    await environment.disconnect(bridgeID: config.id)
+                    environment.history.remove(config)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { config in
+            Text("\(config.displayName) will be disconnected and removed from your saved bridges. Its auth token is deleted from the keychain.")
+        }
         .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
             Button("Restart", role: .destructive) { scope.restart() }
             Button("Cancel", role: .cancel) {}
@@ -56,38 +74,30 @@ struct BridgeSettingsView: View {
 
     private var statusHeader: some View {
         Section {
-            NavigationLink { ServerDetailView(bridgeID: bridgeID) } label: {
-                HStack(spacing: DesignTokens.Spacing.md) {
-                    BridgeColorDot(bridgeID: bridgeID, bridgeName: displayName, size: 12)
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Server")
-                                .foregroundStyle(.primary)
-                            Text(statusSubtitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                    } icon: {
-                        Image(systemName: "wifi")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                            .background(serverIconColor, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-                    }
+            if let config {
+                NavigationLink { ServerDetailView(bridgeID: bridgeID) } label: {
+                    BridgeConnectionCardLabel(
+                        bridgeID: bridgeID,
+                        displayName: displayName,
+                        statusSubtitle: statusSubtitle
+                    )
+                }
+                .connectionCardActions(
+                    config: config,
+                    onEdit: { presentEditor(for: config) },
+                    onRemove: { removeConfirmation = config }
+                )
+            } else {
+                NavigationLink { ServerDetailView(bridgeID: bridgeID) } label: {
+                    BridgeConnectionCardLabel(
+                        bridgeID: bridgeID,
+                        displayName: displayName,
+                        statusSubtitle: statusSubtitle
+                    )
                 }
             }
         } header: {
             Text("Connection")
-        }
-    }
-
-    private var serverIconColor: Color {
-        switch session?.connectionState {
-        case .connected: .green
-        case .connecting, .reconnecting: .orange
-        case .lost, .failed: .red
-        default: Color(.systemGray3)
         }
     }
 
@@ -160,9 +170,6 @@ struct BridgeSettingsView: View {
             }
             NavigationLink { HealthSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Health Checks", systemImage: "waveform.path.ecg", color: .pink)
-            }
-            NavigationLink { FrontendSettingsView(bridgeID: bridgeID) } label: {
-                settingsLabel(title: "Frontend", systemImage: "rectangle.on.rectangle", color: .teal)
             }
         } header: {
             Text("Integrations & Features")
@@ -238,5 +245,25 @@ struct BridgeSettingsView: View {
                 .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
                 .background(color, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
         }
+    }
+
+    private func presentEditor(for config: ConnectionConfig) {
+        let vm = ConnectionViewModel(environment: environment)
+        vm.presentEditor(for: config)
+        editorViewModel = vm
+    }
+
+    private var editorBinding: Binding<ConnectionViewModel?> {
+        Binding(
+            get: { editorViewModel?.isEditorPresented == true ? editorViewModel : nil },
+            set: { if $0 == nil { editorViewModel = nil } }
+        )
+    }
+
+    private var removeAlertBinding: Binding<Bool> {
+        Binding(
+            get: { removeConfirmation != nil },
+            set: { if !$0 { removeConfirmation = nil } }
+        )
     }
 }

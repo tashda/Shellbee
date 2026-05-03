@@ -5,6 +5,10 @@ import SwiftUI
 /// (when `onSelect` is non-nil) sets focus to this bridge.
 struct HomeBridgeCardRow: View {
     let entry: HomeBridgeCardEntry
+    /// Latest Z2M version from GitHub Releases, fetched once by the parent
+    /// card and shared across rows. When present and newer than the bridge's
+    /// `entry.version`, the row surfaces an inline "vX.Y.Z available" link.
+    let latestVersion: String?
     let onRestart: () -> Void
     let onSelect: (() -> Void)?
 
@@ -27,6 +31,27 @@ struct HomeBridgeCardRow: View {
         return z2mHigh || osHigh
     }
 
+    /// GitHub tag may or may not be prefixed with `v` ("v2.10.0" vs "2.10.0").
+    /// `Z2MVersion.parse` is order-sensitive and silently mis-parses leading
+    /// non-digits, so strip a single leading `v`/`V` before parsing.
+    private static func normalize(_ raw: String) -> String {
+        if raw.hasPrefix("v") || raw.hasPrefix("V") { return String(raw.dropFirst()) }
+        return raw
+    }
+
+    private var latestParsed: Z2MVersion? {
+        latestVersion.flatMap { Z2MVersion.parse(Self.normalize($0)) }
+    }
+
+    private var currentParsed: Z2MVersion? {
+        entry.version.flatMap { Z2MVersion.parse(Self.normalize($0)) }
+    }
+
+    private var updateAvailable: Bool {
+        guard let latest = latestParsed, let current = currentParsed else { return false }
+        return latest > current
+    }
+
     var body: some View {
         let row = VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             HStack(spacing: DesignTokens.Spacing.sm) {
@@ -36,14 +61,6 @@ struct HomeBridgeCardRow: View {
                 Text(entry.name)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                if entry.isFocused {
-                    Text("Focused")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.teal)
-                        .padding(.horizontal, DesignTokens.Spacing.xs)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(Color.teal.opacity(0.12)))
-                }
                 Spacer()
                 if let status = statusText {
                     Text(status)
@@ -108,6 +125,15 @@ struct HomeBridgeCardRow: View {
 
     private var chips: [Chip] {
         var result: [Chip] = []
+        if updateAvailable, let latest = latestVersion,
+           let url = URL(string: "https://github.com/Koenkk/zigbee2mqtt/releases/tag/\(latest)") {
+            result.append(Chip(view: AnyView(
+                Link(destination: url) {
+                    chipLabel(symbol: "arrow.down.circle.fill", text: "v\(latest) available", tint: .blue)
+                }
+                .buttonStyle(.plain)
+            )))
+        }
         if entry.restartRequired {
             result.append(Chip(view: AnyView(
                 Button(action: onRestart) {

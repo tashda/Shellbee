@@ -3,15 +3,22 @@ import SwiftUI
 struct LogDetailView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewMode: ViewMode = .beautiful
+    /// Phase 1 multi-bridge: source bridge for this log entry. Threaded
+    /// through from the navigation route so device/group references inside
+    /// the entry resolve against the right store.
+    let bridgeID: UUID
     let entry: LogEntry
     private let doneAction: (() -> Void)?
 
     enum ViewMode { case beautiful, json }
 
-    init(entry: LogEntry, doneAction: (() -> Void)? = nil) {
+    init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
+        self.bridgeID = bridgeID
         self.entry = entry
         self.doneAction = doneAction
     }
+
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     private var displayDevices: [(ref: LogContext.DeviceRef, device: Device)] {
         let refs: [LogContext.DeviceRef]
@@ -25,7 +32,7 @@ struct LogDetailView: View {
             refs = name.map { [LogContext.DeviceRef(friendlyName: $0, role: nil)] } ?? []
         }
         return refs.compactMap { ref in
-            environment.store.device(named: ref.friendlyName).map { (ref, $0) }
+            scope.store.device(named: ref.friendlyName).map { (ref, $0) }
         }
     }
 
@@ -65,8 +72,8 @@ struct LogDetailView: View {
         }
         guard let name = candidate else { return nil }
         // Only resolve as group when no real device exists with that name
-        if environment.store.device(named: name) != nil { return nil }
-        return environment.store.group(named: name)
+        if scope.store.device(named: name) != nil { return nil }
+        return scope.store.group(named: name)
     }
 
     var body: some View {
@@ -76,7 +83,7 @@ struct LogDetailView: View {
             } else if displayDevices.count == 1, let (_, device) = displayDevices.first {
                 singleDeviceSection(device)
             } else if displayDevices.count > 1 {
-                LogDetailDevicesSection(devices: displayDevices)
+                LogDetailDevicesSection(bridgeID: bridgeID, devices: displayDevices)
             }
 
             if viewMode == .beautiful {
@@ -131,9 +138,9 @@ struct LogDetailView: View {
 
     @ViewBuilder
     private func singleGroupSection(_ group: Group) -> some View {
-        let members = environment.store.memberDevices(of: group)
+        let members = scope.store.memberDevices(of: group)
         let groupState = members.reduce(into: [String: JSONValue]()) { acc, d in
-            for (k, v) in environment.store.state(for: d.friendlyName) where acc[k] == nil {
+            for (k, v) in scope.store.state(for: d.friendlyName) where acc[k] == nil {
                 acc[k] = v
             }
         }
@@ -143,9 +150,11 @@ struct LogDetailView: View {
                     group: group,
                     memberDevices: members,
                     state: groupState,
+                    bridgeID: bridgeID,
+                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
                     displayMode: .compact
                 )
-                NavigationLink(destination: GroupDetailView(group: group)) { EmptyView() }
+                NavigationLink(value: GroupRoute(bridgeID: bridgeID, group: group)) { EmptyView() }
                     .opacity(0)
             }
             .listRowInsets(EdgeInsets())
@@ -159,13 +168,15 @@ struct LogDetailView: View {
             ZStack {
                 DeviceCard(
                     device: device,
-                    state: environment.store.state(for: device.friendlyName),
-                    isAvailable: environment.store.isAvailable(device.friendlyName),
-                    otaStatus: environment.store.otaStatus(for: device.friendlyName),
-                    lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                    state: scope.store.state(for: device.friendlyName),
+                    isAvailable: scope.store.isAvailable(device.friendlyName),
+                    otaStatus: scope.store.otaStatus(for: device.friendlyName),
+                    bridgeID: bridgeID,
+                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+                    lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                     displayMode: .compact
                 )
-                NavigationLink(destination: DeviceDetailView(device: device)) { EmptyView() }
+                NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
                     .opacity(0)
             }
             .listRowInsets(EdgeInsets())
@@ -306,7 +317,7 @@ struct LogDetailView: View {
 
 #Preview {
     NavigationStack {
-        LogDetailView(entry: LogEntry.previewEntries[3])
+        LogDetailView(bridgeID: UUID(), entry: LogEntry.previewEntries[3])
             .environment(AppEnvironment())
     }
 }

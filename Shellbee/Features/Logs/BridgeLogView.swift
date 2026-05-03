@@ -4,19 +4,53 @@ struct BridgeLogView: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: BridgeLogViewModel
 
+    private var connectedSessions: [BridgeSession] {
+        environment.registry.orderedSessions.filter(\.isConnected)
+    }
+
+    /// Sessions whose raw log entries should be displayed. With an explicit
+    /// `bridgeFilter`, just that session; otherwise every connected session
+    /// (merged newest-first), so multi-bridge users don't silently see only
+    /// one bridge's lines.
+    private var displayedSessions: [BridgeSession] {
+        if let id = viewModel.bridgeFilter,
+           let session = connectedSessions.first(where: { $0.bridgeID == id }) {
+            return [session]
+        }
+        return connectedSessions
+    }
+
+    private var mergedEntries: [BridgeBoundLogEntry] {
+        displayedSessions.flatMap { session -> [BridgeBoundLogEntry] in
+            viewModel.filteredEntries(store: session.store).map { entry in
+                BridgeBoundLogEntry(
+                    bridgeID: session.bridgeID,
+                    bridgeName: session.displayName,
+                    entry: entry
+                )
+            }
+        }
+        .sorted { $0.entry.timestamp > $1.entry.timestamp }
+    }
+
+    private var hasAnyRawEntries: Bool {
+        displayedSessions.contains { !$0.store.rawLogEntries.isEmpty }
+    }
+
     var body: some View {
-        let entries = viewModel.filteredEntries(store: environment.store)
+        let entries = mergedEntries
         List {
-            ForEach(entries) { entry in
-                NavigationLink(destination: BridgeLogDetailView(entry: entry)) {
-                    BridgeLogRowView(entry: entry)
+            ForEach(entries) { item in
+                NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
+                    BridgeLogRowView(entry: item.entry)
                 }
                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
             }
         }
         .listStyle(.plain)
         .overlay {
-            if environment.store.rawLogEntries.isEmpty {
+            if displayedSessions.isEmpty || !hasAnyRawEntries {
                 ContentUnavailableView(
                     "No Log Entries",
                     systemImage: "terminal",

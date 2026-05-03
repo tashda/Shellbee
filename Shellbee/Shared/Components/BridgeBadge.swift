@@ -4,8 +4,8 @@ import SwiftUI
 /// only when the user has more than one connected bridge — single-bridge users
 /// never see attribution clutter. Drop it into Device rows, Log rows, etc.
 struct BridgeBadge: View {
+    let bridgeID: UUID
     let bridgeName: String
-    let isFocused: Bool
 
     @Environment(AppEnvironment.self) private var environment
 
@@ -13,7 +13,7 @@ struct BridgeBadge: View {
         if environment.registry.sessions.values.filter(\.isConnected).count >= 2 {
             HStack(spacing: 3) {
                 Circle()
-                    .fill(isFocused ? Color.green : Color.secondary)
+                    .fill(BridgeColor.color(for: bridgeID))
                     .frame(width: 5, height: 5)
                 Text(bridgeName)
                     .font(.caption2.weight(.medium))
@@ -23,9 +23,9 @@ struct BridgeBadge: View {
             .padding(.vertical, 1)
             .background(
                 Capsule()
-                    .fill(isFocused ? Color.green.opacity(0.12) : Color(.systemGray5))
+                    .fill(BridgeColor.color(for: bridgeID).opacity(0.16))
             )
-            .foregroundStyle(isFocused ? Color.green : Color.secondary)
+            .foregroundStyle(BridgeColor.color(for: bridgeID))
             .accessibilityLabel("Bridge: \(bridgeName)")
         }
     }
@@ -33,8 +33,8 @@ struct BridgeBadge: View {
 
 #Preview {
     VStack(spacing: 8) {
-        BridgeBadge(bridgeName: "Main", isFocused: true)
-        BridgeBadge(bridgeName: "Lab", isFocused: false)
+        BridgeBadge(bridgeID: UUID(), bridgeName: "Main")
+        BridgeBadge(bridgeID: UUID(), bridgeName: "Lab")
     }
     .padding()
     .environment(AppEnvironment())

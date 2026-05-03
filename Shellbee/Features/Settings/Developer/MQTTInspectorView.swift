@@ -15,6 +15,12 @@ struct MQTTInspectorView: View {
         var id: String { rawValue }
     }
 
+    /// Resolved bridge id for inspector actions: explicit picker selection
+    /// when present, else the user-selected bridge in the picker.
+    private var resolvedBridgeID: UUID? {
+        bridgeID ?? environment.registry.primaryBridgeID
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             bridgePickerBar
@@ -23,7 +29,15 @@ struct MQTTInspectorView: View {
                 case .subscribe:
                     SubscribeView(store: store)
                 case .publish:
-                    PublishView(bridgeID: bridgeID)
+                    if let id = resolvedBridgeID {
+                        PublishView(bridgeID: id)
+                    } else {
+                        ContentUnavailableView(
+                            "No Bridge Selected",
+                            systemImage: "antenna.radiowaves.left.and.right",
+                            description: Text("Connect a bridge to publish.")
+                        )
+                    }
                 }
             }
         }
@@ -69,10 +83,8 @@ struct MQTTInspectorView: View {
     }
 
     private func sessionForCurrent() -> ConnectionSessionController? {
-        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
-            return session.controller
-        }
-        return environment.session
+        guard let id = resolvedBridgeID else { return nil }
+        return environment.registry.session(for: id)?.controller
     }
 
     private func attachToCurrentBridge() {
@@ -216,8 +228,8 @@ private struct MessageRow: View {
 
 private struct PublishView: View {
     @Environment(AppEnvironment.self) private var environment
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
     @State private var topic: String = ""
     @State private var payload: String = ""
     @State private var showWarning: Bool = false

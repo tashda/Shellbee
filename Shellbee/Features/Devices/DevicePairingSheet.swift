@@ -1,12 +1,15 @@
 import SwiftUI
 
 struct DevicePairingSheet: View {
+    let bridgeID: UUID
     let device: Device
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
     @State private var documentation: DeviceDocumentation?
     @State private var isLoading = false
     @State private var notFound = false
+
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     var body: some View {
         NavigationStack {
@@ -50,7 +53,7 @@ struct DevicePairingSheet: View {
 
     private func loadPairing() async {
         guard device.definition?.model != nil else { notFound = true; return }
-        let version = environment.store.bridgeInfo?.version ?? "master"
+        let version = scope.bridgeInfo?.version ?? "master"
         isLoading = true
         defer { isLoading = false }
         do {
@@ -63,6 +66,6 @@ struct DevicePairingSheet: View {
 }
 
 #Preview {
-    DevicePairingSheet(device: .preview)
+    DevicePairingSheet(bridgeID: UUID(), device: .preview)
         .environment(AppEnvironment())
 }

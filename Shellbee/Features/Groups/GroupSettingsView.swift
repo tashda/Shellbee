@@ -2,10 +2,13 @@ import SwiftUI
 
 struct GroupSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
     let group: Group
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
     private var currentOptions: [String: JSONValue] {
-        environment.store.bridgeInfo?.config?.groups?[String(group.id)] ?? [:]
+        scope.store.bridgeInfo?.config?.groups?[String(group.id)] ?? [:]
     }
 
     var body: some View {
@@ -46,7 +49,7 @@ struct GroupSettingsView: View {
     }
 
     private func sendOption(_ key: String, value: JSONValue) {
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.groupOptions,
             payload: .object([
                 "id": .string(String(group.id)),
@@ -58,7 +61,7 @@ struct GroupSettingsView: View {
 
 #Preview {
     NavigationStack {
-        GroupSettingsView(group: .preview)
+        GroupSettingsView(bridgeID: UUID(), group: .preview)
             .environment(AppEnvironment())
     }
 }

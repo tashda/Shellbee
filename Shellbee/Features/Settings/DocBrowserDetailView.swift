@@ -110,7 +110,10 @@ struct DocBrowserDetailView: View {
     }
 
     private func loadDoc() async {
-        let version = environment.store.bridgeInfo?.version ?? "master"
+        // Phase 2 multi-bridge: docs are not bridge-scoped, but the version
+        // we use for the URL has to come from somewhere — pick the user's
+        // selected bridge's version, falling back to master.
+        let version = environment.selectedScope?.store.bridgeInfo?.version ?? "master"
         isLoading = true
         defer { isLoading = false }
         do {

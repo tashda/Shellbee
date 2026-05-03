@@ -13,6 +13,7 @@ final class ConnectionHistory {
     private let key = "connectionHistory"
     private let defaultIDKey = "savedBridges.defaultID"
     private let autoConnectKey = "savedBridges.autoConnectIDs"
+    private let migrationDoneKey = "savedBridges.autoConnectMigrationDone"
 
     init() {
         load()
@@ -190,5 +191,32 @@ final class ConnectionHistory {
     var defaultBridge: ConnectionConfig? {
         guard let id = defaultBridgeID else { return nil }
         return connections.first(where: { $0.id == id })
+    }
+
+    /// One-time upgrade for users who installed the app before the
+    /// auto-connect / per-bridge color UI existed. Their saved bridge is the
+    /// implicit auto-connect target — without this migration they'd land on
+    /// an empty UI on first launch of the new build because no bridge is
+    /// flagged. We also pin the auto-assigned palette color so the editor
+    /// shows the same color the rest of the app already displays.
+    func performFirstLaunchMigrationIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: migrationDoneKey) else { return }
+
+        if connections.isEmpty, let legacy = ConnectionConfig.load() {
+            connections.insert(legacy, at: 0)
+        }
+
+        var didChange = false
+        for config in connections where !autoConnectIDs.contains(config.id) {
+            autoConnectIDs.insert(config.id)
+            didChange = true
+        }
+        if didChange { save() }
+
+        for config in connections where DesignTokens.Bridge.customColorHex(for: config.id) == nil {
+            DesignTokens.Bridge.setCustomColor(DesignTokens.Bridge.color(for: config.id), for: config.id)
+        }
+
+        UserDefaults.standard.set(true, forKey: migrationDoneKey)
     }
 }

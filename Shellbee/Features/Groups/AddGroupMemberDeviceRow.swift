@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct AddGroupMemberDeviceRow: View {
-    @Environment(AppEnvironment.self) private var environment
     let device: Device
+    /// Phase 1 multi-bridge: availability is read against the source bridge's
+    /// store rather than the focused one — caller passes `Bool` directly so
+    /// this row stays presentational.
+    var isAvailable: Bool = true
     let isSelected: Bool
     let selectedEndpoint: Int
     let onTap: () -> Void
@@ -15,7 +18,7 @@ struct AddGroupMemberDeviceRow: View {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 DeviceImageView(
                     device: device,
-                    isAvailable: environment.store.isAvailable(device.friendlyName),
+                    isAvailable: isAvailable,
                     size: DesignTokens.Size.summaryRowSymbolFrame
                 )
 

@@ -4,6 +4,8 @@ struct GroupCard: View {
     let group: Group
     let memberDevices: [Device]
     let state: [String: JSONValue]
+    var bridgeID: UUID? = nil
+    var bridgeName: String? = nil
     var onRenameTapped: (() -> Void)? = nil
     var displayMode: DeviceIdentityDisplayMode = .prominent
 
@@ -72,6 +74,10 @@ struct GroupCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+
+                if let bridgeID, let bridgeName, !bridgeName.isEmpty {
+                    BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -115,6 +121,10 @@ struct GroupCard: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .minimumScaleFactor(DesignTokens.Typography.scaleFactorSubtle)
+                }
+
+                if let bridgeID, let bridgeName, !bridgeName.isEmpty {
+                    BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -223,6 +233,7 @@ struct GroupCard: View {
         guard let value = state["state"]?.stringValue else { return "circle.dashed" }
         return value.uppercased() == "ON" ? "power.circle.fill" : "power.circle"
     }
+
 }
 
 #Preview {

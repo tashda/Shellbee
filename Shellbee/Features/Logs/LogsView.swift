@@ -5,7 +5,7 @@ struct LogsView: View {
     @State private var mode: LogMode = .activity
     @State private var activityVM = LogsViewModel()
     @State private var bridgeVM = BridgeLogViewModel()
-    @State private var autoOpenedEntry: LogEntry?
+    @State private var autoOpenedEntry: LogRoute?
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
     private let onDone: (() -> Void)?
@@ -46,8 +46,8 @@ struct LogsView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .searchable(text: searchBinding, prompt: searchPrompt)
                 .onAppear { applyInitialFilter(autoOpenSingle: true) }
-                .navigationDestination(item: $autoOpenedEntry) { entry in
-                    LogDetailView(entry: entry)
+                .navigationDestination(item: $autoOpenedEntry) { route in
+                    LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
                 }
                 .minimizeSearchToolbarIfAvailable()
                 .toolbar(.hidden, for: .tabBar)
@@ -61,7 +61,7 @@ struct LogsView: View {
                     }
                     if mode == .activity {
                         ToolbarItem(placement: .topBarTrailing) {
-                            LogFilterMenu(viewModel: activityVM, store: environment.store)
+                            LogFilterMenu(viewModel: activityVM)
                         }
                     } else {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -70,15 +70,12 @@ struct LogsView: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(role: .destructive) {
-                            // In merged-multi-bridge mode, clear every bridge's
-                            // logs so the visible list is fully reset. Single-
-                            // bridge mode keeps the legacy single-store behavior.
-                            if environment.registry.sessions.count >= 2 {
-                                for session in environment.registry.orderedSessions {
-                                    session.store.clearLogs()
-                                }
-                            } else {
-                                environment.store.clearLogs()
+                            // Phase 1 multi-bridge: always clear across every
+                            // connected session — the activity tab merges by
+                            // default, and per-bridge clearing belongs in a
+                            // future per-bridge logs picker.
+                            for session in environment.registry.orderedSessions {
+                                session.store.clearLogs()
                             }
                         } label: {
                             Image(systemName: "trash")
@@ -127,9 +124,15 @@ struct LogsView: View {
     private func applyInitialFilter(autoOpenSingle: Bool) {
         guard let filter = initialEntryFilter, activityVM.entryIDFilter == nil else { return }
         activityVM.entryIDFilter = filter
-        guard autoOpenSingle, filter.count == 1, let id = filter.first,
-              let entry = environment.store.logEntries.first(where: { $0.id == id }) else { return }
-        autoOpenedEntry = entry
+        guard autoOpenSingle, filter.count == 1, let id = filter.first else { return }
+        // Search every connected bridge for the entry — deep-link callers
+        // know the entry id but not the source bridge.
+        for session in environment.registry.orderedSessions {
+            if let entry = session.store.logEntries.first(where: { $0.id == id }) {
+                autoOpenedEntry = LogRoute(bridgeID: session.bridgeID, entry: entry)
+                return
+            }
+        }
     }
 }
 
@@ -151,23 +154,49 @@ private struct ActivityLogContent: View {
         }
     }
 
+    /// Phase 1 multi-bridge: single-bridge list works only when exactly one
+    /// session is connected — that session's id is the source bridge for
+    /// every row.
+    private var singleBridgeID: UUID? {
+        environment.registry.orderedSessions.first(where: \.isConnected)?.bridgeID
+    }
+
     @ViewBuilder
     private var singleBridgeList: some View {
-        let entries = viewModel.filteredEntries(store: environment.store)
+        if let bridgeID = singleBridgeID,
+           let session = environment.registry.session(for: bridgeID) {
+            singleBridgeListBody(bridgeID: bridgeID, store: session.store)
+        } else {
+            List { EmptyView() }
+            .listStyle(.plain)
+            .overlay {
+                ContentUnavailableView(
+                    "No Logs",
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Text("Log entries will appear as the bridge generates them in real time.")
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func singleBridgeListBody(bridgeID: UUID, store: AppStore) -> some View {
+        let entries = viewModel.filteredEntries(store: store)
         List {
             ForEach(entries) { entry in
                 ZStack {
-                    LogRowView(entry: entry)
+                    LogRowView(entry: entry, store: store, bridgeID: bridgeID)
                     NavigationLink {
-                        LogDetailView(entry: entry)
+                        LogDetailView(bridgeID: bridgeID, entry: entry)
                     } label: { EmptyView() }
                     .opacity(0)
                 }
+                .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
             }
         }
         .listStyle(.plain)
         .overlay {
-            if environment.store.logEntries.isEmpty {
+            if store.logEntries.isEmpty {
                 ContentUnavailableView(
                     "No Logs",
                     systemImage: "doc.text.magnifyingglass",
@@ -187,24 +216,15 @@ private struct ActivityLogContent: View {
         let bound = mergedFilteredEntries()
         List {
             ForEach(bound) { item in
+                let rowStore = environment.registry.session(for: item.bridgeID)?.store
                 ZStack {
-                    HStack(spacing: DesignTokens.Spacing.sm) {
-                        BridgeColorDot(bridgeID: item.bridgeID, bridgeName: item.bridgeName)
-                        LogRowView(entry: item.entry)
-                    }
+                    LogRowView(entry: item.entry, store: rowStore, bridgeID: item.bridgeID)
                     NavigationLink {
-                        LogDetailView(entry: item.entry)
+                        LogDetailView(bridgeID: item.bridgeID, entry: item.entry)
                     } label: { EmptyView() }
                     .opacity(0)
-                    .simultaneousGesture(TapGesture().onEnded {
-                        // Switch focus before pushing detail so the destination
-                        // resolves device/group references against the right
-                        // bridge's store.
-                        if environment.registry.primaryBridgeID != item.bridgeID {
-                            environment.registry.setPrimary(item.bridgeID)
-                        }
-                    })
                 }
+                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
             }
         }
         .listStyle(.plain)
@@ -242,8 +262,53 @@ private struct ActivityLogContent: View {
 
 private struct BridgeLevelFilterMenu: View {
     @Bindable var viewModel: BridgeLogViewModel
+    @Environment(AppEnvironment.self) private var environment
+
+    private var connectedSessions: [BridgeSession] {
+        environment.registry.orderedSessions.filter(\.isConnected)
+    }
 
     var body: some View {
+        Menu {
+            if connectedSessions.count >= 2 {
+                bridgeMenu
+            }
+            levelMenu
+            if viewModel.hasActiveFilter {
+                Divider()
+                Button(role: .destructive) {
+                    viewModel.clearAllFilters()
+                } label: {
+                    Label("Clear Filters", systemImage: "xmark.circle")
+                }
+            }
+        } label: {
+            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
+        }
+    }
+
+    private var bridgeMenu: some View {
+        Menu {
+            Picker("Bridge", selection: $viewModel.bridgeFilter) {
+                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
+                    .tag(UUID?.none)
+                ForEach(connectedSessions, id: \.bridgeID) { session in
+                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            if let id = viewModel.bridgeFilter,
+               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
+                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
+            } else {
+                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
+            }
+        }
+    }
+
+    private var levelMenu: some View {
         Menu {
             Picker("Level", selection: $viewModel.selectedLevel) {
                 Label("All Levels", systemImage: "square.grid.2x2").tag(LogLevel?.none)
@@ -252,17 +317,12 @@ private struct BridgeLevelFilterMenu: View {
                 }
             }
             .pickerStyle(.inline)
-            if viewModel.hasActiveFilter {
-                Divider()
-                Button(role: .destructive) {
-                    viewModel.selectedLevel = nil
-                } label: {
-                    Label("Clear Filter", systemImage: "xmark.circle")
-                }
-            }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
+            if let level = viewModel.selectedLevel {
+                Label("Level: \(level.label)", systemImage: level.systemImage)
+            } else {
+                Label("Level", systemImage: "exclamationmark.triangle")
+            }
         }
     }
 }

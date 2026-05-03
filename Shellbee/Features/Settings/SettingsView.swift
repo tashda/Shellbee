@@ -8,8 +8,6 @@ struct SettingsView: View {
     /// Connection editor state for the toolbar `+` button. Used in multi-bridge
     /// mode to add a new saved bridge without leaving Settings.
     @State private var editorViewModel: ConnectionViewModel?
-    @State private var renameTarget: ConnectionConfig?
-    @State private var renameDraft: String = ""
     @State private var removeConfirmation: ConnectionConfig?
 
     /// Phase 2 multi-bridge: when the user has more than one saved bridge, the
@@ -17,6 +15,28 @@ struct SettingsView: View {
     /// section moves into a per-bridge sub-page (`BridgeSettingsView`).
     private var isMultiBridge: Bool {
         environment.history.connections.count >= 2
+    }
+
+    /// The bridge whose data the single-bridge layout operates on. There's
+    /// exactly one saved bridge in this layout — resolve to its session if
+    /// connected, else fall back to the saved config's id so configuration
+    /// reads (logLevel, restartRequired) still work while disconnected.
+    private var singleBridgeID: UUID? {
+        environment.registry.primaryBridgeID
+            ?? environment.registry.orderedSessions.first?.bridgeID
+            ?? environment.history.connections.first?.id
+    }
+
+    private var singleBridgeScope: BridgeScope? {
+        singleBridgeID.flatMap { environment.scope(for: $0) }
+    }
+
+    private var singleBridgeConfig: ConnectionConfig? {
+        if let id = singleBridgeID {
+            return environment.history.connections.first(where: { $0.id == id })
+                ?? environment.registry.session(for: id)?.config
+        }
+        return environment.history.connections.first
     }
 
     var body: some View {
@@ -30,30 +50,17 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .toolbar {
-                if isMultiBridge {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { presentNewBridgeEditor() } label: {
-                            Image(systemName: "plus")
-                        }
-                        .accessibilityLabel("Add Bridge")
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { presentNewBridgeEditor() } label: {
+                        Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Add Bridge")
                 }
             }
             .sheet(item: editorBinding) { vm in
                 NavigationStack {
                     ConnectionEditorView(viewModel: vm, mode: .save)
                 }
-            }
-            .alert("Rename Bridge", isPresented: renameAlertBinding, presenting: renameTarget) { config in
-                TextField("Name", text: $renameDraft)
-                    .textInputAutocapitalization(.words)
-                Button("Save") {
-                    let trimmed = renameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                    environment.history.rename(config, to: trimmed.isEmpty ? nil : trimmed)
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: { _ in
-                Text("Choose a friendly name. Leave blank to use the host.")
             }
             .alert("Remove Bridge?", isPresented: removeAlertBinding, presenting: removeConfirmation) { config in
                 Button("Remove", role: .destructive) {
@@ -67,14 +74,20 @@ struct SettingsView: View {
                 Text("\(config.displayName) will be disconnected and removed from your saved bridges. Its auth token is deleted from the keychain.")
             }
             .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
-                Button("Restart", role: .destructive) { environment.restartBridge() }
+                Button("Restart", role: .destructive) {
+                    if let id = singleBridgeID { environment.restartBridge(id) }
+                }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Zigbee2MQTT will restart. The app will reconnect automatically.")
             }
             .alert("Disconnect from Server?", isPresented: $showingDisconnectConfirmation) {
                 Button("Disconnect", role: .destructive) {
-                    Task { await environment.disconnect() }
+                    Task {
+                        if let id = singleBridgeID {
+                            await environment.disconnect(bridgeID: id)
+                        }
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -90,11 +103,16 @@ struct SettingsView: View {
         bridgesSection
 
         Section {
+            NavigationLink { LogsView() } label: {
+                settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
+            }
             NavigationLink { DocBrowserView() } label: {
                 settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
             }
         } header: {
             Text("Tools")
+        } footer: {
+            Text("Logs from every connected bridge are merged in one place.")
         }
 
         applicationSection
@@ -107,37 +125,16 @@ struct SettingsView: View {
     @ViewBuilder
     private var bridgesSection: some View {
         Section {
-            ForEach(sortedConnections) { config in
+            ForEach(environment.history.connections) { config in
                 BridgeSettingsRow(
                     config: config,
                     onEdit: { presentEditor(for: config) },
-                    onRename: {
-                        renameDraft = config.name ?? ""
-                        renameTarget = config
-                    },
                     onRemove: { removeConfirmation = config }
                 )
             }
         } header: {
             Text("Bridges")
-        } footer: {
-            Text("Each Zigbee2MQTT instance has its own configuration. Tap a bridge to manage its settings, or toggle Connect to bring it online.")
         }
-    }
-
-    /// Default bridge sorts to the top, then alphabetical by name. Mirrors the
-    /// expectation that the user's primary bridge is the easiest to reach.
-    private var sortedConnections: [ConnectionConfig] {
-        let connections = environment.history.connections
-        guard let defaultID = environment.history.defaultBridgeID,
-              let idx = connections.firstIndex(where: { $0.id == defaultID }),
-              idx != 0 else {
-            return connections
-        }
-        var copy = connections
-        let entry = copy.remove(at: idx)
-        copy.insert(entry, at: 0)
-        return copy
     }
 
     // MARK: - Bridge editor flow
@@ -161,13 +158,6 @@ struct SettingsView: View {
         )
     }
 
-    private var renameAlertBinding: Binding<Bool> {
-        Binding(
-            get: { renameTarget != nil },
-            set: { if !$0 { renameTarget = nil } }
-        )
-    }
-
     private var removeAlertBinding: Binding<Bool> {
         Binding(
             get: { removeConfirmation != nil },
@@ -179,64 +169,79 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var singleBridgeLayout: some View {
-        if environment.store.bridgeInfo?.restartRequired == true {
+        if singleBridgeScope?.bridgeInfo?.restartRequired == true {
             restartRequiredNotice
         }
 
         connectionSection
-        bridgeConfigSection
-        loggingSection
-        integrationsSection
-        networkSection
-        toolsSection
+        if let id = singleBridgeID {
+            bridgeConfigSection(bridgeID: id)
+            loggingSection(bridgeID: id)
+            integrationsSection(bridgeID: id)
+            networkSection(bridgeID: id)
+            toolsSection(bridgeID: id)
+        }
         applicationSection
 
         if developerModeEnabled {
             developerSection
         }
 
-        if environment.connectionState.isConnected || environment.hasBeenConnected {
-            dangerSection
+        let connected = singleBridgeScope?.connectionState.isConnected ?? false
+        let everConnected = singleBridgeScope?.session?.controller.hasBeenConnected ?? false
+        if connected || everConnected, let id = singleBridgeID {
+            dangerSection(bridgeID: id)
         }
     }
 
+    @ViewBuilder
     private var connectionSection: some View {
         Section {
-            NavigationLink { ServerDetailView() } label: {
-                settingsLabel(title: "Server", systemImage: "wifi", color: serverIconColor)
-                    .badge(environment.connectionConfig?.displayName ?? "Not configured")
-            }
-            NavigationLink { SavedBridgesView() } label: {
-                settingsLabel(title: "Saved Bridges", systemImage: "list.bullet", color: .blue)
-                    .badge(savedBridgesBadge)
+            if let id = singleBridgeID, let config = singleBridgeConfig {
+                NavigationLink { ServerDetailView(bridgeID: id) } label: {
+                    singleBridgeConnectionCard(bridgeID: id)
+                }
+                .connectionCardActions(
+                    config: config,
+                    onEdit: { presentEditor(for: config) },
+                    onRemove: { removeConfirmation = config }
+                )
             }
         } header: {
             Text("Connection")
         }
     }
 
-    private var savedBridgesBadge: String {
-        let count = environment.history.connections.count
-        return count == 0 ? "" : "\(count)"
+    private func singleBridgeConnectionCard(bridgeID: UUID) -> some View {
+        let session = environment.registry.session(for: bridgeID)
+        let displayName = session?.displayName ?? "Bridge"
+        let statusSubtitle: String = {
+            switch session?.connectionState {
+            case .connected: "Connected"
+            case .connecting: "Connecting"
+            case .reconnecting(let n): "Reconnecting (attempt \(n))"
+            case .failed(let msg): msg
+            case .lost(let msg): "Lost: \(msg)"
+            default: session?.config.displayURL ?? "Disconnected"
+            }
+        }()
+
+        return BridgeConnectionCardLabel(
+            bridgeID: bridgeID,
+            displayName: displayName,
+            statusSubtitle: statusSubtitle
+        )
     }
 
-    private var serverIconColor: Color {
-        switch environment.connectionState {
-        case .connected: .green
-        case .connecting, .reconnecting: .orange
-        default: Color(.systemGray3)
-        }
-    }
-
-    private var bridgeConfigSection: some View {
+    private func bridgeConfigSection(bridgeID: UUID) -> some View {
         Section {
-            NavigationLink { MainSettingsView() } label: {
+            NavigationLink { MainSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "General", systemImage: "slider.horizontal.3", color: .purple)
             }
-            NavigationLink { MQTTSettingsView() } label: {
+            NavigationLink { MQTTSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "MQTT", systemImage: "point.3.connected.trianglepath.dotted", color: .blue)
             }
-            NavigationLink { SerialSettingsView() } label: {
+            NavigationLink { SerialSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Adapter", systemImage: "cable.connector", color: .brown)
             }
         } header: {
@@ -244,7 +249,7 @@ struct SettingsView: View {
         }
     }
 
-    private var loggingSection: some View {
+    private func loggingSection(bridgeID: UUID) -> some View {
         Section {
             Picker(selection: logLevelBinding) {
                 ForEach(BridgeSettings.LogLevel.allCases, id: \.self) { level in
@@ -256,7 +261,7 @@ struct SettingsView: View {
             NavigationLink { LogsView() } label: {
                 settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
             }
-            NavigationLink { LogOutputView() } label: {
+            NavigationLink { LogOutputView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Log Output", systemImage: "doc.text.magnifyingglass", color: Color(.systemGray2))
             }
         } header: {
@@ -267,24 +272,25 @@ struct SettingsView: View {
     private var logLevelBinding: Binding<BridgeSettings.LogLevel> {
         Binding(
             get: {
-                BridgeSettings.LogLevel(rawValue: environment.store.bridgeInfo?.logLevel ?? "info") ?? .info
+                BridgeSettings.LogLevel(rawValue: singleBridgeScope?.bridgeInfo?.logLevel ?? "info") ?? .info
             },
             set: { newValue in
-                guard newValue.rawValue != environment.store.bridgeInfo?.logLevel else { return }
-                environment.sendBridgeOptions(["advanced": .object(["log_level": .string(newValue.rawValue)])])
+                guard let scope = singleBridgeScope,
+                      newValue.rawValue != scope.bridgeInfo?.logLevel else { return }
+                scope.sendOptions(["advanced": .object(["log_level": .string(newValue.rawValue)])])
             }
         )
     }
 
-    private var toolsSection: some View {
+    private func toolsSection(bridgeID: UUID) -> some View {
         Section {
             NavigationLink { DocBrowserView() } label: {
                 settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
             }
-            NavigationLink { TouchlinkView() } label: {
+            NavigationLink { TouchlinkView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Touchlink", systemImage: "dot.radiowaves.left.and.right", color: .teal)
             }
-            NavigationLink { BackupView() } label: {
+            NavigationLink { BackupView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Backup", systemImage: "arrow.down.doc.fill", color: .indigo)
             }
         } header: {
@@ -292,18 +298,18 @@ struct SettingsView: View {
         }
     }
 
-    private var integrationsSection: some View {
+    private func integrationsSection(bridgeID: UUID) -> some View {
         Section {
-            NavigationLink { HomeAssistantSettingsView() } label: {
+            NavigationLink { HomeAssistantSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Home Assistant", systemImage: "house.fill", color: .orange)
             }
-            NavigationLink { AvailabilitySettingsView() } label: {
+            NavigationLink { AvailabilitySettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Availability", systemImage: "antenna.radiowaves.left.and.right", color: .green)
             }
-            NavigationLink { OTASettingsView() } label: {
+            NavigationLink { OTASettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "OTA Updates", systemImage: "arrow.down.circle.fill", color: .indigo)
             }
-            NavigationLink { HealthSettingsView() } label: {
+            NavigationLink { HealthSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Health Checks", systemImage: "waveform.path.ecg", color: .pink)
             }
         } header: {
@@ -311,12 +317,12 @@ struct SettingsView: View {
         }
     }
 
-    private var networkSection: some View {
+    private func networkSection(bridgeID: UUID) -> some View {
         Section {
-            NavigationLink { NetworkSettingsView() } label: {
+            NavigationLink { NetworkSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Network & Hardware", systemImage: "network", color: .red)
             }
-            NavigationLink { NetworkAccessSettingsView() } label: {
+            NavigationLink { NetworkAccessSettingsView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Device Filtering", systemImage: "lock.shield.fill", color: .cyan)
             }
         } header: {
@@ -355,8 +361,11 @@ struct SettingsView: View {
         }
     }
 
-    private var dangerSection: some View {
-        Section {
+    private func dangerSection(bridgeID: UUID) -> some View {
+        // bridgeID is the resolved single-bridge id; the Disconnect alert
+        // (handled at view-level) targets it via `singleBridgeID`.
+        _ = bridgeID
+        return Section {
             Button("Disconnect", role: .destructive) {
                 showingDisconnectConfirmation = true
             }
@@ -411,7 +420,6 @@ struct SettingsView: View {
 private struct BridgeSettingsRow: View {
     let config: ConnectionConfig
     let onEdit: () -> Void
-    let onRename: () -> Void
     let onRemove: () -> Void
 
     @Environment(AppEnvironment.self) private var environment
@@ -427,7 +435,6 @@ private struct BridgeSettingsRow: View {
         default: false
         }
     }
-    private var isDefault: Bool { environment.history.defaultBridgeID == config.id }
     private var isAutoConnect: Bool { environment.history.isAutoConnect(config) }
     private var restartRequired: Bool { session?.store.bridgeInfo?.restartRequired == true }
 
@@ -442,12 +449,6 @@ private struct BridgeSettingsRow: View {
                         Text(config.displayName)
                             .font(.body)
                             .foregroundStyle(.primary)
-                        if isDefault {
-                            Image(systemName: "star.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.yellow)
-                                .accessibilityLabel("Default bridge")
-                        }
                         if restartRequired {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.caption2)
@@ -469,22 +470,8 @@ private struct BridgeSettingsRow: View {
             }
         }
         .contextMenu {
-            Button {
-                environment.history.setDefault(isDefault ? nil : config)
-            } label: {
-                Label(isDefault ? "Unset Default" : "Set Default", systemImage: isDefault ? "star.slash" : "star")
-            }
-            Button {
-                environment.history.setAutoConnect(config, !isAutoConnect)
-            } label: {
-                Label(isAutoConnect ? "Disable Auto-Connect" : "Enable Auto-Connect",
-                      systemImage: isAutoConnect ? "bolt.slash" : "bolt")
-            }
             Button(action: onEdit) {
                 Label("Edit", systemImage: "pencil")
-            }
-            Button(action: onRename) {
-                Label("Rename", systemImage: "character.cursor.ibeam")
             }
             Divider()
             Button(role: .destructive, action: onRemove) {
@@ -499,15 +486,6 @@ private struct BridgeSettingsRow: View {
                 Label("Edit", systemImage: "pencil")
             }
             .tint(.blue)
-        }
-        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            Button {
-                environment.history.setDefault(isDefault ? nil : config)
-            } label: {
-                Label(isDefault ? "Unpin" : "Default",
-                      systemImage: isDefault ? "star.slash" : "star")
-            }
-            .tint(.yellow)
         }
     }
 

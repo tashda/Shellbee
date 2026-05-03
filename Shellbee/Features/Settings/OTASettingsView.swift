@@ -3,8 +3,8 @@ import SwiftUI
 struct OTASettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var updateCheckInterval: Int = 1440
     @State private var disableAutomaticUpdateCheck: Bool = false
@@ -128,6 +128,6 @@ struct OTASettingsView: View {
 
 #Preview {
     NavigationStack {
-        OTASettingsView().environment(AppEnvironment())
+        OTASettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

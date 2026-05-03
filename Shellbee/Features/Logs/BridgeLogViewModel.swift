@@ -4,8 +4,11 @@ import Foundation
 final class BridgeLogViewModel {
     var searchText = ""
     var selectedLevel: LogLevel? = nil
+    /// Multi-bridge: when set, the raw log tab reads entries from this bridge.
+    /// Ignored in single-bridge mode.
+    var bridgeFilter: UUID? = nil
 
-    var hasActiveFilter: Bool { selectedLevel != nil }
+    var hasActiveFilter: Bool { selectedLevel != nil || bridgeFilter != nil }
 
     func filteredEntries(store: AppStore) -> [LogEntry] {
         var entries = store.rawLogEntries
@@ -19,5 +22,11 @@ final class BridgeLogViewModel {
             entries = entries.filter { $0.level == level }
         }
         return entries
+    }
+
+    func clearAllFilters() {
+        selectedLevel = nil
+        bridgeFilter = nil
+        searchText = ""
     }
 }

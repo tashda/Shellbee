@@ -3,13 +3,20 @@ import SwiftUI
 struct GroupListRow: View {
     let group: Group
     let memberDevices: [Device]
+    /// Phase 1 multi-bridge: optional source-bridge id. When non-nil the row
+    /// pushes a `GroupRoute` so the destination resolves against the right
+    /// bridge. Nil → fall back to the legacy `Group`-value navigation
+    /// (single-bridge callers that haven't been migrated yet).
+    var bridgeID: UUID? = nil
     let onRename: () -> Void
     let onRemove: () -> Void
 
     var body: some View {
-        NavigationLink(value: group) {
-            GroupRowView(group: group, memberDevices: memberDevices)
-        }
+        navContent
+        // Multi-bridge attribution: thin colored bar on the leading edge.
+        // Visibility honors the Bridge Indicator setting (Settings →
+        // Application → General → Appearance).
+        .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(action: onRemove) {
                 swipeActionLabel("Delete", systemImage: "trash")
@@ -27,6 +34,19 @@ struct GroupListRow: View {
             Divider()
             Button(role: .destructive, action: onRemove) {
                 Label("Remove Group", systemImage: "trash")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var navContent: some View {
+        if let bridgeID {
+            NavigationLink(value: GroupRoute(bridgeID: bridgeID, group: group)) {
+                GroupRowView(group: group, memberDevices: memberDevices)
+            }
+        } else {
+            NavigationLink(value: group) {
+                GroupRowView(group: group, memberDevices: memberDevices)
             }
         }
     }

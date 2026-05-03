@@ -4,6 +4,7 @@ import OSLog
 private let log = Logger(subsystem: "dev.echodb.shellbee", category: "DeviceDocView")
 
 struct DeviceDocView: View {
+    let bridgeID: UUID
     let device: Device
     @Environment(AppEnvironment.self) private var environment
     @State private var documentation: DeviceDocumentation?
@@ -11,11 +12,14 @@ struct DeviceDocView: View {
     @State private var isLoading = false
     @State private var showPairingGuide = false
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
     var body: some View {
         ScrollView {
             content
         }
         .environment(\.docContextDevice, device)
+        .environment(\.docContextBridgeID, bridgeID)
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Documentation")
         .navigationBarTitleDisplayMode(.large)
@@ -101,7 +105,7 @@ struct DeviceDocView: View {
             log.warning("loadDoc: no model — skipping")
             return
         }
-        let version = environment.store.bridgeInfo?.version ?? "master"
+        let version = scope.bridgeInfo?.version ?? "master"
         log.debug("loadDoc: model=\(model) version=\(version)")
         isLoading = true
         defer { isLoading = false }
@@ -120,7 +124,7 @@ struct DeviceDocView: View {
 
 #Preview {
     NavigationStack {
-        DeviceDocView(device: .preview)
+        DeviceDocView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

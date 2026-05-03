@@ -1,44 +1,55 @@
 import Foundation
 
-/// A bridge-scoped read/write surface — the canonical way to address one
-/// specific bridge from the UI. Every read goes through `store`; every write
-/// goes through this scope's `send` / `restart` / `sendOptions` and routes
-/// to the wrapped session's controller.
+/// The canonical bridge-scoped read/write surface. Every UI surface that
+/// operates on a specific bridge holds a `BridgeScope`; reads go through
+/// `store`, writes through `send` / `restart` / `sendOptions`. The bridge id
+/// is part of the scope's identity, so code holding a scope cannot
+/// accidentally write to the wrong bridge.
 ///
-/// `BridgeScope` is the multi-bridge migration's answer to the legacy
-/// `environment.store` / `environment.send(topic:)` shims, which silently
-/// targeted "the focused bridge". Code that holds a `BridgeScope` cannot
-/// accidentally write to the wrong bridge — the bridge id is part of the
-/// scope's identity.
-///
-/// Construct via `AppEnvironment.scope(for:)`. The scope captures the session
-/// at construction time; if the session disappears (user disconnects that
-/// bridge), reads/writes become no-ops on a stale store. UI that holds a
-/// scope across a bridge disconnect should observe `session.isConnected` and
-/// react accordingly.
+/// Construct via `AppEnvironment.scope(for:)`. The scope is lenient — it
+/// resolves the session lazily on every read/write, so a bridge that
+/// disconnects after the scope is created becomes "empty" rather than
+/// crashing. UI that needs to react to disconnect should observe
+/// `isConnected` / `connectionState`.
 @MainActor
 struct BridgeScope: Identifiable {
     let bridgeID: UUID
-    let session: BridgeSession
     private weak var environment: AppEnvironment?
 
-    init(bridgeID: UUID, session: BridgeSession, environment: AppEnvironment) {
+    init(bridgeID: UUID, environment: AppEnvironment) {
         self.bridgeID = bridgeID
-        self.session = session
         self.environment = environment
     }
 
     var id: UUID { bridgeID }
 
-    var store: AppStore { session.store }
-    var displayName: String { session.displayName }
-    var bridgeInfo: BridgeInfo? { store.bridgeInfo }
-    var isConnected: Bool { session.isConnected }
-    var connectionState: ConnectionSessionController.State { session.connectionState }
+    /// Live `BridgeSession` for this scope, if the bridge is currently in the
+    /// registry. Nil after disconnect — callers should check before assuming
+    /// connectivity.
+    var session: BridgeSession? {
+        environment?.registry.session(for: bridgeID)
+    }
 
-    /// Send any topic to the scoped bridge.
+    /// The scoped bridge's store. Returns a shared empty store if the bridge
+    /// has been removed from the registry — preserves call-site ergonomics
+    /// across the disconnect boundary; the empty store carries no devices,
+    /// groups, or state, so dependent UI degrades gracefully to empty.
+    var store: AppStore {
+        session?.store ?? AppStore.empty
+    }
+
+    var displayName: String { session?.displayName ?? "" }
+    var bridgeInfo: BridgeInfo? { session?.store.bridgeInfo }
+    var isConnected: Bool { session?.isConnected ?? false }
+    var connectionState: ConnectionSessionController.State {
+        session?.connectionState ?? .idle
+    }
+
+    /// Send any topic to the scoped bridge. No-op if the bridge isn't in the
+    /// registry — the legacy "silently send to focused bridge" fallback is
+    /// gone.
     func send(topic: String, payload: JSONValue) {
-        session.controller.send(topic: topic, payload: payload)
+        session?.controller.send(topic: topic, payload: payload)
     }
 
     /// Send a `bridge/request/options` request with the `{"options": {...}}`
@@ -61,10 +72,10 @@ struct BridgeScope: Identifiable {
     /// scoped store's `identifyInProgress` set so rapid taps don't flood the
     /// network.
     func identifyDevice(_ friendlyName: String) {
+        guard let store = session?.store else { return }
         guard !store.identifyInProgress.contains(friendlyName) else { return }
         store.identifyInProgress.insert(friendlyName)
         sendDeviceState(friendlyName, payload: .object(["identify": .string("identify")]))
-        let store = self.store
         Task { [weak store] in
             try? await Task.sleep(for: .seconds(3))
             await MainActor.run { _ = store?.identifyInProgress.remove(friendlyName) }
@@ -73,6 +84,7 @@ struct BridgeScope: Identifiable {
 
     /// Optimistically rename a device on the scoped bridge.
     func renameDevice(from: String, to: String, homeassistantRename: Bool) {
+        guard let store = session?.store else { return }
         let trimmed = to.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != from else { return }
         store.optimisticRename(from: from, to: trimmed)
@@ -82,4 +94,12 @@ struct BridgeScope: Identifiable {
             "homeassistant_rename": .bool(homeassistantRename)
         ]))
     }
+}
+
+extension AppStore {
+    /// Shared empty store used by `BridgeScope` when the underlying bridge
+    /// session has been removed (e.g. user disconnected mid-detail). UI
+    /// reading from this store shows empty data and recovers when the user
+    /// navigates back.
+    @MainActor static let empty = AppStore()
 }

@@ -32,11 +32,10 @@ struct OnboardingView: View {
                 .onChange(of: step) { _, newValue in
                     storedIndex = newValue.rawValue
                 }
-                .onChange(of: environment.connectionState) { _, newState in
-                    // When the user kicks off a connection from the connect
-                    // step, advance to the test page so they can watch it
-                    // resolve (the test page auto-advances on success).
-                    guard step == .connect else { return }
+                .onChange(of: environment.selectedScope?.connectionState) { _, newState in
+                    // Phase 2 multi-bridge: onboarding connects exactly one
+                    // bridge — the user's first. selectedScope tracks it.
+                    guard step == .connect, let newState else { return }
                     switch newState {
                     case .connecting, .connected, .reconnecting:
                         step = .test
@@ -134,7 +133,9 @@ private struct DonePage: View {
                 .bounceSymbolEffectIfAvailable()
             Text("You're all set")
                 .font(.largeTitle.weight(.bold))
-            let count = environment.store.devices.count
+            // Phase 2 multi-bridge: count devices on the bridge the user
+            // just connected via onboarding (the selected bridge).
+            let count = environment.selectedScope?.store.devices.count ?? 0
             if count > 0 {
                 Text("Connected — \(count) device\(count == 1 ? "" : "s") detected.")
                     .foregroundStyle(.secondary)

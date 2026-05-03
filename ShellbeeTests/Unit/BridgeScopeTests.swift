@@ -1,10 +1,15 @@
 import XCTest
 @testable import Shellbee
 
-/// Phase 0 of the multi-bridge migration: verify that `BridgeScope` is the
-/// canonical, non-leaky way to address one specific bridge. The legacy
-/// focused-bridge shims on `AppEnvironment` are deprecated; these tests lock
-/// down the replacement so subsequent migration phases have a stable contract.
+/// Verify that `BridgeScope` is the canonical, non-leaky way to address one
+/// specific bridge. The legacy focused-bridge shims on `AppEnvironment` are
+/// gone; these tests lock down the replacement so future changes preserve
+/// the contract.
+///
+/// Phase 3 update: `BridgeScope` is now lenient — `scope(for:)` always
+/// returns a scope, and reads/writes against an unknown id are no-ops with
+/// empty-store reads. Tests assert behavior via `isConnected` /
+/// `session != nil` rather than scope nullability.
 final class BridgeScopeTests: XCTestCase {
 
     override func setUp() {
@@ -26,9 +31,12 @@ final class BridgeScopeTests: XCTestCase {
     // MARK: - resolution
 
     @MainActor
-    func testScopeForUnknownIDReturnsNil() {
+    func testScopeForUnknownIDIsLenientNoSession() {
         let env = AppEnvironment()
-        XCTAssertNil(env.scope(for: UUID()))
+        let scope = env.scope(for: UUID())
+        XCTAssertNil(scope.session, "Unknown id has no live session")
+        XCTAssertFalse(scope.isConnected)
+        XCTAssertTrue(scope.store.devices.isEmpty, "Empty store fallback")
     }
 
     @MainActor
@@ -38,9 +46,8 @@ final class BridgeScopeTests: XCTestCase {
         env.connect(config: cfg)
 
         let scope = env.scope(for: cfg.id)
-        XCTAssertNotNil(scope)
-        XCTAssertEqual(scope?.bridgeID, cfg.id)
-        XCTAssertTrue(scope?.session === env.registry.session(for: cfg.id))
+        XCTAssertEqual(scope.bridgeID, cfg.id)
+        XCTAssertTrue(scope.session === env.registry.session(for: cfg.id))
     }
 
     @MainActor
@@ -73,8 +80,8 @@ final class BridgeScopeTests: XCTestCase {
         env.connect(config: a)
         env.connect(config: b)
 
-        let scopeA = env.scope(for: a.id)!
-        let scopeB = env.scope(for: b.id)!
+        let scopeA = env.scope(for: a.id)
+        let scopeB = env.scope(for: b.id)
 
         XCTAssertFalse(scopeA.store === scopeB.store, "Different bridges must own separate stores")
     }
@@ -87,8 +94,8 @@ final class BridgeScopeTests: XCTestCase {
         env.connect(config: a)
         env.connect(config: b)
 
-        let scopeA = env.scope(for: a.id)!
-        let scopeB = env.scope(for: b.id)!
+        let scopeA = env.scope(for: a.id)
+        let scopeB = env.scope(for: b.id)
 
         scopeA.identifyDevice("Lamp")
 
@@ -102,7 +109,7 @@ final class BridgeScopeTests: XCTestCase {
         let env = AppEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
-        let scope = env.scope(for: cfg.id)!
+        let scope = env.scope(for: cfg.id)
 
         scope.identifyDevice("Lamp")
         let firstSize = scope.store.identifyInProgress.count
@@ -119,8 +126,8 @@ final class BridgeScopeTests: XCTestCase {
         env.connect(config: a)
         env.connect(config: b)
 
-        let scopeA = env.scope(for: a.id)!
-        let scopeB = env.scope(for: b.id)!
+        let scopeA = env.scope(for: a.id)
+        let scopeB = env.scope(for: b.id)
 
         scopeA.store.devices = [
             Device(ieeeAddress: "0x1", type: .endDevice, networkAddress: 1, supported: true,
@@ -148,7 +155,7 @@ final class BridgeScopeTests: XCTestCase {
         let env = AppEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
-        let scope = env.scope(for: cfg.id)!
+        let scope = env.scope(for: cfg.id)
         XCTAssertEqual(scope.id, cfg.id)
     }
 
@@ -157,13 +164,36 @@ final class BridgeScopeTests: XCTestCase {
         let env = AppEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
-        let scope = env.scope(for: cfg.id)!
+        let scope = env.scope(for: cfg.id)
         // Newly connected — controller hasn't reached `.connected` against a
         // real WebSocket in the test harness, so isConnected may be false.
         // Important property here is that the scope reads the live session
         // value, not a cached one.
-        XCTAssertEqual(scope.isConnected, scope.session.isConnected)
-        XCTAssertEqual(scope.connectionState, scope.session.connectionState)
+        XCTAssertEqual(scope.isConnected, scope.session?.isConnected ?? false)
+        XCTAssertEqual(scope.connectionState, scope.session?.connectionState ?? .idle)
+    }
+
+    @MainActor
+    func testScopeAfterDisconnectFallsBackToEmptyStore() async {
+        let env = AppEnvironment()
+        let cfg = makeConfig(name: "Main")
+        env.connect(config: cfg)
+        let scope = env.scope(for: cfg.id)
+
+        scope.store.devices = [
+            Device(ieeeAddress: "0xD1", type: .endDevice, networkAddress: 1, supported: true,
+                   friendlyName: "Lamp", disabled: false, definition: nil, powerSource: nil,
+                   interviewCompleted: true, interviewing: false)
+        ]
+        XCTAssertFalse(scope.store.devices.isEmpty)
+
+        await env.disconnect(bridgeID: cfg.id)
+
+        // Scope id is the same; session is gone; reads return empty store.
+        XCTAssertNil(scope.session)
+        XCTAssertTrue(scope.store.devices.isEmpty,
+                      "After disconnect the scope falls back to the shared empty store")
+        XCTAssertFalse(scope.isConnected)
     }
 
     // MARK: - per-bridge OTA queues

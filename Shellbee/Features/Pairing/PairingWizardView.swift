@@ -13,7 +13,15 @@ struct PairingWizardView: View {
     /// first connected bridge on appear.
     @State private var bridgeID: UUID?
 
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    /// Resolve picker selection or fall back to the selected bridge in the
+    /// switcher. The wizard always operates on exactly one bridge; resolution
+    /// is at the view boundary so all child reads/writes go through one scope.
+    private var resolvedBridgeID: UUID? {
+        bridgeID ?? environment.registry.primaryBridgeID
+    }
+    private var scope: BridgeScope {
+        environment.scope(for: resolvedBridgeID ?? UUID())
+    }
     private var store: AppStore { scope.store }
 
     private var isPermitOpen: Bool {
@@ -256,24 +264,24 @@ struct PairingWizardView: View {
 // MARK: - Permit-join controls (network closed)
 
 private struct PermitJoinControls: View {
-    let scope: BridgeScopeBindings
+    let scope: BridgeScope
     @State private var duration: Int = 254
     @State private var targetName: String?
     let onStart: (Int, String?) -> Void
 
     var body: some View {
         Section {
-            Picker("Duration", selection: $duration) {
-                Text("1 min").tag(60)
-                Text("2 min").tag(120)
-                Text("3 min").tag(180)
-                Text("~4 min").tag(254)
-            }
             Picker("Via", selection: $targetName) {
                 Text("All devices").tag(String?.none)
                 ForEach(routerTargets, id: \.ieeeAddress) { device in
                     Text(device.friendlyName).tag(String?.some(device.friendlyName))
                 }
+            }
+            Picker("Duration", selection: $duration) {
+                Text("1 min").tag(60)
+                Text("2 min").tag(120)
+                Text("3 min").tag(180)
+                Text("~4 min").tag(254)
             }
         } header: {
             Text("Open the network")

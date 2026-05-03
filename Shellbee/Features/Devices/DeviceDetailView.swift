@@ -6,6 +6,10 @@ private enum DeviceMenuDestination: Hashable {
 
 struct DeviceDetailView: View {
     @Environment(AppEnvironment.self) private var environment
+    /// Phase 1 multi-bridge: the bridge that owns this device. Pushed as part
+    /// of `DeviceRoute` from the list/notification layer so detail reads
+    /// land on the correct store regardless of which bridge has focus.
+    let bridgeID: UUID
     let device: Device
     @State private var showPairingSheet = false
     @State private var menuDestination: DeviceMenuDestination?
@@ -13,14 +17,7 @@ struct DeviceDetailView: View {
     @State private var showRemoveSheet = false
     @State private var showRenameSheet = false
 
-    /// Multi-bridge: route every action against this device to the bridge
-    /// that actually owns it. Falls back to the focused bridge when single-
-    /// bridge or when the device's source can't be resolved (rare — happens
-    /// only between disconnect and reconnect).
-    private var bridgeID: UUID? {
-        environment.bridge(forDevice: device.friendlyName)?.bridgeID
-    }
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     var body: some View {
         let device = scope.store.devices.first { $0.ieeeAddress == self.device.ieeeAddress } ?? self.device
@@ -34,6 +31,8 @@ struct DeviceDetailView: View {
                 state: state,
                 isAvailable: isAvailable,
                 otaStatus: otaStatus,
+                bridgeID: bridgeID,
+                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
                 lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                 onRenameTapped: { showRenameSheet = true }
             )
@@ -46,7 +45,7 @@ struct DeviceDetailView: View {
             if device.definition != nil {
                 Section("Documentation") {
                     NavigationLink {
-                        DeviceDocView(device: device)
+                        DeviceDocView(bridgeID: bridgeID, device: device)
                     } label: {
                         Label("Device Documentation", systemImage: "doc.text")
                     }
@@ -89,13 +88,13 @@ struct DeviceDetailView: View {
         }
         .navigationDestination(item: $menuDestination) { destination in
             switch destination {
-            case .settings:  DeviceSettingsView(device: device)
-            case .bind:      DeviceBindView(device: device)
-            case .reporting: DeviceReportingView(device: device)
+            case .settings:  DeviceSettingsView(bridgeID: bridgeID, device: device)
+            case .bind:      DeviceBindView(bridgeID: bridgeID, device: device)
+            case .reporting: DeviceReportingView(bridgeID: bridgeID, device: device)
             }
         }
         .sheet(isPresented: $showPairingSheet) {
-            DevicePairingSheet(device: device)
+            DevicePairingSheet(bridgeID: bridgeID, device: device)
         }
         .sheet(isPresented: $showRenameSheet) {
             RenameDeviceSheet(device: device) { newName, updateHA in
@@ -248,13 +247,14 @@ struct DeviceDetailView: View {
             } else {
                 ForEach(recent) { entry in
                     NavigationLink {
-                        LogDetailView(entry: entry)
+                        LogDetailView(bridgeID: bridgeID, entry: entry)
                     } label: {
-                        LogRowView(entry: entry)
+                        LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
                     }
+                    .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
                 }
                 NavigationLink {
-                    DeviceLogsView(device: device)
+                    DeviceLogsView(bridgeID: bridgeID, device: device)
                 } label: {
                     Label("See All Logs", systemImage: "list.bullet")
                 }
@@ -407,7 +407,7 @@ struct DeviceDetailView: View {
 
 #Preview {
     NavigationStack {
-        DeviceDetailView(device: .preview)
+        DeviceDetailView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

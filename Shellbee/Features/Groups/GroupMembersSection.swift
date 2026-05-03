@@ -2,9 +2,12 @@ import SwiftUI
 
 struct GroupMembersSection: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
     let group: Group
     let onRemove: (GroupMember) -> Void
     var onAdd: (() -> Void)? = nil
+
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     var body: some View {
         if group.members.isEmpty {
@@ -52,15 +55,15 @@ struct GroupMembersSection: View {
     private var populatedSection: some View {
         Section("Members") {
             ForEach(group.members, id: \.ieeeAddress) { member in
-                let device = environment.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
+                let device = scope.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
                 SwiftUI.Group {
                     if let device {
-                        NavigationLink(value: device) {
+                        NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) {
                             GroupMemberRow(
                                 member: member,
                                 device: device,
-                                state: environment.store.state(for: device.friendlyName),
-                                isAvailable: environment.store.isAvailable(device.friendlyName)
+                                state: scope.store.state(for: device.friendlyName),
+                                isAvailable: scope.store.isAvailable(device.friendlyName)
                             )
                         }
                     } else {
@@ -81,7 +84,7 @@ struct GroupMembersSection: View {
 
 #Preview {
     List {
-        GroupMembersSection(group: .previewWithMembers, onRemove: { _ in })
+        GroupMembersSection(bridgeID: UUID(), group: .previewWithMembers, onRemove: { _ in })
     }
     .environment(AppEnvironment())
 }

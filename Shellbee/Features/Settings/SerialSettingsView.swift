@@ -3,8 +3,8 @@ import SwiftUI
 struct SerialSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var adapter: String = ""
     @State private var baudrate: Int = 115200
@@ -112,6 +112,6 @@ struct SerialSettingsView: View {
 
 #Preview {
     NavigationStack {
-        SerialSettingsView().environment(AppEnvironment())
+        SerialSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

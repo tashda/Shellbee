@@ -3,8 +3,8 @@ import SwiftUI
 struct AvailabilitySettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var enabled: Bool = false
     @State private var activeTimeout: Int = 10
@@ -107,6 +107,6 @@ struct AvailabilitySettingsView: View {
 
 #Preview {
     NavigationStack {
-        AvailabilitySettingsView().environment(AppEnvironment())
+        AvailabilitySettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

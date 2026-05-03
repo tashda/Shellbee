@@ -2,17 +2,14 @@ import SwiftUI
 
 struct DeviceBindView: View {
     @Environment(AppEnvironment.self) private var environment
+    /// Phase 1 multi-bridge: bridge that owns this device. Pushed in via
+    /// `DeviceRoute` from the parent detail view.
+    let bridgeID: UUID
     let device: Device
     @State private var showAddSheet = false
     @State private var bindingToRemove: ParsedBinding?
 
-    /// Multi-bridge: resolve the bridge that owns this device so reads and
-    /// writes stay scoped to the right network. Falls back to the focused
-    /// bridge in single-bridge mode.
-    private var bridgeID: UUID? {
-        environment.bridge(forDevice: device.friendlyName)?.bridgeID
-    }
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     private var currentDevice: Device {
         scope.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
@@ -53,7 +50,7 @@ struct DeviceBindView: View {
             }
         }
         .sheet(isPresented: $showAddSheet) {
-            AddBindingSheet(device: currentDevice) { target, clusters in
+            AddBindingSheet(bridgeID: bridgeID, device: currentDevice) { target, clusters in
                 bind(to: target, clusters: clusters)
             }
         }
@@ -76,7 +73,7 @@ struct DeviceBindView: View {
     private func bindingRow(_ binding: ParsedBinding) -> some View {
         let targetDevice = scope.store.devices.first { $0.ieeeAddress == binding.targetIEEE }
         if let targetDevice {
-            NavigationLink(destination: DeviceDetailView(device: targetDevice)) {
+            NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: targetDevice)) {
                 BindingRow(binding: binding, store: scope.store)
             }
         } else {
@@ -153,7 +150,7 @@ struct ParsedBinding: Identifiable {
 
 #Preview {
     NavigationStack {
-        DeviceBindView(device: .preview)
+        DeviceBindView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

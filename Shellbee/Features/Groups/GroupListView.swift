@@ -3,12 +3,16 @@ import SwiftUI
 struct GroupListView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = GroupListViewModel()
-    @State private var groupToRename: Group?
-    @State private var groupToRemove: Group?
+    @State private var groupToRename: BridgeBoundGroup?
+    @State private var groupToRemove: BridgeBoundGroup?
     @State private var showAddGroup = false
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
+    }
+
+    private var singleBridgeID: UUID? {
+        environment.registry.orderedSessions.first(where: \.isConnected)?.bridgeID
     }
 
     var body: some View {
@@ -17,29 +21,29 @@ struct GroupListView: View {
                 if isMergedMode {
                     let merged = mergedFilteredGroups()
                     ForEach(merged) { item in
-                        HStack(spacing: DesignTokens.Spacing.sm) {
-                            BridgeColorDot(bridgeID: item.bridgeID, bridgeName: item.bridgeName)
-                            GroupListRow(
-                                group: item.group,
-                                memberDevices: mergedMembers(for: item),
-                                onRename: { groupToRename = item.group },
-                                onRemove: { groupToRemove = item.group }
-                            )
-                        }
-                        .simultaneousGesture(TapGesture().onEnded {
-                            if environment.registry.primaryBridgeID != item.bridgeID {
-                                environment.registry.setPrimary(item.bridgeID)
-                            }
-                        })
+                        // Bridge attribution lives on the row's leading-bar
+                        // background (handled inside `GroupListRow`), so the
+                        // merged path no longer wraps in an HStack with a
+                        // separate dot — the bar is the uniform multi-bridge
+                        // indicator across Devices, Groups, and Logs.
+                        GroupListRow(
+                            group: item.group,
+                            memberDevices: mergedMembers(for: item),
+                            bridgeID: item.bridgeID,
+                            onRename: { groupToRename = item },
+                            onRemove: { groupToRemove = item }
+                        )
                     }
-                } else {
-                    let groups = viewModel.filteredGroups(store: environment.store)
+                } else if let bridgeID = singleBridgeID,
+                          let session = environment.registry.session(for: bridgeID) {
+                    let groups = viewModel.filteredGroups(store: session.store)
                     ForEach(groups) { group in
                         GroupListRow(
                             group: group,
-                            memberDevices: memberDevices(for: group),
-                            onRename: { groupToRename = group },
-                            onRemove: { groupToRemove = group }
+                            memberDevices: memberDevices(for: group, store: session.store),
+                            bridgeID: bridgeID,
+                            onRename: { groupToRename = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
+                            onRemove: { groupToRemove = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) }
                         )
                     }
                 }
@@ -47,11 +51,11 @@ struct GroupListView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Groups")
             .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: Group.self) { group in
-                GroupDetailView(group: group)
+            .navigationDestination(for: GroupRoute.self) { route in
+                GroupDetailView(bridgeID: route.bridgeID, group: route.group)
             }
-            .navigationDestination(for: Device.self) { device in
-                DeviceDetailView(device: device)
+            .navigationDestination(for: DeviceRoute.self) { route in
+                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
             }
             .searchable(text: $viewModel.searchText, prompt: "Search")
             .minimizeSearchToolbarIfAvailable()
@@ -71,15 +75,20 @@ struct GroupListView: View {
                     sortMenu
                 }
             }
-            .refreshable { await environment.refreshBridgeData() }
+            .refreshable {
+                if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
+                    await environment.refreshBridgeData(bridgeID: id)
+                }
+            }
             .overlay {
-                if environment.store.groups.isEmpty {
+                let totalGroups = environment.allGroups.count
+                if totalGroups == 0 {
                     ContentUnavailableView(
                         "No Groups",
                         systemImage: "rectangle.3.group.fill",
                         description: Text("Create a group to control multiple devices together.")
                     )
-                } else if !viewModel.searchText.isEmpty && viewModel.filteredGroups(store: environment.store).isEmpty {
+                } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
                     ContentUnavailableView.search(text: viewModel.searchText)
                 }
             }
@@ -90,14 +99,14 @@ struct GroupListView: View {
             }
             .environment(environment)
         }
-        .sheet(item: $groupToRename) { group in
-            RenameGroupSheet(group: group, memberDevices: memberDevices(for: group)) { newName in
-                viewModel.renameGroup(group, to: newName, environment: environment)
+        .sheet(item: $groupToRename) { bound in
+            RenameGroupSheet(group: bound.group, memberDevices: mergedMembers(for: bound)) { newName in
+                viewModel.renameGroup(bound.group, to: newName, environment: environment, bridgeID: bound.bridgeID)
             }
         }
-        .sheet(item: $groupToRemove) { group in
-            RemoveGroupSheet(group: group, memberDevices: memberDevices(for: group)) { force in
-                viewModel.removeGroup(group, force: force, environment: environment)
+        .sheet(item: $groupToRemove) { bound in
+            RemoveGroupSheet(group: bound.group, memberDevices: mergedMembers(for: bound)) { force in
+                viewModel.removeGroup(bound.group, force: force, environment: environment, bridgeID: bound.bridgeID)
             }
         }
     }
@@ -151,9 +160,9 @@ struct GroupListView: View {
         }
     }
 
-    private func memberDevices(for group: Group) -> [Device] {
+    private func memberDevices(for group: Group, store: AppStore) -> [Device] {
         let ieees = Set(group.members.map(\.ieeeAddress))
-        return environment.store.devices.filter { ieees.contains($0.ieeeAddress) }
+        return store.devices.filter { ieees.contains($0.ieeeAddress) }
     }
 
     private func mergedMembers(for item: BridgeBoundGroup) -> [Device] {

@@ -4,13 +4,24 @@ struct DeviceListView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = DeviceListViewModel()
     @State private var navigationPath = NavigationPath()
-    @State private var deviceToRename: Device?
-    @State private var deviceToRemove: Device?
+    @State private var deviceToRename: BridgeBoundDevice?
+    @State private var deviceToRemove: BridgeBoundDevice?
     @State private var pendingDeviceAlert: PendingDeviceAlert?
+    @State private var pendingAlertBridgeID: UUID?
     @State private var showPairingWizard = false
 
     private var isGrouped: Bool {
-        viewModel.groupByCategory && !viewModel.hasActiveFilter && viewModel.searchText.isEmpty
+        viewModel.groupByCategory
+    }
+
+    /// The bridge that toolbar actions (firmware menu, refresh) target. In
+    /// merged mode this defaults to the user's filter selection or the
+    /// focused bridge; in single-bridge mode it's the only connected bridge.
+    /// `nil` only when there are zero connected bridges.
+    private var toolbarBridgeID: UUID? {
+        if let id = viewModel.bridgeFilter, environment.registry.session(for: id) != nil { return id }
+        if let id = environment.registry.primaryBridgeID, environment.registry.session(for: id) != nil { return id }
+        return environment.registry.orderedSessions.first(where: \.isConnected)?.bridgeID
     }
 
     var body: some View {
@@ -20,13 +31,16 @@ struct DeviceListView: View {
                 isGrouped: isGrouped,
                 onRename: { deviceToRename = $0 },
                 onRemove: { deviceToRemove = $0 },
-                onPendingAlert: { pendingDeviceAlert = $0 }
+                onPendingAlert: { alert, bridgeID in
+                    pendingDeviceAlert = alert
+                    pendingAlertBridgeID = bridgeID
+                }
             )
             .listStyle(.insetGrouped)
             .navigationTitle("Devices")
             .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: Device.self) { device in
-                DeviceDetailView(device: device)
+            .navigationDestination(for: DeviceRoute.self) { route in
+                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
             }
             .searchable(text: $viewModel.searchText, prompt: "Search")
             .minimizeSearchToolbarIfAvailable()
@@ -38,22 +52,27 @@ struct DeviceListView: View {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("Add Device")
-                    DeviceFilterMenu(viewModel: viewModel, store: environment.store)
-                    DeviceFirmwareMenu()
+                    if let toolbarID = toolbarBridgeID {
+                        DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
+                        DeviceFirmwareMenu(bridgeID: toolbarID)
+                    }
                     sortMenu
                 }
             }
-            .refreshable { await environment.refreshBridgeData() }
+            .refreshable {
+                if let id = toolbarBridgeID {
+                    await environment.refreshBridgeData(bridgeID: id)
+                }
+            }
             .onAppear {
                 if let filter = environment.pendingDeviceFilter {
                     navigationPath = NavigationPath()
                     viewModel.applyQuickFilter(filter)
                     environment.pendingDeviceFilter = nil
                 }
-                if let name = environment.pendingDeviceNavigation,
-                   let device = environment.store.device(named: name) {
+                if let route = environment.pendingDeviceNavigation {
                     environment.pendingDeviceNavigation = nil
-                    pushDeviceResettingPath(device)
+                    pushDeviceResettingPath(route)
                 }
             }
             .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
@@ -62,46 +81,49 @@ struct DeviceListView: View {
                 viewModel.applyQuickFilter(filter)
                 environment.pendingDeviceFilter = nil
             }
-            .onChange(of: environment.pendingDeviceNavigation) { _, newName in
-                guard let name = newName,
-                      let device = environment.store.device(named: name) else { return }
+            .onChange(of: environment.pendingDeviceNavigation) { _, newRoute in
+                guard let route = newRoute else { return }
                 environment.pendingDeviceNavigation = nil
-                pushDeviceResettingPath(device)
+                pushDeviceResettingPath(route)
             }
         }
         .sheet(isPresented: $showPairingWizard) {
             PairingWizardView()
                 .environment(environment)
         }
-        .sheet(item: $deviceToRename) { device in
-            RenameDeviceSheet(device: device) { newName, updateHA in
-                viewModel.renameDevice(device, to: newName, homeassistantRename: updateHA, environment: environment)
+        .sheet(item: $deviceToRename) { bound in
+            RenameDeviceSheet(device: bound.device) { newName, updateHA in
+                viewModel.renameDevice(bound.device, to: newName, homeassistantRename: updateHA, environment: environment, bridgeID: bound.bridgeID)
             }
         }
-        .sheet(item: $deviceToRemove) { device in
-            RemoveDeviceSheet(device: device) { force, block in
-                viewModel.removeDevice(device, force: force, block: block, environment: environment)
+        .sheet(item: $deviceToRemove) { bound in
+            RemoveDeviceSheet(device: bound.device) { force, block in
+                viewModel.removeDevice(bound.device, force: force, block: block, environment: environment, bridgeID: bound.bridgeID)
             }
         }
         .alert(
             pendingDeviceAlert?.title ?? "",
             isPresented: Binding(
                 get: { pendingDeviceAlert != nil },
-                set: { if !$0 { pendingDeviceAlert = nil } }
+                set: { if !$0 { pendingDeviceAlert = nil; pendingAlertBridgeID = nil } }
             ),
             presenting: pendingDeviceAlert
         ) { alert in
             Button(alert.confirmTitle, role: alert.role) {
-                switch alert {
-                case .reconfigure(let device):
-                    viewModel.reconfigureDevice(device, environment: environment)
-                case .interview(let device):
-                    viewModel.interviewDevice(device, environment: environment)
+                if let bridgeID = pendingAlertBridgeID {
+                    switch alert {
+                    case .reconfigure(let device):
+                        viewModel.reconfigureDevice(device, environment: environment, bridgeID: bridgeID)
+                    case .interview(let device):
+                        viewModel.interviewDevice(device, environment: environment, bridgeID: bridgeID)
+                    }
                 }
                 pendingDeviceAlert = nil
+                pendingAlertBridgeID = nil
             }
             Button("Cancel", role: .cancel) {
                 pendingDeviceAlert = nil
+                pendingAlertBridgeID = nil
             }
         } message: { alert in
             Text(alert.message)
@@ -111,12 +133,12 @@ struct DeviceListView: View {
     // Pop to root then push on the next runloop. Replacing and appending the
     // path in the same cycle raised AnyNavigationPath.comparisonTypeMismatch
     // when the stack already contained a Device entry.
-    private func pushDeviceResettingPath(_ device: Device) {
+    private func pushDeviceResettingPath(_ route: DeviceRoute) {
         if !navigationPath.isEmpty {
             navigationPath.removeLast(navigationPath.count)
         }
         Task { @MainActor in
-            navigationPath.append(device)
+            navigationPath.append(route)
         }
     }
 
@@ -163,12 +185,21 @@ private struct DeviceListContent: View {
     @Environment(AppEnvironment.self) private var environment
     @Bindable var viewModel: DeviceListViewModel
     let isGrouped: Bool
-    let onRename: (Device) -> Void
-    let onRemove: (Device) -> Void
-    let onPendingAlert: (PendingDeviceAlert) -> Void
+    let onRename: (BridgeBoundDevice) -> Void
+    let onRemove: (BridgeBoundDevice) -> Void
+    /// Phase 1 multi-bridge: the bridgeID is required so reconfigure/interview
+    /// alerts route to the right bridge.
+    let onPendingAlert: (PendingDeviceAlert, UUID) -> Void
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
+    }
+
+    /// In single-bridge mode, the only connected session's id (used to wrap
+    /// every device into a `BridgeBoundDevice` so the row, callbacks, and
+    /// nav route all carry the same bridge identity).
+    private var singleBridgeID: UUID? {
+        environment.registry.orderedSessions.first(where: \.isConnected)?.bridgeID
     }
 
     var body: some View {
@@ -179,49 +210,70 @@ private struct DeviceListContent: View {
         }
     }
 
-    // MARK: - Single-bridge mode (legacy path, unchanged)
+    // MARK: - Single-bridge mode
 
     @ViewBuilder
     private var singleBridgeList: some View {
+        // No connected session yet (cold start, between disconnect-reconnect).
+        // The container view shows ContentUnavailable below.
+        if let bridgeID = singleBridgeID,
+           let session = environment.registry.session(for: bridgeID) {
+            singleBridgeListBody(bridgeID: bridgeID, store: session.store, bridgeName: session.displayName)
+        } else {
+            List {
+                EmptyView()
+            }
+            .overlay {
+                ContentUnavailableView(
+                    "No Devices",
+                    systemImage: "cpu",
+                    description: Text("Devices will appear once connected to Zigbee2MQTT.")
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func singleBridgeListBody(bridgeID: UUID, store: AppStore, bridgeName: String) -> some View {
         List {
             if isGrouped {
                 if viewModel.showRecents {
-                    let recents = viewModel.recentDevices(store: environment.store)
+                    let recents = viewModel.recentDevices(store: store)
                     if !recents.isEmpty {
                         Section {
                             ForEach(recents, id: \.ieeeAddress) { device in
-                                deviceRow(for: device, store: environment.store, bridgeName: nil)
+                                deviceRow(for: device, store: store, bridgeName: bridgeName, bridgeID: bridgeID)
                             }
                         } header: {
                             Text("Recently Added")
                         }
                     }
                 }
-                let grouped = viewModel.categorizedDevices(store: environment.store)
+                let grouped = viewModel.categorizedDevices(store: store)
                 ForEach(grouped, id: \.0) { (category, devices) in
                     Section {
                         ForEach(devices) { device in
-                            deviceRow(for: device, store: environment.store, bridgeName: nil)
+                            deviceRow(for: device, store: store, bridgeName: bridgeName, bridgeID: bridgeID)
                         }
                     } header: {
                         Text(category.label)
                     }
                 }
             } else {
-                let devices = viewModel.filteredDevices(store: environment.store)
+                let devices = viewModel.filteredDevices(store: store)
                 ForEach(devices) { device in
-                    deviceRow(for: device, store: environment.store, bridgeName: nil)
+                    deviceRow(for: device, store: store, bridgeName: bridgeName, bridgeID: bridgeID)
                 }
             }
         }
         .overlay {
-            if environment.store.devices.isEmpty {
+            if store.devices.isEmpty {
                 ContentUnavailableView(
                     "No Devices",
                     systemImage: "cpu",
                     description: Text("Devices will appear once connected to Zigbee2MQTT.")
                 )
-            } else if !viewModel.searchText.isEmpty && viewModel.filteredDevices(store: environment.store).isEmpty {
+            } else if !viewModel.searchText.isEmpty && viewModel.filteredDevices(store: store).isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
             }
         }
@@ -276,25 +328,46 @@ private struct DeviceListContent: View {
         }
     }
 
-    /// Apply search to the aggregated multi-bridge list. Status / category /
-    /// vendor / type filters intentionally degrade to all-pass in merged mode —
-    /// those filters are designed around per-bridge state semantics; doing
-    /// proper merged filtering belongs in a follow-up.
+    /// Apply the full filter set to the aggregated multi-bridge list. Status
+    /// filtering resolves state/availability/OTA from each row's owning bridge.
     private func filteredMergedDevices() -> [BridgeBoundDevice] {
         let q = viewModel.searchText.lowercased()
         var all = environment.allDevices.filter { $0.device.type != .coordinator }
         if let bridgeID = viewModel.bridgeFilter {
             all = all.filter { $0.bridgeID == bridgeID }
         }
-        let filtered: [BridgeBoundDevice] = q.isEmpty
-            ? all
-            : all.filter { bound in
-                bound.device.friendlyName.lowercased().contains(q)
-                    || bound.device.description?.lowercased().contains(q) == true
-                    || bound.device.definition?.vendor.lowercased().contains(q) == true
-                    || bound.device.definition?.model.lowercased().contains(q) == true
-                    || bound.bridgeName.lowercased().contains(q)
+
+        if let condition = viewModel.statusFilter.condition {
+            all = all.filter { bound in
+                guard let store = environment.registry.session(for: bound.bridgeID)?.store else { return false }
+                return condition.matches(
+                    device: bound.device,
+                    state: store.state(for: bound.device.friendlyName),
+                    isAvailable: store.isAvailable(bound.device.friendlyName),
+                    otaStatus: store.otaStatus(for: bound.device.friendlyName)
+                )
             }
+        }
+
+        if let category = viewModel.categoryFilter {
+            all = all.filter { $0.device.category == category }
+        }
+        if let vendor = viewModel.vendorFilter {
+            all = all.filter { $0.device.definition?.vendor == vendor }
+        }
+        if let type = viewModel.typeFilter {
+            all = all.filter { $0.device.type == type }
+        }
+
+        let filtered: [BridgeBoundDevice] = q.isEmpty
+        ? all
+        : all.filter { bound in
+            bound.device.friendlyName.lowercased().contains(q)
+                || bound.device.description?.lowercased().contains(q) == true
+                || bound.device.definition?.vendor.lowercased().contains(q) == true
+                || bound.device.definition?.model.lowercased().contains(q) == true
+                || bound.bridgeName.lowercased().contains(q)
+        }
         return sortedMerged(filtered)
     }
 
@@ -345,18 +418,10 @@ private struct DeviceListContent: View {
     @ViewBuilder
     private func mergedRow(for bound: BridgeBoundDevice) -> some View {
         if let session = environment.registry.session(for: bound.bridgeID) {
-            // The row body itself owns its NavigationLink (DeviceListRow does
-            // it internally), so the multi-bridge variant just renders the
-            // row directly. The bridge color dot is embedded inside
-            // DeviceRowView so it doesn't break the row's tap → push behavior.
-            // A simultaneous tap gesture flips focus to the device's bridge so
-            // DeviceDetailView reads from the right store on push.
+            // Phase 1: the row's NavigationLink pushes a `DeviceRoute` carrying
+            // `bound.bridgeID`, so DeviceDetailView reads from the device's
+            // bridge directly — no `setPrimary()` workaround needed.
             deviceRow(for: bound.device, store: session.store, bridgeName: bound.bridgeName, bridgeID: bound.bridgeID)
-                .simultaneousGesture(TapGesture().onEnded {
-                    if environment.registry.primaryBridgeID != bound.bridgeID {
-                        environment.registry.setPrimary(bound.bridgeID)
-                    }
-                })
         }
     }
 
@@ -366,12 +431,13 @@ private struct DeviceListContent: View {
     private func deviceRow(
         for device: Device,
         store: AppStore,
-        bridgeName: String?,
-        bridgeID: UUID? = nil
+        bridgeName: String,
+        bridgeID: UUID
     ) -> some View {
         let state = store.state(for: device.friendlyName)
         let isAvailable = store.isAvailable(device.friendlyName)
         let otaStatus = store.otaStatus(for: device.friendlyName)
+        let bound = BridgeBoundDevice(bridgeID: bridgeID, bridgeName: bridgeName, device: device)
         DeviceListRow(
             device: device,
             state: state,
@@ -381,29 +447,13 @@ private struct DeviceListContent: View {
             isDeleting: store.pendingRemovals.contains(device.friendlyName),
             isIdentifying: store.identifyInProgress.contains(device.friendlyName),
             bridgeID: bridgeID,
-            bridgeName: bridgeName ?? "",
-            onRename: { onRename(device) },
-            onRemove: { onRemove(device) },
-            onReconfigure: { onPendingAlert(.reconfigure(device)) },
-            onInterview: { onPendingAlert(.interview(device)) },
+            bridgeName: bridgeName,
+            onRename: { onRename(bound) },
+            onRemove: { onRemove(bound) },
+            onReconfigure: { onPendingAlert(.reconfigure(device), bridgeID) },
+            onInterview: { onPendingAlert(.interview(device), bridgeID) },
             onIdentify: {
-                if let bridgeID {
-                    // Route identify to the device's bridge in merged mode.
-                    if !store.identifyInProgress.contains(device.friendlyName) {
-                        store.identifyInProgress.insert(device.friendlyName)
-                        environment.send(
-                            bridge: bridgeID,
-                            topic: Z2MTopics.deviceSet(device.friendlyName),
-                            payload: .object(["identify": .string("identify")])
-                        )
-                        Task { [weak store] in
-                            try? await Task.sleep(for: .seconds(3))
-                            await MainActor.run { _ = store?.identifyInProgress.remove(device.friendlyName) }
-                        }
-                    }
-                } else {
-                    environment.identifyDevice(device.friendlyName)
-                }
+                environment.scope(for: bridgeID).identifyDevice(device.friendlyName)
             },
             onUpdate: state.hasUpdateAvailable
                 ? { viewModel.updateDevice(device, environment: environment, bridgeID: bridgeID) }

@@ -3,8 +3,8 @@ import Foundation
 
 struct BackupView: View {
     @Environment(AppEnvironment.self) private var environment
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
     @State private var status: Status = .idle
     @State private var lastBackupURL: URL?
     @State private var lastBackupSize: Int?
@@ -202,6 +202,6 @@ private struct ActivityViewController: UIViewControllerRepresentable {
 }
 
 #Preview {
-    NavigationStack { BackupView() }
+    NavigationStack { BackupView(bridgeID: UUID()) }
         .environment(AppEnvironment())
 }

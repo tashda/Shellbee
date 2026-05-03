@@ -132,7 +132,11 @@ private struct PhilipsHueSerialResetCard: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var showResetSheet = false
 
-    private var store: AppStore { environment.store }
+    /// Phase 1 multi-bridge: docs are not bridge-attributed today, so the
+    /// reset action targets the user's selected bridge. Phase 2 may thread
+    /// an explicit bridge id through the docs browser.
+    private var scope: BridgeScope? { environment.selectedScope }
+    private var store: AppStore? { scope?.store }
 
     var body: some View {
         Button { showResetSheet = true } label: {
@@ -165,7 +169,7 @@ private struct PhilipsHueSerialResetCard: View {
         )
         .sheet(isPresented: $showResetSheet) {
             PhilipsHueResetSheet(
-                extendedPanId: store.bridgeInfo?.network?.extendedPanID?.stringValue ?? ""
+                extendedPanId: store?.bridgeInfo?.network?.extendedPanID?.stringValue ?? ""
             ) { panId, serials in
                 philipsHueReset(extendedPanId: panId, serialNumbers: serials)
             }
@@ -179,7 +183,7 @@ private struct PhilipsHueSerialResetCard: View {
         if !extendedPanId.isEmpty {
             params["extended_pan_id"] = .string(extendedPanId)
         }
-        environment.send(
+        scope?.send(
             topic: Z2MTopics.Request.action,
             payload: .object([
                 "action": .string("philips_hue_factory_reset"),
@@ -191,7 +195,7 @@ private struct PhilipsHueSerialResetCard: View {
 
 private struct TouchlinkResetCard: View {
     var body: some View {
-        NavigationLink(destination: TouchlinkGuideView()) {
+        NavigationLink(destination: TouchlinkGuideView(bridgeID: nil)) {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: "wave.3.left.circle.fill")
                     .font(.title2)

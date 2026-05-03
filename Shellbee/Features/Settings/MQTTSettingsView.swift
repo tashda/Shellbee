@@ -6,8 +6,8 @@ struct MQTTSettingsView: View {
     /// Phase 2 multi-bridge: when set, this view configures that specific
     /// bridge. When nil, falls back to the focused bridge (single-bridge
     /// callers don't need to know about ids).
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var server: String = ""
     @State private var baseTopic: String = "zigbee2mqtt"
@@ -187,6 +187,6 @@ struct MQTTSettingsView: View {
 
 #Preview {
     NavigationStack {
-        MQTTSettingsView().environment(AppEnvironment())
+        MQTTSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

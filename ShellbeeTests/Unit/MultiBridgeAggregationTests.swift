@@ -98,7 +98,12 @@ final class MultiBridgeAggregationTests: XCTestCase {
     // MARK: - bridge(forDevice:)
 
     @MainActor
-    func testBridgeForDeviceFindsCorrectSession() {
+    func testAllDevicesAttributesEachToItsBridge() {
+        // Phase 3 multi-bridge: `environment.bridge(forDevice:)` is gone —
+        // name-based lookup was ambiguous when two bridges share a name.
+        // The replacement is `allDevices`: every entry already carries its
+        // source bridge id, so attribution is unambiguous and routing by
+        // bridge id is the only correct option.
         let env = AppEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
@@ -108,8 +113,8 @@ final class MultiBridgeAggregationTests: XCTestCase {
         env.registry.session(for: cfgA.id)?.store.devices = [makeDevice(ieee: "0xA", name: "OnA")]
         env.registry.session(for: cfgB.id)?.store.devices = [makeDevice(ieee: "0xB", name: "OnB")]
 
-        let result = env.bridge(forDevice: "OnB")
-        XCTAssertEqual(result?.bridgeID, cfgB.id)
+        let bound = env.allDevices.first { $0.device.friendlyName == "OnB" }
+        XCTAssertEqual(bound?.bridgeID, cfgB.id)
     }
 
     // MARK: - Helpers

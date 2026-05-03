@@ -10,30 +10,33 @@ final class AppEnvironment {
     /// Per-bridge OTA queues. Each bridge's bulk-OTA work runs independently —
     /// a 200-device check on bridge A doesn't serialize bridge B's update.
     private var otaQueues: [UUID: OTABulkOperationQueue] = [:]
-    /// Fallback empty store returned by `store` while no bridge is connected.
-    /// Keeps every read-site that touches `environment.store.devices` etc.
-    /// crash-free during the brief window between launch and first connect.
-    private let fallbackStore = AppStore()
     var selectedTab: AppTab = .home
     var pendingDeviceFilter: DeviceQuickFilter?
     var pendingLogSheet: LogSheetRequest?
-    var pendingDeviceNavigation: String?
+    /// Phase 1 multi-bridge: a deep-link request to push a device detail.
+    /// Carries the source bridge id so the route lands on the right store
+    /// without a `setPrimary()` side effect at the call site.
+    var pendingDeviceNavigation: DeviceRoute?
     private var hasStarted = false
 
     init() {
         let registry = BridgeRegistry(history: history)
         self.registry = registry
-        wireNotificationFilter(into: fallbackStore)
     }
 
-    /// Construct a `BridgeScope` for an explicit bridge id. Returns `nil`
-    /// if no session exists for that id (the user disconnected, or the id
-    /// is stale). All new multi-bridge-aware UI should route reads/writes
-    /// through a `BridgeScope` rather than the deprecated `store` /
-    /// `send(topic:)` shims below.
-    func scope(for bridgeID: UUID) -> BridgeScope? {
-        guard let session = registry.session(for: bridgeID) else { return nil }
-        return BridgeScope(bridgeID: bridgeID, session: session, environment: self)
+    // MARK: - BridgeScope (the canonical bridge addressing API)
+
+    /// Construct a `BridgeScope` for an explicit bridge id. The scope is
+    /// lenient — if no session exists for the id (the user disconnected,
+    /// or the id is stale), reads return empty data and writes are no-ops.
+    /// UI that needs to react to disconnect observes `scope.isConnected`.
+    ///
+    /// Every multi-bridge-aware UI surface routes reads/writes through a
+    /// `BridgeScope`. The legacy focused-bridge shims are gone — every
+    /// action takes an explicit bridge id (or routes via `selectedScope`
+    /// for the few top-level surfaces that have no other source of truth).
+    func scope(for bridgeID: UUID) -> BridgeScope {
+        BridgeScope(bridgeID: bridgeID, environment: self)
     }
 
     /// Scope for the currently-selected bridge in the picker UI, if any.
@@ -46,26 +49,12 @@ final class AppEnvironment {
         return scope(for: id)
     }
 
-    /// The focused bridge's store. Falls back to an empty store while no
-    /// bridge is connected so the UI can read it safely on cold start.
-    @available(*, deprecated, message: "Use scope(for:).store. The focused-bridge shim is being removed; pass an explicit bridgeID through the view hierarchy instead.")
-    var store: AppStore {
-        registry.primary?.store ?? fallbackStore
-    }
-
-    /// The focused bridge's session controller, if any.
-    @available(*, deprecated, message: "Use scope(for:).session.controller or registry.session(for:) — explicit bridge addressing only.")
-    var session: ConnectionSessionController? {
-        registry.primary?.controller
-    }
-
     // MARK: - Merged multi-bridge accessors
     //
     // These return aggregated data across every connected bridge so the UI can
     // render "all devices everywhere" without per-screen plumbing. Each result
     // carries enough bridge metadata for the renderer to attribute rows back
-    // to their source. UI code that wants merged display reads these; UI that
-    // remains scoped to the focused bridge keeps using `.store.devices` etc.
+    // to their source.
 
     /// Every device across every connected bridge, tagged with its source.
     /// Useful for the Devices tab in merged mode.
@@ -97,33 +86,6 @@ final class AppEnvironment {
             .sorted { $0.entry.timestamp > $1.entry.timestamp }
     }
 
-    /// Look up which bridge owns a device with the given friendly name. Returns
-    /// the first match — friendly names are unique within a single Z2M
-    /// instance but can collide across bridges (a real concern for users with
-    /// multiple identical device fleets).
-    func bridge(forDevice friendlyName: String) -> BridgeSession? {
-        registry.orderedSessions.first { session in
-            session.store.devices.contains { $0.friendlyName == friendlyName }
-        }
-    }
-
-    /// Look up which bridge owns a group with the given id. Group ids are
-    /// scoped to a single Z2M instance, so the same numeric id can exist on
-    /// multiple bridges — first-match resolution returns the focused bridge's
-    /// owner first when both contain it.
-    func bridge(forGroup groupID: Int) -> BridgeSession? {
-        // Prefer the focused bridge's match if any, then fall back to others
-        // — keeps multi-bridge group navigation aligned with the user's
-        // current focus when both bridges have a group with the same id.
-        if let primary = registry.primary,
-           primary.store.groups.contains(where: { $0.id == groupID }) {
-            return primary
-        }
-        return registry.orderedSessions.first { session in
-            session.store.groups.contains { $0.id == groupID }
-        }
-    }
-
     /// All pending in-app notifications across every bridge. Tagged so the
     /// overlay can show bridge attribution on the banner and route dismissal
     /// back to the originating bridge's store.
@@ -140,6 +102,20 @@ final class AppEnvironment {
     /// to flatten the merged list every render.
     var totalPendingNotifications: Int {
         registry.orderedSessions.reduce(0) { $0 + $1.store.pendingNotifications.count }
+    }
+
+    /// Combined arrival-id snapshot across every connected bridge. SwiftUI
+    /// observes the value to fire the overlay's "new notification" haptic
+    /// across every bridge — the array changes whenever any bridge enqueues
+    /// a new notification (each store rotates its own UUID on enqueue).
+    var aggregateNotificationArrivalID: [UUID] {
+        registry.orderedSessions.map(\.store.notificationArrivalID)
+    }
+
+    /// Total fast-track count across every bridge. The overlay schedules
+    /// the next fast-track banner whenever this rises.
+    var totalFastTrackNotifications: Int {
+        registry.orderedSessions.reduce(0) { $0 + $1.store.fastTrackNotifications.count }
     }
 
     /// Pop the latest non-fast-track notification from whichever bridge holds
@@ -190,35 +166,26 @@ final class AppEnvironment {
         registry.orderedSessions.contains { !$0.store.fastTrackNotifications.isEmpty }
     }
 
-    @available(*, deprecated, message: "Use scope(for:).connectionState. Reads the focused bridge silently — being removed.")
-    var connectionState: ConnectionSessionController.State {
-        registry.primary?.controller.connectionState ?? .idle
+    // MARK: - Connection state queries
+
+    /// True if any connected (or previously-connected) session has reached
+    /// `.connected` at least once. Used to decide whether to show the
+    /// onboarding flow vs. the main interface on launch.
+    var hasAnyBridgeBeenConnected: Bool {
+        registry.orderedSessions.contains { $0.controller.hasBeenConnected }
     }
 
-    @available(*, deprecated, message: "Use scope(for:).session.config or registry.session(for:)?.config — explicit bridge addressing only.")
-    var connectionConfig: ConnectionConfig? {
-        registry.primary?.controller.connectionConfig
+    /// True if the user has at least one saved bridge in `ConnectionHistory`.
+    /// Used by RootView to decide whether to show the onboarding cover after
+    /// the splash. Doesn't require a live session — covers the case where
+    /// every bridge dropped before launch finished.
+    var hasSavedBridges: Bool {
+        !history.connections.isEmpty
     }
 
-    @available(*, deprecated, message: "Use registry.session(for:)?.controller.hasBeenConnected — explicit bridge addressing only.")
-    var hasBeenConnected: Bool {
-        registry.primary?.controller.hasBeenConnected ?? false
-    }
+    static var maxReconnectAttempts: Int { ConnectionSessionController.configuredMaxReconnectAttempts }
 
-    @available(*, deprecated, message: "Use registry.session(for:)?.controller.errorMessage — explicit bridge addressing only.")
-    var errorMessage: String? {
-        registry.primary?.controller.errorMessage
-    }
-
-    /// The OTA bulk queue for the focused bridge. Lazily created on first
-    /// access per bridge so that newly-connected bridges get their own queue.
-    @available(*, deprecated, message: "Use otaBulkQueue(for:) with an explicit bridge id.")
-    var otaBulkQueue: OTABulkOperationQueue {
-        guard let primary = registry.primary else {
-            return makeOrFetchQueue(for: fallbackStore, bridgeID: nil)
-        }
-        return makeOrFetchQueue(for: primary.store, bridgeID: primary.bridgeID)
-    }
+    // MARK: - OTA bulk queues (per-bridge)
 
     /// Per-bridge OTA bulk queue. Lazily created on first access. Returns
     /// `nil` if the bridge isn't currently connected.
@@ -227,7 +194,7 @@ final class AppEnvironment {
         return makeOrFetchQueue(for: session.store, bridgeID: bridgeID)
     }
 
-    static var maxReconnectAttempts: Int { ConnectionSessionController.configuredMaxReconnectAttempts }
+    // MARK: - Connection lifecycle
 
     /// Connect to a bridge. Existing sessions stay live — connecting a new
     /// bridge never tears down others. The first session connected becomes
@@ -257,27 +224,9 @@ final class AppEnvironment {
         await registry.disconnectAll()
     }
 
-    /// Legacy: disconnects the focused bridge only (back-compat for callers
-    /// that haven't been ported to multi-bridge yet).
-    @available(*, deprecated, message: "Use disconnect(bridgeID:) with an explicit bridge id.")
-    func disconnect() async {
-        guard let id = registry.primaryBridgeID else { return }
-        await disconnect(bridgeID: id)
-    }
-
-    @available(*, deprecated, message: "Use cancelConnection(bridgeID:) with an explicit bridge id.")
-    func cancelConnection() async {
-        await registry.primary?.controller.cancelConnection()
-    }
-
     /// Cancel an in-flight connection attempt for a specific bridge.
     func cancelConnection(bridgeID: UUID) async {
         await registry.session(for: bridgeID)?.controller.cancelConnection()
-    }
-
-    @available(*, deprecated, message: "Use forgetServer(bridgeID:) with an explicit bridge id.")
-    func forgetServer() async {
-        await registry.primary?.controller.forgetServer()
     }
 
     /// Forget a specific bridge's saved configuration.
@@ -285,19 +234,9 @@ final class AppEnvironment {
         await registry.session(for: bridgeID)?.controller.forgetServer()
     }
 
-    @available(*, deprecated, message: "Use retryFromLost(bridgeID:) with an explicit bridge id.")
-    func retryFromLost() {
-        registry.primary?.controller.retryFromLost()
-    }
-
     /// Retry a specific bridge after its connection was lost.
     func retryFromLost(bridgeID: UUID) {
         registry.session(for: bridgeID)?.controller.retryFromLost()
-    }
-
-    @available(*, deprecated, message: "Use clearErrorMessage(bridgeID:) with an explicit bridge id.")
-    func clearErrorMessage() {
-        registry.primary?.controller.clearErrorMessage()
     }
 
     /// Clear a specific bridge's error message.
@@ -305,21 +244,9 @@ final class AppEnvironment {
         registry.session(for: bridgeID)?.controller.clearErrorMessage()
     }
 
-    @available(*, deprecated, message: "Use restartBridge(_:) with an explicit bridge id, or scope.restart().")
-    func restartBridge() {
-        guard let id = registry.primaryBridgeID else { return }
-        send(bridge: id, topic: Z2MTopics.Request.restart, payload: .string(""))
-    }
-
-    /// Restart a specific bridge — the multi-bridge variant of `restartBridge()`.
+    /// Restart a specific bridge's Z2M instance.
     func restartBridge(_ bridgeID: UUID) {
         send(bridge: bridgeID, topic: Z2MTopics.Request.restart, payload: .string(""))
-    }
-
-    @available(*, deprecated, message: "Use refreshBridgeData(bridgeID:) with an explicit bridge id, or refresh every connected bridge.")
-    func refreshBridgeData() async {
-        guard let id = registry.primaryBridgeID else { return }
-        await refreshBridgeData(bridgeID: id)
     }
 
     /// Refresh devices + groups for a specific bridge.
@@ -329,59 +256,31 @@ final class AppEnvironment {
         try? await Task.sleep(for: .milliseconds(600))
     }
 
-    /// Send a request to the focused bridge. Per-bridge routing comes via
-    /// `send(bridge:topic:payload:)`.
-    @available(*, deprecated, message: "Use send(bridge:topic:payload:) with an explicit bridge id, or scope.send(topic:payload:).")
-    func send(topic: String, payload: JSONValue) {
-        registry.primary?.controller.send(topic: topic, payload: payload)
-    }
+    // MARK: - Per-bridge sends
 
-    /// Send a request explicitly to a specific bridge. Used by per-bridge
-    /// settings screens, the OTA queue, and any UI that needs to address
-    /// something other than the focused bridge.
+    /// Send a request explicitly to a specific bridge. The canonical write
+    /// path — every UI mutation routes through here. UI surfaces typically
+    /// hold a `BridgeScope` and call `scope.send(...)` rather than
+    /// reaching for this directly.
     func send(bridge bridgeID: UUID, topic: String, payload: JSONValue) {
         registry.session(for: bridgeID)?.controller.send(topic: topic, payload: payload)
     }
 
-    /// Sends a `bridge/request/options` request with the payload wrapped in
-    /// the `{"options": {...}}` envelope that z2m requires.
-    @available(*, deprecated, message: "Use sendBridgeOptions(_:to:) with an explicit bridge id, or scope.sendOptions(_:).")
-    func sendBridgeOptions(_ options: [String: JSONValue]) {
-        guard let id = registry.primaryBridgeID else { return }
-        sendBridgeOptions(options, to: id)
-    }
-
-    /// Multi-bridge variant of `sendBridgeOptions(_:)` — addresses a specific
+    /// Multi-bridge variant of `sendBridgeOptions` — addresses a specific
     /// bridge by id rather than the focused one. Used by per-bridge Settings
     /// pages when more than one bridge is connected.
     func sendBridgeOptions(_ options: [String: JSONValue], to bridgeID: UUID) {
         send(bridge: bridgeID, topic: Z2MTopics.Request.options, payload: .object(["options": .object(options)]))
     }
 
-    @available(*, deprecated, message: "Use scope(for:).sendDeviceState(_:payload:) — explicit bridge addressing only.")
-    func sendDeviceState(_ friendlyName: String, payload: JSONValue) {
-        guard let id = registry.primaryBridgeID else { return }
-        send(bridge: id, topic: Z2MTopics.deviceSet(friendlyName), payload: payload)
-    }
-
-    /// Asks the device to physically identify itself (blink/beep) via the
-    /// Zigbee Identify cluster.
-    @available(*, deprecated, message: "Use scope(for:).identifyDevice(_:) — explicit bridge addressing only.")
-    func identifyDevice(_ friendlyName: String) {
-        guard let scope = selectedScope else { return }
-        scope.identifyDevice(friendlyName)
-    }
-
-    @available(*, deprecated, message: "Use scope(for:).renameDevice(from:to:homeassistantRename:) — explicit bridge addressing only.")
-    func renameDevice(from: String, to: String, homeassistantRename: Bool) {
-        guard let scope = selectedScope else { return }
-        scope.renameDevice(from: from, to: to, homeassistantRename: homeassistantRename)
-    }
+    // MARK: - Tab-level navigation helpers
 
     func showDevices(filter: DeviceQuickFilter) {
         pendingDeviceFilter = filter
         selectedTab = .devices
     }
+
+    // MARK: - Lifecycle
 
     func start() async {
         guard !hasStarted else { return }
@@ -406,21 +305,19 @@ final class AppEnvironment {
             }
         }
 
+        // Migrate pre-existing installs (single saved bridge, no auto-connect
+        // flag) so the user lands on their bridge after upgrading instead of
+        // an empty UI.
+        history.performFirstLaunchMigrationIfNeeded()
+
         // Auto-connect to every saved bridge that the user has explicitly
-        // marked for auto-connect. Falls back to the default bridge, then to
-        // the legacy last-successful config.
-        let toConnect = autoConnectTargets()
+        // marked for auto-connect — and only those. No "last successful" or
+        // default-bridge fallback: if the user disables auto-connect on every
+        // bridge, the app starts cleanly with no live session.
+        let toConnect = history.connections.filter { history.isAutoConnect($0) }
         for config in toConnect {
             connect(config: config)
         }
-    }
-
-    private func autoConnectTargets() -> [ConnectionConfig] {
-        let auto = history.connections.filter { history.isAutoConnect($0) }
-        if !auto.isEmpty { return auto }
-        if let preferred = history.defaultBridge { return [preferred] }
-        if let last = ConnectionConfig.load() { return [last] }
-        return []
     }
 
     /// Set up notification filtering on a freshly-created store so notifications
@@ -438,18 +335,11 @@ final class AppEnvironment {
         _ = makeOrFetchQueue(for: session.store, bridgeID: session.bridgeID)
     }
 
-    private func makeOrFetchQueue(for store: AppStore, bridgeID: UUID?) -> OTABulkOperationQueue {
-        if let bridgeID, let existing = otaQueues[bridgeID] {
-            return existing
-        }
+    private func makeOrFetchQueue(for store: AppStore, bridgeID: UUID) -> OTABulkOperationQueue {
+        if let existing = otaQueues[bridgeID] { return existing }
         let queue = OTABulkOperationQueue(
             sender: { [weak self, bridgeID] topic, payload in
-                guard let self else { return }
-                if let bridgeID {
-                    self.send(bridge: bridgeID, topic: topic, payload: payload)
-                } else {
-                    self.send(topic: topic, payload: payload)
-                }
+                self?.send(bridge: bridgeID, topic: topic, payload: payload)
             },
             onCompletion: { [weak store] summary in
                 store?.enqueueOTABulkSummary(summary)
@@ -458,9 +348,7 @@ final class AppEnvironment {
         store.otaResponseForwarding = { [weak queue] name, success, kind in
             queue?.handleResponse(friendlyName: name, success: success, kind: kind)
         }
-        if let bridgeID {
-            otaQueues[bridgeID] = queue
-        }
+        otaQueues[bridgeID] = queue
         return queue
     }
 }

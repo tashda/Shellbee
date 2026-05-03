@@ -3,8 +3,8 @@ import SwiftUI
 struct NetworkSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var transmitPower: String = ""
     @State private var adapterConcurrent: String = ""
@@ -96,6 +96,6 @@ struct NetworkSettingsView: View {
 
 #Preview {
     NavigationStack {
-        NetworkSettingsView().environment(AppEnvironment())
+        NetworkSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

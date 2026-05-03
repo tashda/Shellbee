@@ -35,45 +35,45 @@ final class GroupListViewModel {
         return sorted(groups)
     }
 
-    func addGroup(name: String, id: Int?, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func addGroup(name: String, id: Int?, environment: AppEnvironment, bridgeID: UUID?) {
         Haptics.impact(.medium)
         var payload: [String: JSONValue] = ["friendly_name": .string(name)]
         if let id { payload["id"] = .int(id) }
-        if let bridgeID {
-            environment.send(bridge: bridgeID, topic: Z2MTopics.Request.groupAdd, payload: .object(payload))
-        } else {
-            environment.send(topic: Z2MTopics.Request.groupAdd, payload: .object(payload))
-        }
+        // Phase 2 multi-bridge: AddGroupSheet always provides a bridgeID
+        // when ≥2 bridges are connected. Single-bridge mode passes nil and
+        // we resolve to the only connected session.
+        guard let resolvedID = bridgeID ?? environment.registry.primaryBridgeID else { return }
+        environment.send(bridge: resolvedID, topic: Z2MTopics.Request.groupAdd, payload: .object(payload))
     }
 
-    func renameGroup(_ group: Group, to newName: String, environment: AppEnvironment) {
+    func renameGroup(_ group: Group, to newName: String, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.medium)
-        environment.send(topic: Z2MTopics.Request.groupRename, payload: .object([
+        environment.send(bridge: bridgeID, topic: Z2MTopics.Request.groupRename, payload: .object([
             "from": .string(group.friendlyName),
             "to": .string(newName)
         ]))
     }
 
-    func removeGroup(_ group: Group, force: Bool, environment: AppEnvironment) {
+    func removeGroup(_ group: Group, force: Bool, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.medium)
-        environment.send(topic: Z2MTopics.Request.groupRemove, payload: .object([
+        environment.send(bridge: bridgeID, topic: Z2MTopics.Request.groupRemove, payload: .object([
             "id": .string("\(group.id)"),
             "force": .bool(force)
         ]))
     }
 
-    func addMember(device: Device, endpoint: Int = 1, to group: Group, environment: AppEnvironment) {
+    func addMember(device: Device, endpoint: Int = 1, to group: Group, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.light)
-        environment.send(topic: Z2MTopics.Request.groupMembersAdd, payload: .object([
+        environment.send(bridge: bridgeID, topic: Z2MTopics.Request.groupMembersAdd, payload: .object([
             "group": .string("\(group.id)"),
             "device": .string(device.ieeeAddress),
             "endpoint": .int(endpoint)
         ]))
     }
 
-    func removeMember(_ member: GroupMember, from group: Group, environment: AppEnvironment) {
+    func removeMember(_ member: GroupMember, from group: Group, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.light)
-        environment.send(topic: Z2MTopics.Request.groupMembersRemove, payload: .object([
+        environment.send(bridge: bridgeID, topic: Z2MTopics.Request.groupMembersRemove, payload: .object([
             "device": .string(member.ieeeAddress),
             "endpoint": .int(member.endpoint),
             "group": .string("\(group.id)")

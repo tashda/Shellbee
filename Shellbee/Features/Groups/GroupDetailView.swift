@@ -12,15 +12,14 @@ struct GroupDetailView: View {
     @State private var showRenameSheet = false
     @State private var memberToRemove: GroupMember?
     @State private var menuDestination: GroupMenuDestination?
+    /// Phase 1 multi-bridge: bridge that owns this group. Pushed in via
+    /// `GroupRoute` so reads/writes stay scoped to the right Z2M instance.
+    /// Group ids are scoped per-instance, not globally unique — the route
+    /// is the only reliable way to disambiguate.
+    let bridgeID: UUID
     let group: Group
 
-    /// Multi-bridge: every action against this group routes to the bridge
-    /// that owns it. Group ids are scoped per Z2M instance, so we resolve
-    /// from the registry on each access.
-    private var bridgeID: UUID? {
-        environment.bridge(forGroup: group.id)?.bridgeID
-    }
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     private var currentGroup: Group {
         scope.store.groups.first { $0.id == group.id } ?? group
@@ -50,6 +49,8 @@ struct GroupDetailView: View {
                 group: currentGroup,
                 memberDevices: memberDevices,
                 state: groupState,
+                bridgeID: bridgeID,
+                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
                 onRenameTapped: { showRenameSheet = true }
             )
             .listRowInsets(EdgeInsets())
@@ -69,12 +70,13 @@ struct GroupDetailView: View {
             }
 
             GroupMembersSection(
+                bridgeID: bridgeID,
                 group: currentGroup,
                 onRemove: { memberToRemove = $0 },
                 onAdd: { showAddMembers = true }
             )
 
-            GroupScenesSection(group: currentGroup, viewModel: viewModel)
+            GroupScenesSection(bridgeID: bridgeID, group: currentGroup, viewModel: viewModel)
         }
         .contentMargins(.top, 0, for: .scrollContent)
         .toolbarBackground(.automatic, for: .navigationBar)
@@ -106,11 +108,11 @@ struct GroupDetailView: View {
         }
         .navigationDestination(item: $menuDestination) { destination in
             switch destination {
-            case .settings: GroupSettingsView(group: group)
+            case .settings: GroupSettingsView(bridgeID: bridgeID, group: group)
             }
         }
         .sheet(isPresented: $showAddMembers) {
-            AddGroupMembersSheet(group: currentGroup) { selections in
+            AddGroupMembersSheet(bridgeID: bridgeID, group: currentGroup) { selections in
                 viewModel.addMembers(selections.map { ($0.0, $0.1) }, to: currentGroup, environment: environment, bridgeID: bridgeID)
             }
         }
@@ -153,7 +155,7 @@ struct GroupDetailView: View {
 
 #Preview {
     NavigationStack {
-        GroupDetailView(group: .previewWithMembers)
+        GroupDetailView(bridgeID: UUID(), group: .previewWithMembers)
             .environment(AppEnvironment())
     }
 }

@@ -3,8 +3,12 @@ import SwiftUI
 struct AppNotificationSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
 
+    /// Phase 2 multi-bridge: notification routing is global; the displayed
+    /// log level reads from the user-selected bridge for the "current Z2M
+    /// log level" hint. When no bridge is selected, the picker shows the
+    /// stored default.
     private var bridgeLogLevel: String? {
-        environment.store.bridgeInfo?.logLevel
+        environment.selectedScope?.store.bridgeInfo?.logLevel
     }
 
     private var displayedLevel: String {

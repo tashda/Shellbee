@@ -3,8 +3,8 @@ import SwiftUI
 struct LogOutputView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var logRotation: Bool = true
     @State private var logDirectoriesToKeep: Int = 10
@@ -142,6 +142,6 @@ struct LogOutputView: View {
 
 #Preview {
     NavigationStack {
-        LogOutputView().environment(AppEnvironment())
+        LogOutputView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

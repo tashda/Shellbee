@@ -97,9 +97,14 @@ struct HomeLogRow: View {
             candidate = nil
         }
         guard let name = candidate else { return .none }
-        if let device = environment.store.device(named: name) { return .device(device) }
-        if let group = environment.store.group(named: name) {
-            return .group(group, members: environment.store.memberDevices(of: group))
+        // Phase 2 multi-bridge: scan every connected bridge for the named
+        // device/group. The Home logs card merges across bridges so the
+        // avatar resolution must too.
+        for session in environment.registry.orderedSessions {
+            if let device = session.store.device(named: name) { return .device(device) }
+            if let group = session.store.group(named: name) {
+                return .group(group, members: session.store.memberDevices(of: group))
+            }
         }
         return .none
     }

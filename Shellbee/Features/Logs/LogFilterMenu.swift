@@ -2,7 +2,6 @@ import SwiftUI
 
 struct LogFilterMenu: View {
     @Bindable var viewModel: LogsViewModel
-    let store: AppStore
     @Environment(AppEnvironment.self) private var environment
     @State private var deviceSheetPresented = false
     @State private var namespaceSnapshot: [String] = []
@@ -33,15 +32,15 @@ struct LogFilterMenu: View {
                 .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
         }
         .simultaneousGesture(TapGesture().onEnded {
-            namespaceSnapshot = viewModel.availableNamespaces(store: store)
+            namespaceSnapshot = availableNamespaces()
         })
         .onAppear {
-            namespaceSnapshot = viewModel.availableNamespaces(store: store)
+            namespaceSnapshot = availableNamespaces()
         }
         .sheet(isPresented: $deviceSheetPresented) {
             LogDeviceFilterSheet(
                 selectedDevices: $viewModel.selectedDevices,
-                logDevices: viewModel.availableDevices(store: store)
+                logDevices: availableDevices()
             )
         }
     }
@@ -134,6 +133,28 @@ struct LogFilterMenu: View {
             }
         }
     }
+
+    private var filteredSessions: [BridgeSession] {
+        connectedSessions.filter { session in
+            viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true
+        }
+    }
+
+    private func availableNamespaces() -> [String] {
+        Set(
+            filteredSessions.flatMap { session in
+                session.store.logEntries.compactMap(\.namespace)
+            }
+        ).sorted()
+    }
+
+    private func availableDevices() -> [String] {
+        Set(
+            filteredSessions.flatMap { session in
+                session.store.logEntries.compactMap(\.deviceName)
+            }
+        ).sorted()
+    }
 }
 
 #Preview {
@@ -142,8 +163,7 @@ struct LogFilterMenu: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     LogFilterMenu(
-                        viewModel: LogsViewModel(),
-                        store: { let s = AppStore(); s.logEntries = LogEntry.previewEntries; return s }()
+                        viewModel: LogsViewModel()
                     )
                 }
             }

@@ -3,16 +3,17 @@ import SwiftUI
 struct AddGroupMembersSheet: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    /// Phase 1 multi-bridge: source bridge for the group. Devices added must
+    /// come from the same z2m instance — z2m can't add cross-bridge members.
+    let bridgeID: UUID
     let group: Group
     let onConfirm: ([(Device, Int)]) -> Void
 
     @State private var selectedDevices: [String: Int] = [:]
     @State private var searchText = ""
 
-    /// Multi-bridge: resolve the group's bridge so we only show devices that
-    /// can actually be added (z2m can't add cross-bridge group members).
     private var bridgeStore: AppStore {
-        environment.bridge(forGroup: group.id)?.store ?? environment.store
+        environment.scope(for: bridgeID).store
     }
 
     private var eligibleDevices: [Device] {
@@ -75,6 +76,7 @@ struct AddGroupMembersSheet: View {
             ForEach(filteredDevices) { device in
                 AddGroupMemberDeviceRow(
                     device: device,
+                    isAvailable: bridgeStore.isAvailable(device.friendlyName),
                     isSelected: selectedDevices[device.ieeeAddress] != nil,
                     selectedEndpoint: selectedDevices[device.ieeeAddress] ?? device.availableEndpoints[0],
                     onTap: { toggleSelection(device) },
@@ -100,6 +102,6 @@ struct AddGroupMembersSheet: View {
 }
 
 #Preview {
-    AddGroupMembersSheet(group: .preview) { _ in }
+    AddGroupMembersSheet(bridgeID: UUID(), group: .preview) { _ in }
         .environment(AppEnvironment())
 }

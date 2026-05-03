@@ -3,8 +3,8 @@ import SwiftUI
 struct NetworkAccessSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var passlistEntries: [String] = []
     @State private var blocklistEntries: [String] = []
@@ -140,6 +140,6 @@ struct NetworkAccessSettingsView: View {
 
 #Preview {
     NavigationStack {
-        NetworkAccessSettingsView().environment(AppEnvironment())
+        NetworkAccessSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

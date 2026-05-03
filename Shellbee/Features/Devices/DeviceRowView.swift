@@ -7,10 +7,11 @@ struct DeviceRowView: View {
     let otaStatus: OTAUpdateStatus?
     var checkResult: AppStore.DeviceCheckResult? = nil
     var isDeleting: Bool = false
-    /// Phase 2 multi-bridge: optional source-bridge tag rendered as a small
-    /// colored dot at the leading edge of the row. Auto-hidden by
-    /// `BridgeColorDot` itself when only one bridge is connected, so
-    /// single-bridge users see no change.
+    /// Phase 2 multi-bridge: source-bridge tag. Surfaces as a thin leading
+    /// bar drawn by `BridgeRowLeadingBar` via `DeviceListRow.listRowBackground`
+    /// — uniform across Devices, Groups, and Logs. The fields are kept here
+    /// for callers that pass them, but the row body itself doesn't render any
+    /// per-row bridge chrome.
     var bridgeID: UUID? = nil
     var bridgeName: String = ""
 
@@ -20,9 +21,6 @@ struct DeviceRowView: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            if let bridgeID {
-                BridgeColorDot(bridgeID: bridgeID, bridgeName: bridgeName)
-            }
             DeviceImageView(
                 device: device,
                 isAvailable: effectiveAvailable,

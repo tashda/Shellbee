@@ -3,8 +3,8 @@ import SwiftUI
 struct MainSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var lastSeen: BridgeSettings.LastSeenFormat = .disabled
     @State private var elapsed: Bool = false
@@ -146,6 +146,6 @@ struct MainSettingsView: View {
 
 #Preview {
     NavigationStack {
-        MainSettingsView().environment(AppEnvironment())
+        MainSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

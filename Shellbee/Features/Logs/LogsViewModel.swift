@@ -67,6 +67,7 @@ final class LogsViewModel {
         selectedNamespace = nil
         selectedDevices = []
         entryIDFilter = nil
+        bridgeFilter = nil
         searchText = ""
     }
 }

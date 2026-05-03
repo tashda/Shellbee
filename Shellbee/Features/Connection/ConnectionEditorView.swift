@@ -1,6 +1,14 @@
 import SwiftUI
 
 struct ConnectionEditorView: View {
+    enum Field: Hashable {
+        case name
+        case host
+        case port
+        case basePath
+        case authToken
+    }
+
     enum Mode {
         /// Bottom action saves and connects. Used by the first-launch onboarding
         /// flow and the legacy connection screen.
@@ -14,17 +22,21 @@ struct ConnectionEditorView: View {
     @Bindable var viewModel: ConnectionViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var draft: ConnectionEditorDraft
+    @State private var initialDraft: ConnectionEditorDraft
+    @FocusState private var focusedField: Field?
     private let mode: Mode
 
     init(viewModel: ConnectionViewModel, mode: Mode = .connect) {
         self.viewModel = viewModel
         self.mode = mode
-        _draft = State(initialValue: viewModel.makeEditorDraft())
+        let initial = viewModel.makeEditorDraft()
+        _draft = State(initialValue: initial)
+        _initialDraft = State(initialValue: initial)
     }
 
     var body: some View {
         Form {
-            ConnectionServerSection(draft: $draft)
+            ConnectionServerSection(draft: $draft, focusedField: $focusedField)
         }
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
@@ -35,25 +47,37 @@ struct ConnectionEditorView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
+            if mode == .save {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if viewModel.connect(using: draft) {
+                            dismiss()
+                        }
+                    }
+                    .disabled(!canSaveInToolbar)
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) {
-            Button(actionLabel) {
-                let success: Bool
-                switch mode {
-                case .connect:
-                    success = viewModel.connect(using: draft)
-                case .save:
-                    success = viewModel.save(using: draft)
+            if mode == .connect {
+                Button(actionLabel) {
+                    if viewModel.connect(using: draft) {
+                        dismiss()
+                    }
                 }
-                if success { dismiss() }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .disabled(!draft.canConnect)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.md)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .fontWeight(.semibold)
-            .frame(maxWidth: .infinity)
-            .disabled(!draft.canConnect)
-            .padding(.horizontal, DesignTokens.Spacing.lg)
-            .padding(.vertical, DesignTokens.Spacing.md)
+        }
+        .onAppear {
+            DispatchQueue.main.async {
+                focusedField = .name
+            }
         }
     }
 
@@ -62,6 +86,10 @@ struct ConnectionEditorView: View {
         case .connect: "Connect"
         case .save: "Save"
         }
+    }
+
+    private var canSaveInToolbar: Bool {
+        draft.canConnect && draft.normalizedForComparison() != initialDraft.normalizedForComparison()
     }
 }
 

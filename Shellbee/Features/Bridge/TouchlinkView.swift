@@ -2,8 +2,8 @@ import SwiftUI
 
 struct TouchlinkView: View {
     @Environment(AppEnvironment.self) private var environment
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var showHueResetSheet = false
     @State private var showGuideSheet = false
@@ -32,7 +32,7 @@ struct TouchlinkView: View {
         }
         .sheet(isPresented: $showGuideSheet) {
             NavigationStack {
-                TouchlinkGuideView()
+                TouchlinkGuideView(bridgeID: bridgeID)
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {
                             Button("Done") { showGuideSheet = false }
@@ -64,7 +64,7 @@ struct TouchlinkView: View {
         List(store.touchlinkDevices) { device in
             TouchlinkDeviceRow(
                 device: device,
-                knownName: environment.store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName,
+                knownName: store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName,
                 identifyInProgress: store.touchlinkIdentifyInProgress,
                 resetInProgress: store.touchlinkResetInProgress,
                 onIdentify: identify,
@@ -145,7 +145,7 @@ struct TouchlinkView: View {
 
 #Preview {
     NavigationStack {
-        TouchlinkView()
+        TouchlinkView(bridgeID: UUID())
     }
     .environment(AppEnvironment())
 }

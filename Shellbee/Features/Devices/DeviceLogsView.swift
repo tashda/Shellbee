@@ -2,29 +2,36 @@ import SwiftUI
 
 struct DeviceLogsView: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
     let device: Device
     @State private var searchText = ""
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
+    private var allDeviceEntries: [LogEntry] {
+        scope.store.logEntries.filter { $0.deviceName == device.friendlyName }
+    }
+
     private var entries: [LogEntry] {
-        let all = environment.store.logEntries.filter { $0.deviceName == device.friendlyName }
-        guard !searchText.isEmpty else { return all }
+        guard !searchText.isEmpty else { return allDeviceEntries }
         let q = searchText.lowercased()
-        return all.filter { $0.message.lowercased().contains(q) }
+        return allDeviceEntries.filter { $0.message.lowercased().contains(q) }
     }
 
     var body: some View {
         List {
             ForEach(entries) { entry in
                 NavigationLink {
-                    LogDetailView(entry: entry)
+                    LogDetailView(bridgeID: bridgeID, entry: entry)
                 } label: {
-                    LogRowView(entry: entry)
+                    LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
                 }
+                .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
             }
         }
         .listStyle(.plain)
         .overlay {
-            if environment.store.logEntries.filter({ $0.deviceName == device.friendlyName }).isEmpty {
+            if allDeviceEntries.isEmpty {
                 ContentUnavailableView(
                     "No Logs",
                     systemImage: "doc.text.magnifyingglass",
@@ -42,7 +49,7 @@ struct DeviceLogsView: View {
 
 #Preview {
     NavigationStack {
-        DeviceLogsView(device: .preview)
+        DeviceLogsView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

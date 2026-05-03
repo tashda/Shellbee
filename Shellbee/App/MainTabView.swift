@@ -4,6 +4,13 @@ struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var tabSelection: AppTab = .home
 
+    /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
+    /// connected bridge has pending config that needs a restart. Single-
+    /// bridge collapses to one match.
+    private var anyBridgeNeedsRestart: Bool {
+        environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
+    }
+
     init() {
         // iOS 26 has the new floating glass tab bar from the Tab { } builder,
         // which we don't want to disturb. On iOS 17/18 the classic UITabBar
@@ -57,7 +64,7 @@ struct MainTabView: View {
                 Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
                     SettingsView()
                 }
-                .badge(environment.store.bridgeInfo?.restartRequired == true ? Text("!") : nil)
+                .badge(anyBridgeNeedsRestart ? Text("!") : nil)
             }
         } else {
             TabView(selection: $tabSelection) {
@@ -73,7 +80,7 @@ struct MainTabView: View {
                 SettingsView()
                     .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                     .tag(AppTab.settings)
-                    .badge(environment.store.bridgeInfo?.restartRequired == true ? Text("!") : nil)
+                    .badge(anyBridgeNeedsRestart ? Text("!") : nil)
             }
         }
     }
@@ -84,12 +91,24 @@ private struct LogSheetHost: View {
     @Environment(\.dismiss) private var dismiss
     let request: LogSheetRequest
 
+    /// Phase 1 multi-bridge: the request carries log entry ids only — find
+    /// which bridge owns the entry by scanning every connected session and
+    /// route detail there. Falls through to the merged Logs view when more
+    /// than one entry is requested or none can be located.
+    private var singleResolved: (UUID, LogEntry)? {
+        guard request.isSingle, let id = request.entryIDs.first else { return nil }
+        for session in environment.registry.orderedSessions {
+            if let entry = session.store.logEntries.first(where: { $0.id == id }) {
+                return (session.bridgeID, entry)
+            }
+        }
+        return nil
+    }
+
     var body: some View {
-        if request.isSingle,
-           let id = request.entryIDs.first,
-           let entry = environment.store.logEntries.first(where: { $0.id == id }) {
+        if let (bridgeID, entry) = singleResolved {
             NavigationStack {
-                LogDetailView(entry: entry, doneAction: { dismiss() })
+                LogDetailView(bridgeID: bridgeID, entry: entry, doneAction: { dismiss() })
             }
         } else {
             LogsView(

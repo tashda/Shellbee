@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @Observable
 final class ConnectionViewModel {
@@ -10,6 +11,9 @@ final class ConnectionViewModel {
     var basePath = "/"
     var authToken = ""
     var allowInvalidCertificates = false
+    var autoConnect = false
+    var bridgeColor: Color?
+    var usesAutoBridgeColor = true
 
     var discoveredEndpoints: [DiscoveredEndpoint] {
         Array(environment.discovery.discoveredEndpoints)
@@ -41,20 +45,20 @@ final class ConnectionViewModel {
     }
 
     var errorMessage: String? {
-        get { environment.errorMessage }
+        get { environment.registry.primary?.controller.errorMessage }
         set {
-            if newValue == nil {
-                environment.clearErrorMessage()
+            if newValue == nil, let bridgeID = environment.registry.primaryBridgeID {
+                environment.clearErrorMessage(bridgeID: bridgeID)
             }
         }
     }
 
     var connectionState: ConnectionSessionController.State {
-        environment.connectionState
+        environment.registry.primary?.controller.connectionState ?? .idle
     }
 
     var isConnecting: Bool {
-        switch environment.connectionState {
+        switch connectionState {
         case .connecting, .reconnecting:
             return true
         default:
@@ -67,7 +71,7 @@ final class ConnectionViewModel {
 
     init(environment: AppEnvironment) {
         self.environment = environment
-        if let config = environment.connectionConfig {
+        if let config = environment.registry.primary?.config {
             apply(config)
         }
     }
@@ -104,6 +108,9 @@ final class ConnectionViewModel {
         basePath = "/"
         authToken = ""
         allowInvalidCertificates = false
+        autoConnect = true
+        bridgeColor = nil
+        usesAutoBridgeColor = true
         isEditorPresented = true
     }
 
@@ -121,7 +128,10 @@ final class ConnectionViewModel {
             useTLS: useTLS,
             basePath: basePath,
             authToken: authToken,
-            allowInvalidCertificates: allowInvalidCertificates
+            allowInvalidCertificates: allowInvalidCertificates,
+            autoConnect: autoConnect,
+            bridgeColor: bridgeColor,
+            usesAutoBridgeColor: usesAutoBridgeColor
         )
     }
 
@@ -132,9 +142,18 @@ final class ConnectionViewModel {
 
         if let editingConnection {
             environment.history.replace(editingConnection, with: config)
+            // Keep any live bridge session in sync so Settings rows reflect
+            // edited metadata immediately (without requiring navigation).
+            if let session = environment.registry.session(for: editingConnection.id) {
+                session.config = config
+                session.controller.connectionConfig = config
+            }
         } else {
             environment.history.add(config)
         }
+        environment.history.setAutoConnect(config, autoConnect)
+        let selectedColor = usesAutoBridgeColor ? nil : bridgeColor
+        DesignTokens.Bridge.setCustomColor(selectedColor, for: config.id)
 
         editingConnection = config
         return true
@@ -170,14 +189,18 @@ final class ConnectionViewModel {
         basePath = draft.basePath
         authToken = draft.authToken
         allowInvalidCertificates = draft.useTLS ? draft.allowInvalidCertificates : false
+        autoConnect = draft.autoConnect
+        bridgeColor = draft.bridgeColor
+        usesAutoBridgeColor = draft.usesAutoBridgeColor
     }
 
     func cancel() async {
-        await environment.cancelConnection()
+        guard let bridgeID = environment.registry.primaryBridgeID else { return }
+        await environment.cancelConnection(bridgeID: bridgeID)
     }
 
     func matchesCurrentConfig(_ config: ConnectionConfig) -> Bool {
-        environment.connectionConfig == config
+        environment.registry.primary?.config == config
     }
 
     func buildConfig() -> ConnectionConfig {
@@ -223,5 +246,14 @@ final class ConnectionViewModel {
         basePath = config.basePath
         authToken = config.authToken ?? ""
         allowInvalidCertificates = config.allowInvalidCertificates
+        autoConnect = environment.history.isAutoConnect(config)
+        if let hex = DesignTokens.Bridge.customColorHex(for: config.id),
+           let color = DesignTokens.Bridge.colorFromHex(hex) {
+            bridgeColor = color
+            usesAutoBridgeColor = false
+        } else {
+            bridgeColor = nil
+            usesAutoBridgeColor = true
+        }
     }
 }

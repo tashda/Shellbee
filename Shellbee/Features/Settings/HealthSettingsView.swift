@@ -3,8 +3,8 @@ import SwiftUI
 struct HealthSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
-    var bridgeID: UUID? = nil
-    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var interval: Int = 30
     @State private var resetOnCheck: Bool = false
@@ -66,6 +66,6 @@ struct HealthSettingsView: View {
 
 #Preview {
     NavigationStack {
-        HealthSettingsView().environment(AppEnvironment())
+        HealthSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

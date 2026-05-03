@@ -5,6 +5,13 @@ struct OnboardingTestPage: View {
     let onContinue: () -> Void
     let onRetry: () -> Void
 
+    /// Phase 2 multi-bridge: onboarding connects exactly one bridge. The
+    /// selected bridge is the one the wizard just kicked off, so its state
+    /// drives the test page's UI.
+    private var connectionState: ConnectionSessionController.State {
+        environment.selectedScope?.connectionState ?? .idle
+    }
+
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.lg) {
             Spacer()
@@ -28,7 +35,7 @@ struct OnboardingTestPage: View {
 
             actionButton
         }
-        .onChange(of: environment.connectionState) { _, newState in
+        .onChange(of: connectionState) { _, newState in
             if case .connected = newState {
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(0.6))
@@ -40,7 +47,7 @@ struct OnboardingTestPage: View {
 
     @ViewBuilder
     private var statusIcon: some View {
-        switch environment.connectionState {
+        switch connectionState {
         case .connecting, .reconnecting:
             ProgressView()
                 .controlSize(.large)
@@ -58,7 +65,7 @@ struct OnboardingTestPage: View {
     }
 
     private var statusTitle: String {
-        switch environment.connectionState {
+        switch connectionState {
         case .connecting:    "Connecting"
         case .reconnecting:  "Reconnecting"
         case .connected:     "Connected"
@@ -69,7 +76,7 @@ struct OnboardingTestPage: View {
     }
 
     private var statusDetail: String? {
-        switch environment.connectionState {
+        switch connectionState {
         case .failed(let msg), .lost(let msg):
             return msg
         case .connected:
@@ -81,7 +88,7 @@ struct OnboardingTestPage: View {
 
     @ViewBuilder
     private var actionButton: some View {
-        switch environment.connectionState {
+        switch connectionState {
         case .failed, .lost:
             Button(action: onRetry) {
                 Text("Try Again")

@@ -205,29 +205,24 @@ final class DeviceListViewModel {
         }
     }
 
-    /// Resolve the right `(store, send)` pair for a device action. In
-    /// single-bridge mode `bridgeID` is nil and we use the focused bridge.
-    /// In merged-multi-bridge mode the caller passes the device's bridge so
-    /// the action lands on the right WebSocket and mutates the right store.
+    /// Resolve the `(store, send)` pair for a device action. Phase 1 of the
+    /// multi-bridge migration: every action takes a non-optional `bridgeID`
+    /// so we route to exactly one bridge. Returns `nil` if the bridge isn't
+    /// connected — caller skips the action rather than silently misrouting.
     private func resolveTarget(
-        bridgeID: UUID?,
+        bridgeID: UUID,
         environment: AppEnvironment
-    ) -> (store: AppStore, send: (String, JSONValue) -> Void) {
-        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
-            return (
-                session.store,
-                { topic, payload in environment.send(bridge: bridgeID, topic: topic, payload: payload) }
-            )
-        }
+    ) -> (store: AppStore, send: (String, JSONValue) -> Void)? {
+        guard let session = environment.registry.session(for: bridgeID) else { return nil }
         return (
-            environment.store,
-            { topic, payload in environment.send(topic: topic, payload: payload) }
+            session.store,
+            { topic, payload in environment.send(bridge: bridgeID, topic: topic, payload: payload) }
         )
     }
 
-    func updateDevice(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func updateDevice(_ device: Device, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.medium)
-        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        guard let target = resolveTarget(bridgeID: bridgeID, environment: environment) else { return }
         target.store.startOTAUpdate(for: device.friendlyName)
         target.send(
             Z2MTopics.Request.deviceOTAUpdate,
@@ -235,9 +230,9 @@ final class DeviceListViewModel {
         )
     }
 
-    func checkDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func checkDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.light)
-        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        guard let target = resolveTarget(bridgeID: bridgeID, environment: environment) else { return }
         target.store.startOTACheck(for: device.friendlyName)
         target.send(
             Z2MTopics.Request.deviceOTACheck,
@@ -245,9 +240,9 @@ final class DeviceListViewModel {
         )
     }
 
-    func scheduleDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func scheduleDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.medium)
-        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        guard let target = resolveTarget(bridgeID: bridgeID, environment: environment) else { return }
         target.store.startOTASchedule(for: device.friendlyName)
         target.send(
             Z2MTopics.Request.deviceOTASchedule,
@@ -255,9 +250,9 @@ final class DeviceListViewModel {
         )
     }
 
-    func unscheduleDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func unscheduleDeviceUpdate(_ device: Device, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.light)
-        let target = resolveTarget(bridgeID: bridgeID, environment: environment)
+        guard let target = resolveTarget(bridgeID: bridgeID, environment: environment) else { return }
         target.store.cancelOTASchedule(for: device.friendlyName)
         target.send(
             Z2MTopics.Request.deviceOTAUnschedule,
@@ -272,22 +267,23 @@ final class DeviceListViewModel {
         )
     }
 
-    func renameDevice(_ device: Device, to newName: String, homeassistantRename: Bool = true, environment: AppEnvironment) {
-        environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: homeassistantRename)
+    func renameDevice(_ device: Device, to newName: String, homeassistantRename: Bool = true, environment: AppEnvironment, bridgeID: UUID) {
+        environment.scope(for: bridgeID).renameDevice(from: device.friendlyName, to: newName, homeassistantRename: homeassistantRename)
     }
 
-    func reconfigureDevice(_ device: Device, environment: AppEnvironment) {
-        environment.send(topic: Z2MTopics.Request.deviceConfigure, payload: .object(["id": .string(device.friendlyName)]))
+    func reconfigureDevice(_ device: Device, environment: AppEnvironment, bridgeID: UUID) {
+        environment.send(bridge: bridgeID, topic: Z2MTopics.Request.deviceConfigure, payload: .object(["id": .string(device.friendlyName)]))
     }
 
-    func interviewDevice(_ device: Device, environment: AppEnvironment) {
-        environment.send(topic: Z2MTopics.Request.deviceInterview, payload: .object(["id": .string(device.friendlyName)]))
+    func interviewDevice(_ device: Device, environment: AppEnvironment, bridgeID: UUID) {
+        environment.send(bridge: bridgeID, topic: Z2MTopics.Request.deviceInterview, payload: .object(["id": .string(device.friendlyName)]))
     }
 
-    func removeDevice(_ device: Device, force: Bool = false, block: Bool = false, environment: AppEnvironment) {
-        guard !environment.store.pendingRemovals.contains(device.friendlyName) else { return }
-        environment.store.pendingRemovals.insert(device.friendlyName)
-        environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
+    func removeDevice(_ device: Device, force: Bool = false, block: Bool = false, environment: AppEnvironment, bridgeID: UUID) {
+        guard let session = environment.registry.session(for: bridgeID) else { return }
+        guard !session.store.pendingRemovals.contains(device.friendlyName) else { return }
+        session.store.pendingRemovals.insert(device.friendlyName)
+        environment.send(bridge: bridgeID, topic: Z2MTopics.Request.deviceRemove, payload: .object([
             "id": .string(device.friendlyName),
             "force": .bool(force),
             "block": .bool(block)

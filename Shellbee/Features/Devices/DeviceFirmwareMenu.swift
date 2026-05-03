@@ -1,28 +1,37 @@
 import SwiftUI
 
 struct DeviceFirmwareMenu: View {
+    /// Phase 1 multi-bridge: the bridge whose devices the menu acts on. The
+    /// list view passes either the only connected bridge (single-bridge),
+    /// the user-selected filter bridge (merged + filtered), or the focused
+    /// bridge (merged + no filter). Nil hides the menu — there's no sensible
+    /// "all bridges" semantic for the bulk OTA queue today.
+    let bridgeID: UUID
     @Environment(AppEnvironment.self) private var environment
     @State private var showUpdateAllConfirm = false
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+    private var queue: OTABulkOperationQueue? { environment.otaBulkQueue(for: bridgeID) }
+
     private var otaCapableDevices: [Device] {
-        environment.store.devices.filter {
+        scope.store.devices.filter {
             guard $0.definition?.supportsOTA == true else { return false }
             // Exclude devices currently being checked or updated — Z2M rejects
             // a concurrent check for an already-checking device.
-            return environment.store.otaStatus(for: $0.friendlyName)?.isActive != true
+            return scope.store.otaStatus(for: $0.friendlyName)?.isActive != true
         }
     }
 
     private var devicesWithUpdateAvailable: [Device] {
-        environment.store.devices.filter {
-            environment.store.state(for: $0.friendlyName).hasUpdateAvailable
+        scope.store.devices.filter {
+            scope.store.state(for: $0.friendlyName).hasUpdateAvailable
         }
     }
 
     var body: some View {
         let otaCount = otaCapableDevices.count
         let updateCount = devicesWithUpdateAvailable.count
-        let bulkProgress = environment.otaBulkQueue.progress
+        let bulkProgress = queue?.progress
         let bulkActive = bulkProgress != nil
         Menu {
             if let progress = bulkProgress {
@@ -30,7 +39,7 @@ struct DeviceFirmwareMenu: View {
                 Section {
                     Text("\(kindLabel) \(progress.completed) of \(progress.total)")
                     Button(role: .destructive) {
-                        environment.otaBulkQueue.cancelAll()
+                        queue?.cancelAll()
                     } label: {
                         Label("Cancel", systemImage: "stop.circle")
                     }
@@ -47,9 +56,9 @@ struct DeviceFirmwareMenu: View {
                 // didn't respond to OTA" error, same as windfront.
                 let names = otaCapableDevices.map(\.friendlyName)
                 for name in names {
-                    environment.store.startOTACheck(for: name)
+                    scope.store.startOTACheck(for: name)
                 }
-                environment.otaBulkQueue.enqueue(names, kind: .check)
+                queue?.enqueue(names, kind: .check)
             } label: {
                 Label("Check All for Updates\(otaCount > 0 ? " (\(otaCount))" : "")", systemImage: "arrow.triangle.2.circlepath")
             }
@@ -88,9 +97,9 @@ struct DeviceFirmwareMenu: View {
             Button("Update All", role: .destructive) {
                 let names = devicesWithUpdateAvailable.map(\.friendlyName)
                 for name in names {
-                    environment.store.startOTAUpdate(for: name)
+                    scope.store.startOTAUpdate(for: name)
                 }
-                environment.otaBulkQueue.enqueue(names, kind: .update)
+                queue?.enqueue(names, kind: .update)
             }
             Button("Cancel", role: .cancel) {}
         } message: {

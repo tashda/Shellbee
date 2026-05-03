@@ -3,15 +3,8 @@ import UIKit
 
 @Observable
 final class GroupDetailViewModel {
-    /// Multi-bridge: every action takes an optional `bridgeID` so the request
-    /// lands on the network that owns this group. Nil falls back to the
-    /// focused bridge (single-bridge contract preserved).
-    private func resolve(_ bridgeID: UUID?, environment: AppEnvironment) -> BridgeScopeBindings {
-        environment.bridgeScope(bridgeID)
-    }
-
-    func synthesizedState(for group: Group, environment: AppEnvironment, bridgeID: UUID? = nil) -> [String: JSONValue] {
-        let scope = resolve(bridgeID, environment: environment)
+    func synthesizedState(for group: Group, environment: AppEnvironment, bridgeID: UUID) -> [String: JSONValue] {
+        let scope = environment.scope(for: bridgeID)
         let memberStates = group.members.compactMap { member in
             scope.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
                 .map { scope.store.state(for: $0.friendlyName) }
@@ -42,9 +35,9 @@ final class GroupDetailViewModel {
         return result
     }
 
-    func addMembers(_ selections: [(device: Device, endpoint: Int)], to group: Group, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func addMembers(_ selections: [(device: Device, endpoint: Int)], to group: Group, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.medium)
-        let scope = resolve(bridgeID, environment: environment)
+        let scope = environment.scope(for: bridgeID)
         for selection in selections {
             scope.send(topic: Z2MTopics.Request.groupMembersAdd, payload: .object([
                 "group": .string("\(group.id)"),
@@ -54,36 +47,37 @@ final class GroupDetailViewModel {
         }
     }
 
-    func removeMember(_ member: GroupMember, from group: Group, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func removeMember(_ member: GroupMember, from group: Group, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.light)
-        let scope = resolve(bridgeID, environment: environment)
-        scope.send(topic: Z2MTopics.Request.groupMembersRemove, payload: .object([
+        environment.scope(for: bridgeID).send(topic: Z2MTopics.Request.groupMembersRemove, payload: .object([
             "device": .string(member.ieeeAddress),
             "endpoint": .int(member.endpoint),
             "group": .string("\(group.id)")
         ]))
     }
 
-    func recallScene(_ scene: Z2MScene, in group: Group, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func recallScene(_ scene: Z2MScene, in group: Group, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.medium)
-        let scope = resolve(bridgeID, environment: environment)
-        scope.send(topic: Z2MTopics.deviceSet(group.friendlyName),
-                   payload: .object(["scene_recall": .int(scene.id)]))
+        environment.scope(for: bridgeID).send(
+            topic: Z2MTopics.deviceSet(group.friendlyName),
+            payload: .object(["scene_recall": .int(scene.id)])
+        )
     }
 
-    func addScene(name: String, in group: Group, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func addScene(name: String, in group: Group, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.medium)
-        let scope = resolve(bridgeID, environment: environment)
         let nextID = (group.scenes.map(\.id).max() ?? -1) + 1
-        scope.send(topic: Z2MTopics.deviceSet(group.friendlyName), payload: .object([
-            "scene_add": .object(["ID": .int(nextID), "name": .string(name)])
-        ]))
+        environment.scope(for: bridgeID).send(
+            topic: Z2MTopics.deviceSet(group.friendlyName),
+            payload: .object(["scene_add": .object(["ID": .int(nextID), "name": .string(name)])])
+        )
     }
 
-    func removeScene(_ scene: Z2MScene, from group: Group, environment: AppEnvironment, bridgeID: UUID? = nil) {
+    func removeScene(_ scene: Z2MScene, from group: Group, environment: AppEnvironment, bridgeID: UUID) {
         Haptics.impact(.light)
-        let scope = resolve(bridgeID, environment: environment)
-        scope.send(topic: Z2MTopics.deviceSet(group.friendlyName),
-                   payload: .object(["scene_remove": .int(scene.id)]))
+        environment.scope(for: bridgeID).send(
+            topic: Z2MTopics.deviceSet(group.friendlyName),
+            payload: .object(["scene_remove": .int(scene.id)])
+        )
     }
 }
