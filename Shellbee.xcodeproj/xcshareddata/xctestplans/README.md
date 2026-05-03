@@ -32,6 +32,7 @@ as the fix.
 | Test | Reason |
 |---|---|
 | `Z2MIntegrationTests` (entire class) | Requires the docker z2m bridge on `localhost:8080`, which Fast CI does not start. Runs in Full CI instead. |
+| `BridgeRegistryTests` (entire class) | Each `registry.connect(...)` spawns a real network Task; on the GitHub macOS runner (no real bridge reachable) those Tasks race deallocation when the test class tears down between cases, producing intermittent `pointer being freed was not allocated` malloc crashes. Substance is covered by `MultiBridgeIntegrationTests` against the dual mock-bridge stack in Full CI. Fix: add a controller-injection seam so tests can construct a `BridgeSession` without dialing the network. Tracked in #83. |
 | `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
 | `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
 | `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
