@@ -286,7 +286,7 @@ struct DeviceCard: View {
         }
 
         if !device.availabilityTrackingEnabled {
-            return "Availability off"
+            return "Untracked"
         }
 
         return isAvailable ? "Online" : "Offline"

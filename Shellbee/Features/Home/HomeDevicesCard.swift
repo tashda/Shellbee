@@ -33,7 +33,7 @@ struct HomeDevicesCard: View {
             statButton(.online, value: "\(snapshot.onlineDevices)", label: "Online")
             statButton(.offline, value: "\(snapshot.offlineDevices)", label: "Offline",
                        valueColor: snapshot.offlineDevices > 0 ? .red : .primary)
-            statButton(.availabilityOff, value: "\(snapshot.availabilityOffDevices)", label: "Availability off",
+            statButton(.availabilityOff, value: "\(snapshot.availabilityOffDevices)", label: "Untracked",
                        valueColor: snapshot.availabilityOffDevices > 0 ? .secondary : .primary)
         }
     }
