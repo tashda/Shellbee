@@ -3,6 +3,8 @@ import SwiftUI
 struct OTASettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
 
     @State private var updateCheckInterval: Int = 1440
     @State private var disableAutomaticUpdateCheck: Bool = false
@@ -17,7 +19,7 @@ struct OTASettingsView: View {
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
-        let ota = environment.store.bridgeInfo?.config?.ota
+        let ota = scope.bridgeInfo?.config?.ota
         return updateCheckInterval != (ota?.updateCheckInterval ?? 1440)
             || disableAutomaticUpdateCheck != (ota?.disableAutomaticUpdateCheck ?? false)
             || overrideIndexLocation != (ota?.zigbeeOtaOverrideIndexLocation ?? "")
@@ -98,11 +100,11 @@ struct OTASettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        let ota = environment.store.bridgeInfo?.config?.ota
+        let ota = scope.bridgeInfo?.config?.ota
         updateCheckInterval = ota?.updateCheckInterval ?? 1440
         disableAutomaticUpdateCheck = ota?.disableAutomaticUpdateCheck ?? false
         overrideIndexLocation = ota?.zigbeeOtaOverrideIndexLocation ?? ""
@@ -120,7 +122,7 @@ struct OTASettingsView: View {
             "default_maximum_data_size": .int(defaultMaximumDataSize)
         ]
         if !overrideIndexLocation.isEmpty { ota["zigbee_ota_override_index_location"] = .string(overrideIndexLocation) }
-        environment.sendBridgeOptions(["ota": .object(ota)])
+        scope.sendOptions(["ota": .object(ota)])
     }
 }
 

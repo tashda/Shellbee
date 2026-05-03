@@ -3,6 +3,8 @@ import SwiftUI
 struct FrontendSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
 
     @State private var enabled: Bool = true
     @State private var port: Int = 8080
@@ -20,7 +22,7 @@ struct FrontendSettingsView: View {
     private let packageOptions = [("", "Default"), ("zigbee2mqtt-frontend", "zigbee2mqtt-frontend"), ("zigbee2mqtt-windfront", "Windfront")]
 
     private var hasChanges: Bool {
-        guard let frontend = environment.store.bridgeInfo?.config?.frontend else { return false }
+        guard let frontend = scope.bridgeInfo?.config?.frontend else { return false }
         return enabled != (frontend.enabled ?? true)
             || port != (frontend.port ?? 8080)
             || host != (frontend.host ?? "0.0.0.0")
@@ -98,11 +100,11 @@ struct FrontendSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        if let frontend = environment.store.bridgeInfo?.config?.frontend {
+        if let frontend = scope.bridgeInfo?.config?.frontend {
             enabled = frontend.enabled ?? true
             port = frontend.port ?? 8080
             host = frontend.host ?? "0.0.0.0"
@@ -127,7 +129,7 @@ struct FrontendSettingsView: View {
         if !authToken.isEmpty { frontend["auth_token"] = .string(authToken) }
         if !sslCert.isEmpty { frontend["ssl_cert"] = .string(sslCert) }
         if !sslKey.isEmpty { frontend["ssl_key"] = .string(sslKey) }
-        environment.sendBridgeOptions(["frontend": .object(frontend)])
+        scope.sendOptions(["frontend": .object(frontend)])
         authToken = ""; sslCert = ""; sslKey = ""
     }
 }

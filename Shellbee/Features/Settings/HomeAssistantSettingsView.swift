@@ -3,6 +3,8 @@ import SwiftUI
 struct HomeAssistantSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
 
     @State private var enabled: Bool = false
     @State private var discoveryTopic: String = "homeassistant"
@@ -13,7 +15,7 @@ struct HomeAssistantSettingsView: View {
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
-        let ha = environment.store.bridgeInfo?.config?.homeassistant
+        let ha = scope.bridgeInfo?.config?.homeassistant
         return enabled != (ha?.enabled ?? false)
             || discoveryTopic != (ha?.discoveryTopic ?? "homeassistant")
             || statusTopic != (ha?.statusTopic ?? "homeassistant/status")
@@ -63,11 +65,11 @@ struct HomeAssistantSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        let ha = environment.store.bridgeInfo?.config?.homeassistant
+        let ha = scope.bridgeInfo?.config?.homeassistant
         enabled = ha?.enabled ?? false
         discoveryTopic = ha?.discoveryTopic ?? "homeassistant"
         statusTopic = ha?.statusTopic ?? "homeassistant/status"
@@ -83,7 +85,7 @@ struct HomeAssistantSettingsView: View {
             "legacy_action_sensor": .bool(legacyActionSensor),
             "experimental_event_entities": .bool(experimentalEventEntities)
         ]
-        environment.sendBridgeOptions(["homeassistant": .object(ha)])
+        scope.sendOptions(["homeassistant": .object(ha)])
     }
 }
 

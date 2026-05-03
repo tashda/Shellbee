@@ -2,11 +2,13 @@ import SwiftUI
 
 struct TouchlinkView: View {
     @Environment(AppEnvironment.self) private var environment
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
 
     @State private var showHueResetSheet = false
     @State private var showGuideSheet = false
 
-    private var store: AppStore { environment.store }
+    private var store: AppStore { scope.store }
 
     var body: some View {
         SwiftUI.Group {
@@ -99,12 +101,12 @@ struct TouchlinkView: View {
 
     private func scan() {
         store.touchlinkScanInProgress = true
-        environment.send(topic: Z2MTopics.Request.touchlinkScan, payload: .string(""))
+        scope.send(topic: Z2MTopics.Request.touchlinkScan, payload: .string(""))
     }
 
     private func identify(_ device: TouchlinkDevice) {
         store.touchlinkIdentifyInProgress = true
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.touchlinkIdentify,
             payload: .object([
                 "ieee_address": .string(device.ieeeAddress),
@@ -115,7 +117,7 @@ struct TouchlinkView: View {
 
     private func factoryReset(_ device: TouchlinkDevice) {
         store.touchlinkResetInProgress = true
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.touchlinkFactoryReset,
             payload: .object([
                 "ieee_address": .string(device.ieeeAddress),
@@ -131,7 +133,7 @@ struct TouchlinkView: View {
         if !extendedPanId.isEmpty {
             params["extended_pan_id"] = .string(extendedPanId)
         }
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.action,
             payload: .object([
                 "action": .string("philips_hue_factory_reset"),

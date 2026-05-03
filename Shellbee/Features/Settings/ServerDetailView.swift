@@ -2,12 +2,18 @@ import SwiftUI
 
 struct ServerDetailView: View {
     @Environment(AppEnvironment.self) private var environment
+    var bridgeID: UUID? = nil
 
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
 
-    private var config: ConnectionConfig? { environment.connectionConfig }
-    private var bridgeInfo: BridgeInfo? { environment.store.bridgeInfo }
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
+    private var session: BridgeSession? { bridgeID.flatMap { environment.registry.session(for: $0) } }
+    private var config: ConnectionConfig? { session?.config ?? environment.connectionConfig }
+    private var bridgeInfo: BridgeInfo? { scope.bridgeInfo }
+    private var connectionState: ConnectionSessionController.State {
+        session?.connectionState ?? environment.connectionState
+    }
 
     var body: some View {
         Form {
@@ -51,7 +57,7 @@ struct ServerDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    if environment.connectionState.isConnected {
+                    if connectionState.isConnected {
                         Button(role: .destructive) {
                             showingRestartAlert = true
                         } label: {
@@ -69,24 +75,32 @@ struct ServerDetailView: View {
             }
         }
         .alert("Restart?", isPresented: $showingRestartAlert) {
-            Button("Restart", role: .destructive) { environment.restartBridge() }
+            Button("Restart", role: .destructive) { scope.restart() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Zigbee2MQTT will restart. The app will reconnect automatically.")
         }
         .alert("Disconnect from Server?", isPresented: $showingDisconnectConfirmation) {
             Button("Disconnect", role: .destructive) {
-                Task { await environment.disconnect() }
+                Task {
+                    if let bridgeID {
+                        await environment.disconnect(bridgeID: bridgeID)
+                    } else {
+                        await environment.disconnect()
+                    }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("The app returns to the setup screen. Your server address is remembered.")
+            Text(bridgeID == nil
+                ? "The app returns to the setup screen. Your server address is remembered."
+                : "Other bridges remain connected. The bridge stays in your saved list.")
         }
     }
 
     @ViewBuilder
     private var statusLabel: some View {
-        switch environment.connectionState {
+        switch connectionState {
         case .idle:
             Text("Not connected").foregroundStyle(.secondary)
         case .connecting:

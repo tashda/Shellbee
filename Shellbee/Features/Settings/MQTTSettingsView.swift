@@ -3,6 +3,11 @@ import SwiftUI
 struct MQTTSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    /// Phase 2 multi-bridge: when set, this view configures that specific
+    /// bridge. When nil, falls back to the focused bridge (single-bridge
+    /// callers don't need to know about ids).
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
 
     @State private var server: String = ""
     @State private var baseTopic: String = "zigbee2mqtt"
@@ -23,8 +28,10 @@ struct MQTTSettingsView: View {
     @State private var showingDiscardAlert = false
     @State private var showingEmptyPasswordAlert = false
 
+    private var bridgeInfo: BridgeInfo? { scope.bridgeInfo }
+
     private var hasChanges: Bool {
-        guard let mqtt = environment.store.bridgeInfo?.config?.mqtt else { return false }
+        guard let mqtt = scope.bridgeInfo?.config?.mqtt else { return false }
         return server != (mqtt.server ?? "")
             || baseTopic != (mqtt.baseTopic ?? "zigbee2mqtt")
             || clientID != (mqtt.clientID ?? "zigbee2mqtt")
@@ -129,7 +136,7 @@ struct MQTTSettingsView: View {
         } message: {
             Text("Applying these changes with an empty password may remove existing credentials from the server. Do you want to proceed?")
         }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func applyChanges() {
@@ -138,7 +145,7 @@ struct MQTTSettingsView: View {
     }
 
     private func loadFromStore() {
-        guard let mqtt = environment.store.bridgeInfo?.config?.mqtt else { return }
+        guard let mqtt = scope.bridgeInfo?.config?.mqtt else { return }
         server = mqtt.server ?? ""
         baseTopic = mqtt.baseTopic ?? "zigbee2mqtt"
         clientID = mqtt.clientID ?? "zigbee2mqtt"
@@ -174,7 +181,7 @@ struct MQTTSettingsView: View {
             "maximum_packet_size": .int(maximumPacketSize),
             "qos": .int(qos)
         ]
-        environment.sendBridgeOptions(["mqtt": .object(mqtt)])
+        scope.sendOptions(["mqtt": .object(mqtt)])
     }
 }
 

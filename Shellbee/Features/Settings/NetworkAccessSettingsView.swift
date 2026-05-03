@@ -3,6 +3,8 @@ import SwiftUI
 struct NetworkAccessSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
 
     @State private var passlistEntries: [String] = []
     @State private var blocklistEntries: [String] = []
@@ -11,7 +13,7 @@ struct NetworkAccessSettingsView: View {
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
-        let config = environment.store.bridgeInfo?.config
+        let config = scope.bridgeInfo?.config
         return passlistEntries != (config?.passlist ?? [])
             || blocklistEntries != (config?.blocklist ?? [])
     }
@@ -104,7 +106,7 @@ struct NetworkAccessSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func addPasslistEntry() {
@@ -122,7 +124,7 @@ struct NetworkAccessSettingsView: View {
     }
 
     private func loadFromStore() {
-        let config = environment.store.bridgeInfo?.config
+        let config = scope.bridgeInfo?.config
         passlistEntries = config?.passlist ?? []
         blocklistEntries = config?.blocklist ?? []
     }
@@ -132,7 +134,7 @@ struct NetworkAccessSettingsView: View {
             "passlist": .array(passlistEntries.map { .string($0) }),
             "blocklist": .array(blocklistEntries.map { .string($0) })
         ]
-        environment.sendBridgeOptions(payload)
+        scope.sendOptions(payload)
     }
 }
 

@@ -226,6 +226,8 @@
 				Features/Settings/AvailabilitySettingsView.swift,
 				Features/Settings/Backup/BackupPayload.swift,
 				Features/Settings/Backup/BackupView.swift,
+				Features/Settings/BridgeScopedHelpers.swift,
+				Features/Settings/BridgeSettingsView.swift,
 				Features/Settings/Backup/RestoreGuideSheet.swift,
 				Features/Settings/Developer/DeveloperSettings.swift,
 				Features/Settings/Developer/DeveloperSettingsView.swift,

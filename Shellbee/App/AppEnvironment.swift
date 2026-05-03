@@ -233,6 +233,11 @@ final class AppEnvironment {
         send(topic: Z2MTopics.Request.restart, payload: .string(""))
     }
 
+    /// Restart a specific bridge — the multi-bridge variant of `restartBridge()`.
+    func restartBridge(_ bridgeID: UUID) {
+        send(bridge: bridgeID, topic: Z2MTopics.Request.restart, payload: .string(""))
+    }
+
     func refreshBridgeData() async {
         send(topic: Z2MTopics.Request.devices, payload: .string(""))
         send(topic: Z2MTopics.Request.groups, payload: .string(""))
@@ -256,6 +261,13 @@ final class AppEnvironment {
     /// the `{"options": {...}}` envelope that z2m requires.
     func sendBridgeOptions(_ options: [String: JSONValue]) {
         send(topic: Z2MTopics.Request.options, payload: .object(["options": .object(options)]))
+    }
+
+    /// Multi-bridge variant of `sendBridgeOptions(_:)` — addresses a specific
+    /// bridge by id rather than the focused one. Used by per-bridge Settings
+    /// pages when more than one bridge is connected.
+    func sendBridgeOptions(_ options: [String: JSONValue], to bridgeID: UUID) {
+        send(bridge: bridgeID, topic: Z2MTopics.Request.options, payload: .object(["options": .object(options)]))
     }
 
     func sendDeviceState(_ friendlyName: String, payload: JSONValue) {

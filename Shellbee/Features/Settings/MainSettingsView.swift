@@ -3,6 +3,8 @@ import SwiftUI
 struct MainSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    var bridgeID: UUID? = nil
+    private var scope: BridgeScopeBindings { environment.bridgeScope(bridgeID) }
 
     @State private var lastSeen: BridgeSettings.LastSeenFormat = .disabled
     @State private var elapsed: Bool = false
@@ -15,7 +17,7 @@ struct MainSettingsView: View {
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
-        guard let info = environment.store.bridgeInfo else { return false }
+        guard let info = scope.bridgeInfo else { return false }
         let advanced = info.config?.advanced
         return lastSeen.rawValue != (advanced?.lastSeen ?? "disable")
             || elapsed != (advanced?.elapsed ?? false)
@@ -27,7 +29,7 @@ struct MainSettingsView: View {
     }
 
     private var serverOutputIsAttributeOnly: Bool {
-        environment.store.bridgeInfo?.config?.advanced?.output == "attribute"
+        scope.bridgeInfo?.config?.advanced?.output == "attribute"
     }
 
     var body: some View {
@@ -95,11 +97,11 @@ struct MainSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        guard let info = environment.store.bridgeInfo else { return }
+        guard let info = scope.bridgeInfo else { return }
         let advanced = info.config?.advanced
         lastSeen = BridgeSettings.LastSeenFormat(rawValue: advanced?.lastSeen ?? "disable") ?? .disabled
         elapsed = advanced?.elapsed ?? false
@@ -111,7 +113,7 @@ struct MainSettingsView: View {
     }
 
     private func applyChanges() {
-        guard let info = environment.store.bridgeInfo else { return }
+        guard let info = scope.bridgeInfo else { return }
         let advanced = info.config?.advanced
         var changes: [String: JSONValue] = [:]
 
@@ -138,7 +140,7 @@ struct MainSettingsView: View {
         }
 
         guard !changes.isEmpty else { return }
-        environment.sendBridgeOptions(["advanced": .object(changes)])
+        scope.sendOptions(["advanced": .object(changes)])
     }
 }
 

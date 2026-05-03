@@ -6,27 +6,20 @@ struct SettingsView: View {
     @State private var showingDisconnectConfirmation = false
     @State private var showingRestartAlert = false
 
+    /// Phase 2 multi-bridge: when the user has more than one saved bridge, the
+    /// top-level Settings page swaps to the merged layout — every per-bridge
+    /// section moves into a per-bridge sub-page (`BridgeSettingsView`).
+    private var isMultiBridge: Bool {
+        environment.history.connections.count >= 2
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                if environment.store.bridgeInfo?.restartRequired == true {
-                    restartRequiredNotice
-                }
-
-                connectionSection
-                bridgeConfigSection
-                loggingSection
-                integrationsSection
-                networkSection
-                toolsSection
-                applicationSection
-
-                if developerModeEnabled {
-                    developerSection
-                }
-
-                if environment.connectionState.isConnected || environment.hasBeenConnected {
-                    dangerSection
+                if isMultiBridge {
+                    multiBridgeLayout
+                } else {
+                    singleBridgeLayout
                 }
             }
             .navigationTitle("Settings")
@@ -44,6 +37,108 @@ struct SettingsView: View {
             } message: {
                 Text("The app returns to the setup screen. Your server address is remembered.")
             }
+        }
+    }
+
+    // MARK: - Multi-bridge layout
+
+    @ViewBuilder
+    private var multiBridgeLayout: some View {
+        bridgesSection
+        Section {
+            NavigationLink { SavedBridgesView() } label: {
+                settingsLabel(title: "Saved Bridges", systemImage: "list.bullet", color: .blue)
+                    .badge("\(environment.history.connections.count)")
+            }
+        } header: {
+            Text("Connection")
+        }
+
+        Section {
+            NavigationLink { DocBrowserView() } label: {
+                settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+            }
+        } header: {
+            Text("Tools")
+        }
+
+        applicationSection
+
+        if developerModeEnabled {
+            developerSection
+        }
+    }
+
+    @ViewBuilder
+    private var bridgesSection: some View {
+        Section {
+            ForEach(environment.history.connections) { config in
+                NavigationLink { BridgeSettingsView(bridgeID: config.id) } label: {
+                    bridgeRowLabel(for: config)
+                }
+            }
+        } header: {
+            Text("Bridges")
+        } footer: {
+            Text("Each connected Zigbee2MQTT instance has its own configuration. Tap a bridge to manage its settings.")
+        }
+    }
+
+    private func bridgeRowLabel(for config: ConnectionConfig) -> some View {
+        let session = environment.registry.session(for: config.id)
+        return HStack(spacing: DesignTokens.Spacing.sm) {
+            BridgeColorDot(bridgeID: config.id, bridgeName: config.displayName, size: 12)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(config.displayName)
+                    .foregroundStyle(.primary)
+                Text(stateSubtitle(for: session))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            if session?.store.bridgeInfo?.restartRequired == true {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityLabel("Restart required")
+            }
+        }
+    }
+
+    private func stateSubtitle(for session: BridgeSession?) -> String {
+        switch session?.connectionState {
+        case .connected: "Connected"
+        case .connecting: "Connecting"
+        case .reconnecting(let n): "Reconnecting (attempt \(n))"
+        case .failed(let msg): msg
+        case .lost(let msg): "Lost: \(msg)"
+        default: "Disconnected"
+        }
+    }
+
+    // MARK: - Single-bridge layout (legacy)
+
+    @ViewBuilder
+    private var singleBridgeLayout: some View {
+        if environment.store.bridgeInfo?.restartRequired == true {
+            restartRequiredNotice
+        }
+
+        connectionSection
+        bridgeConfigSection
+        loggingSection
+        integrationsSection
+        networkSection
+        toolsSection
+        applicationSection
+
+        if developerModeEnabled {
+            developerSection
+        }
+
+        if environment.connectionState.isConnected || environment.hasBeenConnected {
+            dangerSection
         }
     }
 
@@ -171,6 +266,8 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - App-global sections (shared between layouts)
+
     private var applicationSection: some View {
         Section {
             NavigationLink { AppGeneralView() } label: {
@@ -202,9 +299,6 @@ struct SettingsView: View {
 
     private var dangerSection: some View {
         Section {
-            // Restart Zigbee2MQTT lives on Settings → Server (`ServerDetailView`),
-            // alongside the rest of the bridge-level controls. Mirroring it
-            // here was a duplicate path with no extra surface area.
             Button("Disconnect", role: .destructive) {
                 showingDisconnectConfirmation = true
             }
