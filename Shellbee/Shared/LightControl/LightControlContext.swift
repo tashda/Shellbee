@@ -17,46 +17,18 @@ struct LightControlContext: Equatable, Identifiable {
     let brightnessValue: Double?
     let colorTemperatureValue: Double?
     let colorMode: String?
-    /// Raw `color` object payload (if any). Stored so `isColorMode` can fall
-    /// back to "is there a real color value" when `color_mode` lies — a known
-    /// failure mode on Hue lights with `hue_native_control` enabled, where
-    /// the bulb reports the equivalent color temperature alongside a fresh
-    /// color object during color changes.
-    let colorPayload: JSONValue?
     let displayColor: Color
     let endpointLabel: String?
 
-    /// True when the snapshot should render the color surface (Color row,
-    /// Color picker, color tint) rather than the color-temperature surface.
-    /// Authoritative signal in priority order:
-    ///   1. `color_mode` is explicitly `"xy"` or `"hs"` (z2m's spec values).
-    ///   2. The `color` payload carries recognizable sub-fields (x/y, h/s,
-    ///      hue/saturation, or r/g/b) — wins even when `color_mode` says
-    ///      `"color_temp"`, because some Hue firmware paths report stale
-    ///      mode while the bulb is actually rendering a color.
+    /// True when the snapshot should render the color surface rather than
+    /// the color-temperature surface. Z2M sets `color_mode` to one of
+    /// `"xy"`, `"hs"`, or `"color_temp"` deliberately to describe what the
+    /// bulb is actively rendering — trust it. (The OFF state of a Hue
+    /// group, for instance, can carry a stale `color` object alongside
+    /// `color_mode: "color_temp"`; treating that as a color render
+    /// mis-reports the surface.)
     var isColorMode: Bool {
-        if colorMode == "xy" || colorMode == "hs" { return true }
-        return colorPayload.flatMap(Self.colorObjectIsRecognizable) ?? false
-    }
-
-    /// True when a usable color-temperature reading exists. Suppressed when
-    /// `isColorMode` already won — Hue native control publishes a stale
-    /// `color_temp` alongside a real color and we don't want the snapshot
-    /// to claim "Color Temperature 6535 K" while the bulb is rendering green.
-    var hasColorTemperatureReading: Bool {
-        guard colorTemperatureValue != nil else { return false }
-        return !isColorMode
-    }
-
-    private static func colorObjectIsRecognizable(_ value: JSONValue) -> Bool {
-        guard let object = value.object else { return false }
-        let xy = object["x"]?.numberValue != nil && object["y"]?.numberValue != nil
-        let hs = (object["hue"]?.numberValue ?? object["h"]?.numberValue) != nil
-            && (object["saturation"]?.numberValue ?? object["s"]?.numberValue) != nil
-        let rgb = object["r"]?.numberValue != nil
-            && object["g"]?.numberValue != nil
-            && object["b"]?.numberValue != nil
-        return xy || hs || rgb
+        colorMode == "xy" || colorMode == "hs"
     }
 
     var id: String { power?.property ?? brightness?.property ?? endpointLabel ?? "light" }
@@ -136,10 +108,8 @@ struct LightControlContext: Equatable, Identifiable {
         self.brightnessValue = brightnessValue
         self.colorTemperatureValue = colorTemperatureValue
         self.colorMode = colorMode
-        let colorPayload = state[color?.property ?? "color"]
-        self.colorPayload = colorPayload
         self.displayColor = LightDisplayColor.resolve(
-            colorValue: colorPayload,
+            colorValue: state[color?.property ?? "color"],
             colorTemperature: colorTemperatureValue,
             colorMode: colorMode
         )

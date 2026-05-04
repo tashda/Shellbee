@@ -238,8 +238,16 @@ struct LogDetailView: View {
     /// match exposes and we render the relevant control card with those values.
     private func exposesScopedState(for device: Device) -> [String: JSONValue]? {
         guard let state = logTimeState else { return nil }
+        // Use `flattened` (every node, parents + leaves) rather than
+        // `flattenedLeaves`. Z2M publishes nested features (notably the
+        // `color_xy` / `color_hs` parents whose `property` resolves to
+        // `"color"`) as a single object under the parent key — not as
+        // separate top-level `x` / `y` keys. Filtering by leaves alone
+        // dropped the entire color object, which is why the snapshot
+        // Light Card never rendered the color surface even when the
+        // payload carried a perfectly valid `color: {x, y}`.
         let exposeProps: Set<String> = Set(
-            (device.definition?.exposes ?? []).flattenedLeaves.compactMap {
+            (device.definition?.exposes ?? []).flattened.compactMap {
                 $0.property ?? $0.name
             }
         )

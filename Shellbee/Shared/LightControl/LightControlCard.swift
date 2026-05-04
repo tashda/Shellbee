@@ -260,10 +260,6 @@ struct LightControlCard: View {
                 }
                 .foregroundStyle(.secondary)
                 Spacer()
-                Circle()
-                    .fill(context.displayColor)
-                    .frame(width: DesignTokens.Size.cardSymbol, height: DesignTokens.Size.cardSymbol)
-                    .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
             }
         }
     }
