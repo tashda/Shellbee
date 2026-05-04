@@ -4,9 +4,26 @@ struct LogContext: Sendable {
     let devices: [DeviceRef]
     let stateChanges: [StateChange]
     let action: LogAction
+    /// Full state snapshot at the moment the log entry was emitted. Set on
+    /// synthesized state-change entries so LogDetailView can populate the
+    /// hero card with every relevant field (brightness, color, color_temp,
+    /// …) instead of only the changed properties.
+    let payload: [String: JSONValue]?
 
     var primaryDevice: DeviceRef? { devices.first }
     var hasMultipleDevices: Bool { devices.count > 1 }
+
+    init(
+        devices: [DeviceRef],
+        stateChanges: [StateChange],
+        action: LogAction,
+        payload: [String: JSONValue]? = nil
+    ) {
+        self.devices = devices
+        self.stateChanges = stateChanges
+        self.action = action
+        self.payload = payload
+    }
 
     var inferredCategory: LogCategory {
         if case .stateChange = action { return .stateChange }

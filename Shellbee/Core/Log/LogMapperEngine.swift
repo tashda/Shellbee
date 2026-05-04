@@ -116,11 +116,16 @@ struct LogMapperEngine {
         return changes
     }
 
-    static func stateChangeEntry(device: String, changes: [LogContext.StateChange]) -> LogEntry {
+    static func stateChangeEntry(
+        device: String,
+        changes: [LogContext.StateChange],
+        payload: [String: JSONValue]? = nil
+    ) -> LogEntry {
         let ctx = LogContext(
             devices: [.init(friendlyName: device, role: .subject)],
             stateChanges: changes,
-            action: .stateChange
+            action: .stateChange,
+            payload: payload
         )
         let summary = changes.prefix(2).map(\.shortDescription).joined(separator: " · ")
         return LogEntry(

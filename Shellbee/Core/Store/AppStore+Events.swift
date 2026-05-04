@@ -175,7 +175,7 @@ extension AppStore {
             if !previous.isEmpty || isGroup {
                 let changes = LogMapperEngine.diff(previous, state)
                 if !changes.isEmpty {
-                    insertLogEntry(LogMapperEngine.stateChangeEntry(device: name, changes: changes))
+                    insertLogEntry(LogMapperEngine.stateChangeEntry(device: name, changes: changes, payload: state))
                 }
             }
             deviceStates[name] = state

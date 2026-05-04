@@ -55,12 +55,22 @@ struct LogDetailView: View {
         if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
             return payload.isEmpty ? nil : payload
         }
-        if entry.category == .stateChange, let changes = entry.context?.stateChanges {
-            var state: [String: JSONValue] = [:]
-            for change in changes where !Self.stateMetadataKeys.contains(change.property) {
-                state[change.property] = change.to
+        if entry.category == .stateChange {
+            // Prefer the full state captured at log time when available — the
+            // diff alone drops every unchanged field, which collapses the
+            // Light Card to a single property even when the payload had
+            // brightness/color_temp/color present. Fall back to the diff
+            // for older entries that don't carry a payload.
+            if let payload = entry.context?.payload, !payload.isEmpty {
+                return payload
             }
-            return state.isEmpty ? nil : state
+            if let changes = entry.context?.stateChanges {
+                var state: [String: JSONValue] = [:]
+                for change in changes where !Self.stateMetadataKeys.contains(change.property) {
+                    state[change.property] = change.to
+                }
+                return state.isEmpty ? nil : state
+            }
         }
         return nil
     }
@@ -166,6 +176,27 @@ struct LogDetailView: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
+        if let (member, snapshotState) = lightLikeMemberAndState(in: members) {
+            Section {
+                ExposeCardView(device: member, state: snapshotState, mode: .snapshot)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+        }
+    }
+
+    /// For a group log entry whose payload looks like a light state
+    /// (`state` plus at least one of brightness/color_temp/color), pick a
+    /// light member device to drive the snapshot Light Card. Returns nil
+    /// when the payload isn't light-shaped or no light member exists —
+    /// callers fall through to the generic field breakdown.
+    private func lightLikeMemberAndState(in members: [Device]) -> (Device, [String: JSONValue])? {
+        guard let payload = logTimeState else { return nil }
+        let lightKeys: Set<String> = ["brightness", "color_temp", "color", "color_xy", "color_hs"]
+        let hasLightShape = payload["state"] != nil && payload.keys.contains(where: { lightKeys.contains($0) })
+        guard hasLightShape else { return nil }
+        guard let member = members.first(where: { $0.category == .light }) else { return nil }
+        return (member, payload)
     }
 
     @ViewBuilder
