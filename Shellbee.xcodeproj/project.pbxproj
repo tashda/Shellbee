@@ -208,12 +208,16 @@
 				Features/Home/PermitJoinToolbarButton.swift,
 				Features/Logs/BridgeLogView.swift,
 				Features/Logs/BridgeLogViewModel.swift,
+				"Features/Logs/LogEntry+SpecificTitle.swift",
 				Features/Logs/LogDetailChangesSection.swift,
 				Features/Logs/LogDetailDevicesSection.swift,
 				Features/Logs/LogDetailView.swift,
 				Features/Logs/LogDeviceFilterSheet.swift,
 				Features/Logs/LogFilterMenu.swift,
+				Features/Logs/LogRowIconography.swift,
 				Features/Logs/LogRowView.swift,
+				Features/Logs/LogSectionHeader.swift,
+				Features/Logs/LogTimeBucket.swift,
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
 				Features/Notifications/FastTrackBanner.swift,
@@ -833,7 +837,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				ENABLE_PREVIEWS = YES;
@@ -870,8 +874,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
-					CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				ENABLE_PREVIEWS = YES;
@@ -908,7 +912,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -946,8 +950,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-					CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
