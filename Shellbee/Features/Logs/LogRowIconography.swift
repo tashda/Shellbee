@@ -29,7 +29,10 @@ enum LogRowIconography {
         // "this device's state changed in a meaningful way"; a 245→244 link
         // quality drift or a battery report doesn't qualify.
         if isLinkQualityOnly(entry) {
-            return .symbol(name: "wifi.exclamationmark", tint: .orange)
+            // LQI drifts are background noise, not warnings — use the
+            // quieter signal-bars glyph in a neutral tint so the row
+            // doesn't shout "error" at the eye.
+            return .symbol(name: "dot.radiowaves.left.and.right", tint: .secondary)
         }
         if isBatteryOnly(entry) {
             return .symbol(name: batteryGlyph(for: entry), tint: .green)

@@ -106,6 +106,25 @@ struct LogDetailView: View {
         .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                // Inline two-line title: subject on top, timestamp
+                // beneath. Same pattern Apple Calendar uses for event
+                // detail headers and Mail uses for thread headers.
+                // Cleaner than the previous treatment: no info-icon, no
+                // alert-banner styling — just title and quiet metadata.
+                VStack(spacing: 1) {
+                    Text(navTitle)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text(timestampSubtitle)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(navTitle), \(timestampSubtitle)")
+            }
             if let doneAction {
                 if entry.category != .stateChange {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -385,22 +404,12 @@ struct LogDetailView: View {
         }
     }
 
-    /// Combined "what + when" header that sits above the body section.
-    /// Drops the floating timestamp Apple-Mail-style — the date is no
-    /// longer placed without purpose; it's the natural metadata under the
-    /// event description.
+    /// Body section header. Plain noun in the iOS Settings idiom —
+    /// "Signal", "Humidity", "Battery", "Interview". The verb lives in
+    /// the diff rows beneath; the timestamp lives in the nav-bar subtitle
+    /// at the top of the screen.
     private var eventHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(entry.specificTitle)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-            Spacer(minLength: DesignTokens.Spacing.sm)
-            Text(timestampSubtitle)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .textCase(nil)
-        .padding(.vertical, DesignTokens.Spacing.xxs)
+        Text(entry.bodyHeader)
     }
 
     private var parsedMessage: (summary: String, detail: String?) {
