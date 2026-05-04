@@ -155,16 +155,10 @@ struct LogDetailView: View {
             }
         }
         Section {
-            // Closure-based NavigationLink rather than the value-based +
-            // overlay pattern. Mixing closure and value pushes inside the
-            // same NavigationStack confuses SwiftUI's path management:
-            // tapping the value overlay can trigger an ancestor re-render
-            // that re-fires the row's closure-based push, so the user sees
-            // log detail re-open instead of group detail. Pushing
-            // GroupDetailView directly avoids the path entirely.
-            NavigationLink {
-                GroupDetailView(bridgeID: bridgeID, group: group)
-            } label: {
+            // ZStack + closure-based NavigationLink overlay — same pattern
+            // as singleDeviceSection. Card's internal chevron is the only
+            // disclosure indicator; List doesn't auto-add its own.
+            ZStack {
                 GroupCard(
                     group: group,
                     memberDevices: members,
@@ -173,8 +167,11 @@ struct LogDetailView: View {
                     bridgeName: environment.registry.session(for: bridgeID)?.displayName,
                     displayMode: .compact
                 )
+                NavigationLink {
+                    GroupDetailView(bridgeID: bridgeID, group: group)
+                } label: { EmptyView() }
+                .opacity(0)
             }
-            .buttonStyle(.plain)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
@@ -204,13 +201,13 @@ struct LogDetailView: View {
     @ViewBuilder
     private func singleDeviceSection(_ device: Device) -> some View {
         Section {
-            // Always navigable — even when the log was opened from the same
-            // device's own log feed. The List/NavigationLink combo provides
-            // a single trailing chevron; the card itself no longer renders
-            // its own.
-            NavigationLink {
-                DeviceDetailView(bridgeID: bridgeID, device: device)
-            } label: {
+            // ZStack with a closure-based NavigationLink overlay: the card's
+            // internal chevron is the only disclosure indicator (the List
+            // doesn't auto-add its own because the row's primary content is
+            // the card, not the link). Closure-based push avoids the
+            // value-based path mixing that previously re-fired the row's
+            // own NavigationLink.
+            ZStack {
                 DeviceCard(
                     device: device,
                     state: scope.store.state(for: device.friendlyName),
@@ -221,8 +218,11 @@ struct LogDetailView: View {
                     lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                     displayMode: .compact
                 )
+                NavigationLink {
+                    DeviceDetailView(bridgeID: bridgeID, device: device)
+                } label: { EmptyView() }
+                .opacity(0)
             }
-            .buttonStyle(.plain)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }

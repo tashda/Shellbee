@@ -91,6 +91,9 @@ struct DeviceCard: View {
                     .lineLimit(1)
             }
 
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
