@@ -8,19 +8,13 @@ struct LogDetailView: View {
     /// the entry resolve against the right store.
     let bridgeID: UUID
     let entry: LogEntry
-    /// IEEE address of the device whose log feed pushed this view, if any.
-    /// When set, the device hero card for that same device renders without a
-    /// NavigationLink — tapping it would push back to the device the user
-    /// just came from, which is a dead-end interaction.
-    private let originDeviceIEEE: String?
     private let doneAction: (() -> Void)?
 
     enum ViewMode { case beautiful, json }
 
-    init(bridgeID: UUID, entry: LogEntry, originDeviceIEEE: String? = nil, doneAction: (() -> Void)? = nil) {
+    init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
         self.bridgeID = bridgeID
         self.entry = entry
-        self.originDeviceIEEE = originDeviceIEEE
         self.doneAction = doneAction
     }
 
@@ -209,36 +203,28 @@ struct LogDetailView: View {
 
     @ViewBuilder
     private func singleDeviceSection(_ device: Device) -> some View {
-        let isOrigin = device.ieeeAddress == originDeviceIEEE
-        let card = DeviceCard(
-            device: device,
-            state: scope.store.state(for: device.friendlyName),
-            isAvailable: scope.store.isAvailable(device.friendlyName),
-            otaStatus: scope.store.otaStatus(for: device.friendlyName),
-            bridgeID: bridgeID,
-            bridgeName: environment.registry.session(for: bridgeID)?.displayName,
-            lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-            displayMode: .compact,
-            showsChevron: !isOrigin
-        )
         Section {
-            if !isOrigin {
-                // See singleGroupSection for why we use a closure-based
-                // NavigationLink rather than the value-based + overlay
-                // pattern — same nested-stack mixing bug.
-                NavigationLink {
-                    DeviceDetailView(bridgeID: bridgeID, device: device)
-                } label: {
-                    card
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            } else {
-                card
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+            // Always navigable — even when the log was opened from the same
+            // device's own log feed. The List/NavigationLink combo provides
+            // a single trailing chevron; the card itself no longer renders
+            // its own.
+            NavigationLink {
+                DeviceDetailView(bridgeID: bridgeID, device: device)
+            } label: {
+                DeviceCard(
+                    device: device,
+                    state: scope.store.state(for: device.friendlyName),
+                    isAvailable: scope.store.isAvailable(device.friendlyName),
+                    otaStatus: scope.store.otaStatus(for: device.friendlyName),
+                    bridgeID: bridgeID,
+                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+                    lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                    displayMode: .compact
+                )
             }
+            .buttonStyle(.plain)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         }
         if let state = exposesScopedState(for: device) {
             Section {

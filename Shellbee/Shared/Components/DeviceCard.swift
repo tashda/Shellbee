@@ -15,11 +15,6 @@ struct DeviceCard: View {
     var lastSeenEnabled: Bool = true
     var onRenameTapped: (() -> Void)? = nil
     var displayMode: DeviceIdentityDisplayMode = .prominent
-    /// Whether the compact card should show the trailing chevron. Set to
-    /// false in non-interactive contexts (e.g. log detail when the entry
-    /// already lives under that device's own log feed) so the disclosure
-    /// affordance doesn't lie about the tap target.
-    var showsChevron: Bool = true
 
     private var isUpdating: Bool { otaStatus?.isActive == true }
 
@@ -96,11 +91,6 @@ struct DeviceCard: View {
                     .lineLimit(1)
             }
 
-            if showsChevron {
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
         }
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
