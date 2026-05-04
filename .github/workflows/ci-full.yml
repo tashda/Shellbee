@@ -139,6 +139,8 @@ jobs:
             -only-testing:"$TEST_TARGET" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
             -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
+            -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
+            -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \

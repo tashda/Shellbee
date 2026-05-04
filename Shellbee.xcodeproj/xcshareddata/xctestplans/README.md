@@ -35,6 +35,8 @@ as the fix.
 | `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
 | `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
 | `ConnectionHistoryTests` (entire class) | Every test calls `h.add(...)` → `save()` → `persistToken(for:)` which hits the Keychain. Without a provisioning profile, the GitHub runner crashes (malloc free corruption) inside `SecItem*` rather than returning a no-op error. Skip the whole class until the Keychain layer is abstracted (same root cause as the two `ConnectionConfigTests` skips). |
+| `HomeLayoutStoreTests` (entire class) | Crashes with malloc free corruption on Xcode 26.3 GitHub runners even with `@MainActor + async setUp` migration. Suspected isolation interaction between XCTest's nonisolated launch path and `@Observable` (implicit `@MainActor`). Locally green; CI-only flake. |
+| `NotificationPreferencesTests` (entire class) | Same isolation pattern as `HomeLayoutStoreTests` — `@Observable @MainActor` model created from XCTest's nonisolated bridge crashes the host on Xcode 26.3 runners. |
 | `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
 
 ### Recently un-skipped

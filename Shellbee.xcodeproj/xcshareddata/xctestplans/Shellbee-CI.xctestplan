@@ -25,6 +25,8 @@
         "ConnectionConfigTests\/testSaveAndLoad()",
         "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
         "ConnectionHistoryTests",
+        "HomeLayoutStoreTests",
+        "NotificationPreferencesTests",
         "Z2MIntegrationTests"
       ],
       "target" : {
