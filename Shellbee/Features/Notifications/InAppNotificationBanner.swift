@@ -8,6 +8,10 @@ struct InAppNotificationBanner: View {
     @Binding var isExpanded: Bool
     var stackCount: Int = 1
     var stackPositionLabel: String? = nil
+    /// Source bridge name. Shown as a small badge in the header when set —
+    /// the overlay only passes a non-nil value when ≥ 2 bridges are connected,
+    /// so single-bridge users never see the badge clutter.
+    var bridgeBadge: String? = nil
     let onDismiss: () -> Void
     let onGoToLog: () -> Void
     let onGoToDevice: () -> Void
@@ -84,6 +88,20 @@ struct InAppNotificationBanner: View {
                             .padding(.horizontal, DesignTokens.Spacing.sm)
                             .padding(.vertical, DesignTokens.Spacing.xxs)
                             .background(.tint.opacity(DesignTokens.Opacity.softFill), in: Capsule())
+                    }
+                    if let bridgeBadge {
+                        HStack(spacing: 2) {
+                            Image(systemName: "bolt.horizontal.fill")
+                                .font(.system(size: 8, weight: .semibold))
+                            Text(bridgeBadge)
+                                .font(.caption2.weight(.semibold))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, DesignTokens.Spacing.sm)
+                        .padding(.vertical, DesignTokens.Spacing.xxs)
+                        .background(.secondary.opacity(DesignTokens.Opacity.subtleFill), in: Capsule())
+                        .accessibilityLabel("From bridge \(bridgeBadge)")
                     }
                 }
                 if let subtitle = notification.subtitle {

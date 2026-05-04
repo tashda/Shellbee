@@ -204,7 +204,7 @@ final class AppEnvironment {
         let isFirst = registry.primary == nil
         registry.connect(config: config)
         if let session = registry.session(for: config.id) {
-            wireNotificationFilter(into: session.store)
+            wireNotificationFilter(into: session.store, bridgeID: session.bridgeID)
             ensureQueueWired(for: session)
         }
         if isFirst, let primary = registry.primary {
@@ -329,10 +329,13 @@ final class AppEnvironment {
     }
 
     /// Set up notification filtering on a freshly-created store so notifications
-    /// from that bridge are routed through the user's global preferences.
-    private func wireNotificationFilter(into store: AppStore) {
+    /// from that bridge are routed through the user's global preferences. The
+    /// per-bridge mute toggle short-circuits all category filtering — muted
+    /// bridges produce zero notifications regardless of category settings.
+    private func wireNotificationFilter(into store: AppStore, bridgeID: UUID) {
         let prefs = notificationPreferences
         store.notificationFilter = { [weak store] notification in
+            if prefs.isMuted(bridgeID: bridgeID) { return false }
             guard let category = notification.category else { return true }
             let bridgeLevel = store?.bridgeInfo?.logLevel
             return prefs.isEnabled(category, bridgeLogLevel: bridgeLevel)
