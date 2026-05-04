@@ -16663,6 +16663,25 @@
         "description": "State actions will also be published as 'action' when true (default false).",
         "value_on": true,
         "value_off": false
+      },
+      {
+        "name": "hue_native_control",
+        "label": "Hue native control",
+        "access": 2,
+        "type": "binary",
+        "property": "hue_native_control",
+        "description": "Control this light using a Philips-specific protocol instead of standard Zigbee commands. When enabled, on/off, brightness, color, and color temperature are combined into single atomic commands. This is required to use the Effect color update mode. When disabled (default), standard Zigbee commands are used, which preserves the usual behavior, including simulating on/off transitions.",
+        "value_on": true,
+        "value_off": false
+      },
+      {
+        "name": "effect_color_mode",
+        "label": "Effect color mode",
+        "access": 2,
+        "type": "enum",
+        "property": "effect_color_mode",
+        "description": "Controls what happens when color is changed while an effect is active (requires Hue native control). 'stop' (default): color change stops the effect (Hue app behavior). 'update': color change re-sends the effect with the new color.",
+        "values": ["stop", "update"]
       }
     ],
     "meta": {
@@ -28664,6 +28683,25 @@
         "description": "State actions will also be published as 'action' when true (default false).",
         "value_on": true,
         "value_off": false
+      },
+      {
+        "name": "hue_native_control",
+        "label": "Hue native control",
+        "access": 2,
+        "type": "binary",
+        "property": "hue_native_control",
+        "description": "Control this light using a Philips-specific protocol instead of standard Zigbee commands. When enabled, on/off, brightness, color, and color temperature are combined into single atomic commands. This is required to use the Effect color update mode. When disabled (default), standard Zigbee commands are used, which preserves the usual behavior, including simulating on/off transitions.",
+        "value_on": true,
+        "value_off": false
+      },
+      {
+        "name": "effect_color_mode",
+        "label": "Effect color mode",
+        "access": 2,
+        "type": "enum",
+        "property": "effect_color_mode",
+        "description": "Controls what happens when color is changed while an effect is active (requires Hue native control). 'stop' (default): color change stops the effect (Hue app behavior). 'update': color change re-sends the effect with the new color.",
+        "values": ["stop", "update"]
       }
     ],
     "meta": {
@@ -28907,6 +28945,25 @@
         "description": "State actions will also be published as 'action' when true (default false).",
         "value_on": true,
         "value_off": false
+      },
+      {
+        "name": "hue_native_control",
+        "label": "Hue native control",
+        "access": 2,
+        "type": "binary",
+        "property": "hue_native_control",
+        "description": "Control this light using a Philips-specific protocol instead of standard Zigbee commands. When enabled, on/off, brightness, color, and color temperature are combined into single atomic commands. This is required to use the Effect color update mode. When disabled (default), standard Zigbee commands are used, which preserves the usual behavior, including simulating on/off transitions.",
+        "value_on": true,
+        "value_off": false
+      },
+      {
+        "name": "effect_color_mode",
+        "label": "Effect color mode",
+        "access": 2,
+        "type": "enum",
+        "property": "effect_color_mode",
+        "description": "Controls what happens when color is changed while an effect is active (requires Hue native control). 'stop' (default): color change stops the effect (Hue app behavior). 'update': color change re-sends the effect with the new color.",
+        "values": ["stop", "update"]
       }
     ],
     "meta": {
