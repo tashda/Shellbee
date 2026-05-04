@@ -376,7 +376,7 @@ private struct DeviceListContent: View {
         return environment.allDevices
             .filter { $0.device.type != .coordinator }
             .filter { bound in
-                if bound.device.interviewing { return true }
+                if bound.device.isInterviewing { return true }
                 let store = environment.registry.session(for: bound.bridgeID)?.store
                 if let joined = store?.deviceFirstSeen[bound.device.ieeeAddress], joined >= cutoff {
                     return true

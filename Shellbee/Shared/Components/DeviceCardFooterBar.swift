@@ -81,7 +81,7 @@ struct DeviceCardFooterBar: View {
             }
         }
 
-        if device.interviewing {
+        if device.isInterviewing {
             return "Interviewing"
         }
 
@@ -94,7 +94,7 @@ struct DeviceCardFooterBar: View {
 
     private var statusColor: Color {
         if otaStatus?.isActive == true { return .blue }
-        if device.interviewing { return .orange }
+        if device.isInterviewing { return .orange }
         if !device.availabilityTrackingEnabled { return .secondary }
         return isAvailable ? .green : .red
     }

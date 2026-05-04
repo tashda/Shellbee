@@ -209,6 +209,7 @@ def _build_device(model: str, name: str, ieee: str) -> tuple[dict, dict]:
         "manufacturer": m["vendor"],
         "interview_completed": False,
         "interviewing": True,
+        "interview_state": "IN_PROGRESS",
         "software_build_id": None,
         "date_code": None,
         "endpoints": {"1": {"inputClusters": [], "outputClusters": [],
@@ -258,6 +259,7 @@ def scenario_join(body: JoinBody):
             with seeder._lock:
                 device["interview_completed"] = False
                 device["interviewing"] = False
+                device["interview_state"] = "FAILED"
             seeder._publish_devices(client)
             seeder._emit_event(client, "device_interview", {
                 "friendly_name": name, "ieee_address": ieee,
@@ -268,6 +270,7 @@ def scenario_join(body: JoinBody):
         with seeder._lock:
             device["interview_completed"] = True
             device["interviewing"] = False
+            device["interview_state"] = "SUCCESSFUL"
         seeder._publish_devices(client)
         seeder._emit_event(client, "device_interview", {
             "friendly_name": name, "ieee_address": ieee,

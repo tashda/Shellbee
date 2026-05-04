@@ -157,6 +157,7 @@ def device(
         "manufacturer": m["vendor"],
         "interview_completed": True,
         "interviewing": False,
+        "interview_state": "SUCCESSFUL",
         "software_build_id": None,
         "date_code": None,
         "endpoints": {"1": {"inputClusters": [], "outputClusters": [],

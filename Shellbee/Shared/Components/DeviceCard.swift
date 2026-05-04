@@ -299,7 +299,7 @@ struct DeviceCard: View {
             }
         }
 
-        if device.interviewing {
+        if device.isInterviewing {
             return "Interviewing"
         }
 
@@ -312,14 +312,14 @@ struct DeviceCard: View {
 
     private var statusColor: Color {
         if otaStatus?.isActive == true { return .blue }
-        if device.interviewing { return .orange }
+        if device.isInterviewing { return .orange }
         if !device.availabilityTrackingEnabled { return .secondary }
         return isAvailable ? .green : .red
     }
 
     private var statusIcon: String {
         if otaStatus?.isActive == true { return "arrow.triangle.2.circlepath.circle.fill" }
-        if device.interviewing { return "dot.radiowaves.left.and.right" }
+        if device.isInterviewing { return "dot.radiowaves.left.and.right" }
         if !device.availabilityTrackingEnabled { return "minus.circle.fill" }
         return isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill"
     }

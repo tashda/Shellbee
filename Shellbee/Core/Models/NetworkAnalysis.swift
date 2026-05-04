@@ -51,7 +51,7 @@ enum DeviceCondition: String, CaseIterable, Sendable {
         case .availabilityOff:  return availabilityStatus == .untracked
         case .batteryLow:       return (state.battery ?? 100) < DesignTokens.Threshold.lowBattery
         case .weakSignal:       return (state.linkQuality ?? 999) < DesignTokens.Threshold.weakSignal
-        case .interviewing:     return device.interviewing || !device.interviewCompleted
+        case .interviewing:     return device.isInterviewing
         case .unsupported:      return !device.supported
         }
     }

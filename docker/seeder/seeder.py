@@ -396,6 +396,7 @@ def _req_device_interview(client, payload):
         with _lock:
             device["interview_completed"] = True
             device["interviewing"] = False
+            device["interview_state"] = "SUCCESSFUL"
         _emit_event(client, "device_interview", {
             "friendly_name": name, "status": "successful", "ieee_address": ieee,
             "supported": True,

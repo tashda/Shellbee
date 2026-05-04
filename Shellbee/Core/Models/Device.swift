@@ -15,6 +15,7 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
     var manufacturer: String?
     var interviewCompleted: Bool
     var interviewing: Bool
+    var interviewState: InterviewState?
     var softwareBuildId: String?
     var dateCode: String?
     var endpoints: [String: JSONValue]?
@@ -44,6 +45,16 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
         }
     }
 
+    /// Single source of truth for interview progress across the app. Prefers the
+    /// modern `interview_state` enum that recent Z2M emits and falls back to the
+    /// legacy `interviewing` / `interview_completed` boolean pair for older bridges.
+    var isInterviewing: Bool {
+        if let state = interviewState {
+            return state == .pending || state == .inProgress
+        }
+        return interviewing || !interviewCompleted
+    }
+
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
     static func == (lhs: Device, rhs: Device) -> Bool { lhs.ieeeAddress == rhs.ieeeAddress }
 
@@ -55,10 +66,18 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
         case powerSource = "power_source"
         case modelId = "model_id"
         case interviewCompleted = "interview_completed"
+        case interviewState = "interview_state"
         case softwareBuildId = "software_build_id"
         case dateCode = "date_code"
         case endpoints, options, availability
     }
+}
+
+enum InterviewState: String, Codable, Sendable, Equatable, Hashable {
+    case pending = "PENDING"
+    case inProgress = "IN_PROGRESS"
+    case successful = "SUCCESSFUL"
+    case failed = "FAILED"
 }
 
 enum DeviceType: String, Codable, Sendable, Equatable, ChipRepresentable {
