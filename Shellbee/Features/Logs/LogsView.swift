@@ -49,6 +49,17 @@ struct LogsView: View {
                 .navigationDestination(item: $autoOpenedEntry) { route in
                     LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
                 }
+                // LogDetailView's device/group hero card pushes these routes
+                // when the user taps it. Without handlers on this stack the
+                // links emit a runtime warning and don't navigate; the device
+                // and group tabs each register the same destinations on their
+                // own stacks.
+                .navigationDestination(for: DeviceRoute.self) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+                .navigationDestination(for: GroupRoute.self) { route in
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                }
                 .minimizeSearchToolbarIfAvailable()
                 .toolbar(.hidden, for: .tabBar)
                 .toolbar {
