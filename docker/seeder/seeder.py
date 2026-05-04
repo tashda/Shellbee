@@ -361,9 +361,19 @@ def _req_device_options(client, payload):
     if device is None:
         raise RequestError(f"Device '{ident}' does not exist")
     with _lock:
+        # Real Z2M stores per-device options in `bridge/info.config.devices[ieee]`,
+        # not on the per-device entry of `bridge/devices`. Mirror that here so the
+        # mock matches production behavior — and keep the on-device copy so any
+        # legacy reader still works.
         device.setdefault("options", {}).update(options)
         merged = dict(device["options"])
+        config = _bridge_info.setdefault("config", {})
+        cfg_devices = config.setdefault("devices", {})
+        ieee = device.get("ieee_address") or ident
+        entry = cfg_devices.setdefault(ieee, {"friendly_name": device.get("friendly_name", ident)})
+        entry.update(options)
     _publish_devices(client)
+    _publish_info(client)
     return {"id": ident, "from": options, "to": merged, "restart_required": False}
 
 
@@ -858,6 +868,15 @@ def _init_state() -> None:
         _groups = copy.deepcopy(GROUPS)
         _bridge_info = copy.deepcopy(BRIDGE_INFO)
         _bridge_health = copy.deepcopy(BRIDGE_HEALTH)
+        # Mirror per-device options into bridge/info.config.devices to match real Z2M.
+        cfg_devices = _bridge_info.setdefault("config", {}).setdefault("devices", {})
+        for d in _devices:
+            ieee = d.get("ieee_address")
+            if not ieee:
+                continue
+            entry = {"friendly_name": d.get("friendly_name", "")}
+            entry.update(d.get("options") or {})
+            cfg_devices[ieee] = entry
         _states.clear()
         for name, state in DEVICE_STATES.items():
             _states[name] = copy.deepcopy(state)
