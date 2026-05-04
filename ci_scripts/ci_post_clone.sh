@@ -6,7 +6,7 @@
 #
 # Required env vars (set in Xcode Cloud workflow → Environment Variables):
 #   SHELLBEE_BUNDLE_ID       e.g. com.tashda.shellbee
-#   SHELLBEE_TEAM_ID         e.g. JQU2HR44D8 (mark as secret)
+#   SHELLBEE_TEAM_ID         e.g. JQU2HR44D8 (plain text; do not mark secret)
 #   SHELLBEE_WIDGET_SUFFIX   e.g. widgets
 #
 # These are intentionally renamed (vs. APP_BUNDLE_ID / APP_DEVELOPMENT_TEAM) to
