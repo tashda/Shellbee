@@ -1,58 +1,55 @@
 import Foundation
 
 extension LogEntry {
-    /// A title that says *what happened*, not the category. Generic "State
-    /// Change" headers are useless when every other row in the log is a
-    /// state change — the detail view should immediately tell the user
-    /// "Humidity changed" / "Came online" / "Interview failed" so the
-    /// reason for tapping into the row is the first thing they read.
-    var specificTitle: String {
+    /// Noun-form label for the body section header in the detail view.
+    /// Apple iOS section headers are noun phrases — "Signal", "Battery",
+    /// "Humidity", "Interview" — never sentences. The body of the section
+    /// supplies the verb (the diff rows show what actually changed). The
+    /// timestamp lives in the nav-bar subtitle, so the body header doesn't
+    /// need to repeat "what + when" — only "what".
+    var bodyHeader: String {
         if LogRowIconography.isLinkQualityOnly(self) {
-            return "Link quality drifted"
+            return "Signal"
         }
         if LogRowIconography.isBatteryOnly(self) {
-            return "Battery report"
+            return "Battery"
         }
 
         switch category {
         case .stateChange:
-            return stateChangeTitle
+            return stateChangeBodyHeader
         case .deviceJoined:
-            return "Device joined"
+            return "Joined"
         case .deviceAnnounce:
-            return "Device announced"
+            return "Announcement"
         case .deviceLeave:
-            return "Device left"
+            return "Left"
         case .interview:
-            return interviewTitle
+            return "Interview"
         case .general:
-            return generalTitle
+            return generalBodyHeader
         }
     }
 
-    private var stateChangeTitle: String {
+    private var stateChangeBodyHeader: String {
         let metadata: Set<String> = ["linkquality", "last_seen"]
         let meaningful = (context?.stateChanges ?? []).filter { !metadata.contains($0.property) }
+        // Single-property changes use the property label as the header
+        // ("Humidity", "Brightness") so the section reads naturally with
+        // the diff row underneath. Multi-property changes fall back to
+        // a generic noun.
         if meaningful.count == 1, let only = meaningful.first {
-            return "\(only.displayLabel) changed"
+            return only.displayLabel
         }
-        if meaningful.isEmpty { return "State change" }
-        return "Multiple changes"
+        if meaningful.isEmpty { return "State" }
+        return "Changes"
     }
 
-    private var interviewTitle: String {
-        let lower = message.lowercased()
-        if lower.contains("successful") { return "Interview successful" }
-        if lower.contains("failed") { return "Interview failed" }
-        if lower.contains("started") { return "Interview started" }
-        return "Interview"
-    }
-
-    private var generalTitle: String {
+    private var generalBodyHeader: String {
         switch level {
         case .error: return "Error"
         case .warning: return "Warning"
-        case .info: return "Info"
+        case .info: return "Message"
         case .debug: return "Debug"
         }
     }
