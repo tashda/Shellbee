@@ -39,6 +39,16 @@ struct BridgeSettingsView: View {
         }
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
+        // Match SettingsView — Logs is reachable from per-bridge settings via
+        // the Tools section and the device/group hero card inside log detail
+        // pushes a DeviceRoute / GroupRoute that needs a handler on the
+        // enclosing stack.
+        .navigationDestination(for: DeviceRoute.self) { route in
+            DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+        }
+        .navigationDestination(for: GroupRoute.self) { route in
+            GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+        }
         .sheet(item: editorBinding) { vm in
             NavigationStack {
                 ConnectionEditorView(viewModel: vm, mode: .save)
