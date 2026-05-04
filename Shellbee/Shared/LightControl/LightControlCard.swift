@@ -191,7 +191,11 @@ struct LightControlCard: View {
 
     @ViewBuilder
     private var snapshotHeroValue: some View {
-        if context.isOn, context.brightness != nil {
+        // Snapshot is a frozen view of the payload at log time — never invent
+        // a brightness value. State-change diffs (and ON/OFF-only publishes)
+        // omit brightness when it didn't change, so brightnessValue is nil;
+        // showing brightnessPercent there would fabricate a default (100%).
+        if context.isOn, context.brightness != nil, context.brightnessValue != nil {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Text("\(context.brightnessPercent)")
                     .font(DesignTokens.Typography.heroValue)
