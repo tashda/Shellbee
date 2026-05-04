@@ -3,6 +3,7 @@
 // which is ignored by git and should be used for device builds and App Store archives.
 
 APP_DEVELOPMENT_TEAM = 
+APP_IPHONEOS_CODE_SIGN_IDENTITY = 
 APP_BUNDLE_ID = dev.echodb.shellbee
 APP_WIDGET_BUNDLE_SUFFIX = shellbeeWidgets
 APP_WIDGET_BUNDLE_ID = $(APP_BUNDLE_ID).$(APP_WIDGET_BUNDLE_SUFFIX)
