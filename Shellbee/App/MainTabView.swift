@@ -117,11 +117,19 @@ private struct LogSheetHost: View {
                     }
             }
         } else {
-            LogsView(
-                initialEntryFilter: Set(request.entryIDs),
-                notificationSheetStyle: true,
-                onDone: { dismiss() }
-            )
+            NavigationStack {
+                LogsView(
+                    initialEntryFilter: Set(request.entryIDs),
+                    notificationSheetStyle: true,
+                    onDone: { dismiss() }
+                )
+                .navigationDestination(for: DeviceRoute.self) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+                .navigationDestination(for: GroupRoute.self) { route in
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                }
+            }
         }
     }
 }

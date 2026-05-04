@@ -212,7 +212,8 @@ struct LogDetailView: View {
                     bridgeID: bridgeID,
                     bridgeName: environment.registry.session(for: bridgeID)?.displayName,
                     lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-                    displayMode: .compact
+                    displayMode: .compact,
+                    showsChevron: !isOrigin
                 )
                 if !isOrigin {
                     NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
