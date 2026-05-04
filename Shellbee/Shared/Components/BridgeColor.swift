@@ -132,7 +132,12 @@ struct BridgeRowLeadingBar: View {
         // Read colorRevision so SwiftUI tracks it as a dependency.
         let _ = colorRevision
 
-        Color(.secondarySystemGroupedBackground)
+        // Color.clear so the row inherits the list's underlying backdrop —
+        // `.secondarySystemGroupedBackground` is the inset-grouped card
+        // tint and renders as a visible "card" against a `.plain` list in
+        // dark mode (lighter grey on darker grey). The leading bar still
+        // paints on top of the clear background as a discrete accent.
+        Color.clear
             .overlay(alignment: .leading) {
                 if isVisible, let bridgeID {
                     Rectangle()
