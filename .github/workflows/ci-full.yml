@@ -138,9 +138,7 @@ jobs:
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
-            -skip-testing:"ShellbeeTests/ConnectionHistoryTests/testHistoryLoadsTokenFromKeychain" \
-            -skip-testing:"ShellbeeTests/ConnectionHistoryTests/testHistoryMigratesLegacyEntriesToKeychain" \
-            -skip-testing:"ShellbeeTests/ConnectionHistoryTests/testRemoveAtOffsetsRemovesPersistedToken" \
+            -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \

@@ -34,9 +34,7 @@ as the fix.
 | `Z2MIntegrationTests` (entire class) | Requires the docker z2m bridge on `localhost:8080`, which Fast CI does not start. Runs in Full CI instead. |
 | `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
 | `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
-| `ConnectionHistoryTests/testHistoryLoadsTokenFromKeychain()` | Same Keychain limitation — round-trips a token through `SecItem*` from a single test process. |
-| `ConnectionHistoryTests/testHistoryMigratesLegacyEntriesToKeychain()` | Same Keychain limitation. |
-| `ConnectionHistoryTests/testRemoveAtOffsetsRemovesPersistedToken()` | Same Keychain limitation. |
+| `ConnectionHistoryTests` (entire class) | Every test calls `h.add(...)` → `save()` → `persistToken(for:)` which hits the Keychain. Without a provisioning profile, the GitHub runner crashes (malloc free corruption) inside `SecItem*` rather than returning a no-op error. Skip the whole class until the Keychain layer is abstracted (same root cause as the two `ConnectionConfigTests` skips). |
 | `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
 
 ### Recently un-skipped

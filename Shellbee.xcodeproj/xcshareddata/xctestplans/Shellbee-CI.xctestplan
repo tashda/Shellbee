@@ -24,9 +24,7 @@
       "skippedTests" : [
         "ConnectionConfigTests\/testSaveAndLoad()",
         "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
-        "ConnectionHistoryTests\/testHistoryLoadsTokenFromKeychain()",
-        "ConnectionHistoryTests\/testHistoryMigratesLegacyEntriesToKeychain()",
-        "ConnectionHistoryTests\/testRemoveAtOffsetsRemovesPersistedToken()",
+        "ConnectionHistoryTests",
         "Z2MIntegrationTests"
       ],
       "target" : {
