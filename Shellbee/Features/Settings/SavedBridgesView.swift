@@ -52,6 +52,7 @@ struct SavedBridgesView: View {
                 Task {
                     await environment.disconnect(bridgeID: config.id)
                     environment.history.remove(config)
+                    environment.notificationPreferences.forgetBridge(config.id)
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -163,6 +164,12 @@ private struct BridgeRow: View {
                             .foregroundStyle(.yellow)
                             .accessibilityLabel("Default bridge")
                     }
+                    if isMuted {
+                        Image(systemName: "bell.slash.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Notifications muted")
+                    }
                     if isFocused && hasMultipleConnected {
                         Text("Focused")
                             .font(.caption2.weight(.semibold))
@@ -197,6 +204,14 @@ private struct BridgeRow: View {
             }
             .tint(.blue)
         }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button {
+                environment.notificationPreferences.setMuted(!isMuted, bridgeID: config.id)
+            } label: {
+                Label(isMuted ? "Unmute" : "Mute", systemImage: isMuted ? "bell" : "bell.slash")
+            }
+            .tint(isMuted ? .blue : .gray)
+        }
     }
 
     @ViewBuilder
@@ -210,6 +225,11 @@ private struct BridgeRow: View {
             environment.history.setAutoConnect(config, !isAutoConnect)
         } label: {
             Label(isAutoConnect ? "Disable Auto-Connect" : "Enable Auto-Connect", systemImage: isAutoConnect ? "bolt.slash" : "bolt")
+        }
+        Button {
+            environment.notificationPreferences.setMuted(!isMuted, bridgeID: config.id)
+        } label: {
+            Label(isMuted ? "Unmute Notifications" : "Mute Notifications", systemImage: isMuted ? "bell" : "bell.slash")
         }
         if isConnected && !isFocused {
             Button {
@@ -268,6 +288,7 @@ private struct BridgeRow: View {
     private var isFocused: Bool { environment.registry.primaryBridgeID == config.id }
     private var isDefault: Bool { environment.history.defaultBridgeID == config.id }
     private var isAutoConnect: Bool { environment.history.isAutoConnect(config) }
+    private var isMuted: Bool { environment.notificationPreferences.isMuted(bridgeID: config.id) }
     private var hasMultipleConnected: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
     }

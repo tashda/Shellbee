@@ -32,6 +32,10 @@ struct InAppNotificationOverlay: View {
         /// Phase 1 multi-bridge: source bridge for this notification. Used by
         /// goToDevice/goToLog to route navigation to the originating bridge.
         let bridgeID: UUID?
+        /// Display name of the source bridge. Surfaced as a header badge on
+        /// the banner when ≥ 2 bridges are connected so the user can tell
+        /// which bridge a notification came from.
+        let bridgeName: String?
 
         var id: String { "\(notification.id.uuidString)-\(occurrence.id.uuidString)" }
 
@@ -51,7 +55,8 @@ struct InAppNotificationOverlay: View {
                     NotificationPage(
                         notification: bound.notification,
                         occurrence: $0,
-                        bridgeID: bound.bridgeID
+                        bridgeID: bound.bridgeID,
+                        bridgeName: bound.bridgeName
                     )
                 }
             }
@@ -60,11 +65,23 @@ struct InAppNotificationOverlay: View {
         let stack = bridgeID
             .flatMap { environment.registry.session(for: $0)?.store.pendingNotifications }
             ?? []
+        let bridgeName = bridgeID.flatMap { environment.registry.session(for: $0)?.displayName }
         return stack.flatMap { notification in
             notification.occurrences.map {
-                NotificationPage(notification: notification, occurrence: $0, bridgeID: bridgeID)
+                NotificationPage(
+                    notification: notification,
+                    occurrence: $0,
+                    bridgeID: bridgeID,
+                    bridgeName: bridgeName
+                )
             }
         }
+    }
+
+    /// Show the bridge badge only when more than one bridge is connected.
+    /// Single-bridge users would just see noise.
+    private var shouldShowBridgeBadge: Bool {
+        environment.registry.sessions.values.filter(\.isConnected).count >= 2
     }
 
     private var displayedPage: NotificationPage? {
@@ -84,6 +101,7 @@ struct InAppNotificationOverlay: View {
                     isExpanded: $isExpanded,
                     stackCount: pages.count,
                     stackPositionLabel: positionLabel,
+                    bridgeBadge: shouldShowBridgeBadge ? page.bridgeName : nil,
                     onDismiss: dismissStack,
                     onGoToLog: { goToLog(for: page) },
                     onGoToDevice: { goToDevice(for: page) },
