@@ -8,13 +8,19 @@ struct LogDetailView: View {
     /// the entry resolve against the right store.
     let bridgeID: UUID
     let entry: LogEntry
+    /// IEEE address of the device whose log feed pushed this view, if any.
+    /// When set, the device hero card for that same device renders without a
+    /// NavigationLink — tapping it would push back to the device the user
+    /// just came from, which is a dead-end interaction.
+    private let originDeviceIEEE: String?
     private let doneAction: (() -> Void)?
 
     enum ViewMode { case beautiful, json }
 
-    init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
+    init(bridgeID: UUID, entry: LogEntry, originDeviceIEEE: String? = nil, doneAction: (() -> Void)? = nil) {
         self.bridgeID = bridgeID
         self.entry = entry
+        self.originDeviceIEEE = originDeviceIEEE
         self.doneAction = doneAction
     }
 
@@ -164,6 +170,7 @@ struct LogDetailView: View {
 
     @ViewBuilder
     private func singleDeviceSection(_ device: Device) -> some View {
+        let isOrigin = device.ieeeAddress == originDeviceIEEE
         Section {
             ZStack {
                 DeviceCard(
@@ -176,8 +183,10 @@ struct LogDetailView: View {
                     lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                     displayMode: .compact
                 )
-                NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
-                    .opacity(0)
+                if !isOrigin {
+                    NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
+                        .opacity(0)
+                }
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
