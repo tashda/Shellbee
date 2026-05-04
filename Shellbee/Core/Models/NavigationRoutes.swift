@@ -27,3 +27,11 @@ struct LogRoute: Hashable {
     let bridgeID: UUID
     let entry: LogEntry
 }
+
+/// Request to deep-link into `LogsView`. Carries the optional id of the
+/// specific entry to focus; when nil, opens the unfiltered log list.
+/// Identifiable so it drives `.navigationDestination(item:)`.
+struct LogDeepLinkRequest: Hashable, Identifiable {
+    let entryID: UUID?
+    var id: UUID { entryID ?? UUID() }
+}
