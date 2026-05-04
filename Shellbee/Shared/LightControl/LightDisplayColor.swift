@@ -34,14 +34,51 @@ enum LightDisplayColor {
         return .accentColor
     }
 
+    /// Convert mireds to a representative RGB color using Tanner Helland's
+    /// CCT-to-RGB approximation. The previous implementation kept red pinned
+    /// at 1.0 and ramped blue/green linearly — every white above ~5000K
+    /// landed as the same peach-pink tint, and warm vs cool whites were
+    /// nearly indistinguishable. This produces visually correct shifts:
+    /// 2000K → amber, 2700K → tungsten, 4000K → neutral, 5500K → daylight,
+    /// 6500K+ → cool blue-white. Clamped to 1000–10000K to keep the
+    /// rendering usable for both extreme bulb reports and home-class
+    /// lighting.
     static func temperatureColor(mireds: Double) -> Color {
-        let kelvin = max(1000, min(6500, 1_000_000 / max(mireds, 1)))
-        let normalized = (kelvin - 1000) / 5500
-        return Color(
-            red: 1.0,
-            green: 0.56 + (0.32 * normalized),
-            blue: 0.24 + (0.76 * normalized)
-        )
+        let kelvin = max(1000, min(10_000, 1_000_000 / max(mireds, 1)))
+        let temp = kelvin / 100
+
+        let red: Double
+        if temp <= 66 {
+            red = 255
+        } else {
+            let v = 329.698727446 * pow(temp - 60, -0.1332047592)
+            red = clamp(v)
+        }
+
+        let green: Double
+        if temp <= 66 {
+            let v = 99.4708025861 * log(max(temp, 1)) - 161.1195681661
+            green = clamp(v)
+        } else {
+            let v = 288.1221695283 * pow(temp - 60, -0.0755148492)
+            green = clamp(v)
+        }
+
+        let blue: Double
+        if temp >= 66 {
+            blue = 255
+        } else if temp <= 19 {
+            blue = 0
+        } else {
+            let v = 138.5177312231 * log(temp - 10) - 305.0447927307
+            blue = clamp(v)
+        }
+
+        return Color(red: red / 255, green: green / 255, blue: blue / 255)
+    }
+
+    private static func clamp(_ value: Double) -> Double {
+        max(0, min(255, value))
     }
 
     private static func xyColor(x: Double, y: Double) -> Color {
