@@ -31,6 +31,12 @@ struct SettingsView: View {
         singleBridgeID.flatMap { environment.scope(for: $0) }
     }
 
+    private var canDisconnectSingleBridge: Bool {
+        guard let scope = singleBridgeScope else { return false }
+        return scope.connectionState.isConnected
+            || (scope.session?.controller.hasBeenConnected ?? false)
+    }
+
     private var singleBridgeConfig: ConnectionConfig? {
         if let id = singleBridgeID {
             return environment.history.connections.first(where: { $0.id == id })
@@ -51,10 +57,21 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { presentNewBridgeEditor() } label: {
-                        Image(systemName: "plus")
+                    Menu {
+                        Button { presentNewBridgeEditor() } label: {
+                            Label("Add Bridge", systemImage: "plus")
+                        }
+                        if !isMultiBridge, canDisconnectSingleBridge {
+                            Button(role: .destructive) {
+                                showingDisconnectConfirmation = true
+                            } label: {
+                                Label("Disconnect", systemImage: "xmark.circle")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
                     }
-                    .accessibilityLabel("Add Bridge")
+                    .accessibilityLabel("More")
                 }
             }
             .sheet(item: editorBinding) { vm in
@@ -185,12 +202,6 @@ struct SettingsView: View {
 
         if developerModeEnabled {
             developerSection
-        }
-
-        let connected = singleBridgeScope?.connectionState.isConnected ?? false
-        let everConnected = singleBridgeScope?.session?.controller.hasBeenConnected ?? false
-        if connected || everConnected, let id = singleBridgeID {
-            dangerSection(bridgeID: id)
         }
     }
 
@@ -358,17 +369,6 @@ struct SettingsView: View {
             }
         } header: {
             Text("Developer")
-        }
-    }
-
-    private func dangerSection(bridgeID: UUID) -> some View {
-        // bridgeID is the resolved single-bridge id; the Disconnect alert
-        // (handled at view-level) targets it via `singleBridgeID`.
-        _ = bridgeID
-        return Section {
-            Button("Disconnect", role: .destructive) {
-                showingDisconnectConfirmation = true
-            }
         }
     }
 
