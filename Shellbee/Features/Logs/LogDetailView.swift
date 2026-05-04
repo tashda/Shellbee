@@ -161,7 +161,16 @@ struct LogDetailView: View {
             }
         }
         Section {
-            ZStack {
+            // Closure-based NavigationLink rather than the value-based +
+            // overlay pattern. Mixing closure and value pushes inside the
+            // same NavigationStack confuses SwiftUI's path management:
+            // tapping the value overlay can trigger an ancestor re-render
+            // that re-fires the row's closure-based push, so the user sees
+            // log detail re-open instead of group detail. Pushing
+            // GroupDetailView directly avoids the path entirely.
+            NavigationLink {
+                GroupDetailView(bridgeID: bridgeID, group: group)
+            } label: {
                 GroupCard(
                     group: group,
                     memberDevices: members,
@@ -170,9 +179,8 @@ struct LogDetailView: View {
                     bridgeName: environment.registry.session(for: bridgeID)?.displayName,
                     displayMode: .compact
                 )
-                NavigationLink(value: GroupRoute(bridgeID: bridgeID, group: group)) { EmptyView() }
-                    .opacity(0)
             }
+            .buttonStyle(.plain)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
@@ -202,26 +210,35 @@ struct LogDetailView: View {
     @ViewBuilder
     private func singleDeviceSection(_ device: Device) -> some View {
         let isOrigin = device.ieeeAddress == originDeviceIEEE
+        let card = DeviceCard(
+            device: device,
+            state: scope.store.state(for: device.friendlyName),
+            isAvailable: scope.store.isAvailable(device.friendlyName),
+            otaStatus: scope.store.otaStatus(for: device.friendlyName),
+            bridgeID: bridgeID,
+            bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+            lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+            displayMode: .compact,
+            showsChevron: !isOrigin
+        )
         Section {
-            ZStack {
-                DeviceCard(
-                    device: device,
-                    state: scope.store.state(for: device.friendlyName),
-                    isAvailable: scope.store.isAvailable(device.friendlyName),
-                    otaStatus: scope.store.otaStatus(for: device.friendlyName),
-                    bridgeID: bridgeID,
-                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
-                    lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-                    displayMode: .compact,
-                    showsChevron: !isOrigin
-                )
-                if !isOrigin {
-                    NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
-                        .opacity(0)
+            if !isOrigin {
+                // See singleGroupSection for why we use a closure-based
+                // NavigationLink rather than the value-based + overlay
+                // pattern — same nested-stack mixing bug.
+                NavigationLink {
+                    DeviceDetailView(bridgeID: bridgeID, device: device)
+                } label: {
+                    card
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            } else {
+                card
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
             }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
         }
         if let state = exposesScopedState(for: device) {
             Section {

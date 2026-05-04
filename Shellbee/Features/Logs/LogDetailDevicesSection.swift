@@ -13,7 +13,12 @@ struct LogDetailDevicesSection: View {
     var body: some View {
         Section("Devices") {
             ForEach(devices, id: \.device.ieeeAddress) { ref, device in
-                ZStack {
+                // Closure-based NavigationLink — see singleDeviceSection in
+                // LogDetailView for why we don't mix value-based pushes
+                // with the closure-based log row push that got us here.
+                NavigationLink {
+                    DeviceDetailView(bridgeID: bridgeID, device: device)
+                } label: {
                     HStack(spacing: DesignTokens.Spacing.md) {
                         DeviceImageView(
                             device: device,
@@ -30,12 +35,7 @@ struct LogDetailDevicesSection: View {
                             }
                         }
                         Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
                     }
-                    NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
-                        .opacity(0)
                 }
             }
         }
