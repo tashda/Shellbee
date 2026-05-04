@@ -260,7 +260,31 @@ struct LogDetailView: View {
             BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
         }
         if changes.isEmpty && payload.isEmpty {
-            messageSection
+            if let structure = LogMessageParser.structure(for: entry.message) {
+                structuredMessageSections(structure)
+            } else {
+                messageSection
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func structuredMessageSections(_ structure: LogMessageStructure) -> some View {
+        Section(sectionTitle) {
+            Text(structure.summary)
+                .font(.callout)
+                .textSelection(.enabled)
+                .padding(.vertical, DesignTokens.Spacing.xs)
+            ForEach(structure.fields) { field in
+                CopyableRow(label: field.label, value: field.value)
+            }
+        }
+        ForEach(structure.groups) { group in
+            Section(group.title) {
+                ForEach(group.fields) { field in
+                    CopyableRow(label: field.label, value: field.value)
+                }
+            }
         }
     }
 

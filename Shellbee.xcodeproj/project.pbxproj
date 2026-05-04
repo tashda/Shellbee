@@ -90,6 +90,7 @@
 				Core/CrashReporting/SentryService.swift,
 				Core/Log/LogContext.swift,
 				Core/Log/LogMapperEngine.swift,
+				Core/Log/LogMessageStructure.swift,
 				Core/Log/Z2MLogPatterns.swift,
 				Core/Models/AppearanceMode.swift,
 				Core/Models/BridgeBound.swift,
