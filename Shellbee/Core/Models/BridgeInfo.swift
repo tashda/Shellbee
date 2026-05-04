@@ -109,23 +109,48 @@ struct BridgeConfig: Codable, Sendable, Equatable {
     let groups: [String: [String: JSONValue]]?
     let devices: [String: DeviceConfig]?
 
-    func availabilityTrackingEnabled(for device: Device) -> Bool {
-        guard let devices else { return true }
-        let config = devices[device.ieeeAddress]
+    /// Resolve the `bridge/info.config.devices` entry for a device, accepting
+    /// any of the casings/keys Z2M might use as the map key (ieee, friendly).
+    func deviceConfig(for device: Device) -> DeviceConfig? {
+        guard let devices else { return nil }
+        return devices[device.ieeeAddress]
             ?? devices[device.ieeeAddress.lowercased()]
             ?? devices[device.ieeeAddress.uppercased()]
             ?? devices[device.friendlyName]
             ?? devices.values.first { $0.friendlyName == device.friendlyName }
-        return config?.availability?.boolValue != false
+    }
+
+    func availabilityTrackingEnabled(for device: Device) -> Bool {
+        guard devices != nil else { return true }
+        return deviceConfig(for: device)?.availability?.boolValue != false
     }
 
     struct DeviceConfig: Codable, Sendable, Equatable {
         let friendlyName: String?
         let availability: JSONValue?
+        /// Full per-device options map from `bridge/info.config.devices[ieee]`.
+        /// On a real Z2M bridge this is the only source of truth for option
+        /// values like `qos`, `throttle`, `hue_native_control`, etc. — they are
+        /// NOT present on the per-device entries in `bridge/devices`.
+        let raw: [String: JSONValue]
 
-        enum CodingKeys: String, CodingKey {
-            case friendlyName = "friendly_name"
-            case availability
+        init(friendlyName: String?, availability: JSONValue?, raw: [String: JSONValue] = [:]) {
+            self.friendlyName = friendlyName
+            self.availability = availability
+            self.raw = raw
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            let map = (try? container.decode([String: JSONValue].self)) ?? [:]
+            raw = map
+            friendlyName = map["friendly_name"]?.stringValue
+            availability = map["availability"]
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            try container.encode(raw)
         }
     }
 

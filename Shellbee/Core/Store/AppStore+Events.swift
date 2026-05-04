@@ -162,10 +162,20 @@ extension AppStore {
             }
         case .deviceState(let name, let state):
             let previous = deviceStates[name] ?? [:]
-            if !previous.isEmpty {
+            // Devices: skip the empty → value transition because retained MQTT
+            // state floods every device on connect — logging those would
+            // bury real changes. Subsequent diffs are real user-visible
+            // changes and do log.
+            //
+            // Groups: skip the suppression. Z2M only publishes group state on
+            // an actual change, so the very first arrival is the user's
+            // first toggle and should appear in the Group Detail Logs
+            // section immediately.
+            let isGroup = groups.contains { $0.friendlyName == name }
+            if !previous.isEmpty || isGroup {
                 let changes = LogMapperEngine.diff(previous, state)
                 if !changes.isEmpty {
-                    insertLogEntry(LogMapperEngine.stateChangeEntry(device: name, changes: changes))
+                    insertLogEntry(LogMapperEngine.stateChangeEntry(device: name, changes: changes, payload: state))
                 }
             }
             deviceStates[name] = state

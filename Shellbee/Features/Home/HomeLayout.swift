@@ -55,18 +55,28 @@ final class HomeLayoutStore {
     private static let visibleKey = "homeVisibleOrder"
     private static let hiddenKey  = "homeHiddenCards"
     private static let initializedKey = "homeLayoutInitialized"
+    private static let groupsHiddenMigrationKey = "homeGroupsDefaultHiddenMigrationV1"
     private static let defaultHidden: Set<HomeCardID> = [.groups]
 
     init() {
         let defaults = UserDefaults.standard
         let isInitialized = defaults.bool(forKey: Self.initializedKey)
 
-        let savedVisible = Self.decode(defaults.string(forKey: Self.visibleKey))
+        var savedVisible = Self.decode(defaults.string(forKey: Self.visibleKey))
         var savedHidden  = Set(Self.decode(defaults.string(forKey: Self.hiddenKey)))
 
         if !isInitialized {
             savedHidden.formUnion(Self.defaultHidden)
             defaults.set(true, forKey: Self.initializedKey)
+        }
+
+        // One-time migration: 1.6.0 shipped Groups visible by default for any
+        // user whose layout was already initialized. Force it hidden once so
+        // upgraders match new-install behavior; users can reveal it via Edit.
+        if !defaults.bool(forKey: Self.groupsHiddenMigrationKey) {
+            savedVisible.removeAll { $0 == .groups }
+            savedHidden.insert(.groups)
+            defaults.set(true, forKey: Self.groupsHiddenMigrationKey)
         }
 
         var visible = savedVisible

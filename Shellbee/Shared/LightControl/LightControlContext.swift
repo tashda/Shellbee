@@ -20,6 +20,17 @@ struct LightControlContext: Equatable, Identifiable {
     let displayColor: Color
     let endpointLabel: String?
 
+    /// True when the snapshot should render the color surface rather than
+    /// the color-temperature surface. Z2M sets `color_mode` to one of
+    /// `"xy"`, `"hs"`, or `"color_temp"` deliberately to describe what the
+    /// bulb is actively rendering — trust it. (The OFF state of a Hue
+    /// group, for instance, can carry a stale `color` object alongside
+    /// `color_mode: "color_temp"`; treating that as a color render
+    /// mis-reports the surface.)
+    var isColorMode: Bool {
+        colorMode == "xy" || colorMode == "hs"
+    }
+
     var id: String { power?.property ?? brightness?.property ?? endpointLabel ?? "light" }
 
     var supportsWhiteControls: Bool { colorTemperature != nil }

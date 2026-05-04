@@ -8,13 +8,19 @@ struct LogDetailView: View {
     /// the entry resolve against the right store.
     let bridgeID: UUID
     let entry: LogEntry
+    /// IEEE address of the device whose log feed pushed this view, if any.
+    /// When set, the device hero card for that same device renders without a
+    /// NavigationLink — tapping it would push back to the device the user
+    /// just came from, which is a dead-end interaction.
+    private let originDeviceIEEE: String?
     private let doneAction: (() -> Void)?
 
     enum ViewMode { case beautiful, json }
 
-    init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
+    init(bridgeID: UUID, entry: LogEntry, originDeviceIEEE: String? = nil, doneAction: (() -> Void)? = nil) {
         self.bridgeID = bridgeID
         self.entry = entry
+        self.originDeviceIEEE = originDeviceIEEE
         self.doneAction = doneAction
     }
 
@@ -49,12 +55,22 @@ struct LogDetailView: View {
         if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
             return payload.isEmpty ? nil : payload
         }
-        if entry.category == .stateChange, let changes = entry.context?.stateChanges {
-            var state: [String: JSONValue] = [:]
-            for change in changes where !Self.stateMetadataKeys.contains(change.property) {
-                state[change.property] = change.to
+        if entry.category == .stateChange {
+            // Prefer the full state captured at log time when available — the
+            // diff alone drops every unchanged field, which collapses the
+            // Light Card to a single property even when the payload had
+            // brightness/color_temp/color present. Fall back to the diff
+            // for older entries that don't carry a payload.
+            if let payload = entry.context?.payload, !payload.isEmpty {
+                return payload
             }
-            return state.isEmpty ? nil : state
+            if let changes = entry.context?.stateChanges {
+                var state: [String: JSONValue] = [:]
+                for change in changes where !Self.stateMetadataKeys.contains(change.property) {
+                    state[change.property] = change.to
+                }
+                return state.isEmpty ? nil : state
+            }
         }
         return nil
     }
@@ -160,10 +176,32 @@ struct LogDetailView: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
+        if let (member, snapshotState) = lightLikeMemberAndState(in: members) {
+            Section {
+                ExposeCardView(device: member, state: snapshotState, mode: .snapshot)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+        }
+    }
+
+    /// For a group log entry whose payload looks like a light state
+    /// (`state` plus at least one of brightness/color_temp/color), pick a
+    /// light member device to drive the snapshot Light Card. Returns nil
+    /// when the payload isn't light-shaped or no light member exists —
+    /// callers fall through to the generic field breakdown.
+    private func lightLikeMemberAndState(in members: [Device]) -> (Device, [String: JSONValue])? {
+        guard let payload = logTimeState else { return nil }
+        let lightKeys: Set<String> = ["brightness", "color_temp", "color", "color_xy", "color_hs"]
+        let hasLightShape = payload["state"] != nil && payload.keys.contains(where: { lightKeys.contains($0) })
+        guard hasLightShape else { return nil }
+        guard let member = members.first(where: { $0.category == .light }) else { return nil }
+        return (member, payload)
     }
 
     @ViewBuilder
     private func singleDeviceSection(_ device: Device) -> some View {
+        let isOrigin = device.ieeeAddress == originDeviceIEEE
         Section {
             ZStack {
                 DeviceCard(
@@ -176,8 +214,10 @@ struct LogDetailView: View {
                     lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                     displayMode: .compact
                 )
-                NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
-                    .opacity(0)
+                if !isOrigin {
+                    NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
+                        .opacity(0)
+                }
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -198,8 +238,16 @@ struct LogDetailView: View {
     /// match exposes and we render the relevant control card with those values.
     private func exposesScopedState(for device: Device) -> [String: JSONValue]? {
         guard let state = logTimeState else { return nil }
+        // Use `flattened` (every node, parents + leaves) rather than
+        // `flattenedLeaves`. Z2M publishes nested features (notably the
+        // `color_xy` / `color_hs` parents whose `property` resolves to
+        // `"color"`) as a single object under the parent key — not as
+        // separate top-level `x` / `y` keys. Filtering by leaves alone
+        // dropped the entire color object, which is why the snapshot
+        // Light Card never rendered the color surface even when the
+        // payload carried a perfectly valid `color: {x, y}`.
         let exposeProps: Set<String> = Set(
-            (device.definition?.exposes ?? []).flattenedLeaves.compactMap {
+            (device.definition?.exposes ?? []).flattened.compactMap {
                 $0.property ?? $0.name
             }
         )
@@ -251,7 +299,31 @@ struct LogDetailView: View {
             BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
         }
         if changes.isEmpty && payload.isEmpty {
-            messageSection
+            if let structure = LogMessageParser.structure(for: entry.message) {
+                structuredMessageSections(structure)
+            } else {
+                messageSection
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func structuredMessageSections(_ structure: LogMessageStructure) -> some View {
+        Section(sectionTitle) {
+            Text(structure.summary)
+                .font(.callout)
+                .textSelection(.enabled)
+                .padding(.vertical, DesignTokens.Spacing.xs)
+            ForEach(structure.fields) { field in
+                CopyableRow(label: field.label, value: field.value)
+            }
+        }
+        ForEach(structure.groups) { group in
+            Section(group.title) {
+                ForEach(group.fields) { field in
+                    CopyableRow(label: field.label, value: field.value)
+                }
+            }
         }
     }
 

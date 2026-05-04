@@ -244,8 +244,16 @@ final class AppEnvironment {
         registry.session(for: bridgeID)?.controller.clearErrorMessage()
     }
 
-    /// Restart a specific bridge's Z2M instance.
+    /// Restart a specific bridge's Z2M instance. Optimistically clears
+    /// runtime stats (health, online flag) so home/settings surfaces don't
+    /// keep showing pre-restart uptime/message counts as if they were
+    /// current — Z2M won't republish those until reconnect, which can take
+    /// several seconds and makes the user doubt the restart actually fired.
     func restartBridge(_ bridgeID: UUID) {
+        if let store = registry.session(for: bridgeID)?.store {
+            store.bridgeHealth = nil
+            store.bridgeOnline = false
+        }
         send(bridge: bridgeID, topic: Z2MTopics.Request.restart, payload: .string(""))
     }
 

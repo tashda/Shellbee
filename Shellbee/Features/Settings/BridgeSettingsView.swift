@@ -7,6 +7,7 @@ import SwiftUI
 /// by `bridgeID`.
 struct BridgeSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.dismiss) private var dismiss
     let bridgeID: UUID
 
     @State private var showingRestartAlert = false
@@ -55,7 +56,10 @@ struct BridgeSettingsView: View {
             Text("\(config.displayName) will be disconnected and removed from your saved bridges. Its auth token is deleted from the keychain.")
         }
         .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
-            Button("Restart", role: .destructive) { scope.restart() }
+            Button("Restart", role: .destructive) {
+                scope.restart()
+                dismiss()
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Zigbee2MQTT on \(displayName) will restart. The app will reconnect automatically.")

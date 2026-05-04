@@ -191,7 +191,11 @@ struct LightControlCard: View {
 
     @ViewBuilder
     private var snapshotHeroValue: some View {
-        if context.isOn, context.brightness != nil {
+        // Snapshot is a frozen view of the payload at log time — never invent
+        // a brightness value. State-change diffs (and ON/OFF-only publishes)
+        // omit brightness when it didn't change, so brightnessValue is nil;
+        // showing brightnessPercent there would fabricate a default (100%).
+        if context.isOn, context.brightness != nil, context.brightnessValue != nil {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 Text("\(context.brightnessPercent)")
                     .font(DesignTokens.Typography.heroValue)
@@ -230,12 +234,12 @@ struct LightControlCard: View {
     }
 
     private var hasColorOrTempInfo: Bool {
-        let isColorMode = context.colorMode == "color_xy" || context.colorMode == "color_hs"
+        let isColorMode = context.isColorMode
         return isColorMode || context.colorTemperatureValue != nil
     }
 
     @ViewBuilder private var colorSnapshotRow: some View {
-        let isColorMode = context.colorMode == "color_xy" || context.colorMode == "color_hs"
+        let isColorMode = context.isColorMode
         if !isColorMode, let tempMireds = context.colorTemperatureValue {
             snapshotInfoRow(
                 icon: "thermometer.medium",
@@ -256,10 +260,6 @@ struct LightControlCard: View {
                 }
                 .foregroundStyle(.secondary)
                 Spacer()
-                Circle()
-                    .fill(context.displayColor)
-                    .frame(width: DesignTokens.Size.cardSymbol, height: DesignTokens.Size.cardSymbol)
-                    .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
             }
         }
     }
@@ -287,11 +287,6 @@ struct LightControlCard: View {
                 Text(unit)
                     .font(DesignTokens.Typography.snapshotRowUnit)
                     .foregroundStyle(.secondary)
-                Circle()
-                    .fill(context.displayColor)
-                    .frame(width: DesignTokens.Size.summaryRowSymbol, height: DesignTokens.Size.summaryRowSymbol)
-                    .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
-                    .padding(.leading, DesignTokens.Spacing.xs)
             }
         }
     }

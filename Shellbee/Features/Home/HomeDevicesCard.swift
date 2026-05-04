@@ -30,11 +30,16 @@ struct HomeDevicesCard: View {
     private var statsRow: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
             statButton(.all, value: "\(snapshot.totalDevices)", label: "Total")
-            statButton(.online, value: "\(snapshot.onlineDevices)", label: "Online")
-            statButton(.offline, value: "\(snapshot.offlineDevices)", label: "Offline",
-                       valueColor: snapshot.offlineDevices > 0 ? .red : .primary)
-            statButton(.availabilityOff, value: "\(snapshot.availabilityOffDevices)", label: "Untracked",
-                       valueColor: snapshot.availabilityOffDevices > 0 ? .secondary : .primary)
+            if snapshot.onlineDevices > 0 {
+                statButton(.online, value: "\(snapshot.onlineDevices)", label: "Online")
+            }
+            if snapshot.offlineDevices > 0 {
+                statButton(.offline, value: "\(snapshot.offlineDevices)", label: "Offline", valueColor: .red)
+            }
+            if snapshot.availabilityOffDevices > 0 {
+                statButton(.availabilityOff, value: "\(snapshot.availabilityOffDevices)", label: "Untracked",
+                           valueColor: .secondary)
+            }
         }
     }
 

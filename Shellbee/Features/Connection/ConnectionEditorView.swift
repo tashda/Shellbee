@@ -47,31 +47,14 @@ struct ConnectionEditorView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            if mode == .save {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        if viewModel.connect(using: draft) {
-                            dismiss()
-                        }
-                    }
-                    .disabled(!canSaveInToolbar)
-                }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if mode == .connect {
+            ToolbarItem(placement: .confirmationAction) {
                 Button(actionLabel) {
                     if viewModel.connect(using: draft) {
                         dismiss()
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
                 .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .disabled(!draft.canConnect)
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.vertical, DesignTokens.Spacing.md)
+                .disabled(!isActionEnabled)
             }
         }
         .onAppear {
@@ -88,8 +71,13 @@ struct ConnectionEditorView: View {
         }
     }
 
-    private var canSaveInToolbar: Bool {
-        draft.canConnect && draft.normalizedForComparison() != initialDraft.normalizedForComparison()
+    private var isActionEnabled: Bool {
+        switch mode {
+        case .connect:
+            return draft.canConnect
+        case .save:
+            return draft.canConnect && draft.normalizedForComparison() != initialDraft.normalizedForComparison()
+        }
     }
 }
 

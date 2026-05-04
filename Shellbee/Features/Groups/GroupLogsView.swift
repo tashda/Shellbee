@@ -1,28 +1,28 @@
 import SwiftUI
 
-struct DeviceLogsView: View {
+struct GroupLogsView: View {
     @Environment(AppEnvironment.self) private var environment
     let bridgeID: UUID
-    let device: Device
+    let group: Group
     @State private var searchText = ""
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
-    private var allDeviceEntries: [LogEntry] {
-        scope.store.logEntries.filter { $0.deviceName == device.friendlyName }
+    private var allGroupEntries: [LogEntry] {
+        scope.store.logEntries.filter { $0.deviceName == group.friendlyName }
     }
 
     private var entries: [LogEntry] {
-        guard !searchText.isEmpty else { return allDeviceEntries }
+        guard !searchText.isEmpty else { return allGroupEntries }
         let q = searchText.lowercased()
-        return allDeviceEntries.filter { $0.message.lowercased().contains(q) }
+        return allGroupEntries.filter { $0.message.lowercased().contains(q) }
     }
 
     var body: some View {
         List {
             ForEach(entries) { entry in
                 NavigationLink {
-                    LogDetailView(bridgeID: bridgeID, entry: entry, originDeviceIEEE: device.ieeeAddress)
+                    LogDetailView(bridgeID: bridgeID, entry: entry)
                 } label: {
                     LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
                 }
@@ -31,11 +31,11 @@ struct DeviceLogsView: View {
         }
         .listStyle(.plain)
         .overlay {
-            if allDeviceEntries.isEmpty {
+            if allGroupEntries.isEmpty {
                 ContentUnavailableView(
                     "No Logs",
                     systemImage: "doc.text.magnifyingglass",
-                    description: Text("Log entries for \(device.friendlyName) will appear here as the bridge generates them.")
+                    description: Text("Log entries for \(group.friendlyName) will appear here as the bridge generates them.")
                 )
             } else if entries.isEmpty {
                 ContentUnavailableView.search(text: searchText)
@@ -49,7 +49,7 @@ struct DeviceLogsView: View {
 
 #Preview {
     NavigationStack {
-        DeviceLogsView(bridgeID: UUID(), device: .preview)
+        GroupLogsView(bridgeID: UUID(), group: .previewWithMembers)
             .environment(AppEnvironment())
     }
 }
