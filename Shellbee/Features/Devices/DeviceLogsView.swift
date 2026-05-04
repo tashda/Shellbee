@@ -22,7 +22,7 @@ struct DeviceLogsView: View {
         List {
             ForEach(entries) { entry in
                 NavigationLink {
-                    LogDetailView(bridgeID: bridgeID, entry: entry, originDeviceIEEE: device.ieeeAddress)
+                    LogDetailView(bridgeID: bridgeID, entry: entry)
                 } label: {
                     LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
                 }

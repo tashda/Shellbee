@@ -26,80 +26,68 @@ struct LogsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            if notificationSheetStyle {
-                ActivityLogContent(viewModel: activityVM)
-                    .navigationTitle("Logs")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .onAppear { applyInitialFilter(autoOpenSingle: false) }
-                    // Mirror the in-tab Logs stack so log detail's device /
-                    // group hero card pushes within the sheet instead of
-                    // emitting a runtime warning and silently failing.
-                    .navigationDestination(for: DeviceRoute.self) { route in
-                        DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-                    }
-                    .navigationDestination(for: GroupRoute.self) { route in
-                        GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-                    }
-                    .toolbar {
-                        if let onDone {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Done", action: onDone)
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                    }
-            } else {
-                modeContent
+        // Intentionally NOT wrapped in its own NavigationStack. LogsView is
+        // never a tab root — every entry point already provides a stack:
+        //  - Settings → Logs and BridgeSettings → Logs push LogsView onto
+        //    that tab's stack via NavigationLink.
+        //  - LogSheetHost (Home → Recent Events, notification taps) wraps
+        //    LogsView in a NavigationStack at the sheet level.
+        // A nested NavigationStack here breaks SwiftUI's value-based push
+        // routing: NavigationLink(value: DeviceRoute) from inside LogDetail
+        // could land on either stack, depending on iOS version, leaving the
+        // user dropped back to a parent screen with nothing pushed.
+        if notificationSheetStyle {
+            ActivityLogContent(viewModel: activityVM)
                 .navigationTitle("Logs")
                 .navigationBarTitleDisplayMode(.inline)
-                .searchable(text: searchBinding, prompt: searchPrompt)
-                .onAppear { applyInitialFilter(autoOpenSingle: true) }
-                .navigationDestination(item: $autoOpenedEntry) { route in
-                    LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
-                }
-                // LogDetailView's device/group hero card pushes these routes
-                // when the user taps it. Without handlers on this stack the
-                // links emit a runtime warning and don't navigate; the device
-                // and group tabs each register the same destinations on their
-                // own stacks.
-                .navigationDestination(for: DeviceRoute.self) { route in
-                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-                }
-                .navigationDestination(for: GroupRoute.self) { route in
-                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-                }
-                .minimizeSearchToolbarIfAvailable()
-                .toolbar(.hidden, for: .tabBar)
+                .onAppear { applyInitialFilter(autoOpenSingle: false) }
                 .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        Picker("Mode", selection: $mode) {
-                            ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .fixedSize()
-                    }
-                    if mode == .activity {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            LogFilterMenu(viewModel: activityVM)
-                        }
-                    } else {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            BridgeLevelFilterMenu(viewModel: bridgeVM)
+                    if let onDone {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done", action: onDone)
+                                .fontWeight(.semibold)
                         }
                     }
+                }
+        } else {
+            modeContent
+            .navigationTitle("Logs")
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: searchBinding, prompt: searchPrompt)
+            .onAppear { applyInitialFilter(autoOpenSingle: true) }
+            .navigationDestination(item: $autoOpenedEntry) { route in
+                LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
+            }
+            .minimizeSearchToolbarIfAvailable()
+            .toolbar(.hidden, for: .tabBar)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Picker("Mode", selection: $mode) {
+                        ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                }
+                if mode == .activity {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(role: .destructive) {
-                            // Phase 1 multi-bridge: always clear across every
-                            // connected session — the activity tab merges by
-                            // default, and per-bridge clearing belongs in a
-                            // future per-bridge logs picker.
-                            for session in environment.registry.orderedSessions {
-                                session.store.clearLogs()
-                            }
-                        } label: {
-                            Image(systemName: "trash")
+                        LogFilterMenu(viewModel: activityVM)
+                    }
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        BridgeLevelFilterMenu(viewModel: bridgeVM)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .destructive) {
+                        // Phase 1 multi-bridge: always clear across every
+                        // connected session — the activity tab merges by
+                        // default, and per-bridge clearing belongs in a
+                        // future per-bridge logs picker.
+                        for session in environment.registry.orderedSessions {
+                            session.store.clearLogs()
                         }
+                    } label: {
+                        Image(systemName: "trash")
                     }
                 }
             }

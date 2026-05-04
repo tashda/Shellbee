@@ -3,20 +3,40 @@ import SwiftUI
 struct AppNotificationSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
 
-    /// Phase 2 multi-bridge: notification routing is global; the displayed
-    /// log level reads from the user-selected bridge for the "current Z2M
-    /// log level" hint. When no bridge is selected, the picker shows the
-    /// stored default.
-    private var bridgeLogLevel: String? {
-        environment.selectedScope?.store.bridgeInfo?.logLevel
+    /// Connected bridges paired with their reported Z2M log level. Drives
+    /// both the per-bridge rows in the About section and the visibility of
+    /// notification categories below.
+    private var connectedBridgeLevels: [(session: BridgeSession, level: String)] {
+        environment.registry.orderedSessions
+            .filter(\.isConnected)
+            .map { ($0, $0.store.bridgeInfo?.logLevel ?? "info") }
     }
 
-    private var displayedLevel: String {
-        bridgeLogLevel ?? "info"
+    /// The most verbose log level across every connected bridge — used to
+    /// decide which notification categories to surface, so a category that
+    /// any bridge could emit stays visible/configurable.
+    private var effectiveLevel: NotificationCategory.DefaultLevel {
+        let levels = connectedBridgeLevels.compactMap {
+            NotificationCategory.DefaultLevel(z2mLogLevel: $0.level)
+        }
+        return levels.max() ?? NotificationCategory.DefaultLevel(z2mLogLevel: environment.selectedScope?.store.bridgeInfo?.logLevel ?? "") ?? .info
+    }
+
+    /// Representative bridge log level for `NotificationPreferences` reads
+    /// and writes. Mirrors `effectiveLevel` so default-baseline computation
+    /// matches the categories the user can see.
+    private var bridgeLogLevel: String? {
+        switch effectiveLevel {
+        case .error: return "error"
+        case .warning: return "warning"
+        case .info: return "info"
+        case .debug: return "debug"
+        case .optIn: return nil
+        }
     }
 
     private var visibleCategories: [NotificationCategory] {
-        let currentLevel = NotificationCategory.DefaultLevel(z2mLogLevel: displayedLevel) ?? .info
+        let currentLevel = effectiveLevel
         return NotificationCategory.allCases.filter { category in
             switch category.defaultMinimumLogLevel {
             case .optIn:
@@ -62,8 +82,20 @@ struct AppNotificationSettingsView: View {
 
     @ViewBuilder
     private var aboutSection: some View {
+        let bridges = connectedBridgeLevels
         Section {
-            LabeledContent("Bridge Log Level", value: displayedLevel.capitalized)
+            if bridges.count >= 2 {
+                ForEach(bridges, id: \.session.bridgeID) { entry in
+                    LabeledContent(entry.session.displayName, value: entry.level.capitalized)
+                }
+            } else {
+                let level = bridges.first?.level ?? "info"
+                LabeledContent("Bridge Log Level", value: level.capitalized)
+            }
+        } header: {
+            if bridges.count >= 2 {
+                Text("Bridge Log Level")
+            }
         } footer: {
             Text("Change in Settings → Logging.")
         }
