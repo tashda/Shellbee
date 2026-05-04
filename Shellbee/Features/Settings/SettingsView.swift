@@ -55,6 +55,19 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            // Settings → Logs pushes LogsView (which has its own
+            // NavigationStack). Inside LogsView's log-detail screen, the
+            // device/group hero card uses NavigationLink(value:) to push a
+            // DeviceRoute / GroupRoute. With nested NavigationStacks SwiftUI
+            // can route the push to whichever stack first matches a
+            // destination — register handlers on the outer Settings stack as
+            // a safety net so the tap always lands on the right screen.
+            .navigationDestination(for: DeviceRoute.self) { route in
+                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+            }
+            .navigationDestination(for: GroupRoute.self) { route in
+                GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
