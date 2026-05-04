@@ -177,6 +177,7 @@
 				Features/Groups/GroupListRow.swift,
 				Features/Groups/GroupListView.swift,
 				Features/Groups/GroupListViewModel.swift,
+				Features/Groups/GroupLogsView.swift,
 				Features/Groups/GroupMemberRow.swift,
 				Features/Groups/GroupMembersSection.swift,
 				Features/Groups/GroupRowView.swift,

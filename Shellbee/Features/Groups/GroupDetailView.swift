@@ -35,6 +35,36 @@ struct GroupDetailView: View {
         viewModel.synthesizedState(for: currentGroup, environment: environment, bridgeID: bridgeID)
     }
 
+    private static let recentLogLimit = 5
+
+    @ViewBuilder
+    private var logsSection: some View {
+        let groupEntries = scope.store.logEntries.filter { $0.deviceName == currentGroup.friendlyName }
+        let recent = Array(groupEntries.prefix(Self.recentLogLimit))
+
+        Section("Logs") {
+            if groupEntries.isEmpty {
+                Text("No logs for this group yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(recent) { entry in
+                    NavigationLink {
+                        LogDetailView(bridgeID: bridgeID, entry: entry)
+                    } label: {
+                        LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
+                    }
+                    .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+                }
+                NavigationLink {
+                    GroupLogsView(bridgeID: bridgeID, group: currentGroup)
+                } label: {
+                    Label("See All Logs", systemImage: "list.bullet")
+                }
+            }
+        }
+    }
+
     private var groupLightContext: LightControlContext? {
         for member in currentGroup.members {
             guard let device = scope.store.devices.first(where: { $0.ieeeAddress == member.ieeeAddress }) else { continue }
@@ -77,6 +107,8 @@ struct GroupDetailView: View {
             )
 
             GroupScenesSection(bridgeID: bridgeID, group: currentGroup, viewModel: viewModel)
+
+            logsSection
         }
         .contentMargins(.top, 0, for: .scrollContent)
         .toolbarBackground(.automatic, for: .navigationBar)
