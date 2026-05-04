@@ -32,6 +32,15 @@ struct LogsView: View {
                     .navigationTitle("Logs")
                     .navigationBarTitleDisplayMode(.inline)
                     .onAppear { applyInitialFilter(autoOpenSingle: false) }
+                    // Mirror the in-tab Logs stack so log detail's device /
+                    // group hero card pushes within the sheet instead of
+                    // emitting a runtime warning and silently failing.
+                    .navigationDestination(for: DeviceRoute.self) { route in
+                        DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                    }
+                    .navigationDestination(for: GroupRoute.self) { route in
+                        GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                    }
                     .toolbar {
                         if let onDone {
                             ToolbarItem(placement: .confirmationAction) {

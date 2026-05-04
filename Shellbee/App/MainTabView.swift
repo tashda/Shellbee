@@ -109,6 +109,12 @@ private struct LogSheetHost: View {
         if let (bridgeID, entry) = singleResolved {
             NavigationStack {
                 LogDetailView(bridgeID: bridgeID, entry: entry, doneAction: { dismiss() })
+                    .navigationDestination(for: DeviceRoute.self) { route in
+                        DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                    }
+                    .navigationDestination(for: GroupRoute.self) { route in
+                        GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                    }
             }
         } else {
             LogsView(
