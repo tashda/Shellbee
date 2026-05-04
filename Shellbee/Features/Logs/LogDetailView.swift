@@ -88,6 +88,8 @@ struct LogDetailView: View {
 
     var body: some View {
         List {
+            timestampHeader
+
             if let group = resolvedGroup {
                 singleGroupSection(group)
             } else if displayDevices.count == 1, let (_, device) = displayDevices.first {
@@ -103,21 +105,9 @@ struct LogDetailView: View {
             }
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
-        .navigationTitle(headerTitle)
+        .navigationTitle(entry.specificTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                VStack(spacing: 0) {
-                    Text(headerTitle)
-                        .font(.headline)
-                    Text(timestampSubtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(headerTitle), \(timestampSubtitle)")
-            }
             if let doneAction {
                 if entry.category != .stateChange {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -259,6 +249,22 @@ struct LogDetailView: View {
         return scoped.isEmpty ? nil : scoped
     }
 
+    /// Apple-style "muted timestamp at the top of the screen" treatment —
+    /// same shape Mail uses for "On Tuesday, Apr 28 …" above an email body.
+    /// Replaces the old principal-toolbar VStack that read as an alert
+    /// banner instead of a header.
+    @ViewBuilder
+    private var timestampHeader: some View {
+        Text(timestampSubtitle)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: DesignTokens.Spacing.xs, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .accessibilityLabel("\(entry.specificTitle), \(timestampSubtitle)")
+    }
+
     private var timestampSubtitle: String {
         let cal = Calendar.current
         let day: String
@@ -280,10 +286,6 @@ struct LogDetailView: View {
                 .textSelection(.enabled)
                 .padding(.vertical, DesignTokens.Spacing.xs)
         }
-    }
-
-    private var headerTitle: String {
-        entry.category == .general ? entry.level.label : entry.category.label
     }
 
     @ViewBuilder

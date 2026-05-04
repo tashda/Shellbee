@@ -5,10 +5,9 @@ struct LogRowView: View {
     let entry: LogEntry
     /// Phase 1 multi-bridge: explicit store for resolving the leading
     /// device/group avatar. Callers that know the entry's source bridge
-    /// pass that bridge's store directly. Nil falls back to the
-    /// notification-overlay-style heuristic of searching every connected
-    /// bridge by name (used by previews and any rare site that lacks a
-    /// scope to hand in).
+    /// pass that bridge's store directly. Nil falls back to scanning every
+    /// connected bridge by name (used by previews and any rare site that
+    /// lacks a scope to hand in).
     var store: AppStore? = nil
     /// Source bridge id. When non-nil and the user's Bridge Indicator
     /// setting is enabled, the row paints a thin colored bar on its
@@ -16,34 +15,31 @@ struct LogRowView: View {
     var bridgeID: UUID? = nil
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
             leadingVisual
 
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
-                    Text(entry.summaryTitle)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(titleColor)
-                        .lineLimit(1)
-                    Spacer(minLength: DesignTokens.Spacing.sm)
-                    absoluteTimestamp
-                }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(entry.summaryTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(titleColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    Text(entry.summarySubtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer(minLength: DesignTokens.Spacing.xs)
-                    relativeTimestamp
-                }
+                Text(entry.summarySubtitle)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
+
+            Spacer(minLength: DesignTokens.Spacing.sm)
+
+            Text(entry.timestamp, style: .relative)
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.tertiary)
+                .layoutPriority(1)
         }
-        .padding(.vertical, DesignTokens.Spacing.summaryRowVerticalPadding)
-        // NOTE: the leading-bar `.listRowBackground` is applied at the call
-        // site (the row's outermost view in the List), not here — most
-        // callers wrap LogRowView in a ZStack with a hidden NavigationLink,
-        // and `.listRowBackground` only takes effect at the row's top level.
+        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
     // MARK: - Title tint
@@ -58,13 +54,43 @@ struct LogRowView: View {
 
     // MARK: - Leading visual
 
-    private enum Subject {
-        case device(Device)
-        case group(Group, members: [Device])
-        case none
+    private static let avatarSize: CGFloat = 38
+
+    @ViewBuilder
+    private var leadingVisual: some View {
+        let visual = LogRowIconography.visual(for: entry, store: resolvedStore)
+        switch visual {
+        case .deviceThumbnail(let device):
+            DeviceImageView(device: device, isAvailable: true, size: Self.avatarSize)
+                .frame(width: Self.avatarSize, height: Self.avatarSize)
+        case .groupThumbnail(_, let members):
+            GroupIconView(memberDevices: Array(members.prefix(2)), size: Self.avatarSize)
+                .frame(width: Self.avatarSize, height: Self.avatarSize)
+        case .symbol(let name, let tint):
+            symbolAvatar(name: name, tint: tint)
+        }
     }
 
-    private var subject: Subject {
+    /// Tinted circular badge — mirrors the leading-icon treatment Apple
+    /// uses in Reminders / Settings rows. Distinct from the device thumbnail
+    /// path so non-device events don't masquerade as devices, and distinct
+    /// from the old single-blue-circle treatment because the tint changes
+    /// per category.
+    private func symbolAvatar(name: String, tint: Color) -> some View {
+        Circle()
+            .fill(tint.opacity(0.18))
+            .frame(width: Self.avatarSize, height: Self.avatarSize)
+            .overlay {
+                Image(systemName: name)
+                    .font(.system(size: Self.avatarSize * 0.46, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+    }
+
+    private var resolvedStore: AppStore? {
+        if let store { return store }
+        // Fallback: pick any connected bridge that knows the device by name.
+        // Single-bridge installs always satisfy this.
         let candidate: String?
         if let ctx = entry.context, !ctx.devices.isEmpty {
             candidate = ctx.devices.first?.friendlyName
@@ -75,104 +101,13 @@ struct LogRowView: View {
         } else {
             candidate = nil
         }
-        guard let name = candidate else { return .none }
-
-        // When a scoped store is provided, resolve from it — this is the
-        // multi-bridge correct path (entries from bridge B render against B's
-        // device/group registry). Without a scope, fall back to scanning every
-        // connected bridge for the name; first match wins.
-        if let store {
-            if let device = store.device(named: name) { return .device(device) }
-            if let group = store.group(named: name) {
-                return .group(group, members: store.memberDevices(of: group))
-            }
-            return .none
-        }
-
+        guard let name = candidate else { return nil }
         for session in environment.registry.orderedSessions {
-            if let device = session.store.device(named: name) { return .device(device) }
-            if let group = session.store.group(named: name) {
-                return .group(group, members: session.store.memberDevices(of: group))
+            if session.store.device(named: name) != nil || session.store.group(named: name) != nil {
+                return session.store
             }
         }
-        return .none
-    }
-
-    private var leadingVisual: some View {
-        let size = DesignTokens.Size.logRowDeviceImage
-        let badgeSize = size * DesignTokens.Ratio.logRowBadgeSize
-        let hasSubject: Bool
-        switch subject {
-        case .device, .group: hasSubject = true
-        case .none: hasSubject = false
-        }
-
-        return ZStack(alignment: .bottomTrailing) {
-            avatar(size: size)
-
-            if hasSubject {
-                categoryBadge(size: badgeSize)
-                    .offset(x: DesignTokens.Size.logRowBadgeOffset,
-                            y: DesignTokens.Size.logRowBadgeOffset)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func avatar(size: CGFloat) -> some View {
-        switch subject {
-        case .device(let device):
-            DeviceImageView(device: device, isAvailable: true, size: size)
-                .frame(width: size, height: size)
-        case .group(_, let members):
-            GroupIconView(memberDevices: Array(members.prefix(2)), size: size)
-                .frame(width: size, height: size)
-        case .none:
-            Circle()
-                .fill(entry.category.chipTint)
-                .frame(width: size, height: size)
-                .overlay {
-                    Image(systemName: entry.category.systemImage)
-                        .font(.system(size: size * DesignTokens.Typography.iconRatioSmall, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-        }
-    }
-
-    private func categoryBadge(size: CGFloat) -> some View {
-        let stroke = max(DesignTokens.Ratio.logRowBadgeBorderMin,
-                         size * DesignTokens.Ratio.logRowBadgeBorder)
-        let inner = size - stroke * 2
-        return Circle()
-            .fill(Color(.systemBackground))
-            .frame(width: size, height: size)
-            .overlay {
-                Circle()
-                    .fill(entry.category.chipTint)
-                    .frame(width: inner, height: inner)
-                    .overlay {
-                        Image(systemName: entry.category.systemImage)
-                            .resizable()
-                            .scaledToFit()
-                            .font(.system(size: 1, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(inner * 0.22)
-                    }
-            }
-    }
-
-    // MARK: - Timestamps
-
-    private var absoluteTimestamp: some View {
-        Text(entry.timestamp, format: .dateTime.hour().minute().second())
-            .font(.caption2.monospacedDigit())
-            .foregroundStyle(.secondary)
-    }
-
-    private var relativeTimestamp: some View {
-        Text(entry.timestamp, style: .relative)
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
+        return nil
     }
 }
 
