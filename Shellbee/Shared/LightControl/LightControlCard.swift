@@ -291,11 +291,6 @@ struct LightControlCard: View {
                 Text(unit)
                     .font(DesignTokens.Typography.snapshotRowUnit)
                     .foregroundStyle(.secondary)
-                Circle()
-                    .fill(context.displayColor)
-                    .frame(width: DesignTokens.Size.summaryRowSymbol, height: DesignTokens.Size.summaryRowSymbol)
-                    .overlay(Circle().stroke(.separator, lineWidth: DesignTokens.Size.badgeStroke))
-                    .padding(.leading, DesignTokens.Spacing.xs)
             }
         }
     }
