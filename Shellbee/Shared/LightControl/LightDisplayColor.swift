@@ -2,10 +2,13 @@ import SwiftUI
 
 enum LightDisplayColor {
     static func resolve(colorValue: JSONValue?, colorTemperature: Double?, colorMode: String?) -> Color {
-        if colorMode == "color_temp", let colorTemperature {
-            return temperatureColor(mireds: colorTemperature)
-        }
-
+        // If the payload carries a real color object (xy / hs / rgb), prefer
+        // it over color_mode-derived hints. Hue lights with hue_native_control
+        // enabled publish color_mode="color_temp" alongside a fresh color
+        // payload during color changes; trusting the mode signal there
+        // renders a peach-tinted card while the bulb is actually rendering
+        // green. Color-only lights without color_temp obviously also belong
+        // here, regardless of any stale color_mode value.
         if let color = colorValue?.object {
             if let x = color["x"]?.numberValue, let y = color["y"]?.numberValue {
                 return xyColor(x: x, y: y)
@@ -25,6 +28,12 @@ enum LightDisplayColor {
         if let colorTemperature {
             return temperatureColor(mireds: colorTemperature)
         }
+
+        // colorMode is currently unused — the color object check above is the
+        // dominant signal and the temperature fallback covers the rest.
+        // Keep the parameter so callers stay symmetric with z2m's payload
+        // shape if we need to gate on it again later.
+        _ = colorMode
 
         return .accentColor
     }

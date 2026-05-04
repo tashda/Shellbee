@@ -234,12 +234,12 @@ struct LightControlCard: View {
     }
 
     private var hasColorOrTempInfo: Bool {
-        let isColorMode = context.colorMode == "color_xy" || context.colorMode == "color_hs"
+        let isColorMode = context.isColorMode
         return isColorMode || context.colorTemperatureValue != nil
     }
 
     @ViewBuilder private var colorSnapshotRow: some View {
-        let isColorMode = context.colorMode == "color_xy" || context.colorMode == "color_hs"
+        let isColorMode = context.isColorMode
         if !isColorMode, let tempMireds = context.colorTemperatureValue {
             snapshotInfoRow(
                 icon: "thermometer.medium",
