@@ -52,12 +52,6 @@ final class AppStore {
     var otaUpdates: [String: OTAUpdateStatus] = [:]
     var logEntries: [LogEntry] = []
     var rawLogEntries: [LogEntry] = []
-    /// Id of the most recent log entry that flagged the bridge as needing
-    /// a restart (a Z2M log line containing "restart required"). Captured
-    /// when `bridgeInfo.restartRequired` flips false → true so the
-    /// "Restart Required" notice in Settings can deep-link to the source
-    /// log entry on long-press. Cleared when restart_required goes false.
-    var restartTriggerLogID: UUID?
     var operationErrors: [Z2MOperationError] = []
     var touchlinkDevices: [TouchlinkDevice] = []
     var touchlinkScanInProgress = false

@@ -9,7 +9,6 @@ struct SettingsView: View {
     /// mode to add a new saved bridge without leaving Settings.
     @State private var editorViewModel: ConnectionViewModel?
     @State private var removeConfirmation: ConnectionConfig?
-    @State private var logDeepLink: LogDeepLinkRequest?
 
     /// Phase 2 multi-bridge: when the user has more than one saved bridge, the
     /// top-level Settings page swaps to the merged layout — every per-bridge
@@ -56,9 +55,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationDestination(item: $logDeepLink) { req in
-                LogsView(initialEntryFilter: req.entryID.map { [$0] })
-            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -410,24 +406,7 @@ struct SettingsView: View {
                 .padding(.vertical, DesignTokens.Spacing.xs)
             }
             .buttonStyle(.plain)
-            .contextMenu {
-                Button {
-                    logDeepLink = LogDeepLinkRequest(entryID: restartTriggerLogID)
-                } label: {
-                    Label("Go to Log", systemImage: "doc.text.magnifyingglass")
-                }
-                Button {
-                    showingRestartAlert = true
-                } label: {
-                    Label("Restart Now", systemImage: "arrow.clockwise")
-                }
-            }
         }
-    }
-
-    private var restartTriggerLogID: UUID? {
-        guard let store = singleBridgeScope?.session?.store else { return nil }
-        return store.restartTriggerLogID ?? store.recentRestartRequiredLogID()
     }
 }
 

@@ -4,7 +4,6 @@ extension AppStore {
     func apply(_ event: Z2MEvent) {
         switch event {
         case .bridgeInfo(let info):
-            let previousRestartRequired = bridgeInfo?.restartRequired ?? false
             // bridge/info recomputes permitJoinEnd from `permit_join_timeout`
             // every time it lands. Z2M's timeout doesn't tick down between
             // snapshots, so each refresh would either jump the end forward
@@ -32,7 +31,6 @@ extension AppStore {
             } else {
                 bridgeInfo = info
             }
-            updateRestartTrigger(previous: previousRestartRequired, current: info.restartRequired)
             syncConfiguredAvailability()
         case .bridgeState(let state):
             bridgeOnline = state == "online"
@@ -206,9 +204,7 @@ extension AppStore {
             guard payload.object?["status"]?.stringValue == "ok" else { break }
             if let restartRequired = payload.object?["data"]?.object?["restart_required"]?.boolValue,
                let info = bridgeInfo {
-                let previous = info.restartRequired
                 bridgeInfo = info.copyUpdating(restartRequired: restartRequired)
-                updateRestartTrigger(previous: previous, current: restartRequired)
             }
 
         case .bridgeHealth(let health):
@@ -345,27 +341,5 @@ extension AppStore {
         default:
             return nil
         }
-    }
-
-    /// Bridge `restart_required` arrives as a single bool — never a reference
-    /// to the log line that explains *why*. To deep-link the Settings notice
-    /// to that log line, scan recent entries on the false → true transition
-    /// for the matching Z2M log message ("restart required"). False → true
-    /// without a matching entry leaves the id nil; the UI falls back to
-    /// opening Logs unfiltered. Clear on the true → false transition so
-    /// stale ids never deep-link to old entries.
-    func updateRestartTrigger(previous: Bool, current: Bool) {
-        guard previous != current else { return }
-        if current {
-            restartTriggerLogID = recentRestartRequiredLogID()
-        } else {
-            restartTriggerLogID = nil
-        }
-    }
-
-    /// Most recent log entry whose message contains "restart required"
-    /// (case-insensitive). Searches `logEntries` newest-first.
-    func recentRestartRequiredLogID() -> UUID? {
-        logEntries.first(where: { $0.message.range(of: "restart required", options: .caseInsensitive) != nil })?.id
     }
 }

@@ -13,7 +13,6 @@ struct BridgeSettingsView: View {
     @State private var showingDisconnectConfirmation = false
     @State private var editorViewModel: ConnectionViewModel?
     @State private var removeConfirmation: ConnectionConfig?
-    @State private var logDeepLink: LogDeepLinkRequest?
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
     private var session: BridgeSession? { environment.registry.session(for: bridgeID) }
@@ -39,9 +38,6 @@ struct BridgeSettingsView: View {
         }
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(item: $logDeepLink) { req in
-            LogsView(initialEntryFilter: req.entryID.map { [$0] })
-        }
         .sheet(item: editorBinding) { vm in
             NavigationStack {
                 ConnectionEditorView(viewModel: vm, mode: .save)
@@ -236,24 +232,7 @@ struct BridgeSettingsView: View {
                 .padding(.vertical, DesignTokens.Spacing.xs)
             }
             .buttonStyle(.plain)
-            .contextMenu {
-                Button {
-                    logDeepLink = LogDeepLinkRequest(entryID: restartTriggerLogID)
-                } label: {
-                    Label("Go to Log", systemImage: "doc.text.magnifyingglass")
-                }
-                Button {
-                    showingRestartAlert = true
-                } label: {
-                    Label("Restart Now", systemImage: "arrow.clockwise")
-                }
-            }
         }
-    }
-
-    private var restartTriggerLogID: UUID? {
-        guard let store = session?.store else { return nil }
-        return store.restartTriggerLogID ?? store.recentRestartRequiredLogID()
     }
 
     private func settingsLabel(title: String, systemImage: String, color: Color) -> some View {
