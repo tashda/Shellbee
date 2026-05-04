@@ -127,7 +127,7 @@ final class DeviceListViewModel {
         return store.devices
             .filter { $0.type != .coordinator }
             .filter { device in
-                if device.interviewing { return true }
+                if device.isInterviewing { return true }
                 if let joined = store.deviceFirstSeen[device.ieeeAddress], joined >= cutoff {
                     return true
                 }

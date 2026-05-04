@@ -101,7 +101,7 @@ struct HomeSnapshot: Sendable {
             guard let quality = (states[$0.friendlyName] ?? [:]).linkQuality else { return false }
             return quality < DesignTokens.Threshold.weakSignal
         }.count
-        interviewingDevices = nonCoordinatorDevices.filter { $0.interviewing || !$0.interviewCompleted }.count
+        interviewingDevices = nonCoordinatorDevices.filter { $0.isInterviewing }.count
         let lqiValues = nonCoordinatorDevices.compactMap { states[$0.friendlyName]?.linkQuality }
         averageLinkQuality = lqiValues.isEmpty ? nil : lqiValues.reduce(0, +) / lqiValues.count
 

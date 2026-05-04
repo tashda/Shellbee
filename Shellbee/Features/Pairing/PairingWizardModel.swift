@@ -28,6 +28,13 @@ final class PairingWizardModel {
     }
 
     func interviewStatus(for device: Device) -> InterviewStatus {
+        if let state = device.interviewState {
+            switch state {
+            case .inProgress: return .running
+            case .successful: return .completed
+            case .pending, .failed: return .pending
+            }
+        }
         if device.interviewing { return .running }
         if device.interviewCompleted { return .completed }
         return .pending

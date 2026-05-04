@@ -51,9 +51,7 @@ struct DeviceRowView: View {
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
-    private var isInterviewing: Bool {
-        device.interviewing || !device.interviewCompleted
-    }
+    private var isInterviewing: Bool { device.isInterviewing }
 
     @ViewBuilder
     private var rightDetailView: some View {

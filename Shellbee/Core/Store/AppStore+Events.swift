@@ -42,7 +42,7 @@ extension AppStore {
             // freshly added.
             for device in list where device.type != .coordinator {
                 guard deviceFirstSeen[device.ieeeAddress] == nil else { continue }
-                if device.interviewing || !device.interviewCompleted {
+                if device.isInterviewing {
                     recordFirstSeen(ieee: device.ieeeAddress)
                 }
             }
@@ -122,9 +122,11 @@ extension AppStore {
                         case "started":
                             devices[idx].interviewing = true
                             devices[idx].interviewCompleted = false
+                            devices[idx].interviewState = .inProgress
                         case "successful":
                             devices[idx].interviewing = false
                             devices[idx].interviewCompleted = true
+                            devices[idx].interviewState = .successful
                             // A device that just finished interviewing is by
                             // definition online — Z2M only completes interview
                             // when the device responds. Optimistically reflect
@@ -139,6 +141,7 @@ extension AppStore {
                         case "failed":
                             devices[idx].interviewing = false
                             devices[idx].interviewCompleted = false
+                            devices[idx].interviewState = .failed
                         default:
                             break
                         }
