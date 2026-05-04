@@ -262,6 +262,12 @@ jobs:
 
   ui-tests:
     name: UI Tests (smoke)
+    # Only run when the PR is explicitly labeled `run-ui-tests`. The suite
+    # was dormant during the multi-bridge redesign; running it on every
+    # Full CI invocation hangs at 20 min with zero test execution while
+    # the simulator + app launch story is sorted (#83). The job is kept
+    # in the workflow so labeling a PR re-enables it once it's green.
+    if: github.event_name == 'pull_request' && github.event.label.name == 'run-ui-tests'
     needs: gate
     runs-on: macos-15
     timeout-minutes: 30

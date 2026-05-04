@@ -61,20 +61,30 @@ final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
         XCTAssertFalse(primaryDevices.isEmpty,   "primary bridge devices not received")
         XCTAssertFalse(secondaryDevices.isEmpty, "secondary bridge devices not received")
 
-        let primaryNames   = Set(primaryDevices.map(\.friendlyName))
-        let secondaryNames = Set(secondaryDevices.map(\.friendlyName))
+        // Filter out the coordinator: every Z2M instance reports its
+        // coordinator with the same fixture IEEE (`0x00124b0000000000`)
+        // and friendly_name "Coordinator", and FIXTURE_PREFIX is only
+        // applied to non-coordinator devices. Comparing the regular device
+        // populations is what proves cross-bridge isolation.
+        let primaryRegular   = primaryDevices.filter   { $0.type != .coordinator }
+        let secondaryRegular = secondaryDevices.filter { $0.type != .coordinator }
 
-        // The IEEEs are salted on the secondary stack, so addresses must differ.
-        let primaryIEEEs   = Set(primaryDevices.map(\.ieeeAddress))
-        let secondaryIEEEs = Set(secondaryDevices.map(\.ieeeAddress))
+        XCTAssertFalse(primaryRegular.isEmpty,   "primary regular devices not received")
+        XCTAssertFalse(secondaryRegular.isEmpty, "secondary regular devices not received")
+
+        let primaryIEEEs   = Set(primaryRegular.map(\.ieeeAddress))
+        let secondaryIEEEs = Set(secondaryRegular.map(\.ieeeAddress))
         XCTAssertTrue(primaryIEEEs.intersection(secondaryIEEEs).isEmpty,
                       "IEEE addresses leaked across bridges (\(primaryIEEEs.intersection(secondaryIEEEs)))")
 
-        // FIXTURE_PREFIX=Lab on the secondary seeder means every friendly
-        // name on bridge 2 starts with "Lab "; none on bridge 1 should.
-        XCTAssertTrue(secondaryNames.allSatisfy { $0.hasPrefix("Lab ") },
-                      "secondary bridge names should all be prefixed 'Lab ': \(secondaryNames)")
-        XCTAssertTrue(primaryNames.allSatisfy { !$0.hasPrefix("Lab ") },
+        // FIXTURE_PREFIX=Lab on the secondary seeder prefixes every regular
+        // friendly_name with "Lab" (no separator — `LabKitchen Plug` not
+        // `Lab Kitchen Plug`). None on bridge 1 should carry that prefix.
+        let primaryNames   = Set(primaryRegular.map(\.friendlyName))
+        let secondaryNames = Set(secondaryRegular.map(\.friendlyName))
+        XCTAssertTrue(secondaryNames.allSatisfy { $0.hasPrefix("Lab") },
+                      "secondary bridge names should all be prefixed 'Lab': \(secondaryNames)")
+        XCTAssertTrue(primaryNames.allSatisfy { !$0.hasPrefix("Lab") },
                       "primary bridge names should not carry the Lab prefix: \(primaryNames)")
     }
 
