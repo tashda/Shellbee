@@ -58,9 +58,11 @@ struct BridgeScope: Identifiable {
         send(topic: Z2MTopics.Request.options, payload: .object(["options": .object(options)]))
     }
 
-    /// Restart the scoped bridge.
+    /// Restart the scoped bridge. Routes through `AppEnvironment.restartBridge`
+    /// so the optimistic stats clear (health, online flag) fires regardless of
+    /// which surface initiated the restart.
     func restart() {
-        send(topic: Z2MTopics.Request.restart, payload: .string(""))
+        environment?.restartBridge(bridgeID)
     }
 
     /// Set a device's state on the scoped bridge.

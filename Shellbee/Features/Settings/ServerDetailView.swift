@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ServerDetailView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.dismiss) private var dismiss
     let bridgeID: UUID
 
     @State private var showingRestartAlert = false
@@ -130,7 +131,10 @@ struct ServerDetailView: View {
             }
         }
         .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
-            Button("Restart", role: .destructive) { scope.restart() }
+            Button("Restart", role: .destructive) {
+                scope.restart()
+                dismiss()
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Zigbee2MQTT will restart. The app will reconnect automatically.")
