@@ -190,23 +190,16 @@ private struct ActivityLogContent: View {
     @ViewBuilder
     private func singleBridgeListBody(bridgeID: UUID, store: AppStore) -> some View {
         let entries = viewModel.filteredEntries(store: store)
-        let sections = LogTimeBucket.sectioned(entries, date: \.timestamp)
         List {
-            ForEach(sections, id: \.bucket) { section in
-                Section {
-                    ForEach(section.items) { entry in
-                        ZStack {
-                            LogRowView(entry: entry, store: store, bridgeID: bridgeID)
-                            NavigationLink {
-                                LogDetailView(bridgeID: bridgeID, entry: entry)
-                            } label: { EmptyView() }
-                            .opacity(0)
-                        }
-                        .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
-                    }
-                } header: {
-                    LogSectionHeader(title: section.bucket.headerTitle)
+            ForEach(entries) { entry in
+                ZStack {
+                    LogRowView(entry: entry, store: store, bridgeID: bridgeID)
+                    NavigationLink {
+                        LogDetailView(bridgeID: bridgeID, entry: entry)
+                    } label: { EmptyView() }
+                    .opacity(0)
                 }
+                .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
             }
         }
         .listStyle(.plain)
@@ -229,24 +222,17 @@ private struct ActivityLogContent: View {
         // bridge's own store (so device/group lookups in filters resolve
         // correctly), then merge by timestamp.
         let bound = mergedFilteredEntries()
-        let sections = LogTimeBucket.sectioned(bound, date: \.entry.timestamp)
         List {
-            ForEach(sections, id: \.bucket) { section in
-                Section {
-                    ForEach(section.items) { item in
-                        let rowStore = environment.registry.session(for: item.bridgeID)?.store
-                        ZStack {
-                            LogRowView(entry: item.entry, store: rowStore, bridgeID: item.bridgeID)
-                            NavigationLink {
-                                LogDetailView(bridgeID: item.bridgeID, entry: item.entry)
-                            } label: { EmptyView() }
-                            .opacity(0)
-                        }
-                        .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
-                    }
-                } header: {
-                    LogSectionHeader(title: section.bucket.headerTitle)
+            ForEach(bound) { item in
+                let rowStore = environment.registry.session(for: item.bridgeID)?.store
+                ZStack {
+                    LogRowView(entry: item.entry, store: rowStore, bridgeID: item.bridgeID)
+                    NavigationLink {
+                        LogDetailView(bridgeID: item.bridgeID, entry: item.entry)
+                    } label: { EmptyView() }
+                    .opacity(0)
                 }
+                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
             }
         }
         .listStyle(.plain)

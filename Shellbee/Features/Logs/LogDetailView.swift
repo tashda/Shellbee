@@ -88,8 +88,6 @@ struct LogDetailView: View {
 
     var body: some View {
         List {
-            timestampHeader
-
             if let group = resolvedGroup {
                 singleGroupSection(group)
             } else if displayDevices.count == 1, let (_, device) = displayDevices.first {
@@ -105,7 +103,7 @@ struct LogDetailView: View {
             }
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
-        .navigationTitle(entry.specificTitle)
+        .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let doneAction {
@@ -249,20 +247,27 @@ struct LogDetailView: View {
         return scoped.isEmpty ? nil : scoped
     }
 
-    /// Apple-style "muted timestamp at the top of the screen" treatment —
-    /// same shape Mail uses for "On Tuesday, Apr 28 …" above an email body.
-    /// Replaces the old principal-toolbar VStack that read as an alert
-    /// banner instead of a header.
-    @ViewBuilder
-    private var timestampHeader: some View {
-        Text(timestampSubtitle)
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: DesignTokens.Spacing.xs, trailing: 0))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .accessibilityLabel("\(entry.specificTitle), \(timestampSubtitle)")
+    /// Title for the navigation bar. The user tapped a row about a
+    /// specific subject — Apple's pattern is to make the subject the page
+    /// title (Mail puts the sender, Messages puts the contact). For
+    /// non-device events we fall back to a quiet category label.
+    private var navTitle: String {
+        if let group = resolvedGroup { return group.friendlyName }
+        if displayDevices.count == 1, let (_, device) = displayDevices.first {
+            return device.friendlyName
+        }
+        if displayDevices.count > 1 { return "Activity" }
+        switch entry.category {
+        case .deviceJoined, .deviceAnnounce, .deviceLeave, .interview:
+            return entry.deviceName ?? entry.category.label
+        case .stateChange: return "Activity"
+        case .general:
+            switch entry.level {
+            case .error: return "Error"
+            case .warning: return "Warning"
+            default: return "Activity"
+            }
+        }
     }
 
     private var timestampSubtitle: String {
@@ -296,67 +301,106 @@ struct LogDetailView: View {
             return [:]
         }()
 
-        if !changes.isEmpty {
-            LogDetailChangesSection(changes: changes)
-        }
-        // Skip the full-payload snapshot for state-change events — the diff is
-        // what actually happened, the rest is noise.
-        if !payload.isEmpty && entry.category != .stateChange {
-            BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
-        }
-        if changes.isEmpty && payload.isEmpty {
-            if let structure = LogMessageParser.structure(for: entry.message) {
-                structuredMessageSections(structure)
-            } else {
-                messageSection
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func structuredMessageSections(_ structure: LogMessageStructure) -> some View {
-        Section(sectionTitle) {
-            Text(structure.summary)
-                .font(.callout)
-                .textSelection(.enabled)
-                .padding(.vertical, DesignTokens.Spacing.xs)
-            ForEach(structure.fields) { field in
-                CopyableRow(label: field.label, value: field.value)
-            }
-        }
-        ForEach(structure.groups) { group in
-            Section(group.title) {
-                ForEach(group.fields) { field in
-                    CopyableRow(label: field.label, value: field.value)
+        Section {
+            if !changes.isEmpty {
+                ForEach(changes) { change in
+                    diffRow(for: change)
                 }
-            }
-        }
-    }
-
-    private var messageSection: some View {
-        let (summary, detail) = parsedMessage
-        return Section(sectionTitle) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(summary)
+            } else if !payload.isEmpty && entry.category != .stateChange {
+                BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            } else if let structure = LogMessageParser.structure(for: entry.message) {
+                Text(structure.summary)
                     .font(.callout)
                     .textSelection(.enabled)
-                if let detail {
-                    Text(detail)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                    .padding(.vertical, DesignTokens.Spacing.xs)
+            } else {
+                let (summary, detail) = parsedMessage
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                    Text(summary)
+                        .font(.callout)
                         .textSelection(.enabled)
+                    if let detail {
+                        Text(detail)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.vertical, DesignTokens.Spacing.xs)
+            }
+        } header: {
+            eventHeader
+        }
+
+        // Structured-message extra groups (kept as standalone sections so
+        // each labeled group of fields keeps its own header).
+        if changes.isEmpty, payload.isEmpty,
+           let structure = LogMessageParser.structure(for: entry.message) {
+            ForEach(structure.fields) { field in
+                Section { CopyableRow(label: field.label, value: field.value) }
+            }
+            ForEach(structure.groups) { group in
+                Section(group.title) {
+                    ForEach(group.fields) { field in
+                        CopyableRow(label: field.label, value: field.value)
+                    }
                 }
             }
-            .padding(.vertical, DesignTokens.Spacing.xs)
         }
     }
 
-    private var sectionTitle: String {
-        switch entry.level {
-        case .error: "Error"
-        case .warning: "Warning"
-        default: "Message"
+    /// Single uniform `key: prev → next` row used for every diff entry —
+    /// matches the bottom-row pattern the issue called out as the right
+    /// baseline. No special-case "IDLE card" or thermometer block: a value
+    /// without a `from` simply renders without the prev half, same shape.
+    @ViewBuilder
+    private func diffRow(for change: LogContext.StateChange) -> some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            Text(change.displayLabel)
+                .font(.subheadline)
+            Spacer()
+            if let from = change.displayFrom {
+                Text(from)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "arrow.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            Text(change.displayTo)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(diffColor(for: change))
         }
+    }
+
+    private func diffColor(for change: LogContext.StateChange) -> Color {
+        switch change.to {
+        case .string(let s) where s == "ON": return .green
+        case .string(let s) where s == "OFF": return .red
+        case .bool(true): return .green
+        case .bool(false): return .red
+        default: return .primary
+        }
+    }
+
+    /// Combined "what + when" header that sits above the body section.
+    /// Drops the floating timestamp Apple-Mail-style — the date is no
+    /// longer placed without purpose; it's the natural metadata under the
+    /// event description.
+    private var eventHeader: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(entry.specificTitle)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+            Spacer(minLength: DesignTokens.Spacing.sm)
+            Text(timestampSubtitle)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .textCase(nil)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
     }
 
     private var parsedMessage: (summary: String, detail: String?) {
