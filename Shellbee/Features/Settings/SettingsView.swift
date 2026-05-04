@@ -412,11 +412,12 @@ struct SettingsView: View {
 
 // MARK: - Bridge row (multi-bridge Settings root)
 
-/// Rich row for the Bridges section: color dot, name, URL, live status
-/// subtitle, default star, restart-required indicator, and a Connect /
-/// Disconnect toggle. The whole row is a NavigationLink to that bridge's
-/// settings page; the Toggle is its own hit-target inside the link, so
-/// tapping the toggle never accidentally drills in.
+/// Bridges-section row, styled to match the single-bridge Connection
+/// card via `BridgeConnectionCardLabel`: tinted bridge-color icon,
+/// display name, and live status subtitle. The whole row is a
+/// NavigationLink to that bridge's settings page; the Toggle is its own
+/// hit-target inside the link, so tapping the toggle never accidentally
+/// drills in.
 private struct BridgeSettingsRow: View {
     let config: ConnectionConfig
     let onEdit: () -> Void
@@ -443,27 +444,16 @@ private struct BridgeSettingsRow: View {
             BridgeSettingsView(bridgeID: config.id)
         } label: {
             HStack(spacing: DesignTokens.Spacing.md) {
-                statusDot
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: DesignTokens.Spacing.xs) {
-                        Text(config.displayName)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                        if restartRequired {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.red)
-                                .accessibilityLabel("Restart required")
-                        }
-                    }
-                    Text(config.displayURL)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text(stateLabel)
+                BridgeConnectionCardLabel(
+                    bridgeID: config.id,
+                    displayName: config.displayName,
+                    statusSubtitle: stateLabel
+                )
+                if restartRequired {
+                    Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .foregroundStyle(.red)
+                        .accessibilityLabel("Restart required")
                 }
                 Spacer()
                 connectToggle
@@ -487,21 +477,6 @@ private struct BridgeSettingsRow: View {
             }
             .tint(.blue)
         }
-    }
-
-    @ViewBuilder
-    private var statusDot: some View {
-        let color: Color = {
-            if isConnected { return .green }
-            if isConnecting { return .orange }
-            switch session?.connectionState {
-            case .failed, .lost: return .red
-            default: return Color(.systemGray3)
-            }
-        }()
-        Circle()
-            .fill(color)
-            .frame(width: DesignTokens.Size.statusDot, height: DesignTokens.Size.statusDot)
     }
 
     private var connectToggle: some View {
