@@ -69,7 +69,9 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      - name: Start mock Z2M bridge (native)
+      - name: Start dual mock Z2M bridges (native)
+        env:
+          MULTI_BRIDGE: "1"
         run: ./.github/scripts/start-mock-bridge.sh
 
       - name: Select latest Xcode
@@ -135,10 +137,10 @@ jobs:
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
+            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
             -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
             -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
-            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
@@ -149,6 +151,8 @@ jobs:
         run: |
           cp "$RUNNER_TEMP/z2m-bridge.log" mock-bridge.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder.log" mock-seeder.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-bridge-2.log" mock-bridge-2.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
 
       - name: Summarize
         if: always()
@@ -182,7 +186,186 @@ jobs:
             test-unit.log
             mock-bridge.log
             mock-seeder.log
+            mock-bridge-2.log
+            mock-seeder-2.log
             ${{ env.DERIVED_DATA }}/UnitTests.xcresult
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ipad-build:
+    name: iPad build (build-only)
+    needs: gate
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    env:
+      SCHEME: Shellbee
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/DerivedData/SourcePackages/checkouts
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Select latest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Pick iPad simulator
+        id: sim
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[]
+                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
+                       | .value[]
+                       | select(.isAvailable and (.name | startswith("iPad")))]
+                     | sort_by(.name) | reverse | .[0].udid')
+          if [ -z "$DEVICE_ID" ] || [ "$DEVICE_ID" = "null" ]; then
+            echo "No iPad simulator available on this runner" >&2
+            exit 1
+          fi
+          NAME=$(xcrun simctl list devices --json \
+            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
+          echo "Using: $NAME ($DEVICE_ID)"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Build for iPad
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | tee build-ipad.log
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-full-ipad-logs
+          path: |
+            build-ipad.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ui-tests:
+    name: UI Tests (smoke)
+    # Only run when the PR is explicitly labeled `run-ui-tests`. The suite
+    # was dormant during the multi-bridge redesign; running it on every
+    # Full CI invocation hangs at 20 min with zero test execution while
+    # the simulator + app launch story is sorted (#83). The job is kept
+    # in the workflow so labeling a PR re-enables it once it's green.
+    if: github.event_name == 'pull_request' && github.event.label.name == 'run-ui-tests'
+    needs: gate
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    env:
+      SCHEME: Shellbee
+      TEST_PLAN: Shellbee
+      TEST_TARGET: ShellbeeUITests
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/DerivedData/SourcePackages/checkouts
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Start mock Z2M bridge (single)
+        run: ./.github/scripts/start-mock-bridge.sh
+
+      - name: Select latest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[]
+                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
+                       | .value[]
+                       | select(.isAvailable and (.name | startswith("iPhone")))]
+                     | sort_by(.name) | reverse | .[0].udid')
+          NAME=$(xcrun simctl list devices --json \
+            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Boot simulator
+        timeout-minutes: 4
+        run: xcrun simctl bootstatus "${{ steps.sim.outputs.device_id }}" -b
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -derivedDataPath "$DERIVED_DATA"
+
+      - name: Build for testing
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | tee build-ui.log
+
+      - name: Run UI tests
+        timeout-minutes: 20
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            -only-testing:"$TEST_TARGET" \
+            -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | tee test-ui.log
+
+      - name: Capture mock bridge logs
+        if: always()
+        run: |
+          cp "$RUNNER_TEMP/z2m-bridge.log" mock-bridge.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-seeder.log" mock-seeder.log 2>/dev/null || true
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-full-ui-logs
+          path: |
+            build-ui.log
+            test-ui.log
+            mock-bridge.log
+            mock-seeder.log
+            ${{ env.DERIVED_DATA }}/UITests.xcresult
           if-no-files-found: ignore
           retention-days: 14
 

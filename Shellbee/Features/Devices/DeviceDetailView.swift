@@ -6,6 +6,10 @@ private enum DeviceMenuDestination: Hashable {
 
 struct DeviceDetailView: View {
     @Environment(AppEnvironment.self) private var environment
+    /// Phase 1 multi-bridge: the bridge that owns this device. Pushed as part
+    /// of `DeviceRoute` from the list/notification layer so detail reads
+    /// land on the correct store regardless of which bridge has focus.
+    let bridgeID: UUID
     let device: Device
     @State private var showPairingSheet = false
     @State private var menuDestination: DeviceMenuDestination?
@@ -13,11 +17,13 @@ struct DeviceDetailView: View {
     @State private var showRemoveSheet = false
     @State private var showRenameSheet = false
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
     var body: some View {
-        let device = environment.store.devices.first { $0.ieeeAddress == self.device.ieeeAddress } ?? self.device
-        let state = environment.store.state(for: device.friendlyName)
-        let isAvailable = environment.store.isAvailable(device.friendlyName)
-        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        let device = scope.store.devices.first { $0.ieeeAddress == self.device.ieeeAddress } ?? self.device
+        let state = scope.store.state(for: device.friendlyName)
+        let isAvailable = scope.store.isAvailable(device.friendlyName)
+        let otaStatus = scope.store.otaStatus(for: device.friendlyName)
 
         List {
             DeviceCard(
@@ -25,7 +31,9 @@ struct DeviceDetailView: View {
                 state: state,
                 isAvailable: isAvailable,
                 otaStatus: otaStatus,
-                lastSeenEnabled: (environment.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                bridgeID: bridgeID,
+                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+                lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                 onRenameTapped: { showRenameSheet = true }
             )
             .listRowInsets(EdgeInsets())
@@ -37,7 +45,7 @@ struct DeviceDetailView: View {
             if device.definition != nil {
                 Section("Documentation") {
                     NavigationLink {
-                        DeviceDocView(device: device)
+                        DeviceDocView(bridgeID: bridgeID, device: device)
                     } label: {
                         Label("Device Documentation", systemImage: "doc.text")
                     }
@@ -80,22 +88,22 @@ struct DeviceDetailView: View {
         }
         .navigationDestination(item: $menuDestination) { destination in
             switch destination {
-            case .settings:  DeviceSettingsView(device: device)
-            case .bind:      DeviceBindView(device: device)
-            case .reporting: DeviceReportingView(device: device)
+            case .settings:  DeviceSettingsView(bridgeID: bridgeID, device: device)
+            case .bind:      DeviceBindView(bridgeID: bridgeID, device: device)
+            case .reporting: DeviceReportingView(bridgeID: bridgeID, device: device)
             }
         }
         .sheet(isPresented: $showPairingSheet) {
-            DevicePairingSheet(device: device)
+            DevicePairingSheet(bridgeID: bridgeID, device: device)
         }
         .sheet(isPresented: $showRenameSheet) {
             RenameDeviceSheet(device: device) { newName, updateHA in
-                environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
+                renameDevice(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
             }
         }
         .sheet(isPresented: $showRemoveSheet) {
             RemoveDeviceSheet(device: device) { force, block in
-                environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
+                scope.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
                     "id": .string(device.friendlyName),
                     "force": .bool(force),
                     "block": .bool(block)
@@ -113,9 +121,9 @@ struct DeviceDetailView: View {
             Button(alert.confirmTitle, role: alert.role) {
                 switch alert {
                 case .reconfigure(let device):
-                    environment.send(topic: Z2MTopics.Request.deviceConfigure, payload: .object(["id": .string(device.friendlyName)]))
+                    scope.send(topic: Z2MTopics.Request.deviceConfigure, payload: .object(["id": .string(device.friendlyName)]))
                 case .interview(let device):
-                    environment.send(topic: Z2MTopics.Request.deviceInterview, payload: .object(["id": .string(device.friendlyName)]))
+                    scope.send(topic: Z2MTopics.Request.deviceInterview, payload: .object(["id": .string(device.friendlyName)]))
                 }
                 pendingDeviceAlert = nil
             }
@@ -132,7 +140,7 @@ struct DeviceDetailView: View {
     @ViewBuilder
     private func heroAndSettingsSections(for device: Device, state: [String: JSONValue]) -> some View {
         let send: (JSONValue) -> Void = { payload in
-            environment.sendDeviceState(device.friendlyName, payload: payload)
+            scope.send(topic: Z2MTopics.deviceSet(device.friendlyName), payload: payload)
         }
 
         switch device.category {
@@ -228,7 +236,7 @@ struct DeviceDetailView: View {
 
     @ViewBuilder
     private var logsSection: some View {
-        let deviceEntries = environment.store.logEntries.filter { $0.deviceName == device.friendlyName }
+        let deviceEntries = scope.store.logEntries.filter { $0.deviceName == device.friendlyName }
         let recent = Array(deviceEntries.prefix(Self.recentLogLimit))
 
         Section("Logs") {
@@ -239,13 +247,14 @@ struct DeviceDetailView: View {
             } else {
                 ForEach(recent) { entry in
                     NavigationLink {
-                        LogDetailView(entry: entry)
+                        LogDetailView(bridgeID: bridgeID, entry: entry)
                     } label: {
-                        LogRowView(entry: entry)
+                        LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
                     }
+                    .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
                 }
                 NavigationLink {
-                    DeviceLogsView(device: device)
+                    DeviceLogsView(bridgeID: bridgeID, device: device)
                 } label: {
                     Label("See All Logs", systemImage: "list.bullet")
                 }
@@ -254,8 +263,8 @@ struct DeviceDetailView: View {
     }
 
     private func deviceConfigMenu(for device: Device) -> some View {
-        let state = environment.store.state(for: device.friendlyName)
-        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        let state = scope.store.state(for: device.friendlyName)
+        let otaStatus = scope.store.otaStatus(for: device.friendlyName)
         let otaActive = otaStatus?.isActive == true
         let supportsOTA = device.definition?.supportsOTA == true
         let hasUpdateAvailable = state.hasUpdateAvailable
@@ -304,13 +313,13 @@ struct DeviceDetailView: View {
             Divider()
             if device.supportsIdentify {
                 Button {
-                    environment.identifyDevice(device.friendlyName)
+                    identifyDevice(device.friendlyName)
                 } label: {
-                    let identifying = environment.store.identifyInProgress.contains(device.friendlyName)
+                    let identifying = scope.store.identifyInProgress.contains(device.friendlyName)
                     Label(identifying ? "Identifying" : "Identify",
                           systemImage: identifying ? "wave.3.right" : "wave.3.right.circle")
                 }
-                .disabled(environment.store.identifyInProgress.contains(device.friendlyName))
+                .disabled(scope.store.identifyInProgress.contains(device.friendlyName))
             }
             Button { pendingDeviceAlert = .interview(device) } label: {
                 Label("Interview", systemImage: "questionmark.circle")
@@ -329,8 +338,8 @@ struct DeviceDetailView: View {
 
     private func checkForUpdate(_ device: Device) {
         Haptics.impact(.light)
-        environment.store.startOTACheck(for: device.friendlyName)
-        environment.send(
+        scope.store.startOTACheck(for: device.friendlyName)
+        scope.send(
             topic: Z2MTopics.Request.deviceOTACheck,
             payload: .object(["id": .string(device.friendlyName)])
         )
@@ -338,8 +347,8 @@ struct DeviceDetailView: View {
 
     private func updateFirmware(_ device: Device) {
         Haptics.impact(.medium)
-        environment.store.startOTAUpdate(for: device.friendlyName)
-        environment.send(
+        scope.store.startOTAUpdate(for: device.friendlyName)
+        scope.send(
             topic: Z2MTopics.Request.deviceOTAUpdate,
             payload: .object(["id": .string(device.friendlyName)])
         )
@@ -347,8 +356,8 @@ struct DeviceDetailView: View {
 
     private func scheduleUpdate(_ device: Device) {
         Haptics.impact(.medium)
-        environment.store.startOTASchedule(for: device.friendlyName)
-        environment.send(
+        scope.store.startOTASchedule(for: device.friendlyName)
+        scope.send(
             topic: Z2MTopics.Request.deviceOTASchedule,
             payload: .object(["id": .string(device.friendlyName)])
         )
@@ -356,24 +365,49 @@ struct DeviceDetailView: View {
 
     private func unscheduleUpdate(_ device: Device) {
         Haptics.impact(.light)
-        environment.store.cancelOTASchedule(for: device.friendlyName)
-        environment.send(
+        scope.store.cancelOTASchedule(for: device.friendlyName)
+        scope.send(
             topic: Z2MTopics.Request.deviceOTAUnschedule,
             payload: .object(["id": .string(device.friendlyName)])
         )
         // Z2M leaves update.state at "idle" after unschedule — re-check so
         // the device returns to "available" and stays in the Updates filter.
-        environment.store.startOTACheck(for: device.friendlyName)
-        environment.send(
+        scope.store.startOTACheck(for: device.friendlyName)
+        scope.send(
             topic: Z2MTopics.Request.deviceOTACheck,
             payload: .object(["id": .string(device.friendlyName)])
         )
+    }
+
+    private func renameDevice(from: String, to: String, homeassistantRename: Bool) {
+        let trimmed = to.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != from else { return }
+        scope.store.optimisticRename(from: from, to: trimmed)
+        scope.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
+            "from": .string(from),
+            "to": .string(trimmed),
+            "homeassistant_rename": .bool(homeassistantRename)
+        ]))
+    }
+
+    private func identifyDevice(_ friendlyName: String) {
+        let store = scope.store
+        guard !store.identifyInProgress.contains(friendlyName) else { return }
+        store.identifyInProgress.insert(friendlyName)
+        scope.send(
+            topic: Z2MTopics.deviceSet(friendlyName),
+            payload: .object(["identify": .string("identify")])
+        )
+        Task { [weak store] in
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run { _ = store?.identifyInProgress.remove(friendlyName) }
+        }
     }
 }
 
 #Preview {
     NavigationStack {
-        DeviceDetailView(device: .preview)
+        DeviceDetailView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

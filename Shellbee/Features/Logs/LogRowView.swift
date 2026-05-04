@@ -3,6 +3,17 @@ import SwiftUI
 struct LogRowView: View {
     @Environment(AppEnvironment.self) private var environment
     let entry: LogEntry
+    /// Phase 1 multi-bridge: explicit store for resolving the leading
+    /// device/group avatar. Callers that know the entry's source bridge
+    /// pass that bridge's store directly. Nil falls back to the
+    /// notification-overlay-style heuristic of searching every connected
+    /// bridge by name (used by previews and any rare site that lacks a
+    /// scope to hand in).
+    var store: AppStore? = nil
+    /// Source bridge id. When non-nil and the user's Bridge Indicator
+    /// setting is enabled, the row paints a thin colored bar on its
+    /// leading edge — same uniform attribution as Devices and Groups.
+    var bridgeID: UUID? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
@@ -29,6 +40,10 @@ struct LogRowView: View {
             }
         }
         .padding(.vertical, DesignTokens.Spacing.summaryRowVerticalPadding)
+        // NOTE: the leading-bar `.listRowBackground` is applied at the call
+        // site (the row's outermost view in the List), not here — most
+        // callers wrap LogRowView in a ZStack with a hidden NavigationLink,
+        // and `.listRowBackground` only takes effect at the row's top level.
     }
 
     // MARK: - Title tint
@@ -61,9 +76,24 @@ struct LogRowView: View {
             candidate = nil
         }
         guard let name = candidate else { return .none }
-        if let device = environment.store.device(named: name) { return .device(device) }
-        if let group = environment.store.group(named: name) {
-            return .group(group, members: environment.store.memberDevices(of: group))
+
+        // When a scoped store is provided, resolve from it — this is the
+        // multi-bridge correct path (entries from bridge B render against B's
+        // device/group registry). Without a scope, fall back to scanning every
+        // connected bridge for the name; first match wins.
+        if let store {
+            if let device = store.device(named: name) { return .device(device) }
+            if let group = store.group(named: name) {
+                return .group(group, members: store.memberDevices(of: group))
+            }
+            return .none
+        }
+
+        for session in environment.registry.orderedSessions {
+            if let device = session.store.device(named: name) { return .device(device) }
+            if let group = session.store.group(named: name) {
+                return .group(group, members: session.store.memberDevices(of: group))
+            }
         }
         return .none
     }

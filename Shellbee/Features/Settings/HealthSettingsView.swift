@@ -3,13 +3,15 @@ import SwiftUI
 struct HealthSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var interval: Int = 30
     @State private var resetOnCheck: Bool = false
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
-        let health = environment.store.bridgeInfo?.config?.health
+        let health = scope.bridgeInfo?.config?.health
         return interval != (health?.interval ?? 30)
             || resetOnCheck != (health?.resetOnCheck ?? false)
     }
@@ -44,11 +46,11 @@ struct HealthSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        let health = environment.store.bridgeInfo?.config?.health
+        let health = scope.bridgeInfo?.config?.health
         interval = health?.interval ?? 30
         resetOnCheck = health?.resetOnCheck ?? false
     }
@@ -58,12 +60,12 @@ struct HealthSettingsView: View {
             "interval": .int(interval),
             "reset_on_check": .bool(resetOnCheck)
         ]
-        environment.sendBridgeOptions(["health": .object(health)])
+        scope.sendOptions(["health": .object(health)])
     }
 }
 
 #Preview {
     NavigationStack {
-        HealthSettingsView().environment(AppEnvironment())
+        HealthSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

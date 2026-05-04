@@ -12,25 +12,32 @@ struct GroupDetailView: View {
     @State private var showRenameSheet = false
     @State private var memberToRemove: GroupMember?
     @State private var menuDestination: GroupMenuDestination?
+    /// Phase 1 multi-bridge: bridge that owns this group. Pushed in via
+    /// `GroupRoute` so reads/writes stay scoped to the right Z2M instance.
+    /// Group ids are scoped per-instance, not globally unique — the route
+    /// is the only reliable way to disambiguate.
+    let bridgeID: UUID
     let group: Group
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
     private var currentGroup: Group {
-        environment.store.groups.first { $0.id == group.id } ?? group
+        scope.store.groups.first { $0.id == group.id } ?? group
     }
 
     private var memberDevices: [Device] {
         currentGroup.members.compactMap { member in
-            environment.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
+            scope.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
         }
     }
 
     private var groupState: [String: JSONValue] {
-        viewModel.synthesizedState(for: currentGroup, environment: environment)
+        viewModel.synthesizedState(for: currentGroup, environment: environment, bridgeID: bridgeID)
     }
 
     private var groupLightContext: LightControlContext? {
         for member in currentGroup.members {
-            guard let device = environment.store.devices.first(where: { $0.ieeeAddress == member.ieeeAddress }) else { continue }
+            guard let device = scope.store.devices.first(where: { $0.ieeeAddress == member.ieeeAddress }) else { continue }
             if let ctx = LightControlContext(device: device, state: groupState) { return ctx }
         }
         return nil
@@ -42,6 +49,8 @@ struct GroupDetailView: View {
                 group: currentGroup,
                 memberDevices: memberDevices,
                 state: groupState,
+                bridgeID: bridgeID,
+                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
                 onRenameTapped: { showRenameSheet = true }
             )
             .listRowInsets(EdgeInsets())
@@ -51,7 +60,7 @@ struct GroupDetailView: View {
             if let lightContext = groupLightContext {
                 Section {
                     LightControlCard(context: lightContext, mode: .interactive) { payload in
-                        environment.sendDeviceState(currentGroup.friendlyName, payload: payload)
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -61,12 +70,13 @@ struct GroupDetailView: View {
             }
 
             GroupMembersSection(
+                bridgeID: bridgeID,
                 group: currentGroup,
                 onRemove: { memberToRemove = $0 },
                 onAdd: { showAddMembers = true }
             )
 
-            GroupScenesSection(group: currentGroup, viewModel: viewModel)
+            GroupScenesSection(bridgeID: bridgeID, group: currentGroup, viewModel: viewModel)
         }
         .contentMargins(.top, 0, for: .scrollContent)
         .toolbarBackground(.automatic, for: .navigationBar)
@@ -98,22 +108,22 @@ struct GroupDetailView: View {
         }
         .navigationDestination(item: $menuDestination) { destination in
             switch destination {
-            case .settings: GroupSettingsView(group: group)
+            case .settings: GroupSettingsView(bridgeID: bridgeID, group: group)
             }
         }
         .sheet(isPresented: $showAddMembers) {
-            AddGroupMembersSheet(group: currentGroup) { selections in
-                viewModel.addMembers(selections.map { ($0.0, $0.1) }, to: currentGroup, environment: environment)
+            AddGroupMembersSheet(bridgeID: bridgeID, group: currentGroup) { selections in
+                viewModel.addMembers(selections.map { ($0.0, $0.1) }, to: currentGroup, environment: environment, bridgeID: bridgeID)
             }
         }
         .sheet(isPresented: $showAddScene) {
             AddSceneSheet { name in
-                viewModel.addScene(name: name, in: currentGroup, environment: environment)
+                viewModel.addScene(name: name, in: currentGroup, environment: environment, bridgeID: bridgeID)
             }
         }
         .sheet(isPresented: $showRenameSheet) {
             RenameGroupSheet(group: currentGroup, memberDevices: memberDevices) { newName in
-                environment.send(topic: Z2MTopics.Request.groupRename, payload: .object([
+                scope.send(topic: Z2MTopics.Request.groupRename, payload: .object([
                     "from": .string(currentGroup.friendlyName),
                     "to": .string(newName)
                 ]))
@@ -126,7 +136,7 @@ struct GroupDetailView: View {
         ) {
             Button("Remove", role: .destructive) {
                 if let member = memberToRemove {
-                    viewModel.removeMember(member, from: currentGroup, environment: environment)
+                    viewModel.removeMember(member, from: currentGroup, environment: environment, bridgeID: bridgeID)
                     memberToRemove = nil
                 }
             }
@@ -135,7 +145,7 @@ struct GroupDetailView: View {
             }
         } message: {
             if let member = memberToRemove {
-                let name = environment.store.devices
+                let name = scope.store.devices
                     .first { $0.ieeeAddress == member.ieeeAddress }?.friendlyName ?? member.ieeeAddress
                 Text("Remove \(name) from this group?")
             }
@@ -145,7 +155,7 @@ struct GroupDetailView: View {
 
 #Preview {
     NavigationStack {
-        GroupDetailView(group: .previewWithMembers)
+        GroupDetailView(bridgeID: UUID(), group: .previewWithMembers)
             .environment(AppEnvironment())
     }
 }

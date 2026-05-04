@@ -10,6 +10,8 @@ struct DeviceCard: View {
     let state: [String: JSONValue]
     let isAvailable: Bool
     let otaStatus: OTAUpdateStatus?
+    var bridgeID: UUID? = nil
+    var bridgeName: String? = nil
     var lastSeenEnabled: Bool = true
     var onRenameTapped: (() -> Void)? = nil
     var displayMode: DeviceIdentityDisplayMode = .prominent
@@ -66,6 +68,10 @@ struct DeviceCard: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
+                if let bridgeID, let bridgeName, !bridgeName.isEmpty {
+                    BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
+                }
+
                 if lastSeenEnabled {
                     Text(lastSeenCaption)
                         .font(.caption2)
@@ -114,6 +120,18 @@ struct DeviceCard: View {
 
             Spacer(minLength: DesignTokens.Spacing.sm)
 
+            if showsTrailingMetadata {
+                trailingMetadata
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var trailingMetadata: some View {
+        VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xs) {
+            if let bridgeID, let bridgeName, !bridgeName.isEmpty {
+                BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
+            }
             if lastSeenEnabled, state.lastSeen != nil {
                 lastSeenBadge
             }
@@ -365,6 +383,15 @@ struct DeviceCard: View {
     private var lastSeenCaption: String {
         guard lastSeenValue != "—" else { return "Last seen unknown" }
         return "Last seen \(lastSeenValue)"
+    }
+
+    private var showsTrailingMetadata: Bool {
+        hasBridgeBadge || (lastSeenEnabled && state.lastSeen != nil)
+    }
+
+    private var hasBridgeBadge: Bool {
+        guard bridgeID != nil, let bridgeName, !bridgeName.isEmpty else { return false }
+        return true
     }
 
     private func phaseCaption(for status: OTAUpdateStatus) -> String {

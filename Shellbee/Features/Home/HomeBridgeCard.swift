@@ -1,56 +1,94 @@
 import SwiftUI
 
 struct HomeBridgeCard: View {
-    let snapshot: HomeSnapshot
-    let health: BridgeHealth?
-    var serverName: String? = nil
-    var connectionState: ConnectionSessionController.State = .idle
-    let onRestart: () -> Void
+    let entries: [HomeBridgeCardEntry]
+    let onRestart: (UUID) -> Void
+    var onSelectBridge: ((UUID) -> Void)? = nil
 
-    private var isReconnecting: Bool {
-        if case .reconnecting = connectionState { return true }
-        return false
-    }
-
-    private var reconnectAttempt: Int {
-        if case .reconnecting(let n) = connectionState { return n }
-        return 0
-    }
-
-    private var headerTitle: String {
-        if let serverName, !serverName.isEmpty { return serverName }
-        return "Zigbee2MQTT"
-    }
-
-    private var headerDotColor: Color {
-        if isReconnecting { return .orange }
-        return snapshot.isBridgeOnline ? .green : .red
-    }
-
+    /// Latest Z2M version from GitHub Releases. Polled at most every 5 min,
+    /// shared by every bridge row so we don't fan out the same network call.
     @State private var latestVersion: String? = nil
     @State private var lastVersionFetch: Date? = nil
 
+    var body: some View {
+        SwiftUI.Group {
+            if entries.count >= 2 {
+                multiBridgeCard
+            } else {
+                HomeBridgeCardSingle(entry: entries.first, latestVersion: latestVersion, onRestart: onRestart)
+            }
+        }
+        .task(id: entries.compactMap(\.version).joined(separator: ",")) {
+            await fetchLatestVersion()
+        }
+    }
+
+    private var multiBridgeCard: some View {
+        HomeCardContainer {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                HomeCardTitle(symbol: "antenna.radiowaves.left.and.right", title: "Bridges", tint: .teal)
+                VStack(spacing: 0) {
+                    ForEach(entries) { entry in
+                        HomeBridgeCardRow(
+                            entry: entry,
+                            latestVersion: latestVersion,
+                            onRestart: { onRestart(entry.id) },
+                            onSelect: onSelectBridge.map { handler in { handler(entry.id) } }
+                        )
+                        if entry.id != entries.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func fetchLatestVersion() async {
+        if let last = lastVersionFetch, Date().timeIntervalSince(last) < 300 { return }
+        guard let url = URL(string: "https://api.github.com/repos/Koenkk/zigbee2mqtt/releases/latest") else { return }
+        lastVersionFetch = Date()
+        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+        struct Release: Decodable { let tag_name: String }
+        guard let release = try? JSONDecoder().decode(Release.self, from: data) else { return }
+        latestVersion = release.tag_name
+    }
+}
+
+/// Single-bridge layout — preserves the legacy stat/status/alert presentation.
+private struct HomeBridgeCardSingle: View {
+    let entry: HomeBridgeCardEntry?
+    let latestVersion: String?
+    let onRestart: (UUID) -> Void
+
+    private var headerTitle: String {
+        entry?.name.isEmpty == false ? entry!.name : "Zigbee2MQTT"
+    }
+
     private var updateAvailable: Bool {
         guard let latest = latestVersion.flatMap(Z2MVersion.parse),
-              let current = snapshot.bridgeVersion.flatMap(Z2MVersion.parse) else { return false }
+              let current = entry?.version.flatMap(Z2MVersion.parse) else { return false }
         return latest > current
     }
 
     private var hasMemoryAlert: Bool {
-        let z2mHigh = (health?.process?.memoryPercent ?? 0) > 30
-        let osHigh  = (health?.os?.memoryPercent ?? 0) > 85
+        let z2mHigh = (entry?.health?.process?.memoryPercent ?? 0) > 30
+        let osHigh  = (entry?.health?.os?.memoryPercent ?? 0) > 85
         return z2mHigh || osHigh
     }
 
     private var hasAlerts: Bool {
-        updateAvailable || snapshot.restartRequired || snapshot.isPermitJoinActive || hasMemoryAlert
+        updateAvailable
+            || entry?.restartRequired == true
+            || entry?.isPermitJoinActive == true
+            || hasMemoryAlert
     }
 
     var body: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 header
-                if health?.process != nil || health?.responseTime != nil {
+                if entry?.health?.process != nil || entry?.health?.responseTime != nil {
                     statsRow
                 }
                 statusRow
@@ -59,19 +97,16 @@ struct HomeBridgeCard: View {
                 }
             }
         }
-        .task(id: snapshot.bridgeVersion) {
-            await fetchLatestVersion()
-        }
     }
 
     private var header: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             HomeCardTitle(symbol: "antenna.radiowaves.left.and.right", title: headerTitle, tint: .teal)
                 .lineLimit(1)
-            if isReconnecting {
+            if entry?.isReconnecting == true {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     ProgressView().controlSize(.mini)
-                    Text("Reconnecting (\(reconnectAttempt))")
+                    Text("Reconnecting (\(entry?.reconnectAttempt ?? 0))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -82,13 +117,13 @@ struct HomeBridgeCard: View {
 
     private var statsRow: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.lg) {
-            if let uptime = health?.process?.uptimeFormatted {
+            if let uptime = entry?.health?.process?.uptimeFormatted {
                 HomeStatCell(value: uptime, label: "Uptime")
             }
-            if let published = health?.mqtt?.published {
+            if let published = entry?.health?.mqtt?.published {
                 HomeStatCell(value: formatCount(published), label: "Published")
             }
-            if let received = health?.mqtt?.received {
+            if let received = entry?.health?.mqtt?.received {
                 HomeStatCell(value: formatCount(received), label: "Received")
             }
         }
@@ -96,20 +131,20 @@ struct HomeBridgeCard: View {
 
     private func formatCount(_ n: Int) -> String {
         switch n {
-        case 0..<1_000:       return "\(n)"
-        case 1_000..<1_000_000: return String(format: "%.0fK", Double(n) / 1_000)
-        default:              return String(format: "%.1fM", Double(n) / 1_000_000)
+        case 0..<1_000:           return "\(n)"
+        case 1_000..<1_000_000:   return String(format: "%.0fK", Double(n) / 1_000)
+        default:                  return String(format: "%.1fM", Double(n) / 1_000_000)
         }
     }
 
     private var mqttDown: Bool {
-        if let connected = health?.mqtt?.connected { return !connected }
+        if let connected = entry?.health?.mqtt?.connected { return !connected }
         return false
     }
 
     private var statusRow: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            if !snapshot.isConnected {
+            if entry?.isWebSocketConnected != true {
                 statusLine(symbol: "exclamationmark.triangle.fill", tint: .red, text: "WebSocket disconnected")
             } else if mqttDown {
                 statusLine(symbol: "exclamationmark.triangle.fill", tint: .orange, text: "MQTT disconnected")
@@ -142,76 +177,82 @@ struct HomeBridgeCard: View {
             }
             .foregroundStyle(.primary)
         }
-        if snapshot.restartRequired {
+        if entry?.restartRequired == true, let id = entry?.id {
             HomeCardAlertRow(
                 symbol: "arrow.triangle.2.circlepath.circle.fill",
                 title: "Restart required to apply configuration",
                 color: .orange,
-                action: onRestart
+                action: { onRestart(id) }
             )
         }
-        if snapshot.isPermitJoinActive {
-            // The countdown lives in the toolbar's active sheet (TimelineView
-            // reading from bridgeInfo). Mirroring it here updated only when
-            // the snapshot recomputed, which made the card look broken — and
-            // a static "open" badge is the right granularity for an at-a-glance
-            // status row anyway.
+        if entry?.isPermitJoinActive == true {
             HomeCardAlertRow(symbol: "person.crop.circle.badge.plus", title: "Permit Join open", color: .orange, action: nil)
         }
-        if let pct = health?.process?.memoryPercent, pct > 30 {
-            HomeCardAlertRow(
-                symbol: "memorychip",
-                title: "High Z2M memory (\(Int(pct))%)",
-                color: .orange,
-                action: nil
-            )
+        if let pct = entry?.health?.process?.memoryPercent, pct > 30 {
+            HomeCardAlertRow(symbol: "memorychip", title: "High Z2M memory (\(Int(pct))%)", color: .orange, action: nil)
         }
-        if let pct = health?.os?.memoryPercent, pct > 85 {
-            HomeCardAlertRow(
-                symbol: "memorychip",
-                title: "High system memory (\(Int(pct))%)",
-                color: .orange,
-                action: nil
-            )
+        if let pct = entry?.health?.os?.memoryPercent, pct > 85 {
+            HomeCardAlertRow(symbol: "memorychip", title: "High system memory (\(Int(pct))%)", color: .orange, action: nil)
         }
-    }
-
-    private func fetchLatestVersion() async {
-        if let last = lastVersionFetch, Date().timeIntervalSince(last) < 300 { return }
-        guard let url = URL(string: "https://api.github.com/repos/Koenkk/zigbee2mqtt/releases/latest") else { return }
-        lastVersionFetch = Date()
-        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-        struct Release: Decodable { let tag_name: String }
-        guard let release = try? JSONDecoder().decode(Release.self, from: data) else { return }
-        latestVersion = release.tag_name
     }
 }
 
-#Preview {
-    HomeBridgeCard(snapshot: HomeBridgeCard.previewSnapshot, health: HomeBridgeCard.previewHealth, onRestart: {})
+#Preview("Single") {
+    HomeBridgeCard(entries: [HomeBridgeCard.previewEntry(focused: true)], onRestart: { _ in })
         .padding()
         .background(Color(.systemGroupedBackground))
 }
 
-private extension HomeBridgeCard {
-    static var previewSnapshot: HomeSnapshot {
-        HomeSnapshot(
-            devices: [], availability: [:], states: [:],
-            isConnected: true, isBridgeOnline: true, groupCount: 3,
-            bridgeVersion: "2.9.2", bridgeCommit: "2b485a98c5f9",
-            coordinatorType: "EmberZNet", coordinatorIEEEAddress: "0x4c5bb3fffe932a84",
-            networkChannel: 20, panID: 54_074,
-            isPermitJoinActive: false, permitJoinEnd: nil, restartRequired: false
-        )
-    }
+#Preview("Multi") {
+    HomeBridgeCard(
+        entries: [
+            HomeBridgeCard.previewEntry(focused: true),
+            HomeBridgeCard.previewEntry(name: "Lab", online: true, restart: true),
+            HomeBridgeCard.previewEntry(name: "Garage", reconnecting: 3)
+        ],
+        onRestart: { _ in }
+    )
+    .padding()
+    .background(Color(.systemGroupedBackground))
+}
 
-    static var previewHealth: BridgeHealth {
-        BridgeHealth(
+extension HomeBridgeCard {
+    static func previewEntry(
+        name: String = "Main",
+        focused: Bool = false,
+        online: Bool = true,
+        restart: Bool = false,
+        reconnecting: Int? = nil
+    ) -> HomeBridgeCardEntry {
+        let info = BridgeInfo(
+            version: "2.9.2",
+            commit: "2b485a98c5f9c879e1e9b80ffae3c7a84b0dce8d",
+            coordinator: CoordinatorInfo(type: "EmberZNet", ieeeAddress: "0x4c5bb3fffe932a84", meta: nil),
+            network: NetworkInfo(channel: 20, panID: 54_074, extendedPanID: nil),
+            logLevel: "info",
+            permitJoin: false,
+            permitJoinTimeout: nil,
+            permitJoinEnd: nil,
+            restartRequired: restart,
+            config: nil
+        )
+        let health = BridgeHealth(
             healthy: true,
             responseTime: 12,
-            process: BridgeHealth.ProcessStats(uptimeSec: 527404, memoryUsedMb: 309.41, memoryPercent: 7.64),
+            process: BridgeHealth.ProcessStats(uptimeSec: 527_404, memoryUsedMb: 309.41, memoryPercent: 7.64),
             os: BridgeHealth.OSStats(loadAverage: [0.16, 0.03, 0.01], memoryUsedMb: 677.89, memoryPercent: 16.74),
             mqtt: BridgeHealth.MQTTStats(connected: true, queued: 0, published: 367_623, received: 15_575)
+        )
+        let state: ConnectionSessionController.State = reconnecting.map { .reconnecting(attempt: $0) } ?? .connected
+        return HomeBridgeCardEntry(
+            id: UUID(),
+            name: name,
+            isFocused: focused,
+            connectionState: state,
+            isWebSocketConnected: reconnecting == nil,
+            isBridgeOnline: online,
+            info: info,
+            health: health
         )
     }
 }

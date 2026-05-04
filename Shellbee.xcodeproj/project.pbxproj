@@ -92,6 +92,7 @@
 				Core/Log/LogMapperEngine.swift,
 				Core/Log/Z2MLogPatterns.swift,
 				Core/Models/AppearanceMode.swift,
+				Core/Models/BridgeBound.swift,
 				Core/Models/BridgeHealth.swift,
 				Core/Models/BridgeInfo.swift,
 				Core/Models/BridgeSettings.swift,
@@ -102,8 +103,12 @@
 				Core/Models/LogEntry.swift,
 				Core/Models/LogMessage.swift,
 				Core/Models/LogSheetRequest.swift,
+				Core/Models/NavigationRoutes.swift,
 				Core/Models/NotificationCategory.swift,
 				Core/Models/TouchlinkDevice.swift,
+				Core/Networking/BridgeRegistry.swift,
+				Core/Networking/BridgeScope.swift,
+				Core/Networking/BridgeSession.swift,
 				Core/Networking/ConnectionConfig.swift,
 				Core/Networking/NetworkPathMonitor.swift,
 				Core/Networking/OTABulkOperationQueue.swift,
@@ -120,6 +125,7 @@
 				Core/Parsing/DocParser.swift,
 				Core/Parsing/FrontendReferenceRewriter.swift,
 				Core/Services/BundledDocStore.swift,
+				Core/Services/ContributorsService.swift,
 				Core/Services/DeviceDocService.swift,
 				Core/Services/DocBrowserIndex.swift,
 				Core/Services/GuideDocService.swift,
@@ -181,6 +187,8 @@
 				Features/Home/HomeAddCardsSection.swift,
 				Features/Home/HomeBackgroundGradient.swift,
 				Features/Home/HomeBridgeCard.swift,
+				Features/Home/HomeBridgeCardEntry.swift,
+				Features/Home/HomeBridgeCardRow.swift,
 				Features/Home/HomeCardComponents.swift,
 				Features/Home/HomeCardSlot.swift,
 				Features/Home/HomeDevicesCard.swift,
@@ -224,6 +232,8 @@
 				Features/Settings/Backup/BackupPayload.swift,
 				Features/Settings/Backup/BackupView.swift,
 				Features/Settings/Backup/RestoreGuideSheet.swift,
+				Features/Settings/BridgeSettingsView.swift,
+				Features/Settings/ConnectionCardActions.swift,
 				Features/Settings/Developer/DeveloperSettings.swift,
 				Features/Settings/Developer/DeveloperSettingsView.swift,
 				Features/Settings/Developer/MQTTInspectorView.swift,
@@ -231,7 +241,6 @@
 				Features/Settings/DeviceStatisticsView.swift,
 				Features/Settings/DocBrowserDetailView.swift,
 				Features/Settings/DocBrowserView.swift,
-				Features/Settings/FrontendSettingsView.swift,
 				Features/Settings/HealthSettingsView.swift,
 				Features/Settings/HomeAssistantSettingsView.swift,
 				Features/Settings/LogOutputView.swift,
@@ -240,6 +249,7 @@
 				Features/Settings/NetworkAccessSettingsView.swift,
 				Features/Settings/NetworkSettingsView.swift,
 				Features/Settings/OTASettingsView.swift,
+				Features/Settings/SavedBridgesView.swift,
 				Features/Settings/SerialSettingsView.swift,
 				Features/Settings/ServerDetailView.swift,
 				Features/Settings/SettingsView.swift,
@@ -254,6 +264,10 @@
 				Shared/Compat/iOS26Compat.swift,
 				Shared/Components/BeautifulPayloadView.swift,
 				Shared/Components/BeautifulRow.swift,
+				Shared/Components/BridgeBadge.swift,
+				Shared/Components/BridgeColor.swift,
+				Shared/Components/BridgePicker.swift,
+				Shared/Components/BridgeSwitcherToolbarItem.swift,
 				Shared/Components/CopyableRow.swift,
 				Shared/Components/DeviceExtras.swift,
 				Shared/Components/DeviceFeatureSectionRow.swift,
@@ -830,7 +844,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.3;
+				MARKETING_VERSION = 1.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -871,7 +885,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5.3;
+				MARKETING_VERSION = 1.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -911,7 +925,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5.3;
+				MARKETING_VERSION = 1.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -953,7 +967,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5.3;
+				MARKETING_VERSION = 1.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

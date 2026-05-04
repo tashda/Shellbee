@@ -1,9 +1,11 @@
 import SwiftUI
 
 struct AcknowledgementsView: View {
+    @State private var contributors: [Contributor] = ContributorsService.shared.loadCached()
+
     var body: some View {
         Form {
-            Section {
+            Section("Open Source") {
                 acknowledgementRow(
                     title: "Zigbee2MQTT",
                     subtitle: "The open-source Zigbee gateway this app connects to",
@@ -22,10 +24,18 @@ struct AcknowledgementsView: View {
                     badge: "MIT",
                     url: URL(string: "https://github.com/getsentry/sentry-cocoa")!
                 )
-            } header: {
-                Text("Open Source")
-            } footer: {
-                Text("Shellbee uses documentation and data from the zigbee2mqtt.io project (GPL-3.0). Crash reporting, when enabled, is powered by the Sentry Cocoa SDK (MIT).")
+            }
+
+            if !contributors.isEmpty {
+                Section("Contributors") {
+                    ContributorsGrid(contributors: contributors)
+                        .listRowInsets(EdgeInsets(
+                            top: DesignTokens.Spacing.md,
+                            leading: DesignTokens.Spacing.md,
+                            bottom: DesignTokens.Spacing.md,
+                            trailing: DesignTokens.Spacing.md
+                        ))
+                }
             }
 
             Section("Support") {
@@ -53,6 +63,12 @@ struct AcknowledgementsView: View {
         }
         .navigationTitle("Acknowledgements")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            let fresh = await ContributorsService.shared.refresh()
+            if !fresh.isEmpty {
+                contributors = fresh
+            }
+        }
     }
 
     private func acknowledgementRow(title: String, subtitle: String, badge: String, url: URL) -> some View {
@@ -84,6 +100,34 @@ struct AcknowledgementsView: View {
             }
         }
         .foregroundStyle(.primary)
+    }
+}
+
+private struct ContributorsGrid: View {
+    let contributors: [Contributor]
+
+    private let avatarSize: CGFloat = 44
+    private let columns = [GridItem(.adaptive(minimum: 52), spacing: DesignTokens.Spacing.sm)]
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            ForEach(contributors) { contributor in
+                Link(destination: contributor.htmlURL) {
+                    AsyncImage(url: contributor.avatarURL) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        default:
+                            Circle().fill(.quaternary)
+                        }
+                    }
+                    .frame(width: avatarSize, height: avatarSize)
+                    .clipShape(Circle())
+                    .overlay(Circle().strokeBorder(.quaternary, lineWidth: 0.5))
+                }
+                .accessibilityLabel(contributor.login)
+            }
+        }
     }
 }
 

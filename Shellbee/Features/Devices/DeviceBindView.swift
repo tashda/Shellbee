@@ -2,12 +2,17 @@ import SwiftUI
 
 struct DeviceBindView: View {
     @Environment(AppEnvironment.self) private var environment
+    /// Phase 1 multi-bridge: bridge that owns this device. Pushed in via
+    /// `DeviceRoute` from the parent detail view.
+    let bridgeID: UUID
     let device: Device
     @State private var showAddSheet = false
     @State private var bindingToRemove: ParsedBinding?
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
     private var currentDevice: Device {
-        environment.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
+        scope.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
     }
 
     private var bindings: [ParsedBinding] {
@@ -45,7 +50,7 @@ struct DeviceBindView: View {
             }
         }
         .sheet(isPresented: $showAddSheet) {
-            AddBindingSheet(device: currentDevice) { target, clusters in
+            AddBindingSheet(bridgeID: bridgeID, device: currentDevice) { target, clusters in
                 bind(to: target, clusters: clusters)
             }
         }
@@ -66,13 +71,13 @@ struct DeviceBindView: View {
 
     @ViewBuilder
     private func bindingRow(_ binding: ParsedBinding) -> some View {
-        let targetDevice = environment.store.devices.first { $0.ieeeAddress == binding.targetIEEE }
+        let targetDevice = scope.store.devices.first { $0.ieeeAddress == binding.targetIEEE }
         if let targetDevice {
-            NavigationLink(destination: DeviceDetailView(device: targetDevice)) {
-                BindingRow(binding: binding, store: environment.store)
+            NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: targetDevice)) {
+                BindingRow(binding: binding, store: scope.store)
             }
         } else {
-            BindingRow(binding: binding, store: environment.store)
+            BindingRow(binding: binding, store: scope.store)
         }
     }
 
@@ -84,12 +89,12 @@ struct DeviceBindView: View {
         if !clusters.isEmpty {
             payload["clusters"] = .array(clusters.map { .string($0) })
         }
-        environment.send(topic: Z2MTopics.Request.deviceBind, payload: .object(payload))
+        scope.send(topic: Z2MTopics.Request.deviceBind, payload: .object(payload))
     }
 
     private func unbind(_ binding: ParsedBinding) {
         let target = resolveTarget(binding)
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.deviceUnbind,
             payload: .object([
                 "from": .string(currentDevice.friendlyName),
@@ -101,11 +106,11 @@ struct DeviceBindView: View {
 
     private func resolveTarget(_ binding: ParsedBinding) -> String {
         if binding.targetType == "group" {
-            return environment.store.groups
+            return scope.store.groups
                 .first { $0.id == binding.groupId }?.friendlyName
                 ?? "group_\(binding.groupId ?? 0)"
         }
-        return environment.store.devices
+        return scope.store.devices
             .first { $0.ieeeAddress == binding.targetIEEE }?.friendlyName
             ?? binding.targetIEEE ?? "coordinator"
     }
@@ -145,7 +150,7 @@ struct ParsedBinding: Identifiable {
 
 #Preview {
     NavigationStack {
-        DeviceBindView(device: .preview)
+        DeviceBindView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

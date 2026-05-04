@@ -2,11 +2,14 @@ import SwiftUI
 
 struct DeviceReportingView: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
     let device: Device
     @State private var showAddSheet = false
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
     private var currentDevice: Device {
-        environment.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
+        scope.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
     }
 
     private var reportings: [ConfiguredReporting] {
@@ -60,7 +63,7 @@ struct DeviceReportingView: View {
     }
 
     private func sendReportingConfig(_ config: ReportingConfig) {
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.deviceReportingConfigure,
             payload: .object([
                 "id": .string(currentDevice.friendlyName),
@@ -142,7 +145,7 @@ private struct ReportingRow: View {
 
 #Preview {
     NavigationStack {
-        DeviceReportingView(device: .preview)
+        DeviceReportingView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

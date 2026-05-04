@@ -2,12 +2,15 @@ import SwiftUI
 
 struct AddGroupSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var environment
     @FocusState private var nameFieldFocused: Bool
-    let onConfirm: (String, Int?) -> Void
+    /// `(name, optional id, target bridgeID — nil = focused bridge)`.
+    let onConfirm: (String, Int?, UUID?) -> Void
 
     @State private var name = ""
     @State private var showIDField = false
     @State private var customID = ""
+    @State private var bridgeID: UUID?
 
     private var isNameValid: Bool {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
@@ -17,6 +20,7 @@ struct AddGroupSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                bridgeSection
                 Section {
                     TextField("Group Name", text: $name)
                         .focused($nameFieldFocused)
@@ -47,7 +51,7 @@ struct AddGroupSheet: View {
                 Button("Create Group") {
                     let trimmed = name.trimmingCharacters(in: .whitespaces)
                     let id = showIDField ? Int(customID) : nil
-                    onConfirm(trimmed, id)
+                    onConfirm(trimmed, id, bridgeID)
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
@@ -63,8 +67,21 @@ struct AddGroupSheet: View {
         .presentationDragIndicator(.visible)
         .task { nameFieldFocused = true }
     }
+
+    @ViewBuilder
+    private var bridgeSection: some View {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        if connected.count >= 2 {
+            Section {
+                BridgePicker(selection: $bridgeID)
+            } footer: {
+                Text("The group is created on the selected bridge only.")
+            }
+        }
+    }
 }
 
 #Preview {
-    AddGroupSheet { _, _ in }
+    AddGroupSheet { _, _, _ in }
+        .environment(AppEnvironment())
 }

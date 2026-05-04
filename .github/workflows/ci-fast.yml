@@ -48,6 +48,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Lint (CLAUDE.md mechanical rules)
+        run: ./.github/scripts/lint.sh
+
       - name: Cache SwiftPM dependencies
         uses: actions/cache@v4
         with:
@@ -122,6 +125,21 @@ jobs:
             -scheme "$SCHEME" \
             -derivedDataPath "$DERIVED_DATA"
 
+      - name: Build widget extension
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          # Catches the "new file imports AppEnvironment but isn't in the
+          # widget target's membershipExceptions" trap that the main scheme
+          # never surfaces.
+          set -o pipefail
+          xcodebuild build \
+            -project Shellbee.xcodeproj \
+            -scheme ShellbeeWidgetsExtension \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | tee build-widget.log
+
       - name: Build for testing
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
@@ -175,6 +193,15 @@ jobs:
               SUMMARY=$(xcrun xcresulttool get --path "$XCRESULT" --format json 2>/dev/null \
                 | jq -r '.metrics | "Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)"' 2>/dev/null || echo "Results bundle present but could not be parsed.")
               echo "**$SUMMARY**"
+              echo
+              # Best-effort line coverage. xcresulttool's coverage subcommand
+              # is the modern path; the CLI shape varies between Xcode versions
+              # so we tolerate failure rather than block CI on a parse change.
+              COV=$(xcrun xccov view --report --only-targets "$XCRESULT" 2>/dev/null \
+                | awk '/^Shellbee\.app/ { print $2 }' | head -n1 || true)
+              if [ -n "$COV" ]; then
+                echo "Line coverage (Shellbee.app): **$COV**"
+              fi
             else
               echo "_No result bundle produced (build may have failed before tests ran)._"
             fi

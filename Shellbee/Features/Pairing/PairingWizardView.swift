@@ -8,18 +8,34 @@ struct PairingWizardView: View {
     @State private var deviceToRename: Device?
     @State private var deviceToRemove: Device?
     @State private var pendingDeviceAlert: PendingDeviceAlert?
+    /// Phase 2 multi-bridge: target bridge for the pairing session. Nil =
+    /// focused bridge (single-bridge fallback). The picker auto-selects the
+    /// first connected bridge on appear.
+    @State private var bridgeID: UUID?
+
+    /// Resolve picker selection or fall back to the selected bridge in the
+    /// switcher. The wizard always operates on exactly one bridge; resolution
+    /// is at the view boundary so all child reads/writes go through one scope.
+    private var resolvedBridgeID: UUID? {
+        bridgeID ?? environment.registry.primaryBridgeID
+    }
+    private var scope: BridgeScope {
+        environment.scope(for: resolvedBridgeID ?? UUID())
+    }
+    private var store: AppStore { scope.store }
 
     private var isPermitOpen: Bool {
-        environment.store.bridgeInfo?.permitJoin ?? false
+        store.bridgeInfo?.permitJoin ?? false
     }
 
     private var sessionDevices: [Device] {
-        model.sessionDevices(in: environment.store)
+        model.sessionDevices(in: store)
     }
 
     var body: some View {
         NavigationStack {
             List {
+                bridgeSection
                 permitJoinSection
                 if !sessionDevices.isEmpty {
                     Section {
@@ -63,12 +79,12 @@ struct PairingWizardView: View {
             }
             .sheet(item: $deviceToRename) { device in
                 RenameDeviceSheet(device: device) { newName, updateHA in
-                    environment.renameDevice(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
+                    sendDeviceRename(from: device.friendlyName, to: newName, homeassistantRename: updateHA)
                 }
             }
             .sheet(item: $deviceToRemove) { device in
                 RemoveDeviceSheet(device: device) { force, block in
-                    environment.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
+                    scope.send(topic: Z2MTopics.Request.deviceRemove, payload: .object([
                         "id": .string(device.friendlyName),
                         "force": .bool(force),
                         "block": .bool(block)
@@ -86,17 +102,33 @@ struct PairingWizardView: View {
                 Button(alert.confirmTitle, role: alert.role) {
                     switch alert {
                     case .reconfigure(let device):
-                        environment.send(topic: Z2MTopics.Request.deviceConfigure,
-                                         payload: .object(["id": .string(device.friendlyName)]))
+                        scope.send(topic: Z2MTopics.Request.deviceConfigure,
+                                   payload: .object(["id": .string(device.friendlyName)]))
                     case .interview(let device):
-                        environment.send(topic: Z2MTopics.Request.deviceInterview,
-                                         payload: .object(["id": .string(device.friendlyName)]))
+                        scope.send(topic: Z2MTopics.Request.deviceInterview,
+                                   payload: .object(["id": .string(device.friendlyName)]))
                     }
                     pendingDeviceAlert = nil
                 }
                 Button("Cancel", role: .cancel) { pendingDeviceAlert = nil }
             } message: { alert in
                 Text(alert.message)
+            }
+        }
+    }
+
+    // MARK: - Bridge picker (multi-bridge only)
+
+    @ViewBuilder
+    private var bridgeSection: some View {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        if connected.count >= 2 {
+            Section {
+                BridgePicker(selection: $bridgeID)
+            } header: {
+                Text("Add to")
+            } footer: {
+                Text("New devices join the selected bridge's network only.")
             }
         }
     }
@@ -108,8 +140,8 @@ struct PairingWizardView: View {
         if isPermitOpen {
             Section {
                 NetworkOpenRow(
-                    permitEnd: environment.store.bridgeInfo?.permitJoinEnd,
-                    target: environment.store.bridgeInfo?.permitJoinTarget
+                    permitEnd: store.bridgeInfo?.permitJoinEnd,
+                    target: store.bridgeInfo?.permitJoinTarget
                 )
             } footer: {
                 if sessionDevices.isEmpty {
@@ -117,7 +149,7 @@ struct PairingWizardView: View {
                 }
             }
         } else {
-            PermitJoinControls(onStart: { duration, target in
+            PermitJoinControls(scope: scope, onStart: { duration, target in
                 sendPermitJoin(duration: duration, deviceName: target)
             })
         }
@@ -143,60 +175,84 @@ struct PairingWizardView: View {
 
     @ViewBuilder
     private func wizardRow(for device: Device) -> some View {
-        let state = environment.store.state(for: device.friendlyName)
-        let isAvailable = environment.store.isAvailable(device.friendlyName)
-        let otaStatus = environment.store.otaStatus(for: device.friendlyName)
+        let state = store.state(for: device.friendlyName)
+        let isAvailable = store.isAvailable(device.friendlyName)
+        let otaStatus = store.otaStatus(for: device.friendlyName)
         DeviceListRow(
             device: device,
             state: state,
             isAvailable: isAvailable,
             otaStatus: otaStatus,
-            checkResult: environment.store.deviceCheckResults[device.friendlyName],
-            isDeleting: environment.store.pendingRemovals.contains(device.friendlyName),
-            isIdentifying: environment.store.identifyInProgress.contains(device.friendlyName),
+            checkResult: store.deviceCheckResults[device.friendlyName],
+            isDeleting: store.pendingRemovals.contains(device.friendlyName),
+            isIdentifying: store.identifyInProgress.contains(device.friendlyName),
             navigates: false,
             onRename: { deviceToRename = device },
             onRemove: { deviceToRemove = device },
             onReconfigure: { pendingDeviceAlert = .reconfigure(device) },
             onInterview: { pendingDeviceAlert = .interview(device) },
-            onIdentify: { environment.identifyDevice(device.friendlyName) },
+            onIdentify: { identifyDevice(device.friendlyName) },
             onUpdate: state.hasUpdateAvailable
                 ? {
-                    environment.store.startOTAUpdate(for: device.friendlyName)
-                    environment.send(topic: Z2MTopics.Request.deviceOTAUpdate,
-                                     payload: .object(["id": .string(device.friendlyName)]))
+                    store.startOTAUpdate(for: device.friendlyName)
+                    scope.send(topic: Z2MTopics.Request.deviceOTAUpdate,
+                               payload: .object(["id": .string(device.friendlyName)]))
                 }
                 : nil,
             onCheckUpdate: {
-                environment.store.startOTACheck(for: device.friendlyName)
-                environment.send(topic: Z2MTopics.Request.deviceOTACheck,
-                                 payload: .object(["id": .string(device.friendlyName)]))
+                store.startOTACheck(for: device.friendlyName)
+                scope.send(topic: Z2MTopics.Request.deviceOTACheck,
+                           payload: .object(["id": .string(device.friendlyName)]))
             },
             onSchedule: state.hasUpdateAvailable
                 ? {
-                    environment.store.startOTASchedule(for: device.friendlyName)
-                    environment.send(topic: Z2MTopics.Request.deviceOTASchedule,
-                                     payload: .object(["id": .string(device.friendlyName)]))
+                    store.startOTASchedule(for: device.friendlyName)
+                    scope.send(topic: Z2MTopics.Request.deviceOTASchedule,
+                               payload: .object(["id": .string(device.friendlyName)]))
                 }
                 : nil,
             onUnschedule: {
-                environment.store.cancelOTASchedule(for: device.friendlyName)
-                environment.send(topic: Z2MTopics.Request.deviceOTAUnschedule,
-                                 payload: .object(["id": .string(device.friendlyName)]))
+                store.cancelOTASchedule(for: device.friendlyName)
+                scope.send(topic: Z2MTopics.Request.deviceOTAUnschedule,
+                           payload: .object(["id": .string(device.friendlyName)]))
             }
         )
+    }
+
+    private func identifyDevice(_ friendlyName: String) {
+        guard !store.identifyInProgress.contains(friendlyName) else { return }
+        store.identifyInProgress.insert(friendlyName)
+        scope.send(
+            topic: Z2MTopics.deviceSet(friendlyName),
+            payload: .object(["identify": .string("identify")])
+        )
+        Task { [weak store] in
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run { _ = store?.identifyInProgress.remove(friendlyName) }
+        }
+    }
+
+    private func sendDeviceRename(from: String, to: String, homeassistantRename: Bool) {
+        let trimmed = to.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != from else { return }
+        store.optimisticRename(from: from, to: trimmed)
+        scope.send(topic: Z2MTopics.Request.deviceRename, payload: .object([
+            "from": .string(from),
+            "to": .string(trimmed),
+            "homeassistant_rename": .bool(homeassistantRename)
+        ]))
     }
 
     private func sendPermitJoin(duration: Int, deviceName: String?) {
         var payload: [String: JSONValue] = ["time": .int(duration), "value": .bool(duration > 0)]
         if let deviceName, !deviceName.isEmpty { payload["device"] = .string(deviceName) }
-        environment.send(topic: Z2MTopics.Request.permitJoin, payload: .object(payload))
+        scope.send(topic: Z2MTopics.Request.permitJoin, payload: .object(payload))
 
-        // Optimistically reflect the request in bridgeInfo so the wizard row
-        // updates the moment the user taps — the bridge's `permit_join`
-        // event will overwrite this with the authoritative state shortly.
-        if let info = environment.store.bridgeInfo {
-            environment.store.bridgeInfo = info.copyUpdatingPermitJoin(
+        // Optimistically reflect the request in this bridge's bridgeInfo so
+        // the wizard updates the moment the user taps — the bridge's
+        // `permit_join` event will overwrite shortly.
+        if let info = store.bridgeInfo {
+            store.bridgeInfo = info.copyUpdatingPermitJoin(
                 enabled: duration > 0,
                 timeout: duration > 0 ? duration : nil,
                 target: duration > 0 ? deviceName : nil
@@ -208,24 +264,24 @@ struct PairingWizardView: View {
 // MARK: - Permit-join controls (network closed)
 
 private struct PermitJoinControls: View {
-    @Environment(AppEnvironment.self) private var environment
+    let scope: BridgeScope
     @State private var duration: Int = 254
     @State private var targetName: String?
     let onStart: (Int, String?) -> Void
 
     var body: some View {
         Section {
-            Picker("Duration", selection: $duration) {
-                Text("1 min").tag(60)
-                Text("2 min").tag(120)
-                Text("3 min").tag(180)
-                Text("~4 min").tag(254)
-            }
             Picker("Via", selection: $targetName) {
                 Text("All devices").tag(String?.none)
                 ForEach(routerTargets, id: \.ieeeAddress) { device in
                     Text(device.friendlyName).tag(String?.some(device.friendlyName))
                 }
+            }
+            Picker("Duration", selection: $duration) {
+                Text("1 min").tag(60)
+                Text("2 min").tag(120)
+                Text("3 min").tag(180)
+                Text("~4 min").tag(254)
             }
         } header: {
             Text("Open the network")
@@ -248,7 +304,7 @@ private struct PermitJoinControls: View {
     }
 
     private var routerTargets: [Device] {
-        environment.store.devices
+        scope.store.devices
             .filter { $0.type == .router }
             .sorted { $0.friendlyName.localizedCompare($1.friendlyName) == .orderedAscending }
     }

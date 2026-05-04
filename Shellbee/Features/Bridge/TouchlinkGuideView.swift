@@ -9,10 +9,21 @@ struct TouchlinkGuideView: View {
 
     @Environment(AppEnvironment.self) private var environment
 
+    /// Phase 4 multi-bridge: bridge whose network the touchlink action runs
+    /// against. Touchlink is per-network, not global. Optional only because
+    /// the guide can be opened from the docs browser without an active
+    /// bridge — in that case actions are no-ops. Callers must pass it
+    /// explicitly (no default) to surface the no-bridge case at every site.
+    let bridgeID: UUID?
+
     @State private var guide: ParsedGuideDoc?
     @State private var isLoading = false
     @State private var loadError: DeviceDocError?
     @State private var showHueResetSheet = false
+
+    private var scope: BridgeScope? {
+        bridgeID.map { environment.scope(for: $0) }
+    }
 
     var body: some View {
         ScrollView {
@@ -25,7 +36,7 @@ struct TouchlinkGuideView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showHueResetSheet) {
             PhilipsHueResetSheet(
-                extendedPanId: environment.store.bridgeInfo?.network?.extendedPanID?.stringValue ?? ""
+                extendedPanId: scope?.bridgeInfo?.network?.extendedPanID?.stringValue ?? ""
             ) { panId, serials in
                 philipsHueReset(extendedPanId: panId, serialNumbers: serials)
             }
@@ -129,7 +140,7 @@ struct TouchlinkGuideView: View {
         if !extendedPanId.isEmpty {
             params["extended_pan_id"] = .string(extendedPanId)
         }
-        environment.send(
+        scope?.send(
             topic: Z2MTopics.Request.action,
             payload: .object([
                 "action": .string("philips_hue_factory_reset"),
@@ -143,7 +154,7 @@ struct TouchlinkGuideView: View {
         defer { isLoading = false }
 
         do {
-            let version = environment.store.bridgeInfo?.version ?? "master"
+            let version = scope?.bridgeInfo?.version ?? "master"
             guide = try await GuideDocService.shared.guide(at: Self.sourcePath, z2mVersion: version)
         } catch let error as DeviceDocError {
             loadError = error
@@ -185,7 +196,7 @@ private struct TouchlinkGuideSectionCard<Content: View>: View {
 
 #Preview {
     NavigationStack {
-        TouchlinkGuideView()
+        TouchlinkGuideView(bridgeID: nil)
             .environment(AppEnvironment())
     }
 }

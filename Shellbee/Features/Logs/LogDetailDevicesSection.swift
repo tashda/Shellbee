@@ -2,7 +2,13 @@ import SwiftUI
 
 struct LogDetailDevicesSection: View {
     @Environment(AppEnvironment.self) private var environment
+    /// Phase 1 multi-bridge: log entries belong to a bridge; the listed
+    /// devices reference that same bridge's store. Push to detail using the
+    /// log entry's source bridge.
+    let bridgeID: UUID
     let devices: [(ref: LogContext.DeviceRef, device: Device)]
+
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     var body: some View {
         Section("Devices") {
@@ -11,7 +17,7 @@ struct LogDetailDevicesSection: View {
                     HStack(spacing: DesignTokens.Spacing.md) {
                         DeviceImageView(
                             device: device,
-                            isAvailable: environment.store.isAvailable(device.friendlyName),
+                            isAvailable: scope.store.isAvailable(device.friendlyName),
                             size: DesignTokens.Size.logRowDeviceImage
                         )
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
@@ -28,7 +34,7 @@ struct LogDetailDevicesSection: View {
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
-                    NavigationLink(destination: DeviceDetailView(device: device)) { EmptyView() }
+                    NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { EmptyView() }
                         .opacity(0)
                 }
             }
@@ -39,7 +45,7 @@ struct LogDetailDevicesSection: View {
 #Preview {
     NavigationStack {
         List {
-            LogDetailDevicesSection(devices: [])
+            LogDetailDevicesSection(bridgeID: UUID(), devices: [])
         }
         .environment(AppEnvironment())
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GroupScenesSection: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
     let group: Group
     let viewModel: GroupDetailViewModel
 
@@ -24,7 +25,7 @@ struct GroupScenesSection: View {
                         }
                         Spacer()
                         Button("Recall") {
-                            viewModel.recallScene(scene, in: group, environment: environment)
+                            viewModel.recallScene(scene, in: group, environment: environment, bridgeID: bridgeID)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -32,7 +33,7 @@ struct GroupScenesSection: View {
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            viewModel.removeScene(scene, from: group, environment: environment)
+                            viewModel.removeScene(scene, from: group, environment: environment, bridgeID: bridgeID)
                         } label: {
                             Label("Remove", systemImage: "trash")
                         }
@@ -45,7 +46,7 @@ struct GroupScenesSection: View {
 
 #Preview {
     List {
-        GroupScenesSection(group: .preview, viewModel: GroupDetailViewModel())
+        GroupScenesSection(bridgeID: UUID(), group: .preview, viewModel: GroupDetailViewModel())
     }
     .environment(AppEnvironment())
 }

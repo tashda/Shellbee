@@ -3,16 +3,25 @@ import SwiftUI
 struct AddBindingSheet: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    /// Phase 1 multi-bridge: source bridge for the bind operation. z2m can't
+    /// bind across networks, so candidates and the resulting bind/unbind
+    /// always route to this bridge.
+    let bridgeID: UUID
     let device: Device
     let onBind: (String, [String]) -> Void
 
     @State private var selectedClusters: Set<String>
     @State private var searchText = ""
 
-    init(device: Device, onBind: @escaping (String, [String]) -> Void) {
+    init(bridgeID: UUID, device: Device, onBind: @escaping (String, [String]) -> Void) {
+        self.bridgeID = bridgeID
         self.device = device
         self.onBind = onBind
         _selectedClusters = State(initialValue: Set(Self.bindableClusters(from: device)))
+    }
+
+    private var sourceStore: AppStore {
+        environment.scope(for: bridgeID).store
     }
 
     private static let skipClusters: Set<String> = ["genOta", "greenPower", "genPollCtrl", "touchlink"]
@@ -41,10 +50,11 @@ struct AddBindingSheet: View {
 
     private var bindableDevices: [Device] {
         let myOut = Set(availableClusters)
-        return environment.store.devices
+        let store = sourceStore
+        return store.devices
             .filter { d in
                 guard d.ieeeAddress != device.ieeeAddress, d.type != .coordinator else { return false }
-                guard environment.store.isAvailable(d.friendlyName) else { return false }
+                guard store.isAvailable(d.friendlyName) else { return false }
                 guard !myOut.isEmpty, !(d.endpoints ?? [:]).isEmpty else { return true }
                 return !myOut.intersection(Self.inputClusters(from: d)).isEmpty
             }
@@ -91,9 +101,9 @@ struct AddBindingSheet: View {
                     }
                 }
 
-                if !environment.store.groups.isEmpty {
+                if !sourceStore.groups.isEmpty {
                     Section("Groups") {
-                        ForEach(environment.store.groups) { group in
+                        ForEach(sourceStore.groups) { group in
                             Button { send(group.friendlyName) } label: {
                                 Label(group.friendlyName, systemImage: "rectangle.3.group.fill")
                                     .foregroundStyle(.primary)
@@ -155,6 +165,6 @@ private struct CoordinatorRow: View {
 }
 
 #Preview {
-    AddBindingSheet(device: .preview) { _, _ in }
+    AddBindingSheet(bridgeID: UUID(), device: .preview) { _, _ in }
         .environment(AppEnvironment())
 }

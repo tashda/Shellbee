@@ -139,6 +139,128 @@ nonisolated enum DesignTokens {
         static let updateAvailable = [Color.blue, Color(red: 0.2, green: 0.5, blue: 1.0)]
     }
 
+    nonisolated enum Bridge {
+        static let palette: [Color] = [
+            Color(red: 0.20, green: 0.56, blue: 0.87),
+            Color(red: 0.93, green: 0.39, blue: 0.32),
+            Color(red: 0.31, green: 0.69, blue: 0.31),
+            Color(red: 0.95, green: 0.63, blue: 0.20),
+            Color(red: 0.61, green: 0.36, blue: 0.85),
+            Color(red: 0.20, green: 0.74, blue: 0.74),
+            Color(red: 0.92, green: 0.46, blue: 0.65),
+            Color(red: 0.40, green: 0.50, blue: 0.30),
+        ]
+
+        static let legacyIndexOverridesKey = "savedBridges.colorOverrides"
+        private static let customColorsKey = "savedBridges.customColors"
+
+        static func color(for bridgeID: UUID) -> Color {
+            migrateLegacyOverrideIfNeeded(for: bridgeID)
+
+            if let hex = customColorHex(for: bridgeID),
+               let color = colorFromHex(hex) {
+                return color
+            }
+            return palette[autoIndex(for: bridgeID)]
+        }
+
+        static func setCustomColor(_ color: Color?, for bridgeID: UUID) {
+            var dict = customColorsMap()
+            if let color, let hex = hexString(for: color) {
+                dict[bridgeID.uuidString] = hex
+            } else {
+                dict.removeValue(forKey: bridgeID.uuidString)
+            }
+            saveCustomColorsMap(dict)
+        }
+
+        static func customColorHex(for bridgeID: UUID) -> String? {
+            customColorsMap()[bridgeID.uuidString]
+        }
+
+        static func autoIndex(for bridgeID: UUID) -> Int {
+            guard !palette.isEmpty else { return 0 }
+            let bytes = withUnsafeBytes(of: bridgeID.uuid) { Array($0) }
+            let sum = bytes.reduce(0) { $0 &+ Int($1) }
+            return abs(sum) % palette.count
+        }
+
+        /// Picks a palette color that is not currently used by another saved
+        /// bridge custom color when possible. Falls back to any palette color.
+        static func suggestedAvailableColor() -> Color {
+            let usedHex = Set(customColorsMap().values.map { $0.uppercased() })
+            let available = palette.filter { color in
+                guard let hex = hexString(for: color)?.uppercased() else { return true }
+                return !usedHex.contains(hex)
+            }
+            let source = available.isEmpty ? palette : available
+            guard !source.isEmpty else { return .accentColor }
+            return source[Int.random(in: 0..<source.count)]
+        }
+
+        private static func migrateLegacyOverrideIfNeeded(for bridgeID: UUID) {
+            if customColorHex(for: bridgeID) != nil { return }
+            guard let data = UserDefaults.standard.data(forKey: legacyIndexOverridesKey),
+                  let decoded = try? JSONDecoder().decode([String: Int].self, from: data),
+                  let index = decoded[bridgeID.uuidString],
+                  palette.indices.contains(index),
+                  let hex = hexString(for: palette[index]) else { return }
+
+            var dict = customColorsMap()
+            dict[bridgeID.uuidString] = hex
+            saveCustomColorsMap(dict)
+        }
+
+        private static func customColorsMap() -> [String: String] {
+            guard let data = UserDefaults.standard.data(forKey: customColorsKey),
+                  let decoded = try? JSONDecoder().decode([String: String].self, from: data) else {
+                return [:]
+            }
+            return decoded
+        }
+
+        private static func saveCustomColorsMap(_ map: [String: String]) {
+            if map.isEmpty {
+                UserDefaults.standard.removeObject(forKey: customColorsKey)
+                return
+            }
+            if let data = try? JSONEncoder().encode(map) {
+                UserDefaults.standard.set(data, forKey: customColorsKey)
+            }
+        }
+
+        static func colorFromHex(_ hex: String) -> Color? {
+            let start = hex.hasPrefix("#") ? hex.index(after: hex.startIndex) : hex.startIndex
+            let value = String(hex[start...])
+            guard value.count == 6, let number = Int(value, radix: 16) else { return nil }
+            let r = Double((number & 0xFF0000) >> 16) / 255.0
+            let g = Double((number & 0x00FF00) >> 8) / 255.0
+            let b = Double(number & 0x0000FF) / 255.0
+            return Color(.sRGB, red: r, green: g, blue: b, opacity: 1.0)
+        }
+
+        static func hexString(for color: Color) -> String? {
+            #if canImport(UIKit)
+            let components = UIColor(color).cgColor.components
+            let resolved: [CGFloat]
+            switch components?.count {
+            case 2:
+                resolved = [components?[0] ?? 0, components?[0] ?? 0, components?[0] ?? 0]
+            case 4:
+                resolved = [components?[0] ?? 0, components?[1] ?? 0, components?[2] ?? 0]
+            default:
+                return nil
+            }
+            let red = Int((resolved[0] * 255).rounded())
+            let green = Int((resolved[1] * 255).rounded())
+            let blue = Int((resolved[2] * 255).rounded())
+            return String(format: "#%02X%02X%02X", red, green, blue)
+            #else
+            return nil
+            #endif
+        }
+    }
+
     nonisolated enum Threshold {
         static let lowBattery = 20
         static let weakSignal = 40

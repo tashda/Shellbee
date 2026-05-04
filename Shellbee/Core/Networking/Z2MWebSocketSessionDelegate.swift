@@ -41,6 +41,14 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
 
     private func awaitOpen() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            // Resolve any state transition under the lock, then perform side
+            // effects (continuation resumes) outside it. The previous
+            // implementation overwrote `openState` in the `.waiting` arm but
+            // dropped the prior continuation reference — when the websocket
+            // later reached `.opened` the stored (already-resumed) new
+            // continuation was resumed again, tripping
+            // SWIFT TASK CONTINUATION MISUSE.
+            var supersededContinuation: CheckedContinuation<Void, Error>? = nil
             let immediateResult: Result<Void, Error>?
 
             lock.lock()
@@ -48,9 +56,13 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
             case .idle:
                 openState = .waiting(continuation)
                 immediateResult = nil
-            case .waiting:
+            case .waiting(let prior):
+                // Replace the stored continuation with the new one and resume
+                // the prior caller with a sentinel error so it unwinds. The
+                // new continuation now owns the wait for the actual open.
+                supersededContinuation = prior
                 openState = .waiting(continuation)
-                immediateResult = .failure(Z2MError.requestFailed("Connection attempt replaced."))
+                immediateResult = nil
             case .opened:
                 openState = .idle
                 immediateResult = .success(())
@@ -60,6 +72,7 @@ final class Z2MWebSocketSessionDelegate: NSObject, URLSessionWebSocketDelegate, 
             }
             lock.unlock()
 
+            supersededContinuation?.resume(throwing: Z2MError.requestFailed("Connection attempt replaced."))
             if let immediateResult {
                 continuation.resume(with: immediateResult)
             }

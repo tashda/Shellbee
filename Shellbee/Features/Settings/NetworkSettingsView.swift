@@ -3,6 +3,8 @@ import SwiftUI
 struct NetworkSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var transmitPower: String = ""
     @State private var adapterConcurrent: String = ""
@@ -11,12 +13,12 @@ struct NetworkSettingsView: View {
     @State private var showingDiscardAlert = false
 
     private var currentChannel: Int {
-        let adv = environment.store.bridgeInfo?.config?.advanced
-        return environment.store.bridgeInfo?.network?.channel ?? adv?.channel ?? 11
+        let adv = scope.bridgeInfo?.config?.advanced
+        return scope.bridgeInfo?.network?.channel ?? adv?.channel ?? 11
     }
 
     private var hasChanges: Bool {
-        let adv = environment.store.bridgeInfo?.config?.advanced
+        let adv = scope.bridgeInfo?.config?.advanced
         return transmitPower != optionalIntString(adv?.transmitPower)
             || adapterConcurrent != optionalIntString(adv?.adapterConcurrent)
             || adapterDelay != optionalIntString(adv?.adapterDelay)
@@ -56,7 +58,7 @@ struct NetworkSettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func numericField(_ label: String, text: Binding<String>, placeholder: String, unit: String) -> some View {
@@ -77,7 +79,7 @@ struct NetworkSettingsView: View {
     }
 
     private func loadFromStore() {
-        let adv = environment.store.bridgeInfo?.config?.advanced
+        let adv = scope.bridgeInfo?.config?.advanced
         transmitPower = optionalIntString(adv?.transmitPower)
         adapterConcurrent = optionalIntString(adv?.adapterConcurrent)
         adapterDelay = optionalIntString(adv?.adapterDelay)
@@ -88,12 +90,12 @@ struct NetworkSettingsView: View {
         if let v = Int(transmitPower) { advanced["transmit_power"] = .int(v) }
         if let v = Int(adapterConcurrent) { advanced["adapter_concurrent"] = .int(v) }
         if let v = Int(adapterDelay) { advanced["adapter_delay"] = .int(v) }
-        environment.sendBridgeOptions(["advanced": .object(advanced)])
+        scope.sendOptions(["advanced": .object(advanced)])
     }
 }
 
 #Preview {
     NavigationStack {
-        NetworkSettingsView().environment(AppEnvironment())
+        NetworkSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

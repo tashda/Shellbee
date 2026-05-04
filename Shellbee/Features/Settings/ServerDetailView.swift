@@ -2,12 +2,22 @@ import SwiftUI
 
 struct ServerDetailView: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
 
     @State private var showingRestartAlert = false
     @State private var showingDisconnectConfirmation = false
+    @State private var editorViewModel: ConnectionViewModel?
 
-    private var config: ConnectionConfig? { environment.connectionConfig }
-    private var bridgeInfo: BridgeInfo? { environment.store.bridgeInfo }
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+    private var session: BridgeSession? { environment.registry.session(for: bridgeID) }
+    /// The saved configuration for this bridge id. Reads `history.connections`
+    /// rather than the live session so the page still renders identifying
+    /// info while the bridge is disconnected.
+    private var config: ConnectionConfig? {
+        session?.config ?? environment.history.connections.first(where: { $0.id == bridgeID })
+    }
+    private var bridgeInfo: BridgeInfo? { scope.bridgeInfo }
+    private var connectionState: ConnectionSessionController.State { scope.connectionState }
 
     var body: some View {
         Form {
@@ -41,17 +51,63 @@ struct ServerDetailView: View {
                 }
             }
 
-            if let version = bridgeInfo?.version {
+            if bridgeInfo != nil {
                 Section("Bridge") {
-                    CopyableRow(label: "Zigbee2MQTT", value: version)
+                    if let version = bridgeInfo?.version {
+                        CopyableRow(label: "Zigbee2MQTT", value: version)
+                    }
+                    if let commit = bridgeInfo?.commit {
+                        CopyableRow(label: "Commit", value: String(commit.prefix(12)))
+                    }
+                    if let coordinator = bridgeInfo?.coordinator.type {
+                        CopyableRow(label: "Coordinator", value: coordinator)
+                    }
+                    if let ieee = bridgeInfo?.coordinator.ieeeAddress {
+                        CopyableRow(label: "IEEE Address", value: ieee)
+                    }
+                    if let logLevel = bridgeInfo?.logLevel {
+                        LabeledContent("Log Level", value: logLevel.capitalized)
+                    }
+                }
+            }
+
+            if let network = bridgeInfo?.network {
+                Section("Zigbee Network") {
+                    CopyableRow(label: "Channel", value: "\(network.channel)")
+                    CopyableRow(label: "PAN ID", value: String(format: "0x%04X", network.panID))
+                    if case .string(let ext) = network.extendedPanID {
+                        CopyableRow(label: "Extended PAN ID", value: ext)
+                    }
+                }
+            }
+
+            if scope.isConnected {
+                Section {
+                    NavigationLink {
+                        DeviceStatisticsView(bridgeID: bridgeID)
+                    } label: {
+                        HStack(spacing: DesignTokens.Spacing.md) {
+                            Image(systemName: "chart.bar.fill")
+                                .foregroundStyle(.secondary)
+                            Text("Device Statistics")
+                                .foregroundStyle(.primary)
+                        }
+                    }
                 }
             }
         }
         .navigationTitle("Server")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    if environment.connectionState.isConnected {
+                    Button {
+                        presentEditor()
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    if connectionState.isConnected {
+                        Divider()
                         Button(role: .destructive) {
                             showingRestartAlert = true
                         } label: {
@@ -68,25 +124,44 @@ struct ServerDetailView: View {
                 }
             }
         }
-        .alert("Restart?", isPresented: $showingRestartAlert) {
-            Button("Restart", role: .destructive) { environment.restartBridge() }
+        .sheet(item: editorBinding) { vm in
+            NavigationStack {
+                ConnectionEditorView(viewModel: vm, mode: .save)
+            }
+        }
+        .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
+            Button("Restart", role: .destructive) { scope.restart() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Zigbee2MQTT will restart. The app will reconnect automatically.")
         }
         .alert("Disconnect from Server?", isPresented: $showingDisconnectConfirmation) {
             Button("Disconnect", role: .destructive) {
-                Task { await environment.disconnect() }
+                Task { await environment.disconnect(bridgeID: bridgeID) }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("The app returns to the setup screen. Your server address is remembered.")
+            Text("Other bridges remain connected. The bridge stays in your saved list.")
         }
+    }
+
+    private func presentEditor() {
+        guard let config else { return }
+        let vm = ConnectionViewModel(environment: environment)
+        vm.presentEditor(for: config)
+        editorViewModel = vm
+    }
+
+    private var editorBinding: Binding<ConnectionViewModel?> {
+        Binding(
+            get: { editorViewModel?.isEditorPresented == true ? editorViewModel : nil },
+            set: { if $0 == nil { editorViewModel = nil } }
+        )
     }
 
     @ViewBuilder
     private var statusLabel: some View {
-        switch environment.connectionState {
+        switch connectionState {
         case .idle:
             Text("Not connected").foregroundStyle(.secondary)
         case .connecting:
@@ -109,6 +184,6 @@ struct ServerDetailView: View {
 
 #Preview {
     NavigationStack {
-        ServerDetailView().environment(AppEnvironment())
+        ServerDetailView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

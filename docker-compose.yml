@@ -56,5 +56,73 @@ services:
       - CONTROL_PORT=8765
     restart: unless-stopped
 
+  # ── Second mock bridge (multi-bridge testing) ─────────────────────────────
+  # Brings up a fully isolated second stack — distinct broker, distinct z2m
+  # bridge, distinct seeder + control plane — so the iOS app can connect to
+  # `localhost:8080` and `localhost:8082` simultaneously to exercise multi-
+  # bridge flows. The seeder's FIXTURE_PREFIX gives every device a "Lab "
+  # prefix and salts IEEEs so the two bridges look genuinely different.
+  # Bring up just the primary stack with `docker compose up mosquitto z2m-bridge seeder`
+  # if you don't need the second bridge.
+
+  mosquitto-2:
+    image: eclipse-mosquitto:2
+    container_name: shellbee-mosquitto-2
+    ports:
+      - "1884:1883"
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-2-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  z2m-bridge-2:
+    build: ./docker/z2m-ws-bridge
+    container_name: shellbee-z2m-2
+    depends_on:
+      mosquitto-2:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+    environment:
+      - MQTT_HOST=mosquitto-2
+      - MQTT_PORT=1883
+      - Z2M_TOPIC=zigbee2mqtt
+      - WS_PORT=8080
+      - HEALTH_PORT=8081
+      - AUTH_TOKEN=shellbee-integration-token-2
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  seeder-2:
+    build: ./docker/seeder
+    container_name: shellbee-seeder-2
+    depends_on:
+      mosquitto-2:
+        condition: service_healthy
+      z2m-bridge-2:
+        condition: service_healthy
+    ports:
+      - "8766:8765"   # HTTP test center for the second bridge
+    environment:
+      - MQTT_HOST=mosquitto-2
+      - MQTT_PORT=1883
+      - Z2M_TOPIC=zigbee2mqtt
+      - MODE=continuous
+      - SEED_INTERVAL=10
+      - CONTROL_PORT=8765
+      - FIXTURE_PREFIX=Lab
+    restart: unless-stopped
+
 volumes:
   mosquitto-data:
+  mosquitto-2-data:

@@ -7,6 +7,13 @@ struct DeviceRowView: View {
     let otaStatus: OTAUpdateStatus?
     var checkResult: AppStore.DeviceCheckResult? = nil
     var isDeleting: Bool = false
+    /// Phase 2 multi-bridge: source-bridge tag. Surfaces as a thin leading
+    /// bar drawn by `BridgeRowLeadingBar` via `DeviceListRow.listRowBackground`
+    /// — uniform across Devices, Groups, and Logs. The fields are kept here
+    /// for callers that pass them, but the row body itself doesn't render any
+    /// per-row bridge chrome.
+    var bridgeID: UUID? = nil
+    var bridgeName: String = ""
 
     private var effectiveAvailable: Bool {
         isDeleting ? false : isAvailable

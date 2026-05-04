@@ -18,6 +18,15 @@ final class ConnectionSessionController {
     var errorMessage: String?
     private(set) var hasBeenConnected = false
 
+    /// Set when `connect(config:)` is invoked. Lets us defer `store.reset()`
+    /// until the new handshake succeeds — a failed switch keeps the prior
+    /// bridge's data on screen instead of stranding the user on an empty UI.
+    /// Also forces `.failed` semantics on a failed switch from a working
+    /// connection, so it doesn't masquerade as a network blip (.lost).
+    private var pendingFreshConnect: Bool = false
+    private var priorConfigForRestore: ConnectionConfig?
+    private var priorHadConnectedForRestore: Bool = false
+
     /// Receives every inbound (topic, payload) before routing. Used by the
     /// MQTT inspector in Developer Mode. Set on view appear, clear on disappear.
     var rawInboundTap: ((String, JSONValue) -> Void)?
@@ -27,6 +36,11 @@ final class ConnectionSessionController {
     private let client = Z2MWebSocketClient()
     private let router = Z2MMessageRouter()
     private let pathMonitor = NetworkPathMonitor()
+    /// Identifies which saved bridge this controller represents. Tagged onto
+    /// every `Z2MEvent` before it's applied to the store (Phase 2 multi-bridge),
+    /// and used as the dedup key for Live Activities so multiple bridges don't
+    /// collide on a single activity slot.
+    let bridgeID: UUID
 
     private var sessionTask: Task<Void, Never>?
     private var pathObserverTask: Task<Void, Never>?
@@ -52,9 +66,10 @@ final class ConnectionSessionController {
         UserDefaults.standard.object(forKey: connectionLiveActivityEnabledKey) as? Bool ?? true
     }
 
-    init(store: AppStore, history: ConnectionHistory) {
+    init(store: AppStore, history: ConnectionHistory, bridgeID: UUID = UUID()) {
         self.store = store
         self.history = history
+        self.bridgeID = bridgeID
         startPathObserver()
     }
 
@@ -107,13 +122,16 @@ final class ConnectionSessionController {
     }
 
     func connect(config: ConnectionConfig) {
-        // A user-initiated connect is a fresh attempt — drop any prior session
-        // state so a failure routes the UI back to the setup screen instead of
-        // leaving the user on a stale homepage. Without this, switching from a
-        // working server to one with bad/missing auth would leave hasBeenConnected
-        // == true, sending the failure into the `.lost` branch.
+        // A user-initiated connect is a fresh attempt. Capture the prior config
+        // and connection state so we can restore them if the new attempt fails —
+        // keeping the user on their working bridge rather than stranding them
+        // on an empty UI. The actual store.reset() runs only after the new
+        // handshake succeeds (see establishConnection).
+        pendingFreshConnect = true
+        priorConfigForRestore = connectionConfig
+        priorHadConnectedForRestore = hasBeenConnected
+
         hasBeenConnected = false
-        store.reset()
         store.isConnected = false
         connectionConfig = config
         errorMessage = nil
@@ -136,6 +154,7 @@ final class ConnectionSessionController {
         hasBeenConnected = false
         errorMessage = nil
         store.reset()
+        store.clearActiveBridge()
         await teardownTask.value
     }
 
@@ -162,7 +181,11 @@ final class ConnectionSessionController {
         sessionTask = nil
         store.isConnected = false
         connectionState = .idle
-        ConnectionLiveActivityCoordinator.shared.cancel()
+        // Cancel only this bridge's Live Activity — other connected bridges'
+        // activities stay alive in multi-bridge mode.
+        if let config = connectionConfig {
+            ConnectionLiveActivityCoordinator.shared.cancel(bridge: config)
+        }
 
         return Task { [client] in
             await client.disconnect()
@@ -197,11 +220,24 @@ final class ConnectionSessionController {
         }
 
         let events = try await client.connect(url: url, allowInvalidCertificates: config.allowInvalidCertificates)
+
+        // Handshake succeeded — now it's safe to clear the prior bridge's state.
+        // Doing this earlier strands the user on an empty UI when the switch
+        // fails (see #68).
+        if pendingFreshConnect {
+            store.reset()
+            pendingFreshConnect = false
+            priorConfigForRestore = nil
+            priorHadConnectedForRestore = false
+        }
+
         config.save()
         connectionState = .connected
         hasBeenConnected = true
         store.isConnected = true
+        store.setActiveBridge(config.id, name: config.displayName)
         history.add(config)
+        SentryService.shared.recordBridgeEvent("connected", bridgeName: config.displayName)
         requestInitialState()
         return events
     }
@@ -245,18 +281,21 @@ final class ConnectionSessionController {
         var attempt = 1
         var delay = Self.baseReconnectDelay
         let coordinator = ConnectionLiveActivityCoordinator.shared
-        let label = config.displayName
         let maxAttempts = Self.configuredMaxReconnectAttempts
         let liveActivityEnabled = Self.connectionLiveActivityEnabled
 
         if liveActivityEnabled {
-            coordinator.show(host: label, phase: .reconnecting, attempt: 1, maxAttempts: maxAttempts)
+            coordinator.show(bridge: config, phase: .reconnecting, attempt: 1, maxAttempts: maxAttempts)
         }
+
+        // Capture for use in catch / finish — `config` is what we care about,
+        // unchanged across reconnect attempts.
+        let activityBridge = config
 
         while !Task.isCancelled {
             if attempt > maxAttempts {
                 if liveActivityEnabled {
-                    coordinator.finish(.failed, displayFor: 3)
+                    coordinator.finish(bridge: activityBridge, .failed, displayFor: 3)
                 }
                 await handleFailure(reason.isEmpty ? "Connection lost" : reason)
                 return nil
@@ -270,7 +309,7 @@ final class ConnectionSessionController {
             do {
                 let events = try await establishConnection(config: config)
                 if liveActivityEnabled {
-                    coordinator.finish(.connected, displayFor: 2.5)
+                    coordinator.finish(bridge: activityBridge, .connected, displayFor: 2.5)
                 }
                 return events
             } catch is CancellationError {
@@ -279,7 +318,7 @@ final class ConnectionSessionController {
                 attempt += 1
                 delay = min(delay * 2, Self.maxReconnectDelay)
                 if liveActivityEnabled {
-                    coordinator.update(phase: .reconnecting, attempt: attempt, maxAttempts: maxAttempts)
+                    coordinator.update(bridge: activityBridge, phase: .reconnecting, attempt: attempt, maxAttempts: maxAttempts)
                 }
             }
         }
@@ -290,9 +329,34 @@ final class ConnectionSessionController {
     private func handleFailure(_ message: String) async {
         errorMessage = message
         store.isConnected = false
+        let bridgeName = connectionConfig?.displayName ?? "unknown"
+        SentryService.shared.recordBridgeEvent("connection failed: \(message)", bridgeName: bridgeName, level: .warning)
         let wasActive = connectionState.isConnected
         let wasReconnecting: Bool
         if case .reconnecting = connectionState { wasReconnecting = true } else { wasReconnecting = false }
+
+        // A failed user-initiated switch: restore the prior bridge as the active
+        // connectionConfig so the switcher reads correctly, and force `.failed`
+        // semantics (this isn't a network blip — the user explicitly tried to
+        // switch). The store still holds the prior bridge's data because
+        // establishConnection deferred reset until handshake succeeded.
+        if pendingFreshConnect {
+            let prior = priorConfigForRestore
+            let priorConnected = priorHadConnectedForRestore
+            pendingFreshConnect = false
+            priorConfigForRestore = nil
+            priorHadConnectedForRestore = false
+
+            if let prior {
+                connectionConfig = prior
+                hasBeenConnected = priorConnected
+            } else {
+                hasBeenConnected = false
+            }
+            connectionState = .failed(message)
+            return
+        }
+
         connectionState = hasBeenConnected ? .lost(message) : .failed(message)
         if hasBeenConnected && (wasActive || wasReconnecting) {
             postConnectionLostNotification(reason: message)

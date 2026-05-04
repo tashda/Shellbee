@@ -3,6 +3,8 @@ import SwiftUI
 struct LogOutputView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var logRotation: Bool = true
     @State private var logDirectoriesToKeep: Int = 10
@@ -18,7 +20,7 @@ struct LogOutputView: View {
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
-        let adv = environment.store.bridgeInfo?.config?.advanced
+        let adv = scope.bridgeInfo?.config?.advanced
         let stored = Set(adv?.logOutput ?? ["console", "file"])
         return currentLogOutput != stored
             || logRotation != (adv?.logRotation ?? true)
@@ -105,11 +107,11 @@ struct LogOutputView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        let adv = environment.store.bridgeInfo?.config?.advanced
+        let adv = scope.bridgeInfo?.config?.advanced
         let outputs = Set(adv?.logOutput ?? ["console", "file"])
         logOutputConsole = outputs.contains("console")
         logOutputFile = outputs.contains("file")
@@ -134,12 +136,12 @@ struct LogOutputView: View {
         ]
         if !logDirectory.isEmpty { advanced["log_directory"] = .string(logDirectory) }
         if !logDebugNamespaceIgnore.isEmpty { advanced["log_debug_namespace_ignore"] = .string(logDebugNamespaceIgnore) }
-        environment.sendBridgeOptions(["advanced": .object(advanced)])
+        scope.sendOptions(["advanced": .object(advanced)])
     }
 }
 
 #Preview {
     NavigationStack {
-        LogOutputView().environment(AppEnvironment())
+        LogOutputView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

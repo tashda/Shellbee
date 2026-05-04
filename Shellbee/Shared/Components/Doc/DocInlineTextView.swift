@@ -7,10 +7,22 @@ private struct DocContextDeviceKey: EnvironmentKey {
     static let defaultValue: Device? = nil
 }
 
+/// Phase 2 multi-bridge: companion to `docContextDevice` — the bridge id the
+/// device came from. Doc views set both at the same time so device-scoped
+/// in-app links resolve to the correct bridge without a name lookup.
+private struct DocContextBridgeIDKey: EnvironmentKey {
+    static let defaultValue: UUID? = nil
+}
+
 extension EnvironmentValues {
     var docContextDevice: Device? {
         get { self[DocContextDeviceKey.self] }
         set { self[DocContextDeviceKey.self] = newValue }
+    }
+
+    var docContextBridgeID: UUID? {
+        get { self[DocContextBridgeIDKey.self] }
+        set { self[DocContextBridgeIDKey.self] = newValue }
     }
 }
 
@@ -24,6 +36,8 @@ struct DocInlineTextView: View {
     let sourcePath: String?
     @State private var presentedDestination: InAppDocumentationDestination?
     @Environment(\.docContextDevice) private var contextDevice: Device?
+    @Environment(\.docContextBridgeID) private var contextBridgeID: UUID?
+    @Environment(AppEnvironment.self) private var environment
 
     init(spans: [InlineSpan], sourcePath: String? = nil) {
         self.spans = spans
@@ -55,29 +69,29 @@ struct DocInlineTextView: View {
     private func destinationView(for destination: InAppDocumentationDestination) -> some View {
         switch destination {
         case .touchlinkGuide:
-            TouchlinkGuideView()
+            TouchlinkGuideView(bridgeID: contextBridgeID)
         case .deviceBind:
-            if let device = contextDevice {
-                DeviceBindView(device: device)
+            if let device = contextDevice, let bridgeID = contextBridgeID {
+                DeviceBindView(bridgeID: bridgeID, device: device)
             } else {
                 InAppLinkUnavailableView(destination: destination)
             }
         case .deviceReporting:
-            if let device = contextDevice {
-                DeviceReportingView(device: device)
+            if let device = contextDevice, let bridgeID = contextBridgeID {
+                DeviceReportingView(bridgeID: bridgeID, device: device)
             } else {
                 InAppLinkUnavailableView(destination: destination)
             }
         case .deviceSettings:
-            if let device = contextDevice {
-                DeviceSettingsView(device: device)
+            if let device = contextDevice, let bridgeID = contextBridgeID {
+                DeviceSettingsView(bridgeID: bridgeID, device: device)
             } else {
                 InAppLinkUnavailableView(destination: destination)
             }
         case .deviceInfo:
             // No standalone Info screen — fall back to the device detail view.
-            if let device = contextDevice {
-                DeviceDetailView(device: device)
+            if let device = contextDevice, let bridgeID = contextBridgeID {
+                DeviceDetailView(bridgeID: bridgeID, device: device)
             } else {
                 InAppLinkUnavailableView(destination: destination)
             }

@@ -3,6 +3,8 @@ import SwiftUI
 struct AvailabilitySettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var enabled: Bool = false
     @State private var activeTimeout: Int = 10
@@ -14,7 +16,7 @@ struct AvailabilitySettingsView: View {
     @State private var showingDiscardAlert = false
 
     private var hasChanges: Bool {
-        guard let av = environment.store.bridgeInfo?.config?.availability else {
+        guard let av = scope.bridgeInfo?.config?.availability else {
             return enabled != false || activeTimeout != 10 || passiveTimeout != 1500
         }
         return enabled != (av.enabled ?? false)
@@ -70,11 +72,11 @@ struct AvailabilitySettingsView: View {
             }
         }
         .discardChangesAlert(hasChanges: hasChanges, isPresented: $showingDiscardAlert) { loadFromStore(); dismiss() }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        let av = environment.store.bridgeInfo?.config?.availability
+        let av = scope.bridgeInfo?.config?.availability
         enabled = av?.enabled ?? false
         activeTimeout = av?.active?.timeout ?? 10
         activeMaxJitter = av?.active?.maxJitter ?? 0
@@ -99,12 +101,12 @@ struct AvailabilitySettingsView: View {
                 "passive": .object(["timeout": .int(passiveTimeout)])
             ])
         ]
-        environment.sendBridgeOptions(payload)
+        scope.sendOptions(payload)
     }
 }
 
 #Preview {
     NavigationStack {
-        AvailabilitySettingsView().environment(AppEnvironment())
+        AvailabilitySettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

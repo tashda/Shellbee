@@ -200,6 +200,53 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
         XCTAssertNil(ConnectionConfig.parse(from: "not a url!!!"))
     }
 
+    // MARK: - Stable id (Phase 2 multi-bridge)
+
+    @MainActor
+    func testFreshConfigGetsAUniqueID() {
+        let a = config(host: "one")
+        let b = config(host: "one")
+        XCTAssertNotEqual(a.id, b.id, "Two freshly built configs must have distinct ids — equality is by id, not endpoint.")
+    }
+
+    @MainActor
+    func testEqualityIsByIDNotByEndpoint() {
+        var a = config(host: "host")
+        var b = config(host: "host")
+        b.id = a.id
+        XCTAssertEqual(a, b)
+    }
+
+    @MainActor
+    func testSameEndpointIsCaseInsensitive() {
+        let a = config(host: "host", port: 8080)
+        let b = config(host: "HOST", port: 8080)
+        XCTAssertTrue(a.sameEndpoint(as: b))
+    }
+
+    @MainActor
+    func testSameEndpointDistinguishesByName() {
+        var a = config(host: "host")
+        a.name = "Main"
+        var b = config(host: "host")
+        b.name = "Lab"
+        XCTAssertFalse(a.sameEndpoint(as: b),
+            "Two saved bridges with the same host but different names must be distinct entries.")
+    }
+
+    @MainActor
+    func testLegacySnapshotMintsIDOnLoad() {
+        let legacyJSON = #"{"host":"legacy.local","port":8080,"useTLS":false,"basePath":"/","name":"Legacy","allowInvalidCertificates":false}"#
+        let data = legacyJSON.data(using: .utf8)!
+        UserDefaults.standard.set(data, forKey: "lastSuccessfulConnectionConfig")
+        defer { UserDefaults.standard.removeObject(forKey: "lastSuccessfulConnectionConfig") }
+
+        let loaded = ConnectionConfig.load()
+        XCTAssertNotNil(loaded)
+        XCTAssertEqual(loaded?.host, "legacy.local")
+        XCTAssertEqual(loaded?.name, "Legacy")
+    }
+
     // MARK: - Helpers
 
     @MainActor

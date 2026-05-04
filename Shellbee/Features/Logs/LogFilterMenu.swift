@@ -2,12 +2,19 @@ import SwiftUI
 
 struct LogFilterMenu: View {
     @Bindable var viewModel: LogsViewModel
-    let store: AppStore
+    @Environment(AppEnvironment.self) private var environment
     @State private var deviceSheetPresented = false
     @State private var namespaceSnapshot: [String] = []
 
+    private var connectedSessions: [BridgeSession] {
+        environment.registry.orderedSessions.filter(\.isConnected)
+    }
+
     var body: some View {
         Menu {
+            if connectedSessions.count >= 2 {
+                bridgeMenu
+            }
             levelMenu
             categoryMenu
             if !namespaceSnapshot.isEmpty { namespaceMenu }
@@ -25,16 +32,36 @@ struct LogFilterMenu: View {
                 .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
         }
         .simultaneousGesture(TapGesture().onEnded {
-            namespaceSnapshot = viewModel.availableNamespaces(store: store)
+            namespaceSnapshot = availableNamespaces()
         })
         .onAppear {
-            namespaceSnapshot = viewModel.availableNamespaces(store: store)
+            namespaceSnapshot = availableNamespaces()
         }
         .sheet(isPresented: $deviceSheetPresented) {
             LogDeviceFilterSheet(
                 selectedDevices: $viewModel.selectedDevices,
-                logDevices: viewModel.availableDevices(store: store)
+                logDevices: availableDevices()
             )
+        }
+    }
+
+    private var bridgeMenu: some View {
+        Menu {
+            Picker("Bridge", selection: $viewModel.bridgeFilter) {
+                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
+                    .tag(UUID?.none)
+                ForEach(connectedSessions, id: \.bridgeID) { session in
+                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            if let id = viewModel.bridgeFilter,
+               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
+                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
+            } else {
+                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
+            }
         }
     }
 
@@ -106,6 +133,28 @@ struct LogFilterMenu: View {
             }
         }
     }
+
+    private var filteredSessions: [BridgeSession] {
+        connectedSessions.filter { session in
+            viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true
+        }
+    }
+
+    private func availableNamespaces() -> [String] {
+        Set(
+            filteredSessions.flatMap { session in
+                session.store.logEntries.compactMap(\.namespace)
+            }
+        ).sorted()
+    }
+
+    private func availableDevices() -> [String] {
+        Set(
+            filteredSessions.flatMap { session in
+                session.store.logEntries.compactMap(\.deviceName)
+            }
+        ).sorted()
+    }
 }
 
 #Preview {
@@ -114,8 +163,7 @@ struct LogFilterMenu: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     LogFilterMenu(
-                        viewModel: LogsViewModel(),
-                        store: { let s = AppStore(); s.logEntries = LogEntry.previewEntries; return s }()
+                        viewModel: LogsViewModel()
                     )
                 }
             }

@@ -8,9 +8,12 @@ final class LogsViewModel {
     var selectedNamespace: String? = nil
     var selectedDevices: Set<String> = []
     var entryIDFilter: Set<UUID>? = nil
+    /// Multi-bridge: when set, the merged log list filters to this bridge.
+    /// Ignored in single-bridge mode.
+    var bridgeFilter: UUID? = nil
 
     var hasActiveFilter: Bool {
-        selectedLevel != nil || selectedCategory != nil || selectedNamespace != nil || !selectedDevices.isEmpty || entryIDFilter != nil
+        selectedLevel != nil || selectedCategory != nil || selectedNamespace != nil || !selectedDevices.isEmpty || entryIDFilter != nil || bridgeFilter != nil
     }
 
     func filteredEntries(store: AppStore) -> [LogEntry] {
@@ -64,6 +67,7 @@ final class LogsViewModel {
         selectedNamespace = nil
         selectedDevices = []
         entryIDFilter = nil
+        bridgeFilter = nil
         searchText = ""
     }
 }

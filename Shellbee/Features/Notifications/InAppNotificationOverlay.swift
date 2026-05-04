@@ -15,7 +15,7 @@ struct InAppNotificationOverlay: View {
     @State private var fastTrackTask: Task<Void, Never>?
     @State private var currentFastTrack: InAppNotification?
     @State private var fastTrackVisible = false
-    @State private var lastSeenArrivalID: UUID?
+    @State private var lastSeenArrivalIDs: [UUID] = []
     @State private var removalStyle: BannerRemovalStyle = .automatic
 
     private enum CarouselDirection { case forward, backward }
@@ -29,6 +29,9 @@ struct InAppNotificationOverlay: View {
     private struct NotificationPage: Identifiable, Equatable {
         let notification: InAppNotification
         let occurrence: InAppNotificationOccurrence
+        /// Phase 1 multi-bridge: source bridge for this notification. Used by
+        /// goToDevice/goToLog to route navigation to the originating bridge.
+        let bridgeID: UUID?
 
         var id: String { "\(notification.id.uuidString)-\(occurrence.id.uuidString)" }
 
@@ -37,14 +40,29 @@ struct InAppNotificationOverlay: View {
         }
     }
 
-    private var stack: [InAppNotification] {
-        environment.store.pendingNotifications
-    }
-
+    /// Merged page list across every connected bridge so notifications from a
+    /// non-selected bridge still surface. Each page carries its source bridge
+    /// id so navigation lands on the right store.
     private var pages: [NotificationPage] {
-        stack.flatMap { notification in
+        let connected = environment.registry.sessions.values.filter(\.isConnected)
+        if connected.count >= 2 {
+            return environment.allPendingNotifications.flatMap { bound in
+                bound.notification.occurrences.map {
+                    NotificationPage(
+                        notification: bound.notification,
+                        occurrence: $0,
+                        bridgeID: bound.bridgeID
+                    )
+                }
+            }
+        }
+        let bridgeID = environment.registry.primaryBridgeID
+        let stack = bridgeID
+            .flatMap { environment.registry.session(for: $0)?.store.pendingNotifications }
+            ?? []
+        return stack.flatMap { notification in
             notification.occurrences.map {
-                NotificationPage(notification: notification, occurrence: $0)
+                NotificationPage(notification: notification, occurrence: $0, bridgeID: bridgeID)
             }
         }
     }
@@ -89,18 +107,18 @@ struct InAppNotificationOverlay: View {
                     ))
             }
         }
-        .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: stack.isEmpty)
+        .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: pages.isEmpty)
         .animation(Self.carouselAnimation, value: displayedPage.map { bannerIdentity(for: $0) })
         .animation(.spring(duration: DesignTokens.Duration.mediumAnimation), value: fastTrackVisible)
-        .onChange(of: environment.store.notificationArrivalID) { _, newID in
-            // New (non-coalesced) normal notification arrived. Haptic once,
-            // and schedule auto-dismiss on the now-visible banner.
-            guard lastSeenArrivalID != newID else { return }
-            lastSeenArrivalID = newID
-            if let top = stack.last { playHaptic(for: top) }
+        .onChange(of: environment.aggregateNotificationArrivalID) { _, newIDs in
+            // New (non-coalesced) normal notification arrived on any bridge.
+            // Haptic once, and schedule auto-dismiss on the now-visible banner.
+            guard lastSeenArrivalIDs != newIDs else { return }
+            lastSeenArrivalIDs = newIDs
+            if let top = pages.last?.notification { playHaptic(for: top) }
             scheduleDismissIfPossible()
         }
-        .onChange(of: environment.store.fastTrackNotifications.count) { _, count in
+        .onChange(of: environment.totalFastTrackNotifications) { _, count in
             if count > 0, !fastTrackVisible { showNextFastTrack() }
         }
         .onChange(of: isExpanded) { _, expanded in
@@ -112,7 +130,7 @@ struct InAppNotificationOverlay: View {
                 scheduleDismissIfPossible()
             }
         }
-        .onChange(of: environment.store.notificationArrivalID) { _, _ in
+        .onChange(of: environment.aggregateNotificationArrivalID) { _, _ in
             transitionReason = .arrival
         }
         .onChange(of: pages.count) { _, _ in
@@ -179,7 +197,7 @@ struct InAppNotificationOverlay: View {
 
     private func scheduleDismissIfPossible() {
         autoDismissTask?.cancel()
-        guard !isExpanded, let top = stack.last else { return }
+        guard !isExpanded, let top = pages.last?.notification else { return }
         let duration = dismissDuration(for: top)
         autoDismissTask = Task {
             try? await Task.sleep(for: .seconds(duration))
@@ -198,9 +216,12 @@ struct InAppNotificationOverlay: View {
     }
 
     private func dismissTop() {
-        guard !environment.store.pendingNotifications.isEmpty else { return }
+        // In multi-bridge mode the stack merges across bridges; pop from
+        // Phase 2 multi-bridge: always pop from the bridge that holds the
+        // newest notification — single-bridge case collapses naturally.
+        guard environment.totalPendingNotifications > 0 else { return }
         removalStyle = .vertical
-        environment.store.pendingNotifications.removeLast()
+        environment.popLatestPendingNotification()
         scheduleDismissIfPossible()
         resetRemovalStyleSoon()
     }
@@ -210,7 +231,7 @@ struct InAppNotificationOverlay: View {
         autoDismissTask?.cancel()
         removalStyle = .vertical
         isExpanded = false
-        environment.store.pendingNotifications.removeAll()
+        environment.clearAllPendingNotifications()
         resetRemovalStyleSoon()
     }
 
@@ -256,22 +277,35 @@ struct InAppNotificationOverlay: View {
 
     private func goToDevice(for page: NotificationPage) {
         guard let name = page.occurrence.deviceName else { return }
-        environment.pendingDeviceNavigation = name
+        // Phase 1 multi-bridge: every page carries its source bridge id, so
+        // we route DeviceListView straight to the right bridge — no
+        // `setPrimary` side effect, no name-collision risk across bridges.
+        guard let bridgeID = page.bridgeID,
+              let device = environment.registry.session(for: bridgeID)?.store.device(named: name)
+        else { return }
+        environment.pendingDeviceNavigation = DeviceRoute(bridgeID: bridgeID, device: device)
         environment.selectedTab = .devices
         autoDismissTask?.cancel()
     }
 
     private func copy(_ value: String) {
         UIPasteboard.general.string = value
-        environment.store.enqueueNotification(
-            InAppNotification(level: .info, title: "Copied to Clipboard", priority: .fastTrack)
-        )
+        // Phase 2 multi-bridge: enqueue the fast-track on any connected
+        // bridge — the overlay scans all sessions for fast-track and surfaces
+        // them globally regardless of source store.
+        if let store = environment.registry.orderedSessions.first(where: \.isConnected)?.store {
+            store.enqueueNotification(
+                InAppNotification(level: .info, title: "Copied to Clipboard", priority: .fastTrack)
+            )
+        }
     }
 
     // MARK: - Fast-track lane
 
     private func showNextFastTrack() {
-        guard let notification = environment.store.popFastTrackNotification() else { return }
+        // Phase 2 multi-bridge: always pop across every bridge — single-
+        // bridge collapses to a one-element search.
+        guard let notification = environment.popNextFastTrackNotification()?.notification else { return }
         currentFastTrack = notification
         fastTrackVisible = true
         fastTrackTask?.cancel()
@@ -283,7 +317,7 @@ struct InAppNotificationOverlay: View {
                 Task {
                     try? await Task.sleep(for: .milliseconds(250))
                     currentFastTrack = nil
-                    if !environment.store.fastTrackNotifications.isEmpty {
+                    if environment.hasFastTrackNotifications {
                         showNextFastTrack()
                     }
                 }

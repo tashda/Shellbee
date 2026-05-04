@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppGeneralView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
+    @AppStorage(BridgeGradientMode.storageKey) private var bridgeGradientModeRaw: String = BridgeGradientMode.default.rawValue
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
     @AppStorage(AppConfig.UX.recentDeviceWindowKey) private var recentDeviceWindowMinutes: Int = Int(AppConfig.UX.recentDeviceWindowDefaultMinutes)
     @AppStorage(ConnectionSessionController.maxReconnectAttemptsKey) private var maxReconnectAttempts: Int = ConnectionSessionController.defaultMaxReconnectAttempts
@@ -11,12 +12,23 @@ struct AppGeneralView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Appearance", selection: $appearanceMode) {
+                Picker("Theme", selection: $appearanceMode) {
                     Text("System").tag(AppearanceMode.system)
                     Text("Light").tag(AppearanceMode.light)
                     Text("Dark").tag(AppearanceMode.dark)
                 }
                 .pickerStyle(.automatic)
+
+                Picker("Bridge Indicator", selection: $bridgeGradientModeRaw) {
+                    ForEach(BridgeGradientMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.automatic)
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Text("Bridge Indicator paints a thin colored line on the leading edge of every device, group, and log row so each bridge's content is easy to identify at a glance. Automatic shows the line only when more than one bridge is connected.")
             }
 
             Section {

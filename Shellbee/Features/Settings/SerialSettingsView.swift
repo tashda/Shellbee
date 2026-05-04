@@ -3,6 +3,8 @@ import SwiftUI
 struct SerialSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     @State private var adapter: String = ""
     @State private var baudrate: Int = 115200
@@ -13,11 +15,11 @@ struct SerialSettingsView: View {
     @State private var showingApplyConfirm = false
 
     private var currentPort: String {
-        environment.store.bridgeInfo?.config?.serial?.port ?? ""
+        scope.bridgeInfo?.config?.serial?.port ?? ""
     }
 
     private var hasChanges: Bool {
-        let serial = environment.store.bridgeInfo?.config?.serial
+        let serial = scope.bridgeInfo?.config?.serial
         return adapter != (serial?.adapter ?? "")
             || baudrate != (serial?.baudrate ?? 115200)
             || rtscts != (serial?.rtscts ?? false)
@@ -86,11 +88,11 @@ struct SerialSettingsView: View {
         } message: {
             Text("Changing adapter settings requires a bridge restart.")
         }
-        .reloadOnBridgeInfo(info: environment.store.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
+        .reloadOnBridgeInfo(info: scope.bridgeInfo, hasChanges: hasChanges, load: loadFromStore)
     }
 
     private func loadFromStore() {
-        let serial = environment.store.bridgeInfo?.config?.serial
+        let serial = scope.bridgeInfo?.config?.serial
         adapter = serial?.adapter ?? ""
         baudrate = serial?.baudrate ?? 115200
         rtscts = serial?.rtscts ?? false
@@ -104,12 +106,12 @@ struct SerialSettingsView: View {
             "baudrate": .int(baudrate)
         ]
         if !adapter.isEmpty { serial["adapter"] = .string(adapter) }
-        environment.sendBridgeOptions(["serial": .object(serial)])
+        scope.sendOptions(["serial": .object(serial)])
     }
 }
 
 #Preview {
     NavigationStack {
-        SerialSettingsView().environment(AppEnvironment())
+        SerialSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
 }

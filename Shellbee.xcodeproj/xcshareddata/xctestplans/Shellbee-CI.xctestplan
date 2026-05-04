@@ -9,7 +9,7 @@
     }
   ],
   "defaultOptions" : {
-    "codeCoverage" : false,
+    "codeCoverage" : true,
     "maximumTestExecutionTimeAllowance" : 60,
     "targetForVariableExpansion" : {
       "containerPath" : "container:Shellbee.xcodeproj",

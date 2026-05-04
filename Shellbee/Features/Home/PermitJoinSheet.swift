@@ -2,19 +2,23 @@ import SwiftUI
 
 struct PermitJoinSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var environment
 
-    let devices: [Device]
-    let onConfirm: (Int, String?) -> Void
-
+    /// Phase 2 multi-bridge: target bridge for permit-join. Nil = focused
+    /// bridge (single-bridge fallback). The picker auto-selects on appear
+    /// when more than one bridge is connected.
+    @State private var bridgeID: UUID?
     @State private var targetName: String?
-    @State private var durationChoice = DurationChoice.max
-    @State private var customDuration = 120
+    @State private var duration: Int = 254
+
+    let onStart: (_ duration: Int, _ target: String?, _ bridgeID: UUID?) -> Void
+    let onStop: (_ bridgeID: UUID?) -> Void
 
     var body: some View {
         NavigationStack {
             Form {
-                durationSection
-                targetSection
+                bridgeSection
+                permitJoinSection
             }
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
@@ -24,48 +28,89 @@ struct PermitJoinSheet: View {
         .presentationDragIndicator(.visible)
     }
 
-    private var durationSection: some View {
-        Section {
-            Picker("Preset", selection: $durationChoice) {
-                ForEach(DurationChoice.allCases) { choice in
-                    Text(choice.label).tag(choice)
-                }
+    @ViewBuilder
+    private var bridgeSection: some View {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        if connected.count >= 2 {
+            Section {
+                BridgePicker(selection: $bridgeID)
+            } footer: {
+                Text("Permit Join opens this bridge's network only. Other bridges remain closed.")
             }
-            if durationChoice == .custom {
-                InlineIntField("Custom", value: $customDuration, unit: "s", range: 1...254)
-            }
-        } header: {
-            Text("Duration")
-        } footer: {
-            Text("Zigbee networks support a maximum of 254 seconds per session.")
         }
     }
 
-    private var targetSection: some View {
-        Section {
-            Picker("Target", selection: $targetName) {
-                Text("All devices").tag(String?.none)
-                ForEach(joinTargets) { device in
-                    Text(device.friendlyName).tag(String?.some(device.friendlyName))
-                }
+    @ViewBuilder
+    private var permitJoinSection: some View {
+        if isSelectedBridgePermitJoinOpen {
+            Section {
+                activeRow
             }
-        } header: {
-            Text("Via")
-        } footer: {
-            Text("The coordinator and any router can allow new devices to join your network.")
+        } else {
+            Section {
+                Picker("Via", selection: $targetName) {
+                    Text("All devices").tag(String?.none)
+                    ForEach(joinTargets) { device in
+                        Text(device.friendlyName).tag(String?.some(device.friendlyName))
+                    }
+                }
+                Picker("Duration", selection: $duration) {
+                    Text("1 min").tag(60)
+                    Text("2 min").tag(120)
+                    Text("3 min").tag(180)
+                    Text("~4 min").tag(254)
+                }
+            } header: {
+                Text("Open the network")
+            }
+        }
+    }
+
+    private var activeRow: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            HStack(spacing: DesignTokens.Spacing.md) {
+                Image(systemName: "dot.radiowaves.up.forward")
+                    .foregroundStyle(.white)
+                    .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
+                    .background(.green, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
+                    .symbolEffect(.pulse)
+
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
+                        Text("Network is open via \(target)")
+                            .foregroundStyle(.primary)
+                    } else {
+                        Text("Network is open")
+                            .foregroundStyle(.primary)
+                    }
+                    if let remaining = remainingSeconds(at: ctx.date) {
+                        Text(String(format: "%d:%02d remaining", remaining / 60, remaining % 60))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .contentTransition(.numericText(countsDown: true))
+                    }
+                }
+                Spacer()
+            }
         }
     }
 
     private var actionBar: some View {
         Button {
-            onConfirm(selectedDuration, targetName)
+            if isSelectedBridgePermitJoinOpen {
+                onStop(resolvedBridgeID)
+            } else {
+                onStart(duration, targetName, resolvedBridgeID)
+            }
             dismiss()
         } label: {
-            Text("Start Permit Join")
+            Text(isSelectedBridgePermitJoinOpen ? "Stop Permit Join" : "Start Permit Join")
                 .fontWeight(.semibold)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
+        .tint(isSelectedBridgePermitJoinOpen ? .red : nil)
         .controlSize(.large)
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.top, DesignTokens.Spacing.sm)
@@ -73,8 +118,26 @@ struct PermitJoinSheet: View {
         .background(.ultraThinMaterial)
     }
 
+    private var resolvedBridgeID: UUID? {
+        bridgeID ?? environment.registry.primaryBridgeID
+    }
+
+    private var selectedBridgeInfo: BridgeInfo? {
+        guard let resolvedBridgeID,
+              let session = environment.registry.session(for: resolvedBridgeID) else { return nil }
+        return session.store.bridgeInfo
+    }
+
+    private var isSelectedBridgePermitJoinOpen: Bool {
+        selectedBridgeInfo?.permitJoin ?? false
+    }
+
+    /// Routers + coordinator from the selected bridge's store. When `bridgeID`
+    /// is nil (single-bridge mode before the picker is shown) falls back to
+    /// the user-selected bridge in the picker.
     private var joinTargets: [Device] {
-        devices
+        let store = resolvedBridgeID.flatMap { environment.registry.session(for: $0)?.store }
+        return (store?.devices ?? [])
             .filter { $0.type == .coordinator || $0.type == .router }
             .sorted { lhs, rhs in
                 if lhs.type != rhs.type { return lhs.type == .coordinator }
@@ -82,44 +145,14 @@ struct PermitJoinSheet: View {
             }
     }
 
-    private var selectedDuration: Int {
-        durationChoice == .custom ? customDuration : durationChoice.seconds
-    }
-
-    private enum DurationChoice: String, CaseIterable, Identifiable {
-        case oneMin, twoMin, threeMin, max, custom
-
-        var id: String { rawValue }
-
-        var label: String {
-            switch self {
-            case .oneMin:  return "1 min"
-            case .twoMin:  return "2 min"
-            case .threeMin: return "3 min"
-            case .max:     return "~4 min"
-            case .custom:  return "Custom"
-            }
-        }
-
-        var seconds: Int {
-            switch self {
-            case .oneMin:  return 60
-            case .twoMin:  return 120
-            case .threeMin: return 180
-            case .max:     return 254
-            case .custom:  return 120
-            }
-        }
+    private func remainingSeconds(at date: Date) -> Int? {
+        guard let permitEnd = selectedBridgeInfo?.permitJoinEnd else { return nil }
+        let nowMS = Int(date.timeIntervalSince1970 * 1000)
+        return max((permitEnd - nowMS) / 1000, 0)
     }
 }
 
 #Preview {
-    PermitJoinSheet(
-        devices: [
-            .preview, .fallbackPreview,
-            Device(ieeeAddress: "0x003", type: .router, networkAddress: 3, supported: true,
-                   friendlyName: "Kitchen Relay", disabled: false, definition: nil,
-                   powerSource: "mains", interviewCompleted: true, interviewing: false)
-        ]
-    ) { _, _ in }
+    PermitJoinSheet(onStart: { _, _, _ in }, onStop: { _ in })
+        .environment(AppEnvironment())
 }

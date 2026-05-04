@@ -1,10 +1,14 @@
 import Foundation
 import Security
 
-struct ConnectionConfig: Codable, Sendable {
+struct ConnectionConfig: Codable, Sendable, Identifiable {
     private static let savedConfigKey = "lastSuccessfulConnectionConfig"
     private static let legacySavedConfigKey = "connectionConfig"
 
+    /// Stable identifier used by the saved-bridges list to track this entry across
+    /// edits, renames, and re-saves. Persisted in `PersistedSnapshot`. Legacy
+    /// snapshots without an `id` mint a fresh one on load and re-save in place.
+    var id: UUID = UUID()
     var host: String
     var port: Int
     var useTLS: Bool
@@ -23,21 +27,23 @@ struct ConnectionConfig: Codable, Sendable {
 
 extension ConnectionConfig: Equatable, Hashable {
     static func == (lhs: ConnectionConfig, rhs: ConnectionConfig) -> Bool {
-        lhs.host == rhs.host
-            && lhs.port == rhs.port
-            && lhs.useTLS == rhs.useTLS
-            && lhs.basePath == rhs.basePath
-            && lhs.authToken == rhs.authToken
-            && lhs.allowInvalidCertificates == rhs.allowInvalidCertificates
+        lhs.id == rhs.id
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(host)
-        hasher.combine(port)
-        hasher.combine(useTLS)
-        hasher.combine(basePath)
-        hasher.combine(authToken)
-        hasher.combine(allowInvalidCertificates)
+        hasher.combine(id)
+    }
+
+    /// True when two configs point at the same WebSocket endpoint with the same
+    /// user-chosen name. Used by `ConnectionHistory` to dedup retyped entries
+    /// without forcing a UUID match. Two entries for the same host with
+    /// different names remain distinct (intentional — multi-bridge use case).
+    func sameEndpoint(as other: ConnectionConfig) -> Bool {
+        host.lowercased() == other.host.lowercased()
+            && port == other.port
+            && useTLS == other.useTLS
+            && basePath == other.basePath
+            && (name ?? "") == (other.name ?? "")
     }
 
     var webSocketURL: URL? {
@@ -88,7 +94,13 @@ extension ConnectionConfig {
         }
 
         if let snapshot = try? JSONDecoder().decode(PersistedSnapshot.self, from: data) {
-            return snapshot.connectionConfig
+            let config = snapshot.connectionConfig
+            // If the snapshot was missing an id, persist the freshly minted one so
+            // it stays stable across launches.
+            if snapshot.idWasMinted {
+                UserDefaults.standard.set(try? JSONEncoder().encode(config.persistedSnapshot), forKey: Self.savedConfigKey)
+            }
+            return config
         }
 
         return nil
@@ -110,6 +122,7 @@ extension ConnectionConfig {
 
     var persistedSnapshot: PersistedSnapshot {
         PersistedSnapshot(
+            id: id,
             host: host,
             port: port,
             useTLS: useTLS,
@@ -152,6 +165,7 @@ extension ConnectionConfig {
 
 extension ConnectionConfig {
     struct PersistedSnapshot: Codable {
+        let id: UUID
         let host: String
         let port: Int
         let useTLS: Bool
@@ -159,24 +173,32 @@ extension ConnectionConfig {
         let name: String?
         let allowInvalidCertificates: Bool
 
+        /// True when the source JSON didn't carry an `id` and we minted one. Callers
+        /// inspect this to know whether to re-save the snapshot so the new id sticks.
+        let idWasMinted: Bool
+
         init(
+            id: UUID = UUID(),
             host: String,
             port: Int,
             useTLS: Bool,
             basePath: String,
             name: String? = nil,
-            allowInvalidCertificates: Bool = false
+            allowInvalidCertificates: Bool = false,
+            idWasMinted: Bool = false
         ) {
+            self.id = id
             self.host = host
             self.port = port
             self.useTLS = useTLS
             self.basePath = basePath
             self.name = name
             self.allowInvalidCertificates = allowInvalidCertificates
+            self.idWasMinted = idWasMinted
         }
 
         enum CodingKeys: String, CodingKey {
-            case host, port, useTLS, basePath, name, allowInvalidCertificates
+            case id, host, port, useTLS, basePath, name, allowInvalidCertificates
         }
 
         init(from decoder: Decoder) throws {
@@ -187,10 +209,29 @@ extension ConnectionConfig {
             basePath = try c.decode(String.self, forKey: .basePath)
             name = try c.decodeIfPresent(String.self, forKey: .name)
             allowInvalidCertificates = try c.decodeIfPresent(Bool.self, forKey: .allowInvalidCertificates) ?? false
+            if let decoded = try c.decodeIfPresent(UUID.self, forKey: .id) {
+                id = decoded
+                idWasMinted = false
+            } else {
+                id = UUID()
+                idWasMinted = true
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(id, forKey: .id)
+            try c.encode(host, forKey: .host)
+            try c.encode(port, forKey: .port)
+            try c.encode(useTLS, forKey: .useTLS)
+            try c.encode(basePath, forKey: .basePath)
+            try c.encodeIfPresent(name, forKey: .name)
+            try c.encode(allowInvalidCertificates, forKey: .allowInvalidCertificates)
         }
 
         var connectionConfig: ConnectionConfig {
             let lookup = ConnectionConfig(
+                id: id,
                 host: host,
                 port: port,
                 useTLS: useTLS,
@@ -200,6 +241,7 @@ extension ConnectionConfig {
             )
 
             return ConnectionConfig(
+                id: id,
                 host: host,
                 port: port,
                 useTLS: useTLS,

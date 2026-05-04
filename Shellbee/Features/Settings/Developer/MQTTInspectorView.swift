@@ -4,6 +4,10 @@ struct MQTTInspectorView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var selectedTab: Tab = .subscribe
     @State private var store = SubscribeStore()
+    /// Phase 2 multi-bridge: which bridge's WebSocket the inspector is wired
+    /// to. Defaults to the focused bridge; the picker (only visible when 2+
+    /// bridges are connected) lets the user re-attach to a different one.
+    @State private var bridgeID: UUID?
 
     enum Tab: String, CaseIterable, Identifiable, Hashable {
         case subscribe = "Subscribe"
@@ -11,20 +15,35 @@ struct MQTTInspectorView: View {
         var id: String { rawValue }
     }
 
+    /// Resolved bridge id for inspector actions: explicit picker selection
+    /// when present, else the user-selected bridge in the picker.
+    private var resolvedBridgeID: UUID? {
+        bridgeID ?? environment.registry.primaryBridgeID
+    }
+
     var body: some View {
-        ZStack {
-            switch selectedTab {
-            case .subscribe:
-                SubscribeView(store: store)
-            case .publish:
-                PublishView()
+        VStack(spacing: 0) {
+            bridgePickerBar
+            ZStack {
+                switch selectedTab {
+                case .subscribe:
+                    SubscribeView(store: store)
+                case .publish:
+                    if let id = resolvedBridgeID {
+                        PublishView(bridgeID: id)
+                    } else {
+                        ContentUnavailableView(
+                            "No Bridge Selected",
+                            systemImage: "antenna.radiowaves.left.and.right",
+                            description: Text("Connect a bridge to publish.")
+                        )
+                    }
+                }
             }
         }
         .navigationTitle("MQTT Inspector")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // Fixed-width principal keeps the segmented picker in the same
-            // place regardless of how many trailing items the active tab has.
             ToolbarItem(placement: .principal) {
                 Picker("Mode", selection: $selectedTab) {
                     ForEach(Tab.allCases) { tab in
@@ -35,8 +54,49 @@ struct MQTTInspectorView: View {
                 .frame(width: DesignTokens.Size.inspectorTabPickerWidth)
             }
         }
-        .onAppear { store.attach(session: environment.session) }
-        .onDisappear { store.detach(session: environment.session) }
+        .onAppear { attachToCurrentBridge() }
+        .onDisappear { detachCurrentBridge() }
+        .onChange(of: bridgeID) { _, _ in
+            detachCurrentBridge()
+            store.clear()
+            attachToCurrentBridge()
+        }
+    }
+
+    @ViewBuilder
+    private var bridgePickerBar: some View {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        if connected.count >= 2 {
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                Text("Bridge")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                BridgePicker(selection: $bridgeID, hideWhenSingle: false)
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+            }
+            .padding(.horizontal, DesignTokens.Spacing.lg)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(.ultraThinMaterial)
+        }
+    }
+
+    private func sessionForCurrent() -> ConnectionSessionController? {
+        guard let id = resolvedBridgeID else { return nil }
+        return environment.registry.session(for: id)?.controller
+    }
+
+    private func attachToCurrentBridge() {
+        if let session = sessionForCurrent() {
+            store.attach(session: session)
+        }
+    }
+
+    private func detachCurrentBridge() {
+        if let session = sessionForCurrent() {
+            store.detach(session: session)
+        }
     }
 }
 
@@ -168,6 +228,8 @@ private struct MessageRow: View {
 
 private struct PublishView: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
     @State private var topic: String = ""
     @State private var payload: String = ""
     @State private var showWarning: Bool = false
@@ -254,7 +316,7 @@ private struct PublishView: View {
     }
 
     private func sendNow() {
-        environment.send(topic: topic, payload: parsedPayload())
+        scope.send(topic: topic, payload: parsedPayload())
         lastResult = "Published at \(Date.now.formatted(date: .omitted, time: .standard))"
         Haptics.impact(.light)
     }

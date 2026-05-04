@@ -9,12 +9,37 @@ struct LogDeviceFilterSheet: View {
     @State private var showAll = false
     @State private var searchText = ""
 
+    /// Phase 1 multi-bridge: when "Show All Devices" is on, walk every
+    /// connected session to surface devices from any bridge. Resolving a
+    /// `logDevices` name → Device also scans all bridges; first match wins.
+    /// (Phase 2 will revisit attribution if name collisions become a real
+    /// pain point.)
+    private var allDevices: [Device] {
+        environment.registry.orderedSessions.flatMap { $0.store.devices }
+    }
+
+    private func resolveDevice(named name: String) -> Device? {
+        for session in environment.registry.orderedSessions {
+            if let d = session.store.device(named: name) { return d }
+        }
+        return nil
+    }
+
+    private func availability(of device: Device) -> Bool {
+        for session in environment.registry.orderedSessions {
+            if session.store.devices.contains(where: { $0.ieeeAddress == device.ieeeAddress }) {
+                return session.store.isAvailable(device.friendlyName)
+            }
+        }
+        return false
+    }
+
     private var candidates: [Device] {
         let base: [Device]
         if showAll {
-            base = environment.store.devices
+            base = allDevices
         } else {
-            base = logDevices.compactMap { environment.store.device(named: $0) }
+            base = logDevices.compactMap { resolveDevice(named: $0) }
         }
         let sorted = base.sorted { $0.friendlyName.localizedCaseInsensitiveCompare($1.friendlyName) == .orderedAscending }
         guard !searchText.isEmpty else { return sorted }
@@ -42,7 +67,7 @@ struct LogDeviceFilterSheet: View {
                             }
                         } label: {
                             HStack {
-                                DevicePickerRow(device: device)
+                                DevicePickerRow(device: device, isAvailable: availability(of: device))
                                 if selectedDevices.contains(device.friendlyName) {
                                     Image(systemName: "checkmark")
                                         .foregroundStyle(.tint)

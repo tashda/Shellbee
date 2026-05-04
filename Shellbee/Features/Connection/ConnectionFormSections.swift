@@ -122,10 +122,19 @@ struct ConnectionDiscoverySection: View {
 
 struct ConnectionServerSection: View {
     @Binding var draft: ConnectionEditorDraft
+    var focusedField: FocusState<ConnectionEditorView.Field?>.Binding
 
     var body: some View {
         Section {
-            SettingsTextField("Name", text: $draft.name, placeholder: "Optional — e.g. Home")
+            LabeledContent("Name") {
+                TextField("Optional — e.g. Home", text: $draft.name)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused(focusedField, equals: .name)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField.wrappedValue = .host }
+            }
 
             Picker("Protocol", selection: $draft.useTLS) {
                 Text("HTTP").tag(false)
@@ -141,18 +150,43 @@ struct ConnectionServerSection: View {
                 }
             }
 
-            SettingsTextField("Host", text: $draft.host, placeholder: "zigbee2mqtt.local")
+            LabeledContent("Host") {
+                TextField("zigbee2mqtt.local", text: $draft.host)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused(focusedField, equals: .host)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField.wrappedValue = .port }
+            }
 
-            SettingsTextField("Port", text: $draft.port, placeholder: draft.useTLS ? "443" : "8080")
-                .keyboardType(.numberPad)
+            LabeledContent("Port") {
+                TextField(draft.useTLS ? "443" : "8080", text: $draft.port)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.numberPad)
+                    .focused(focusedField, equals: .port)
+            }
 
-            SettingsTextField("Base Path", text: $draft.basePath, placeholder: "/")
+            LabeledContent("Base Path") {
+                TextField("/", text: $draft.basePath)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused(focusedField, equals: .basePath)
+                    .submitLabel(.next)
+                    .onSubmit { focusedField.wrappedValue = .authToken }
+            }
 
             LabeledContent("Token") {
                 SecureField("Optional", text: $draft.authToken)
                     .multilineTextAlignment(.trailing)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .focused(focusedField, equals: .authToken)
+                    .submitLabel(.done)
+                    .onSubmit { focusedField.wrappedValue = nil }
             }
 
             if draft.useTLS {
@@ -169,5 +203,59 @@ struct ConnectionServerSection: View {
                 }
             }
         }
+
+        Section {
+            Toggle("Auto-Connect on Launch", isOn: $draft.autoConnect)
+        } footer: {
+            Text("When on, Shellbee connects to this bridge automatically every time the app opens. Multiple bridges can be set to auto-connect.")
+        }
+
+        Section {
+            BridgeColorPicker(selection: $draft.bridgeColor, usesAutoColor: $draft.usesAutoBridgeColor)
+        } header: {
+            Text("Color")
+        } footer: {
+            Text("Picks the bridge color used in Logs, Devices, Groups, and other multi-bridge views.")
+        }
+    }
+}
+
+/// Form-row bridge-color picker. Nil means auto color.
+private struct BridgeColorPicker: View {
+    @Binding var selection: Color?
+    @Binding var usesAutoColor: Bool
+
+    var body: some View {
+        HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+            ColorPicker("Bridge Color", selection: binding, supportsOpacity: false)
+                .onChange(of: selection) { _, newValue in
+                    if newValue != nil { usesAutoColor = false }
+                }
+
+            Button {
+                usesAutoColor = true
+                selection = DesignTokens.Bridge.suggestedAvailableColor()
+            } label: {
+                Image(systemName: "wand.and.stars")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(usesAutoColor ? .primary : .secondary)
+                    .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
+                    .glassEffectIfAvailable(in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Automatic color")
+            .accessibilityValue(usesAutoColor ? "On" : "Off")
+        }
+        .padding(.vertical, DesignTokens.Spacing.xs)
+    }
+
+    private var binding: Binding<Color> {
+        Binding(
+            get: { selection ?? DesignTokens.Bridge.suggestedAvailableColor() },
+            set: {
+                selection = $0
+                usesAutoColor = false
+            }
+        )
     }
 }

@@ -8,12 +8,45 @@ struct RootView: View {
     @AppStorage(OnboardingStep.completedKey) private var onboardingCompleted: Bool = false
     @State private var showOnboarding = false
 
+    /// Phase 2 multi-bridge: the most-attention-needing state across every
+    /// connected session. `lost` always wins so the banner / alert surface
+    /// it; otherwise we pick connecting / reconnecting / connected by
+    /// priority. When zero sessions exist we report `.idle`.
+    private var aggregateConnectionState: ConnectionSessionController.State {
+        let sessions = environment.registry.orderedSessions
+        if let lost = sessions.first(where: { if case .lost = $0.connectionState { return true }; return false }) {
+            return lost.connectionState
+        }
+        if let failed = sessions.first(where: { if case .failed = $0.connectionState { return true }; return false }) {
+            return failed.connectionState
+        }
+        if sessions.contains(where: { if case .reconnecting = $0.connectionState { return true }; return false }) {
+            return .reconnecting(attempt: 0)
+        }
+        if sessions.contains(where: { $0.connectionState == .connecting }) {
+            return .connecting
+        }
+        if sessions.contains(where: { $0.connectionState == .connected }) {
+            return .connected
+        }
+        return .idle
+    }
+
+    /// First session currently in `.lost`. The banner / alert show its
+    /// state and target retry/forget at this specific bridge.
+    private var lostSession: BridgeSession? {
+        environment.registry.orderedSessions.first { session in
+            if case .lost = session.connectionState { return true }
+            return false
+        }
+    }
+
     var body: some View {
         ZStack {
             if isInitializing {
                 SplashScreenView()
                     .transition(.opacity.combined(with: .scale(scale: 1.1)))
-            } else if environment.hasBeenConnected {
+            } else if environment.hasAnyBridgeBeenConnected {
                 mainInterface
             } else {
                 setupInterface
@@ -37,19 +70,19 @@ struct RootView: View {
             // doesn't fight the splash transition.
             guard !stillInitializing,
                   !onboardingCompleted,
-                  environment.connectionConfig == nil
+                  !environment.hasSavedBridges
             else { return }
             showOnboarding = true
         }
         .task {
             // Start the environment (auto-connect if config exists)
             await environment.start()
-            
-            if environment.connectionConfig != nil {
+
+            if environment.hasSavedBridges {
                 let startTime = Date()
                 while Date().timeIntervalSince(startTime) < 5.0 {
-                    if environment.hasBeenConnected { break }
-                    if case .failed = environment.connectionState { break }
+                    if environment.hasAnyBridgeBeenConnected { break }
+                    if case .failed = aggregateConnectionState { break }
                     try? await Task.sleep(for: .milliseconds(100))
                 }
             }
@@ -63,19 +96,19 @@ struct RootView: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            // Reconnect only if the user had an established session that
-            // dropped while backgrounded. `hasBeenConnected` is cleared by
-            // explicit disconnect / forget-server, so we don't undo a
-            // user-initiated disconnect on the next foreground.
-            guard phase == .active,
-                  environment.hasBeenConnected,
-                  environment.connectionConfig != nil
-            else { return }
-            switch environment.connectionState {
-            case .lost, .failed, .idle:
-                environment.retryFromLost()
-            case .connecting, .connected, .reconnecting:
-                break
+            // Phase 2 multi-bridge: on foreground, retry every session that's
+            // in a recoverable bad state. `hasBeenConnected` per-session
+            // means we only retry bridges the user successfully connected to
+            // before — never undo an explicit disconnect.
+            guard phase == .active else { return }
+            for session in environment.registry.orderedSessions {
+                guard session.controller.hasBeenConnected else { continue }
+                switch session.connectionState {
+                case .lost, .failed, .idle:
+                    environment.retryFromLost(bridgeID: session.bridgeID)
+                case .connecting, .connected, .reconnecting:
+                    continue
+                }
             }
         }
     }
@@ -86,10 +119,18 @@ struct RootView: View {
         MainTabView()
             .overlay(alignment: .top) { connectionBanner }
             .alert("Connection Lost", isPresented: lostBinding) {
-                Button("Try Again") { environment.retryFromLost() }
-                Button("Change Server", role: .destructive) { Task { await environment.forgetServer() } }
+                Button("Try Again") {
+                    if let id = lostSession?.bridgeID {
+                        environment.retryFromLost(bridgeID: id)
+                    }
+                }
+                Button("Change Server", role: .destructive) {
+                    if let id = lostSession?.bridgeID {
+                        Task { await environment.forgetServer(bridgeID: id) }
+                    }
+                }
             } message: {
-                if case .lost(let msg) = environment.connectionState {
+                if case .lost(let msg) = lostSession?.connectionState {
                     Text(msg)
                 }
             }
@@ -105,7 +146,7 @@ struct RootView: View {
 
     @ViewBuilder
     private var connectionBanner: some View {
-        switch environment.connectionState {
+        switch aggregateConnectionState {
         case .lost(let msg):
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: "wifi.slash")
@@ -125,10 +166,7 @@ struct RootView: View {
 
     private var lostBinding: Binding<Bool> {
         Binding(
-            get: {
-                if case .lost = environment.connectionState { return true }
-                return false
-            },
+            get: { lostSession != nil },
             set: { _ in }
         )
     }

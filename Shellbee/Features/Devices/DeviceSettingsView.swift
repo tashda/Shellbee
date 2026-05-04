@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DeviceSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
     let device: Device
 
     @State private var throttle: Int = 0
@@ -11,8 +12,10 @@ struct DeviceSettingsView: View {
     @State private var showRename = false
     @FocusState private var haNameFocused: Bool
 
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
+
     private var currentDevice: Device {
-        environment.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
+        scope.store.devices.first { $0.ieeeAddress == device.ieeeAddress } ?? device
     }
 
     private var deviceOptions: [Expose] {
@@ -112,7 +115,11 @@ struct DeviceSettingsView: View {
         .onChange(of: currentDevice.ieeeAddress) { _, _ in syncState() }
         .sheet(isPresented: $showRename) {
             RenameDeviceSheet(device: currentDevice) { newName, updateHA in
-                environment.renameDevice(from: currentDevice.friendlyName, to: newName, homeassistantRename: updateHA)
+                environment.scope(for: bridgeID).renameDevice(
+                    from: currentDevice.friendlyName,
+                    to: newName,
+                    homeassistantRename: updateHA
+                )
             }
         }
     }
@@ -130,7 +137,7 @@ struct DeviceSettingsView: View {
     }
 
     private func sendOption(_ key: String, value: JSONValue) {
-        environment.send(
+        scope.send(
             topic: Z2MTopics.Request.deviceOptions,
             payload: .object([
                 "id": .string(currentDevice.friendlyName),
@@ -212,7 +219,7 @@ private struct DeviceOptionRow: View {
 
 #Preview {
     NavigationStack {
-        DeviceSettingsView(device: .preview)
+        DeviceSettingsView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
 }

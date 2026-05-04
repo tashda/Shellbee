@@ -26,7 +26,7 @@ struct ConnectionActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.center) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(context.attributes.serverHost)
+                        Text(context.attributes.bridgeDisplayName)
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
                         Text(context.state.phase.label)
@@ -89,11 +89,17 @@ private struct ConnectionLockScreenView: View {
                 )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(context.attributes.serverHost)
+                Text(context.attributes.bridgeDisplayName)
                     .font(.headline)
                 Text(context.state.phase.label)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if context.attributes.bridgeDisplayName != context.attributes.serverHost {
+                    Text(context.attributes.serverHost)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
                 if context.state.phase == .reconnecting {
                     Text(context.state.maxAttempts > 0 ? "Attempt \(context.state.attempt) of \(context.state.maxAttempts)" : "Attempt \(context.state.attempt)")
                         .font(.caption)
@@ -159,7 +165,7 @@ private extension ConnectionActivityAttributes.ContentState {
     static let failed            = Self(phase: .failed,       attempt: 0, maxAttempts: 0, message: "")
 }
 
-private let previewAttributes = ConnectionActivityAttributes(serverHost: "homelab.local")
+private let previewAttributes = ConnectionActivityAttributes(serverHost: "homelab.local", bridgeDisplayName: "Main")
 
 #Preview("Lock Screen", as: .content, using: previewAttributes) {
     ConnectionActivityWidget()

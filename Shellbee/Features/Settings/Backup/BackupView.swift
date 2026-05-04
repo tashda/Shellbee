@@ -3,6 +3,8 @@ import Foundation
 
 struct BackupView: View {
     @Environment(AppEnvironment.self) private var environment
+    let bridgeID: UUID
+    private var scope: BridgeScope { environment.scope(for: bridgeID) }
     @State private var status: Status = .idle
     @State private var lastBackupURL: URL?
     @State private var lastBackupSize: Int?
@@ -36,7 +38,7 @@ struct BackupView: View {
                         }
                     }
                 }
-                .disabled(status == .running || !environment.connectionState.isConnected)
+                .disabled(status == .running || !scope.isConnected)
 
                 if let url = lastBackupURL, let size = lastBackupSize {
                     Button {
@@ -103,7 +105,7 @@ struct BackupView: View {
         case .idle:
             Text("Backs up Z2M configuration and coordinator state via the bridge. Save the resulting zip to Files, iCloud Drive, or AirDrop.")
         case .running:
-            Text("Working…")
+            Text("Working")
         case .success:
             Text("Backup ready. Use Share Backup to save it.")
         case .failed(let reason):
@@ -114,7 +116,7 @@ struct BackupView: View {
 
     private func triggerBackup() {
         status = .running
-        environment.store.backupResponseHandler = { zipBase64, error in
+        scope.store.backupResponseHandler = { zipBase64, error in
             Task { @MainActor in
                 if let zipBase64 {
                     do {
@@ -135,7 +137,7 @@ struct BackupView: View {
                 }
             }
         }
-        environment.send(topic: Z2MTopics.Request.backup, payload: .string(""))
+        scope.send(topic: Z2MTopics.Request.backup, payload: .string(""))
     }
 
     private func saveBackup(base64: String) throws -> URL {
@@ -200,6 +202,6 @@ private struct ActivityViewController: UIViewControllerRepresentable {
 }
 
 #Preview {
-    NavigationStack { BackupView() }
+    NavigationStack { BackupView(bridgeID: UUID()) }
         .environment(AppEnvironment())
 }
