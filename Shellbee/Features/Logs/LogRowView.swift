@@ -19,11 +19,21 @@ struct LogRowView: View {
             leadingVisual
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(entry.summaryTitle)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(titleColor)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Text(entry.summaryTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(titleColor)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    if entry.coalescedCount > 1 {
+                        Text("× \(entry.coalescedCount)")
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, DesignTokens.Spacing.xs)
+                            .padding(.vertical, 1)
+                            .background(.secondary.opacity(DesignTokens.Opacity.subtleFill), in: Capsule())
+                    }
+                }
 
                 Text(entry.summarySubtitle)
                     .font(.footnote)

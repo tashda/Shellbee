@@ -277,9 +277,11 @@ struct LogDetailView: View {
         }
         if displayDevices.count > 1 { return "Activity" }
         switch entry.category {
-        case .deviceJoined, .deviceAnnounce, .deviceLeave, .interview:
+        case .deviceJoined, .deviceAnnounce, .deviceLeave, .interview, .availability:
             return entry.deviceName ?? entry.category.label
         case .stateChange: return "Activity"
+        case .bridgeState: return "Bridge"
+        case .permitJoin: return "Pairing"
         case .general:
             switch entry.level {
             case .error: return "Error"
