@@ -17,36 +17,66 @@ struct RemoteCard: View {
         return flat.first(where: { $0.name == "voltage" || $0.property == "voltage" })?.unit ?? "mV"
     }
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            if mode == .snapshot {
-                header
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+                actionTile
+                if let voltage {
+                    voltageTile(voltage)
+                }
             }
-            actionTile
-            if let voltage {
-                voltageTile(voltage)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(DesignTokens.Spacing.xl)
+            .background(Color(.secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(DesignTokens.Spacing.xl)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
     }
 
-    private var header: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "command")
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .foregroundStyle(.tint)
-            Text("Remote")
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Command glyph + "Remote" + last action
+    /// (and voltage when present).
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                Image(systemName: "command")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Remote")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    if let secondary = snapshotSecondaryText {
+                        Text(secondary)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else {
+                        Text("Waiting")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+
+                Spacer(minLength: DesignTokens.Spacing.sm)
+            }
         }
+    }
+
+    private var snapshotSecondaryText: String? {
+        var parts: [String] = []
+        if let action = lastAction { parts.append(prettyAction(action)) }
+        if let v = voltage { parts.append("\(Int(v)) \(voltageUnit)") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var actionTile: some View {
