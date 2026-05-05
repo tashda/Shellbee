@@ -24,7 +24,7 @@ struct LogFilterMenu: View {
             // showLinkQualityChanges. The toggle exposes it for diagnostic
             // sessions without polluting the default view.
             Toggle(isOn: $viewModel.showLinkQualityChanges) {
-                Label("Show signal changes", systemImage: "dot.radiowaves.left.and.right")
+                Label("Signal Changes", systemImage: "dot.radiowaves.left.and.right")
             }
             if viewModel.hasActiveFilter {
                 Divider()
@@ -155,10 +155,24 @@ struct LogFilterMenu: View {
         ).sorted()
     }
 
+    /// Devices to offer in the picker. Mirrors the activity-log filter
+    /// pipeline (minus the device selection itself, which would create a
+    /// chicken-and-egg) so the list only contains devices the user can
+    /// actually pick *and* see rows for. Without this, picking a device
+    /// whose every entry was hidden by the Signal Changes toggle would
+    /// leave the user staring at an empty list.
     private func availableDevices() -> [String] {
-        Set(
+        let snapshot = LogsViewModel()
+        snapshot.searchText = viewModel.searchText
+        snapshot.selectedLevel = viewModel.selectedLevel
+        snapshot.selectedCategory = viewModel.selectedCategory
+        snapshot.selectedNamespace = viewModel.selectedNamespace
+        snapshot.entryIDFilter = viewModel.entryIDFilter
+        snapshot.bridgeFilter = viewModel.bridgeFilter
+        snapshot.showLinkQualityChanges = viewModel.showLinkQualityChanges
+        return Set(
             filteredSessions.flatMap { session in
-                session.store.logEntries.compactMap(\.deviceName)
+                snapshot.filteredEntries(store: session.store).compactMap(\.deviceName)
             }
         ).sorted()
     }
