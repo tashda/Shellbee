@@ -17,24 +17,82 @@ struct CoverControlCard: View {
         _tiltDraft = State(initialValue: context.tiltValue ?? 0)
     }
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            heroHeadline
-            if showsPositionSlider { positionSliderRow }
-            if showsActionButtons { hairline; actionButtons }
-            if context.tiltFeature != nil { hairline; tiltRow }
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+                heroHeadline
+                if showsPositionSlider { positionSliderRow }
+                if showsActionButtons { hairline; actionButtons }
+                if context.tiltFeature != nil { hairline; tiltRow }
+            }
+            .padding(DesignTokens.Spacing.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(heroBackground)
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+            .onChange(of: context.positionValue) { _, v in
+                guard !isDraggingPosition else { return }
+                positionDraft = v ?? 0
+            }
+            .onChange(of: context.tiltValue) { _, v in tiltDraft = v ?? 0 }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
-        .onChange(of: context.positionValue) { _, v in
-            guard !isDraggingPosition else { return }
-            positionDraft = v ?? 0
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Blinds glyph + "Cover" + position
+    /// summary + OPEN/CLOSED pill.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                Image(systemName: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(heroTint)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(eyebrowLabel)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    if let secondary = snapshotSecondaryText {
+                        Text(secondary)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: DesignTokens.Spacing.sm)
+
+                Text(isFullyClosed ? "CLOSED" : "OPEN")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(isFullyClosed ? Color(.secondaryLabel) : heroTint)
+                    .padding(.horizontal, DesignTokens.Spacing.sm)
+                    .padding(.vertical, DesignTokens.Spacing.xs)
+                    .background(
+                        isFullyClosed ? Color(.tertiarySystemFill)
+                                      : heroTint.opacity(DesignTokens.Opacity.chipFill),
+                        in: Capsule()
+                    )
+            }
         }
-        .onChange(of: context.tiltValue) { _, v in tiltDraft = v ?? 0 }
+    }
+
+    private var snapshotSecondaryText: String? {
+        var parts: [String] = []
+        if let pos = context.positionValue {
+            parts.append("\(Int(pos))%")
+        }
+        if let tilt = context.tiltValue {
+            parts.append("Tilt \(Int(tilt))%")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     // MARK: - Tinting

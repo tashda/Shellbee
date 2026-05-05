@@ -21,11 +21,13 @@ struct GenericExposeCard: View {
     private let rowVerticalPadding: CGFloat = DesignTokens.Spacing.md
     private let rowIconWidth: CGFloat = 22
 
+    @ViewBuilder
     var body: some View {
         let rows = Self.rows(for: device, state: state)
-        if !rows.isEmpty {
+        if mode == .snapshot {
+            snapshotContent(rows: rows)
+        } else if !rows.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                if mode == .snapshot { snapshotHeader }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
                     if idx > 0 { rowDivider }
                     GenericExposeRow(
@@ -46,24 +48,57 @@ struct GenericExposeCard: View {
         }
     }
 
-    /// Snapshot-only eyebrow. Interactive mode drops it entirely — the device
-    /// name above the card already names what we're looking at, so a redundant
-    /// "Controls" / "Device State" headline is just noise.
-    private var snapshotHeader: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: "cpu")
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .foregroundStyle(.tint)
-            Text("Device State")
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. CPU glyph + "Device State" + top 2
+    /// readings as `key: value · key: value`.
+    @ViewBuilder
+    private func snapshotContent(rows: [ExposeRow]) -> some View {
+        if !rows.isEmpty {
+            CompactSnapshotCard {
+                HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                    Image(systemName: "cpu")
+                        .font(.title2)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.tint)
+                        .frame(width: 32)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Device State")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Text(snapshotSummary(rows: rows))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: DesignTokens.Spacing.sm)
+                }
+            }
         }
-        .padding(.horizontal, rowHorizontalPadding)
-        .padding(.top, DesignTokens.Spacing.lg)
-        .padding(.bottom, DesignTokens.Spacing.sm)
+    }
+
+    private func snapshotSummary(rows: [ExposeRow]) -> String {
+        let pairs = rows.prefix(2).compactMap { row -> String? in
+            guard let value = row.stateValue else { return nil }
+            return "\(row.label): \(Self.formatValue(value))"
+        }
+        return pairs.joined(separator: " · ")
+    }
+
+    private static func formatValue(_ v: JSONValue) -> String {
+        switch v {
+        case .string(let s): return s
+        case .bool(let b): return b ? "ON" : "OFF"
+        case .int(let i): return String(i)
+        case .double(let d):
+            return d.truncatingRemainder(dividingBy: 1) == 0
+                ? String(format: "%.0f", d)
+                : String(format: "%.1f", d)
+        default: return ""
+        }
     }
 
     private var rowDivider: some View {

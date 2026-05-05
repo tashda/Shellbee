@@ -7,26 +7,73 @@ struct SensorCard: View {
 
     private static let skipKeys: Set<String> = ["linkquality", "last_seen", "update", "update_available", "battery", "battery_low"]
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            if mode == .snapshot {
-                header
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                let readings = makeReadings()
+                if readings.isEmpty {
+                    Text("No sensor data available")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    readingsGrid(readings)
+                }
             }
-            let readings = makeReadings()
-            if readings.isEmpty {
-                Text("No sensor data available")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                readingsGrid(readings)
+            .padding(DesignTokens.Spacing.xl)
+            .background(Color(.secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        }
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Sensor glyph + "Sensor" + 1–3 reading
+    /// summary. Fits the same scale as the device card stacked above it
+    /// in the log detail view.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                Image(systemName: "sensor.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sensor")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    let summary = snapshotSummary
+                    if !summary.isEmpty {
+                        Text(summary)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else {
+                        Text("No data")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+
+                Spacer(minLength: DesignTokens.Spacing.sm)
             }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+    }
+
+    /// First three readings as `value · value · value`. The snapshot row
+    /// is one line, so we cap at three and let the device-detail screen
+    /// show the full grid.
+    private var snapshotSummary: String {
+        let readings = makeReadings().prefix(3)
+        return readings.map(\.displayValue).joined(separator: " · ")
     }
 
     private func readingsGrid(_ readings: [SensorReading]) -> some View {
@@ -40,20 +87,6 @@ struct SensorCard: View {
             ForEach(readings, id: \.label) { reading in
                 SensorReadingTile(reading: reading)
             }
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "sensor.fill")
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .foregroundStyle(.tint)
-            Text("Sensor")
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
         }
     }
 
