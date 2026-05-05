@@ -372,6 +372,12 @@ nonisolated enum DesignTokens {
         // MARK: Form / settings rows
         static let formRowIcon: Font = .system(size: 16, weight: .medium)
         static let formRowIconBold: Font = .system(size: 16, weight: .semibold)
+        // Label + value text inside a Settings-style key/value row. Mirrors
+        // the size iOS Settings itself uses for its rows. Use these instead
+        // of literal `.subheadline` for any form-row content so detail
+        // surfaces share one consistent rhythm.
+        static let formRowLabel: Font = .body
+        static let formRowValue: Font = .body
 
         // MARK: Misc one-offs
         static let sliderEndLabel: Font = .system(size: 9, weight: .medium)
