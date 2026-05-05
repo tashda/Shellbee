@@ -96,10 +96,10 @@ struct LogHealthDetailSections: View {
     private func healthRow(label: String, value: String, valueColor: Color) -> some View {
         HStack {
             Text(label)
-                .font(.subheadline)
+                .font(DesignTokens.Typography.formRowLabel)
             Spacer()
             Text(value)
-                .font(.subheadline.monospacedDigit())
+                .font(DesignTokens.Typography.formRowValue.monospacedDigit())
                 .foregroundStyle(valueColor)
         }
     }
@@ -266,10 +266,10 @@ private struct DeviceHealthSection: View {
             ForEach(metrics, id: \.label) { metric in
                 HStack {
                     Text(metric.label)
-                        .font(.subheadline)
+                        .font(DesignTokens.Typography.formRowLabel)
                     Spacer()
                     Text(metric.value)
-                        .font(.subheadline.monospacedDigit())
+                        .font(DesignTokens.Typography.formRowValue.monospacedDigit())
                         .foregroundStyle(metric.valueColor)
                 }
             }

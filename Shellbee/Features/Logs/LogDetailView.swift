@@ -425,18 +425,18 @@ struct LogDetailView: View {
     private func diffRow(for change: LogContext.StateChange) -> some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
             Text(change.displayLabel)
-                .font(.subheadline)
+                .font(DesignTokens.Typography.formRowLabel)
             Spacer()
             if let from = change.displayFrom {
                 Text(from)
-                    .font(.subheadline)
+                    .font(DesignTokens.Typography.formRowValue)
                     .foregroundStyle(.secondary)
                 Image(systemName: "arrow.right")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.tertiary)
             }
             Text(change.displayTo)
-                .font(.subheadline.weight(.medium))
+                .font(DesignTokens.Typography.formRowValue.weight(.medium))
                 .foregroundStyle(diffColor(for: change))
         }
     }
