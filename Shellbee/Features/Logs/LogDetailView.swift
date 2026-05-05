@@ -130,6 +130,17 @@ struct LogDetailView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         formatButton
                     }
+                    // ToolbarSpacer breaks the iOS 26 glass-pill grouping
+                    // — without it, adjacent trailing items fuse into a
+                    // single capsule. The format button and the Done
+                    // action are unrelated, so they should read as
+                    // separate controls. SDK availability check is
+                    // belt-and-braces — our deployment target is iOS 26.0
+                    // but the symbol is annotated `iOS 26.0+` and the
+                    // compiler still wants the guard.
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done", action: doneAction)
