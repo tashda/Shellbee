@@ -105,6 +105,21 @@ enum LogRowIconography {
             return .symbol(name: "checklist", tint: .blue)
         case .deviceLeave:
             return .symbol(name: "minus.circle.fill", tint: .red)
+        case .availability:
+            // Online → green dot, offline → grey. Tint encodes the new
+            // state so the row is parseable at a glance.
+            let isOnline = entry.message.lowercased().contains("online")
+                && !entry.message.lowercased().contains("offline")
+            return .symbol(name: "circle.fill", tint: isOnline ? .green : Color(.tertiaryLabel))
+        case .bridgeState:
+            let isOnline = entry.message.lowercased().contains("online")
+                && !entry.message.lowercased().contains("offline")
+            return .symbol(name: "antenna.radiowaves.left.and.right",
+                           tint: isOnline ? .indigo : Color(.tertiaryLabel))
+        case .permitJoin:
+            let opened = entry.message.lowercased().contains("opened")
+            return .symbol(name: opened ? "lock.open.fill" : "lock.fill",
+                           tint: opened ? .orange : Color(.tertiaryLabel))
         case .stateChange:
             // State change with no device subject — rare, but render
             // consistently with the diff arrow rather than the old badge.

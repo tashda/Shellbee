@@ -33,7 +33,20 @@ extension AppStore {
             }
             syncConfiguredAvailability()
         case .bridgeState(let state):
-            bridgeOnline = state == "online"
+            let nextOnline = state == "online"
+            // Only emit a log entry on actual transitions — Z2M republishes
+            // bridge/state on every reconnect, and a stream of "Bridge online"
+            // rows when nothing changed would be noise.
+            if bridgeOnline != nextOnline {
+                let level: LogLevel = nextOnline ? .info : .warning
+                let message = nextOnline ? "Bridge online" : "Bridge offline"
+                insertLogEntry(LogEntry(
+                    id: UUID(), timestamp: .now, level: level,
+                    category: .bridgeState, namespace: nil,
+                    message: message, deviceName: nil
+                ))
+            }
+            bridgeOnline = nextOnline
         case .devices(let list):
             // Backfill first-seen for any device we've never recorded.
             // Covers the case where a device joined while the app was closed
@@ -184,12 +197,44 @@ extension AppStore {
             deviceStates[name] = state
             handleOTAState(for: name, state: state)
         case .deviceAvailability(let name, let available):
+            // Only log transitions — the first availability snapshot after
+            // (re)connect would otherwise produce a flood of "X online"
+            // rows for every device the bridge tracks.
+            if let previous = deviceAvailability[name], previous != available {
+                let level: LogLevel = available ? .info : .warning
+                let message = available ? "\(name) came online" : "\(name) went offline"
+                insertLogEntry(LogEntry(
+                    id: UUID(), timestamp: .now, level: level,
+                    category: .availability, namespace: nil,
+                    message: message, deviceName: name
+                ))
+            }
             deviceAvailability[name] = available
         case .deviceOTAUpdateResponse(let response):
             handleOTAResponse(response)
         case .deviceOTACheckResponse(let response):
             handleOTACheckResponse(response)
         case .permitJoinChanged(let enabled, let remaining):
+            // Log the transition — pairing-window state is security-relevant
+            // and worth a discrete row even though `bridge/info` will
+            // republish it. Comparing to bridgeInfo?.permitJoin guards
+            // against logging the same state twice on connect.
+            if bridgeInfo?.permitJoin != enabled {
+                let level: LogLevel = enabled ? .info : .info
+                let message: String
+                if enabled, let remaining {
+                    message = "Pairing opened (\(remaining)s)"
+                } else if enabled {
+                    message = "Pairing opened"
+                } else {
+                    message = "Pairing closed"
+                }
+                insertLogEntry(LogEntry(
+                    id: UUID(), timestamp: .now, level: level,
+                    category: .permitJoin, namespace: nil,
+                    message: message, deviceName: nil
+                ))
+            }
             if let info = bridgeInfo {
                 bridgeInfo = info.copyUpdatingPermitJoin(
                     enabled: enabled,

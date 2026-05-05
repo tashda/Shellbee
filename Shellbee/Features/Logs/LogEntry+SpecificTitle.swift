@@ -26,6 +26,12 @@ extension LogEntry {
             return "Left"
         case .interview:
             return "Interview"
+        case .availability:
+            return "Availability"
+        case .bridgeState:
+            return "Bridge"
+        case .permitJoin:
+            return "Pairing"
         case .general:
             return generalBodyHeader
         }
