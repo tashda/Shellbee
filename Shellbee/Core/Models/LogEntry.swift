@@ -51,14 +51,21 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     let message: String
     let deviceName: String?
     let context: LogContext?
+    /// Set by the view model when consecutive same-device same-kind entries
+    /// are coalesced into one displayed row ("Signal drifted ×5"). Always 1
+    /// on the canonical entries stored in `AppStore.logEntries`; the view
+    /// model produces synthesized copies with a higher count for display.
+    var coalescedCount: Int
 
     init(
         id: UUID, timestamp: Date, level: LogLevel, category: LogCategory,
-        namespace: String?, message: String, deviceName: String?, context: LogContext? = nil
+        namespace: String?, message: String, deviceName: String?, context: LogContext? = nil,
+        coalescedCount: Int = 1
     ) {
         self.id = id; self.timestamp = timestamp; self.level = level
         self.category = category; self.namespace = namespace
         self.message = message; self.deviceName = deviceName; self.context = context
+        self.coalescedCount = coalescedCount
     }
 
     func hash(into hasher: inout Hasher) { hasher.combine(id) }

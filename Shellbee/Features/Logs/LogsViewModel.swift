@@ -11,9 +11,16 @@ final class LogsViewModel {
     /// Multi-bridge: when set, the merged log list filters to this bridge.
     /// Ignored in single-bridge mode.
     var bridgeFilter: UUID? = nil
+    /// Default false. LQI drift is the dominant event by volume but the
+    /// least actionable — it crowds out interviews, real state changes,
+    /// availability transitions. Hiding it by default lets the meaningful
+    /// rows breathe; the toggle in the filter menu lets diagnostic users
+    /// opt back in.
+    var showLinkQualityChanges = false
 
     var hasActiveFilter: Bool {
-        selectedLevel != nil || selectedCategory != nil || selectedNamespace != nil || !selectedDevices.isEmpty || entryIDFilter != nil || bridgeFilter != nil
+        selectedLevel != nil || selectedCategory != nil || selectedNamespace != nil
+            || !selectedDevices.isEmpty || entryIDFilter != nil || bridgeFilter != nil
     }
 
     func filteredEntries(store: AppStore) -> [LogEntry] {
@@ -50,7 +57,52 @@ final class LogsViewModel {
             }
         }
 
-        return entries
+        // Hide LQI-only state changes by default — the user can opt back
+        // in via the Show signal changes toggle in the filter menu.
+        if !showLinkQualityChanges {
+            entries = entries.filter { !LogRowIconography.isLinkQualityOnly($0) }
+        }
+
+        // Coalesce consecutive same-device same-kind entries. The store is
+        // newest-first; we walk it and produce synthesized entries with a
+        // count when a run of identical rows is found. Bursts of LQI
+        // drift, repeated availability flaps, etc. collapse to one row.
+        return coalesce(entries)
+    }
+
+    /// Walk a newest-first entry list and collapse adjacent duplicates.
+    /// "Duplicate" = same category + same device + same coalesce key
+    /// (e.g., LQI-only state changes share a key regardless of value).
+    private func coalesce(_ entries: [LogEntry]) -> [LogEntry] {
+        var result: [LogEntry] = []
+        result.reserveCapacity(entries.count)
+        for entry in entries {
+            if let last = result.last, Self.canCoalesce(last, entry) {
+                var merged = last
+                merged.coalescedCount += 1
+                result[result.count - 1] = merged
+            } else {
+                result.append(entry)
+            }
+        }
+        return result
+    }
+
+    private static func canCoalesce(_ a: LogEntry, _ b: LogEntry) -> Bool {
+        guard a.category == b.category else { return false }
+        guard a.deviceName == b.deviceName else { return false }
+        // Only collapse rows the user is unlikely to want individually:
+        // LQI-only drift, availability flaps. Real state changes
+        // (brightness, occupancy, temperature) carry distinct values per
+        // entry — coalescing them would erase information.
+        if LogRowIconography.isLinkQualityOnly(a),
+           LogRowIconography.isLinkQualityOnly(b) {
+            return true
+        }
+        if a.category == .availability, b.category == .availability {
+            return true
+        }
+        return false
     }
 
     func availableNamespaces(store: AppStore) -> [String] {
