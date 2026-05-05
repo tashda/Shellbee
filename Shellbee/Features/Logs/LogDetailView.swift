@@ -281,6 +281,7 @@ struct LogDetailView: View {
             return entry.deviceName ?? entry.category.label
         case .stateChange: return "Activity"
         case .bridgeState: return "Bridge"
+        case .bridgeActivity: return entry.bridgeTopicDisplay?.title ?? "Bridge"
         case .permitJoin: return "Pairing"
         case .general:
             switch entry.level {

@@ -30,6 +30,8 @@ extension LogEntry {
             return "Availability"
         case .bridgeState:
             return "Bridge"
+        case .bridgeActivity:
+            return bridgeTopicDisplay?.title ?? "Bridge Activity"
         case .permitJoin:
             return "Pairing"
         case .general:

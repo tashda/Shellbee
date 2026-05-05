@@ -13,6 +13,13 @@ enum LogCategory: String, CaseIterable, Sendable, Hashable, ChipRepresentable {
     case bridgeState
     /// Pairing window opened or closed.
     case permitJoin
+    /// Z2M bridge response/event activity that isn't a pure bridge state
+    /// transition — health checks, info refresh, options updates, OTA
+    /// responses, configure/rename/remove acknowledgements, touchlink
+    /// scans, networkmap responses, etc. Catches every recognised
+    /// `bridge/response/*` and `bridge/event` so they look like first-
+    /// class log rows instead of raw MQTT topics.
+    case bridgeActivity
 
     var chipLabel: String { label }
     var chipIcon: String? { systemImage }
@@ -21,6 +28,7 @@ enum LogCategory: String, CaseIterable, Sendable, Hashable, ChipRepresentable {
         case .stateChange: return .purple
         case .availability: return .green
         case .bridgeState: return .indigo
+        case .bridgeActivity: return .indigo
         case .permitJoin: return .orange
         default: return .blue
         }
@@ -36,6 +44,7 @@ enum LogCategory: String, CaseIterable, Sendable, Hashable, ChipRepresentable {
         case .deviceLeave: "Device Left"
         case .availability: "Availability"
         case .bridgeState: "Bridge"
+        case .bridgeActivity: "Bridge Activity"
         case .permitJoin: "Pairing"
         }
     }
@@ -48,8 +57,12 @@ enum LogCategory: String, CaseIterable, Sendable, Hashable, ChipRepresentable {
         case .deviceAnnounce: "megaphone"
         case .interview: "checklist"
         case .deviceLeave: "wifi.slash"
-        case .availability: "circle.fill"
+        // wifi (without slash) sits in the same glyph family as
+        // deviceLeave's wifi.slash, so the filter menu reads as a
+        // related pair instead of the prior plain dot.
+        case .availability: "wifi"
         case .bridgeState: "antenna.radiowaves.left.and.right"
+        case .bridgeActivity: "gearshape.fill"
         case .permitJoin: "lock.open"
         }
     }

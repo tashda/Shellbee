@@ -82,12 +82,19 @@ extension AppStore {
                knownNames.contains(deviceName) {
                 break
             }
-            let entry = LogEntry(
+            var entry = LogEntry(
                 id: msg.id, timestamp: .now, level: level,
                 category: ctx.inferredCategory,
                 namespace: msg.namespace, message: msg.message,
                 deviceName: ctx.primaryDevice?.friendlyName, context: ctx
             )
+            // Recognised bridge topics (health_check, options, restart,
+            // device/configure, etc.) get their friendly category so the
+            // row uses bridge-activity iconography instead of the generic
+            // bubble glyph.
+            if let display = entry.bridgeTopicDisplay {
+                entry.category = display.category
+            }
             insertLogEntry(entry)
             if let note = notification(for: ctx.action, level: level, deviceName: ctx.primaryDevice?.friendlyName, message: msg.message, id: msg.id) {
                 enqueueNotification(note)
