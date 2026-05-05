@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct BeautifulPayloadView: View {
+struct PayloadSectionsView: View {
     let payload: [String: JSONValue]
     var device: Device? = nil
 
@@ -122,7 +122,7 @@ struct BeautifulPayloadView: View {
             ForEach(allSections, id: \.title) { section in
                 Section(section.title) {
                     ForEach(section.items, id: \.label) { item in
-                        BeautifulRow(label: item.label, value: item.value, unit: item.unit)
+                        PayloadRow(label: item.label, value: item.value, unit: item.unit)
                     }
                 }
             }
@@ -132,7 +132,7 @@ struct BeautifulPayloadView: View {
 
 #Preview {
     List {
-        BeautifulPayloadView(
+        PayloadSectionsView(
             payload: [
                 "temperature": .double(21.5),
                 "humidity": .double(65.0),

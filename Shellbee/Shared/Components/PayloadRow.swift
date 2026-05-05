@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct BeautifulRow: View {
+struct PayloadRow: View {
     let label: String
     let value: JSONValue
     var unit: String? = nil

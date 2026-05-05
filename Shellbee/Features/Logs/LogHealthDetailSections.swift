@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Beautiful detail rendering for `bridge/health` payloads. The default
-/// `BeautifulPayloadView` flattens the `devices` map into one "N properties"
+/// Dedicated detail rendering for `bridge/health` payloads. The default
+/// `PayloadSectionsView` flattens the `devices` map into one "N properties"
 /// row per device — useless for the user, who can't tell which IEEE is
 /// which. This view does the IEEE → friendly-device lookup and renders
 /// each device as its own grouped section: thumbnail + name + per-device
