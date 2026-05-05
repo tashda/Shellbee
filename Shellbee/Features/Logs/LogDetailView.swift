@@ -330,7 +330,10 @@ struct LogDetailView: View {
         // bridge/health gets a dedicated detail renderer that maps the
         // `devices` IEEE map to per-device cards instead of dumping
         // "0X000…1234: 4 properties" rows the user can't decipher.
-        if topic == "bridge/health" {
+        // `hasSuffix` because Z2M prepends the configurable MQTT base
+        // (default `zigbee2mqtt/`) to the topic; we want to match the
+        // canonical sub-topic regardless of how the user has it set.
+        if topic?.hasSuffix("bridge/health") == true {
             LogHealthDetailSections(payload: payload, store: scope.store)
         } else {
             payloadBody(changes: changes, payload: payload)
