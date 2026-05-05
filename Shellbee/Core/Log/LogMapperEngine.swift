@@ -72,13 +72,19 @@ struct LogMapperEngine {
         _ next: [String: JSONValue]
     ) -> [LogContext.StateChange] {
         let excluded: Set<String> = ["last_seen", "update", "update_available", "device", "elapsed"]
+        // Momentary triggers (action, click) are events, not state — when the
+        // user presses the same button twice, both publishes carry the same
+        // value, but each is a distinct event the user wants to see in the
+        // log. Skip the equality-collapse below for these keys so a repeated
+        // press doesn't get masked by the prior press still being in `prev`.
+        let momentary: Set<String> = ["action", "click"]
         var changes: [LogContext.StateChange] = []
         let keys = Set(previous.keys).union(next.keys).subtracting(excluded)
 
         for key in keys.sorted() {
             let prev = previous[key]
             let curr = next[key]
-            if let p = prev, let c = curr, p == c { continue }
+            if !momentary.contains(key), let p = prev, let c = curr, p == c { continue }
 
             // Null-valued entries mean "not active" — not a meaningful change to surface
             if case .null = curr ?? .null { continue }
