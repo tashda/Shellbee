@@ -88,6 +88,7 @@
 				Core/CrashReporting/PendingCrashSheet.swift,
 				Core/CrashReporting/PendingCrashStore.swift,
 				Core/CrashReporting/SentryService.swift,
+				Core/Log/BridgeTopicLabel.swift,
 				Core/Log/LogContext.swift,
 				Core/Log/LogMapperEngine.swift,
 				Core/Log/LogMessageStructure.swift,

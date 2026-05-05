@@ -120,6 +120,13 @@ enum LogRowIconography {
             let opened = entry.message.lowercased().contains("opened")
             return .symbol(name: opened ? "lock.open.fill" : "lock.fill",
                            tint: opened ? .orange : Color(.tertiaryLabel))
+        case .bridgeActivity:
+            // Tint flips to red when the response carried a non-ok status
+            // — surfaces failures in the row itself instead of buried in
+            // the detail view.
+            let isFailure = entry.bridgeTopicDisplay?.isSuccess == false
+            return .symbol(name: "gearshape.fill",
+                           tint: isFailure ? .red : .indigo)
         case .stateChange:
             // State change with no device subject — rare, but render
             // consistently with the diff arrow rather than the old badge.

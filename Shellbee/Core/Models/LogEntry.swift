@@ -46,7 +46,11 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     let id: UUID
     let timestamp: Date
     let level: LogLevel
-    let category: LogCategory
+    /// `var` so AppStore+Events can override the category after the entry
+    /// is constructed — bridge MQTT publishes start as `.general` from
+    /// `LogContext.inferredCategory` and get re-categorised based on the
+    /// recognised topic without rebuilding the whole entry.
+    var category: LogCategory
     let namespace: String?
     let message: String
     let deviceName: String?
@@ -151,6 +155,9 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     }
 
     var summaryTitle: String {
+        // Recognized bridge topics get a friendly title up front so rows
+        // read as "Bridge health check" instead of the raw MQTT topic.
+        if let display = bridgeTopicDisplay { return display.title }
         if let name = context?.primaryDevice?.friendlyName { return name }
         if let name = deviceName { return name }
         if case .mqttPublish(let device, _, _) = parsedMessageKind { return device }
@@ -159,6 +166,9 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     }
 
     var summarySubtitle: String {
+        if let display = bridgeTopicDisplay {
+            return display.subtitle ?? ""
+        }
         if let ctx = context, !ctx.stateChanges.isEmpty {
             let withFrom = ctx.stateChanges.filter { $0.displayFrom != nil }
             let candidates = withFrom.isEmpty ? ctx.stateChanges : withFrom
@@ -175,6 +185,15 @@ struct LogEntry: Identifiable, Sendable, Hashable {
             return pairs.joined(separator: ", ") + suffix
         }
         return Self.stripZ2MPrefix(message)
+    }
+
+    /// Friendly bridge-topic display when this entry is an MQTT publish on
+    /// a recognized `bridge/response/*` or `bridge/event` topic. Computed
+    /// fresh because the canonical topic + payload are derivable from the
+    /// raw `message` via `parsedMessageKind` — no model duplication needed.
+    var bridgeTopicDisplay: BridgeTopicLabel.Display? {
+        guard case .mqttPublish(_, let topic, let payload) = parsedMessageKind else { return nil }
+        return BridgeTopicLabel.display(for: topic, payload: payload)
     }
 
     static func stripZ2MPrefix(_ text: String) -> String {
