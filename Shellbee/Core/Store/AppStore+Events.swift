@@ -39,7 +39,7 @@ extension AppStore {
             // rows when nothing changed would be noise.
             if bridgeOnline != nextOnline {
                 let level: LogLevel = nextOnline ? .info : .warning
-                let message = nextOnline ? "Bridge online" : "Bridge offline"
+                let message = nextOnline ? "Bridge Online" : "Bridge Offline"
                 insertLogEntry(LogEntry(
                     id: UUID(), timestamp: .now, level: level,
                     category: .bridgeState, namespace: nil,
@@ -209,7 +209,9 @@ extension AppStore {
             // rows for every device the bridge tracks.
             if let previous = deviceAvailability[name], previous != available {
                 let level: LogLevel = available ? .info : .warning
-                let message = available ? "\(name) came online" : "\(name) went offline"
+                // Subtitle wording — the device name is already in summaryTitle,
+                // so the message just says what changed.
+                let message = available ? "Came Online" : "Went Offline"
                 insertLogEntry(LogEntry(
                     id: UUID(), timestamp: .now, level: level,
                     category: .availability, namespace: nil,
@@ -230,11 +232,11 @@ extension AppStore {
                 let level: LogLevel = enabled ? .info : .info
                 let message: String
                 if enabled, let remaining {
-                    message = "Pairing opened (\(remaining)s)"
+                    message = "Pairing Opened (\(remaining)s)"
                 } else if enabled {
-                    message = "Pairing opened"
+                    message = "Pairing Opened"
                 } else {
-                    message = "Pairing closed"
+                    message = "Pairing Closed"
                 }
                 insertLogEntry(LogEntry(
                     id: UUID(), timestamp: .now, level: level,

@@ -274,9 +274,16 @@ struct HomeView: View {
             }
         case .recentEvents:
             // Phase 2 multi-bridge: merge the most-recent events across every
-            // bridge so the card shows the user's whole network.
+            // bridge so the card shows the user's whole network. LQI-only
+            // drift is suppressed here for the same reason it's hidden in
+            // the Activity Log by default — it's noise, not events the
+            // user wants on their home screen.
             HomeLogsCard(
-                entries: environment.allLogEntries.prefix(recentEventsCount).map(\.entry),
+                entries: environment.allLogEntries
+                    .lazy
+                    .filter { !LogRowIconography.isLinkQualityOnly($0.entry) }
+                    .prefix(recentEventsCount)
+                    .map(\.entry),
                 onOpenEntry: { entry in
                     environment.pendingLogSheet = LogSheetRequest(entryIDs: [entry.id])
                 },

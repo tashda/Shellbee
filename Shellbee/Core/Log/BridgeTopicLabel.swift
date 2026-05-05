@@ -58,7 +58,7 @@ enum BridgeTopicLabel {
         if topic == "bridge/health" {
             let healthy = payload["healthy"]?.boolValue ?? false
             return Display(
-                title: "Bridge health",
+                title: "Bridge Health",
                 subtitle: healthy ? "Healthy" : "Unhealthy",
                 category: .bridgeActivity,
                 isSuccess: healthy
@@ -70,70 +70,70 @@ enum BridgeTopicLabel {
         case "bridge/response/health_check":
             let healthy = (payload["data"]?.object?["healthy"]?.boolValue) ?? (isOk ?? false)
             return Display(
-                title: "Bridge health check",
+                title: "Bridge Health Check",
                 subtitle: healthy ? "Healthy" : "Unhealthy",
                 category: .bridgeActivity,
                 isSuccess: healthy
             )
         case "bridge/response/info":
-            return Display(title: "Bridge info refreshed", subtitle: nil,
+            return Display(title: "Bridge Info Refreshed", subtitle: nil,
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/options":
-            return Display(title: "Bridge options updated", subtitle: errorOrNil(payload),
+            return Display(title: "Bridge Options Updated", subtitle: errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/backup":
-            return Display(title: "Bridge backup", subtitle: errorOrNil(payload),
+            return Display(title: "Bridge Backup", subtitle: errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/restart":
-            return Display(title: "Bridge restart", subtitle: errorOrNil(payload),
+            return Display(title: "Bridge Restart", subtitle: errorOrNil(payload),
                            category: .bridgeState, isSuccess: isOk)
         case "bridge/response/permit_join":
             let value = payload["data"]?.object?["value"]?.boolValue
-            let title = value == true ? "Pairing opened" : (value == false ? "Pairing closed" : "Pairing window")
+            let title = value == true ? "Pairing Opened" : (value == false ? "Pairing Closed" : "Pairing Window")
             return Display(title: title, subtitle: errorOrNil(payload),
                            category: .permitJoin, isSuccess: isOk)
         case "bridge/response/networkmap":
-            return Display(title: "Network map", subtitle: errorOrNil(payload),
+            return Display(title: "Network Map", subtitle: errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/touchlink/scan":
-            return Display(title: "Touchlink scan", subtitle: errorOrNil(payload),
+            return Display(title: "Touchlink Scan", subtitle: errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/touchlink/identify":
-            return Display(title: "Touchlink identify", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Touchlink Identify", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/touchlink/factory_reset":
-            return Display(title: "Touchlink factory reset", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Touchlink Factory Reset", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/configure":
-            return Display(title: "Device configured", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Device Configured", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/interview":
-            return Display(title: "Device interview", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Device Interview", subtitle: target ?? errorOrNil(payload),
                            category: .interview, isSuccess: isOk)
         case "bridge/response/device/rename":
             let to = payload["data"]?.object?["to"]?.stringValue
-            return Display(title: "Device renamed", subtitle: to ?? target ?? errorOrNil(payload),
+            return Display(title: "Device Renamed", subtitle: to ?? target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/remove":
-            return Display(title: "Device removed", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Device Removed", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/options":
-            return Display(title: "Device options updated", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Device Options Updated", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/bind":
-            return Display(title: "Device bound", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Device Bound", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/unbind":
-            return Display(title: "Device unbound", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Device Unbound", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/configure_reporting":
-            return Display(title: "Reporting configured", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Reporting Configured", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/ota_update/check":
-            return Display(title: "OTA update check", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "OTA Update Check", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/ota_update/update":
-            return Display(title: "OTA update", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "OTA Update", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/device/ota_update/schedule":
             return Display(title: "OTA update scheduled", subtitle: target ?? errorOrNil(payload),
@@ -142,22 +142,22 @@ enum BridgeTopicLabel {
             return Display(title: "OTA update cancelled", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/group/add":
-            return Display(title: "Group added", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Group Added", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/group/remove":
-            return Display(title: "Group removed", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Group Removed", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/group/rename":
-            return Display(title: "Group renamed", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Group Renamed", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/group/options":
-            return Display(title: "Group options updated", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Group Options Updated", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/group/members/add":
-            return Display(title: "Group member added", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Group Member Added", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         case "bridge/response/group/members/remove":
-            return Display(title: "Group member removed", subtitle: target ?? errorOrNil(payload),
+            return Display(title: "Group Member Removed", subtitle: target ?? errorOrNil(payload),
                            category: .bridgeActivity, isSuccess: isOk)
         default:
             // Generic fallback for any unhandled bridge/response/* topic so
@@ -185,13 +185,13 @@ enum BridgeTopicLabel {
         guard let type = payload["type"]?.stringValue else { return nil }
         switch type {
         case "device_joined":
-            return Display(title: "Device joined", subtitle: target,
+            return Display(title: "Device Joined", subtitle: target,
                            category: .deviceJoined, isSuccess: nil)
         case "device_announce":
-            return Display(title: "Device announced", subtitle: target,
+            return Display(title: "Device Announced", subtitle: target,
                            category: .deviceAnnounce, isSuccess: nil)
         case "device_leave":
-            return Display(title: "Device left", subtitle: target,
+            return Display(title: "Device Left", subtitle: target,
                            category: .deviceLeave, isSuccess: nil)
         case "device_interview":
             // The `bridge/event` flavour reports interview milestones with
@@ -199,10 +199,10 @@ enum BridgeTopicLabel {
             // so iconography lines up with the dedicated interview rows.
             let status = payload["data"]?.object?["status"]?.stringValue ?? ""
             let suffix = status.replacingOccurrences(of: "_", with: " ").capitalized
-            let title = suffix.isEmpty ? "Device interview" : "Interview \(suffix.lowercased())"
+            let title = suffix.isEmpty ? "Device Interview" : "Interview \(suffix.lowercased())"
             return Display(title: title, subtitle: target, category: .interview, isSuccess: nil)
         case "device_options_changed":
-            return Display(title: "Device options changed", subtitle: target,
+            return Display(title: "Device Options Changed", subtitle: target,
                            category: .bridgeActivity, isSuccess: nil)
         case "scene_added", "scene_removed":
             return Display(title: type.replacingOccurrences(of: "_", with: " ").capitalized,

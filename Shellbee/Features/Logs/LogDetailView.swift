@@ -345,21 +345,48 @@ struct LogDetailView: View {
         changes: [LogContext.StateChange],
         payload: [String: JSONValue]
     ) -> some View {
-        Section {
-            if !changes.isEmpty {
+        if !changes.isEmpty {
+            // Diff rows live inside a single Section whose header carries
+            // the event noun. SwiftUI Lists don't support nested Sections,
+            // so this branch is mutually exclusive with the payload one.
+            Section {
                 ForEach(changes) { change in
                     diffRow(for: change)
                 }
-            } else if !payload.isEmpty && entry.category != .stateChange {
-                PayloadSectionsView(payload: payload, device: displayDevices.first?.device)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            } else if let structure = LogMessageParser.structure(for: entry.message) {
+            } header: {
+                eventHeader
+            }
+        } else if !payload.isEmpty && entry.category != .stateChange {
+            // PayloadSectionsView produces its own Sections — render at
+            // the top level so each section gets a real header (Status,
+            // Data, Firmware, etc.) the way iOS Settings detail screens
+            // do. Wrapping it in another Section would nest sections,
+            // which SwiftUI silently drops.
+            PayloadSectionsView(payload: payload, device: displayDevices.first?.device)
+        } else if let structure = LogMessageParser.structure(for: entry.message) {
+            // Structured message: top-level summary sits in its own
+            // section under the event header; structured fields/groups
+            // get their own real sections beneath.
+            Section {
                 Text(structure.summary)
                     .font(.callout)
                     .textSelection(.enabled)
                     .padding(.vertical, DesignTokens.Spacing.xs)
-            } else {
+            } header: {
+                eventHeader
+            }
+            ForEach(structure.fields) { field in
+                Section { CopyableRow(label: field.label, value: field.value) }
+            }
+            ForEach(structure.groups) { group in
+                Section(group.title) {
+                    ForEach(group.fields) { field in
+                        CopyableRow(label: field.label, value: field.value)
+                    }
+                }
+            }
+        } else {
+            Section {
                 let (summary, detail) = parsedMessage
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     Text(summary)
@@ -373,24 +400,8 @@ struct LogDetailView: View {
                     }
                 }
                 .padding(.vertical, DesignTokens.Spacing.xs)
-            }
-        } header: {
-            eventHeader
-        }
-
-        // Structured-message extra groups (kept as standalone sections so
-        // each labeled group of fields keeps its own header).
-        if changes.isEmpty, payload.isEmpty,
-           let structure = LogMessageParser.structure(for: entry.message) {
-            ForEach(structure.fields) { field in
-                Section { CopyableRow(label: field.label, value: field.value) }
-            }
-            ForEach(structure.groups) { group in
-                Section(group.title) {
-                    ForEach(group.fields) { field in
-                        CopyableRow(label: field.label, value: field.value)
-                    }
-                }
+            } header: {
+                eventHeader
             }
         }
     }
