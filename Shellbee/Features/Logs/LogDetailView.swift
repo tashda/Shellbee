@@ -322,7 +322,26 @@ struct LogDetailView: View {
             if case .mqttPublish(_, _, let p) = entry.parsedMessageKind { return p }
             return [:]
         }()
+        let topic: String? = {
+            if case .mqttPublish(_, let t, _) = entry.parsedMessageKind { return t }
+            return nil
+        }()
 
+        // bridge/health gets a dedicated detail renderer that maps the
+        // `devices` IEEE map to per-device cards instead of dumping
+        // "0X000…1234: 4 properties" rows the user can't decipher.
+        if topic == "bridge/health" {
+            LogHealthDetailSections(payload: payload, store: scope.store)
+        } else {
+            generalBeautifulBody(changes: changes, payload: payload)
+        }
+    }
+
+    @ViewBuilder
+    private func generalBeautifulBody(
+        changes: [LogContext.StateChange],
+        payload: [String: JSONValue]
+    ) -> some View {
         Section {
             if !changes.isEmpty {
                 ForEach(changes) { change in

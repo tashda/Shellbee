@@ -37,6 +37,21 @@ enum BridgeTopicLabel {
             return bridgeEventDisplay(payload: payload, target: target)
         }
 
+        // bridge/health is a periodic broadcast — distinct from
+        // bridge/response/health_check (which only fires on request).
+        // Its detail view uses a dedicated renderer that maps the
+        // `devices` map to per-device cards, so we just need a friendly
+        // label here.
+        if topic == "bridge/health" {
+            let healthy = payload["healthy"]?.boolValue ?? false
+            return Display(
+                title: "Bridge health",
+                subtitle: healthy ? "Healthy" : "Unhealthy",
+                category: .bridgeActivity,
+                isSuccess: healthy
+            )
+        }
+
         // bridge/response/<segments>
         switch topic {
         case "bridge/response/health_check":

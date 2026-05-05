@@ -214,6 +214,7 @@
 				Features/Logs/LogDeviceFilterSheet.swift,
 				"Features/Logs/LogEntry+SpecificTitle.swift",
 				Features/Logs/LogFilterMenu.swift,
+				Features/Logs/LogHealthDetailSections.swift,
 				Features/Logs/LogRowAvatar.swift,
 				Features/Logs/LogRowIconography.swift,
 				Features/Logs/LogRowView.swift,
