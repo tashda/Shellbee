@@ -26,7 +26,20 @@ enum BridgeTopicLabel {
 
     /// Returns a `Display` for a recognized bridge topic, or `nil` when the
     /// topic isn't one we have a friendly label for.
-    static func display(for topic: String, payload: [String: JSONValue]) -> Display? {
+    static func display(for rawTopic: String, payload: [String: JSONValue]) -> Display? {
+        // Z2M log lines carry the topic with the user-configurable MQTT
+        // base prefix (default `zigbee2mqtt/`). Strip everything before
+        // the first `bridge/` segment so the switch below can match the
+        // canonical sub-topic regardless of how the user has Z2M
+        // configured. Topics that don't contain `bridge/` are passed
+        // through unchanged.
+        let topic: String
+        if let range = rawTopic.range(of: "bridge/") {
+            topic = String(rawTopic[range.lowerBound...])
+        } else {
+            topic = rawTopic
+        }
+
         let status = payload["status"]?.stringValue
         let isOk = status.map { $0.lowercased() == "ok" }
         let target = subjectName(in: payload)
