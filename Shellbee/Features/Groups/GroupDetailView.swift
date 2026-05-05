@@ -96,7 +96,7 @@ struct GroupDetailView: View {
                     .listRowBackground(Color.clear)
                 }
             } else if !groupState.isEmpty {
-                BeautifulPayloadView(payload: groupState)
+                PayloadSectionsView(payload: groupState)
             }
 
             GroupMembersSection(

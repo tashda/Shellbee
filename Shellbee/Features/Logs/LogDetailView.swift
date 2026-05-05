@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LogDetailView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var viewMode: ViewMode = .beautiful
+    @State private var viewMode: ViewMode = .parsed
     /// Phase 1 multi-bridge: source bridge for this log entry. Threaded
     /// through from the navigation route so device/group references inside
     /// the entry resolve against the right store.
@@ -10,7 +10,7 @@ struct LogDetailView: View {
     let entry: LogEntry
     private let doneAction: (() -> Void)?
 
-    enum ViewMode { case beautiful, json }
+    enum ViewMode { case parsed, json }
 
     init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
         self.bridgeID = bridgeID
@@ -96,8 +96,8 @@ struct LogDetailView: View {
                 LogDetailDevicesSection(bridgeID: bridgeID, devices: displayDevices)
             }
 
-            if viewMode == .beautiful {
-                beautifulBody
+            if viewMode == .parsed {
+                parsedBody
             } else {
                 jsonSection
             }
@@ -145,7 +145,7 @@ struct LogDetailView: View {
 
     private var formatButton: some View {
         Button {
-            viewMode = viewMode == .json ? .beautiful : .json
+            viewMode = viewMode == .json ? .parsed : .json
         } label: {
             Image(systemName: "curlybraces")
         }
@@ -316,7 +316,7 @@ struct LogDetailView: View {
     }
 
     @ViewBuilder
-    private var beautifulBody: some View {
+    private var parsedBody: some View {
         let changes = entry.context?.stateChanges ?? []
         let payload: [String: JSONValue] = {
             if case .mqttPublish(_, _, let p) = entry.parsedMessageKind { return p }
@@ -333,12 +333,12 @@ struct LogDetailView: View {
         if topic == "bridge/health" {
             LogHealthDetailSections(payload: payload, store: scope.store)
         } else {
-            generalBeautifulBody(changes: changes, payload: payload)
+            payloadBody(changes: changes, payload: payload)
         }
     }
 
     @ViewBuilder
-    private func generalBeautifulBody(
+    private func payloadBody(
         changes: [LogContext.StateChange],
         payload: [String: JSONValue]
     ) -> some View {
@@ -348,7 +348,7 @@ struct LogDetailView: View {
                     diffRow(for: change)
                 }
             } else if !payload.isEmpty && entry.category != .stateChange {
-                BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
+                PayloadSectionsView(payload: payload, device: displayDevices.first?.device)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             } else if let structure = LogMessageParser.structure(for: entry.message) {
