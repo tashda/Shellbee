@@ -131,6 +131,12 @@ jobs:
           # (keychain/concurrency issues that only fail on GitHub runners) —
           # except Z2MIntegrationTests, which Full CI explicitly runs because
           # we now have the mock bridge up. See xctestplans/README.md.
+          # Z2MIntegrationTests talks to the live mock bridge over a real
+          # WebSocket. On GitHub's shared runners, back-to-back tests
+          # occasionally race the previous client's teardown against the
+          # bridge replaying ~173 retained messages, causing a connect
+          # timeout. Retry once per test on failure to absorb that flake
+          # without masking real regressions — a true bug will fail twice.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
@@ -143,6 +149,7 @@ jobs:
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
+            -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-unit.log
 
