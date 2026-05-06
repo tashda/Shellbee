@@ -78,6 +78,8 @@
 			membershipExceptions = (
 				App/AppEnvironment.swift,
 				App/ConnectionSessionController.swift,
+				App/LogSheetHost.swift,
+				App/MainSplitView.swift,
 				App/MainTabView.swift,
 				App/RootView.swift,
 				Assets.xcassets,
@@ -268,11 +270,12 @@
 				Shared/ClimateControl/ClimateControlContext.swift,
 				Shared/ClimateControl/ClimateFeatureSections.swift,
 				Shared/Compat/iOS26Compat.swift,
-				Shared/Components/PayloadRow.swift,
-				Shared/Components/PayloadSectionsView.swift,
+				Shared/Components/AdaptiveListStyle.swift,
 				Shared/Components/BridgeBadge.swift,
 				Shared/Components/BridgeColor.swift,
 				Shared/Components/BridgePicker.swift,
+				Shared/Components/BridgeRowLeadingBarBackground.swift,
+				Shared/Components/SelectableListContext.swift,
 				Shared/Components/BridgeSwitcherToolbarItem.swift,
 				Shared/Components/CompactSnapshotCard.swift,
 				Shared/Components/CopyableRow.swift,
@@ -295,6 +298,8 @@
 				Shared/Components/FeatureGroupDetailView.swift,
 				Shared/Components/FilterChip.swift,
 				Shared/Components/MemberAvatarStack.swift,
+				Shared/Components/PayloadRow.swift,
+				Shared/Components/PayloadSectionsView.swift,
 				Shared/Components/SafariBrowserView.swift,
 				Shared/Components/SettingsFormRow.swift,
 				Shared/CoverControl/CoverControlCard.swift,
@@ -864,7 +869,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -902,7 +907,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -941,7 +946,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -979,7 +984,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

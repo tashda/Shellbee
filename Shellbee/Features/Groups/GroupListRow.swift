@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct GroupListRow: View {
+    @Environment(\.isSelectableListContext) private var isSelectableListContext
+
     let group: Group
     let memberDevices: [Device]
     /// Phase 1 multi-bridge: optional source-bridge id. When non-nil the row
@@ -14,9 +16,9 @@ struct GroupListRow: View {
     var body: some View {
         navContent
         // Multi-bridge attribution: thin colored bar on the leading edge.
-        // Visibility honors the Bridge Indicator setting (Settings →
-        // Application → General → Appearance).
-        .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+        // Skipped in iPad 3-column mode — see DeviceListRow for the
+        // selection-chrome interaction.
+        .modifier(BridgeRowLeadingBarBackground(bridgeID: bridgeID, enabled: !isSelectableListContext))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(action: onRemove) {
                 swipeActionLabel("Delete", systemImage: "trash")
