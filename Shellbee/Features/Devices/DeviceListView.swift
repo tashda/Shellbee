@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct DeviceListView: View {
+    /// `false` lets a parent `NavigationSplitView` own navigation — used by
+    /// the iPad three-column shell so list rows route their detail into
+    /// the trailing column instead of pushing onto an inner stack.
+    var embedInNavigationStack: Bool = true
+
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = DeviceListViewModel()
     @State private var navigationPath = NavigationPath()
@@ -25,66 +30,11 @@ struct DeviceListView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            DeviceListContent(
-                viewModel: viewModel,
-                isGrouped: isGrouped,
-                onRename: { deviceToRename = $0 },
-                onRemove: { deviceToRemove = $0 },
-                onPendingAlert: { alert, bridgeID in
-                    pendingDeviceAlert = alert
-                    pendingAlertBridgeID = bridgeID
-                }
-            )
-            .listStyle(.insetGrouped)
-            .navigationTitle("Devices")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: DeviceRoute.self) { route in
-                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-            }
-            .searchable(text: $viewModel.searchText, prompt: "Search")
-            .minimizeSearchToolbarIfAvailable()
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        showPairingWizard = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Add Device")
-                    if let toolbarID = toolbarBridgeID {
-                        DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
-                        DeviceFirmwareMenu(bridgeID: toolbarID)
-                    }
-                    sortMenu
-                }
-            }
-            .refreshable {
-                if let id = toolbarBridgeID {
-                    await environment.refreshBridgeData(bridgeID: id)
-                }
-            }
-            .onAppear {
-                if let filter = environment.pendingDeviceFilter {
-                    navigationPath = NavigationPath()
-                    viewModel.applyQuickFilter(filter)
-                    environment.pendingDeviceFilter = nil
-                }
-                if let route = environment.pendingDeviceNavigation {
-                    environment.pendingDeviceNavigation = nil
-                    pushDeviceResettingPath(route)
-                }
-            }
-            .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
-                guard let filter = newFilter else { return }
-                navigationPath = NavigationPath()
-                viewModel.applyQuickFilter(filter)
-                environment.pendingDeviceFilter = nil
-            }
-            .onChange(of: environment.pendingDeviceNavigation) { _, newRoute in
-                guard let route = newRoute else { return }
-                environment.pendingDeviceNavigation = nil
-                pushDeviceResettingPath(route)
+        SwiftUI.Group {
+            if embedInNavigationStack {
+                NavigationStack(path: $navigationPath) { listContent }
+            } else {
+                listContent
             }
         }
         .sheet(isPresented: $showPairingWizard) {
@@ -127,6 +77,73 @@ struct DeviceListView: View {
             }
         } message: { alert in
             Text(alert.message)
+        }
+    }
+
+    private var listContent: some View {
+        DeviceListContent(
+            viewModel: viewModel,
+            isGrouped: isGrouped,
+            onRename: { deviceToRename = $0 },
+            onRemove: { deviceToRemove = $0 },
+            onPendingAlert: { alert, bridgeID in
+                pendingDeviceAlert = alert
+                pendingAlertBridgeID = bridgeID
+            }
+        )
+        // `.plain` in iPad 3-column mode: `.insetGrouped` renders rounded
+        // card sections, and iPadOS 26's selection chrome overlays them
+        // weirdly (the row's middle content disappears). `.plain` lets
+        // the system selection state render cleanly.
+        .modifier(AdaptiveListStyle(useGrouped: embedInNavigationStack))
+        .navigationTitle("Devices")
+        .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(for: DeviceRoute.self) { route in
+            DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+        }
+        .searchable(text: $viewModel.searchText, prompt: "Search")
+        .minimizeSearchToolbarIfAvailable()
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    showPairingWizard = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add Device")
+                if let toolbarID = toolbarBridgeID {
+                    DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
+                    DeviceFirmwareMenu(bridgeID: toolbarID)
+                }
+                sortMenu
+            }
+        }
+        .refreshable {
+            if let id = toolbarBridgeID {
+                await environment.refreshBridgeData(bridgeID: id)
+            }
+        }
+        .onAppear {
+            if let filter = environment.pendingDeviceFilter {
+                navigationPath = NavigationPath()
+                viewModel.applyQuickFilter(filter)
+                environment.pendingDeviceFilter = nil
+            }
+            if let route = environment.pendingDeviceNavigation {
+                environment.pendingDeviceNavigation = nil
+                pushDeviceResettingPath(route)
+            }
+        }
+        .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
+            guard let filter = newFilter else { return }
+            navigationPath = NavigationPath()
+            viewModel.applyQuickFilter(filter)
+            environment.pendingDeviceFilter = nil
+        }
+        .onChange(of: environment.pendingDeviceNavigation) { _, newRoute in
+            guard let route = newRoute else { return }
+            environment.pendingDeviceNavigation = nil
+            pushDeviceResettingPath(route)
         }
     }
 

@@ -19,7 +19,10 @@ struct OnboardingView: View {
                     // on .connect (the user must attempt a connection) and
                     // .done (Get Started is the only sensible action).
                     if step == .welcome || step == .test {
-                        ToolbarItem(placement: .cancellationAction) {
+                        // Trailing on purpose: iPadOS 26 places the window
+                        // traffic-light controls in the leading nav bar
+                        // area, so a leading Skip overlaps them.
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button("Skip") { finish() }
                         }
                     }

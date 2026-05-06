@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct GroupListView: View {
+    /// `false` lets a parent `NavigationSplitView` own navigation — see
+    /// `DeviceListView` for the matching pattern.
+    var embedInNavigationStack: Bool = true
+
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = GroupListViewModel()
     @State private var groupToRename: BridgeBoundGroup?
@@ -16,7 +20,33 @@ struct GroupListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        SwiftUI.Group {
+            if embedInNavigationStack {
+                NavigationStack { listContent }
+            } else {
+                listContent
+            }
+        }
+        .sheet(isPresented: $showAddGroup) {
+            AddGroupSheet { name, id, bridgeID in
+                viewModel.addGroup(name: name, id: id, environment: environment, bridgeID: bridgeID)
+            }
+            .environment(environment)
+        }
+        .sheet(item: $groupToRename) { bound in
+            RenameGroupSheet(group: bound.group, memberDevices: mergedMembers(for: bound)) { newName in
+                viewModel.renameGroup(bound.group, to: newName, environment: environment, bridgeID: bound.bridgeID)
+            }
+        }
+        .sheet(item: $groupToRemove) { bound in
+            RemoveGroupSheet(group: bound.group, memberDevices: mergedMembers(for: bound)) { force in
+                viewModel.removeGroup(bound.group, force: force, environment: environment, bridgeID: bound.bridgeID)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var listContent: some View {
             List {
                 if isMergedMode {
                     let merged = mergedFilteredGroups()
@@ -48,7 +78,7 @@ struct GroupListView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
+            .modifier(AdaptiveListStyle(useGrouped: embedInNavigationStack))
             .navigationTitle("Groups")
             .navigationBarTitleDisplayMode(.large)
             .navigationDestination(for: GroupRoute.self) { route in
@@ -92,23 +122,6 @@ struct GroupListView: View {
                     ContentUnavailableView.search(text: viewModel.searchText)
                 }
             }
-        }
-        .sheet(isPresented: $showAddGroup) {
-            AddGroupSheet { name, id, bridgeID in
-                viewModel.addGroup(name: name, id: id, environment: environment, bridgeID: bridgeID)
-            }
-            .environment(environment)
-        }
-        .sheet(item: $groupToRename) { bound in
-            RenameGroupSheet(group: bound.group, memberDevices: mergedMembers(for: bound)) { newName in
-                viewModel.renameGroup(bound.group, to: newName, environment: environment, bridgeID: bound.bridgeID)
-            }
-        }
-        .sheet(item: $groupToRemove) { bound in
-            RemoveGroupSheet(group: bound.group, memberDevices: mergedMembers(for: bound)) { force in
-                viewModel.removeGroup(bound.group, force: force, environment: environment, bridgeID: bound.bridgeID)
-            }
-        }
     }
 
     private var bridgeFilterMenu: some View {

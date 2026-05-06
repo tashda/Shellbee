@@ -4,6 +4,8 @@ import UIKit
 #endif
 
 struct DeviceListRow: View {
+    @Environment(\.isSelectableListContext) private var isSelectableListContext
+
     let device: Device
     let state: [String: JSONValue]
     let isAvailable: Bool
@@ -106,7 +108,9 @@ struct DeviceListRow: View {
         // Multi-bridge attribution: a thin colored bar on the cell's leading
         // edge, full row height. Visibility honors the Bridge Indicator
         // setting (Settings → Application → General → Appearance).
-        .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+        // Skipped in iPad 3-column mode — iPadOS 26's row selection chrome
+        // overlays a custom listRowBackground and squashes row content.
+        .modifier(BridgeRowLeadingBarBackground(bridgeID: bridgeID, enabled: !isSelectableListContext))
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if otaStatus?.phase == .scheduled, let onUnschedule {
                 Button(action: onUnschedule) {

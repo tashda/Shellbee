@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var hSizeClass
     @State private var isInitializing = true
     @State private var pendingCrash: PendingCrash?
     @AppStorage(OnboardingStep.completedKey) private var onboardingCompleted: Bool = false
@@ -115,8 +116,17 @@ struct RootView: View {
 
     // MARK: - Main interface (shown after first successful connection)
 
+    @ViewBuilder
+    private var mainShell: some View {
+        if hSizeClass == .regular {
+            MainSplitView()
+        } else {
+            MainTabView()
+        }
+    }
+
     private var mainInterface: some View {
-        MainTabView()
+        mainShell
             .overlay(alignment: .top) { connectionBanner }
             .alert("Connection Lost", isPresented: lostBinding) {
                 Button("Try Again") {
