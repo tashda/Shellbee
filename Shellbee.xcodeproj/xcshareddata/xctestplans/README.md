@@ -18,10 +18,12 @@ Keychain, etc.). Used by `ci-fast.yml` to gate PRs.
 `ci-full.yml` uses the default `Shellbee.xctestplan` but mirrors the same
 skip set on the `xcodebuild` command line via `-skip-testing` flags — the
 same root causes apply on Full CI too because it's the same runner image.
-The exception is `Z2MIntegrationTests`, which Full CI runs because it starts
-the mock z2m bridge first (one method that hits the keychain still has to
-be skipped — see the table below). If you add or remove a skip in this plan,
-mirror the change in `.github/workflows/ci-full.yml`.
+The exceptions are `Z2MIntegrationTests` and `MultiBridgeIntegrationTests`,
+which Full CI runs because it starts the dual mock z2m bridge first (one method
+that hits the keychain still has to be skipped — see the table below). If you
+add or remove a skip in this plan, mirror the change in
+`.github/workflows/ci-full.yml` when the same runner limitation also applies
+to Full CI.
 
 Every entry in `skippedTests` is tech debt with a tracking reason. When the
 underlying problem is fixed, the skip entry should be removed in the same PR
@@ -32,6 +34,7 @@ as the fix.
 | Test | Reason |
 |---|---|
 | `Z2MIntegrationTests` (entire class) | Requires the docker z2m bridge on `localhost:8080`, which Fast CI does not start. Runs in Full CI instead. |
+| `MultiBridgeIntegrationTests` (entire class) | Requires both mock bridges on `localhost:8080` and `localhost:8082`, which Fast CI does not start. Runs in Full CI instead. |
 | `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
 | `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
 | `ConnectionHistoryTests` (entire class) | Every test calls `h.add(...)` → `save()` → `persistToken(for:)` which hits the Keychain. Without a provisioning profile, the GitHub runner crashes (malloc free corruption) inside `SecItem*` rather than returning a no-op error. Skip the whole class until the Keychain layer is abstracted (same root cause as the two `ConnectionConfigTests` skips). |
