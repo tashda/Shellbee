@@ -26,6 +26,7 @@
         "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
         "ConnectionHistoryTests",
         "HomeLayoutStoreTests",
+        "MultiBridgeIntegrationTests",
         "NotificationPreferencesTests",
         "Z2MIntegrationTests"
       ],

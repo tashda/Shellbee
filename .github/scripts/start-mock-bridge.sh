@@ -82,7 +82,8 @@ echo "==> [primary] Starting seeder"
 (
   cd "$REPO_ROOT/docker/seeder"
   MQTT_HOST=localhost MQTT_PORT=1883 Z2M_TOPIC=zigbee2mqtt \
-  MODE=continuous SEED_INTERVAL=10 \
+  MODE=continuous SEED_INTERVAL="${MOCK_SEED_INTERVAL:-10}" \
+  DRIFT_ON_CLIENT_CONNECT="${DRIFT_ON_CLIENT_CONNECT:-1}" \
   nohup "$PYTHON" -u seeder.py >"$LOG_DIR/z2m-seeder.log" 2>&1 &
   echo $! > "$LOG_DIR/z2m-seeder.pid"
 )
@@ -117,7 +118,8 @@ if [[ "$DUAL" == "1" ]]; then
   (
     cd "$REPO_ROOT/docker/seeder"
     MQTT_HOST=localhost MQTT_PORT=1884 Z2M_TOPIC=zigbee2mqtt \
-    MODE=continuous SEED_INTERVAL=10 FIXTURE_PREFIX=Lab \
+    MODE=continuous SEED_INTERVAL="${MOCK_SEED_INTERVAL:-10}" \
+    DRIFT_ON_CLIENT_CONNECT="${DRIFT_ON_CLIENT_CONNECT:-1}" FIXTURE_PREFIX=Lab \
     nohup "$PYTHON" -u seeder.py >"$LOG_DIR/z2m-seeder-2.log" 2>&1 &
     echo $! > "$LOG_DIR/z2m-seeder-2.pid"
   )

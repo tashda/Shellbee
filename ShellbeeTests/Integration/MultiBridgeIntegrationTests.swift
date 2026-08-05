@@ -1,5 +1,4 @@
 import XCTest
-import Network
 @testable import Shellbee
 
 /// Integration tests that connect to TWO real Z2M instances concurrently
@@ -147,61 +146,18 @@ final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
         async let s = ping(host: Self.secondaryHost, port: Self.secondaryPort)
         let (primaryUp, secondaryUp) = await (p, s)
         guard primaryUp, secondaryUp else {
-            throw XCTSkip("""
+            let message = """
             Dual-bridge mock stack not running. Start with:
               docker compose up -d
             or on GitHub Actions:
               MULTI_BRIDGE=1 ./.github/scripts/start-mock-bridge.sh
             primary=\(primaryUp ? "up" : "down") secondary=\(secondaryUp ? "up" : "down")
-            """)
+            """
+            throw RequiredMockBridgeError.unavailable(message)
         }
     }
 
     private func ping(host: String, port: Int) async -> Bool {
-        await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
-            let conn = NWConnection(host: NWEndpoint.Host(host),
-                                    port: NWEndpoint.Port(integerLiteral: UInt16(port)),
-                                    using: .tcp)
-            let resumed = ManagedAtomicBool(false)
-            let resumeOnce: @Sendable (Bool) -> Void = { value in
-                if resumed.compareExchange(expected: false, desired: true) {
-                    cont.resume(returning: value)
-                }
-            }
-            let timer = DispatchSource.makeTimerSource(queue: .global())
-            timer.schedule(deadline: .now() + 3)
-            timer.setEventHandler {
-                conn.cancel()
-                timer.cancel()
-                resumeOnce(false)
-            }
-            timer.resume()
-            conn.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    timer.cancel()
-                    conn.cancel()
-                    resumeOnce(true)
-                case .failed, .cancelled:
-                    timer.cancel()
-                    resumeOnce(false)
-                default: break
-                }
-            }
-            conn.start(queue: .global())
-        }
-    }
-}
-
-/// Tiny atomic-bool wrapper used to guard `cont.resume` so the timer + state
-/// callbacks can race without double-resuming the continuation.
-private final class ManagedAtomicBool: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: Bool
-    init(_ initial: Bool) { value = initial }
-    func compareExchange(expected: Bool, desired: Bool) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        if value == expected { value = desired; return true }
-        return false
+        await MockBridgeProbe.isReachable(host: host, port: port)
     }
 }

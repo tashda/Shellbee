@@ -1,7 +1,7 @@
 name: Prepare Release
 
 # Regenerates bundled device docs and images from Koenkk/zigbee2mqtt.io and
-# opens a PR if anything changed. Runs:
+# opens, validates, and merges a PR if anything changed. Runs:
 #   1. Weekly on Mondays at 04:00 UTC — keeps bundles fresh between releases.
 #   2. On manual dispatch — run this before tagging a release to pull in any
 #      upstream changes that landed since the last weekly.
@@ -11,6 +11,8 @@ name: Prepare Release
 # and skips work if nothing upstream changed (--force bypasses the skip).
 #
 # If bundles are unchanged, the job exits quietly without opening a PR.
+# Refresh PRs run Fast CI through workflow_dispatch because GitHub suppresses
+# pull_request workflows for PRs created with GITHUB_TOKEN.
 
 on:
   schedule:
@@ -23,6 +25,7 @@ on:
         default: 'Pre-release docs refresh'
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -34,7 +37,7 @@ jobs:
   refresh-bundles:
     name: Refresh bundled docs and images
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -74,6 +77,7 @@ jobs:
           fi
 
       - name: Open PR with refreshed bundles
+        id: pr
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -108,10 +112,8 @@ jobs:
           **Trigger:** __REASON__
           **Run:** __RUN_URL__
 
-          ## Note on CI
-          PRs opened by `GITHUB_TOKEN` do not trigger workflow runs automatically (GitHub security policy to prevent infinite loops). To run Fast CI on this PR, either:
-          - Push an empty commit: `git commit --allow-empty -m "Trigger CI"`, or
-          - Close and reopen the PR.
+          ## Automation
+          Fast CI is dispatched for this commit. The workflow squash-merges this PR automatically after CI succeeds.
 
           ## Test plan
           - [ ] Skim the diff — file sizes should change but not structure
@@ -121,8 +123,60 @@ jobs:
           # Inject runtime values without going through shell-quote hell.
           sed -i '' -e "s|__REASON__|${REASON}|" -e "s|__RUN_URL__|${RUN_URL}|" /tmp/pr-body.md
 
-          gh pr create \
+          PR_URL=$(gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "Refresh bundled docs and images (${DATE})" \
-            --body-file /tmp/pr-body.md
+            --body-file /tmp/pr-body.md)
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "number=${PR_URL##*/}" >> "$GITHUB_OUTPUT"
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch Fast CI
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+        run: |
+          gh workflow run ci-fast.yml \
+            --ref "$BRANCH" \
+            -f reason="Validate automatic bundle refresh"
+
+      - name: Wait for Fast CI
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          RUN_ID=""
+          for attempt in $(seq 1 30); do
+            RUN_ID=$(gh run list \
+              --workflow=ci-fast.yml \
+              --branch "$BRANCH" \
+              --event workflow_dispatch \
+              --limit 20 \
+              --json databaseId,headSha \
+              --jq ".[] | select(.headSha == \"$HEAD_SHA\") | .databaseId" \
+              | head -n1)
+            if [ -n "$RUN_ID" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [ -z "$RUN_ID" ]; then
+            echo "Fast CI run was not created for $HEAD_SHA" >&2
+            exit 1
+          fi
+
+          gh run watch "$RUN_ID" --exit-status --interval 10
+
+      - name: Squash-merge refreshed bundles
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: gh pr merge "$PR_NUMBER" --squash --delete-branch

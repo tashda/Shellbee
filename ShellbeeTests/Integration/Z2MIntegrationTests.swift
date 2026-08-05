@@ -6,7 +6,7 @@ import XCTest
 /// To run: start the Docker stack first:
 ///   docker compose up -d
 ///
-/// If Z2M is not reachable on localhost:8080, all tests are skipped automatically.
+/// The selected integration suite fails if Z2M is not reachable on localhost:8080.
 final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
 
     static let z2mHost = "localhost"
@@ -22,7 +22,7 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
             ConnectionConfig.clearPersistedSecretsForTests()
         }
         store = await MainActor.run { AppStore() }
-        try await skipIfZ2MUnavailable()
+        try await requireZ2M()
     }
 
     override func tearDown() async throws {
@@ -299,25 +299,11 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
         return false
     }
 
-    private func skipIfZ2MUnavailable() async throws {
-        let maybeURL = await MainActor.run { connectionConfig().webSocketURL }
-        guard let url = maybeURL else {
-            throw XCTSkip("Cannot construct Z2M URL")
-        }
-        let client = await MainActor.run { Z2MWebSocketClient() }
-        do {
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                group.addTask { _ = try await client.connect(url: url) }
-                group.addTask {
-                    try await Task.sleep(for: .seconds(5))
-                    throw URLError(.timedOut)
-                }
-                try await group.next()
-                group.cancelAll()
-            }
-            await client.disconnect()
-        } catch {
-            throw XCTSkip("Z2M not reachable at \(url) — run 'docker compose up -d'. (\(error))")
+    private func requireZ2M() async throws {
+        guard await MockBridgeProbe.isReachable(host: Self.z2mHost, port: Self.z2mPort) else {
+            let message = "Z2M not reachable at \(Self.z2mHost):\(Self.z2mPort) — run 'docker compose up -d'."
+            throw RequiredMockBridgeError.unavailable(message)
         }
     }
+
 }
