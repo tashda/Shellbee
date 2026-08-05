@@ -110,6 +110,9 @@ nonisolated enum DesignTokens {
         static let permitJoinQR: CGFloat = 220
         static let homeAddDividerInset: CGFloat = 60
         static let docLabelColumnWidth: CGFloat = 90
+        static let iPadLandscapeMinimumWidth: CGFloat = 1000
+        static let readableContentMaxWidth: CGFloat = 720
+        static let notificationMaxWidth: CGFloat = 640
         static let permitJoinRingStroke: CGFloat = 8
         static let lightSelectionStroke: CGFloat = 2
         // Offsets (pixel-pushing for badge alignment over a parent shape)

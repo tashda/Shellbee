@@ -2,43 +2,44 @@ import SwiftUI
 
 /// iPad / regular-width shell. Adaptive shape based on width and section:
 ///
-/// - **Devices / Groups in landscape** (≥ ~1000pt) → 3-column:
+/// - **Wide iPad landscape sections** → 3-column:
 ///   sidebar + list + detail. Sidebar pinned inline. Tap a row, detail
 ///   fills the trailing column.
-/// - **Everything else** → 2-column: sidebar + section view. Devices
-///   and Groups push detail within their own column (Reminders/Files
-///   pattern). Logs is always 2-column — its rows use closure-based
-///   `NavigationLink`, which can't auto-route to a detail column.
+/// - **iPad portrait and iPhone** → 2-column: sidebar + section view.
+///   Each section pushes detail within its own column (Reminders/Files
+///   pattern).
 ///
-/// `Logs` is a sidebar-only entry; the iPhone tab bar hardcodes the
-/// other four tabs and never iterates `AppTab.allCases`, so it doesn't
-/// pick up the new case.
+/// `Logs` and `Device Library` are sidebar-only entries; the iPhone tab
+/// bar declares its four tabs explicitly and never iterates
+/// `AppTab.allCases`.
 struct MainSplitView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var selection: AppTab? = .home
     @State private var twoColumnVisibility: NavigationSplitViewVisibility = .all
     @State private var threeColumnVisibility: NavigationSplitViewVisibility = .all
-
-    /// Width above which we render three columns for Devices / Groups.
-    /// Every iPad in landscape is wider than this; every iPad in portrait
-    /// is narrower.
-    private static let threeColumnThreshold: CGFloat = 1000
+    @State private var selectedDeviceRoute: DeviceRoute?
+    @State private var selectedGroupRoute: GroupRoute?
+    @State private var selectedLogsPaneRoute: LogsPaneRoute?
 
     private var anyBridgeNeedsRestart: Bool {
         environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
     }
 
-    private func usesThreeColumns(width: CGFloat) -> Bool {
-        guard width >= Self.threeColumnThreshold else { return false }
+    private func usesThreeColumns(wideIPadLayout: Bool) -> Bool {
+        guard wideIPadLayout else { return false }
         switch selection ?? .home {
-        case .devices, .groups: return true
-        case .home, .logs, .settings: return false
+        case .devices, .groups, .logs, .deviceLibrary, .settings: return true
+        case .home: return false
         }
     }
 
     var body: some View {
         GeometryReader { geo in
-            shell(usesThreeColumns: usesThreeColumns(width: geo.size.width))
+            let wideIPadLayout = AdaptiveLayout.usesWideIPadLayout(in: geo.size)
+            shell(
+                usesThreeColumns: usesThreeColumns(wideIPadLayout: wideIPadLayout),
+                usesWideHomeLayout: wideIPadLayout
+            )
         }
         .overlay(alignment: .bottom) {
             InAppNotificationOverlay()
@@ -60,20 +61,20 @@ struct MainSplitView: View {
     }
 
     @ViewBuilder
-    private func shell(usesThreeColumns: Bool) -> some View {
+    private func shell(usesThreeColumns: Bool, usesWideHomeLayout: Bool) -> some View {
         if usesThreeColumns {
             threeColumnShell
         } else {
-            twoColumnShell
+            twoColumnShell(usesWideHomeLayout: usesWideHomeLayout)
         }
     }
 
-    private var twoColumnShell: some View {
+    private func twoColumnShell(usesWideHomeLayout: Bool) -> some View {
         NavigationSplitView(columnVisibility: $twoColumnVisibility) {
             sidebar
                 .navigationTitle("Shellbee")
         } detail: {
-            twoColumnDetail
+            twoColumnDetail(usesWideHomeLayout: usesWideHomeLayout)
         }
     }
 
@@ -103,10 +104,18 @@ struct MainSplitView: View {
     }
 
     private var sidebar: some View {
-        List(AppTab.allCases, id: \.self, selection: $selection) { tab in
+        List(sidebarTabs, id: \.self, selection: $selection) { tab in
             sidebarRow(for: tab)
         }
         .listStyle(.sidebar)
+    }
+
+    private var sidebarTabs: [AppTab] {
+        if AdaptiveLayout.isPad {
+            AppTab.allCases
+        } else {
+            AppTab.allCases.filter { $0 != .deviceLibrary }
+        }
     }
 
     @ViewBuilder
@@ -120,6 +129,8 @@ struct MainSplitView: View {
             Label("Groups", systemImage: "square.on.square.fill")
         case .logs:
             Label("Logs", systemImage: "list.bullet.rectangle")
+        case .deviceLibrary:
+            Label("Device Library", systemImage: "books.vertical.fill")
         case .settings:
             Label("Settings", systemImage: "gearshape.fill")
                 .badge(anyBridgeNeedsRestart ? Text("!") : nil)
@@ -130,9 +141,9 @@ struct MainSplitView: View {
     /// internal `NavigationStack`. Logs needs a stack supplied by the
     /// host since `LogsView` deliberately omits its own.
     @ViewBuilder
-    private var twoColumnDetail: some View {
+    private func twoColumnDetail(usesWideHomeLayout: Bool) -> some View {
         switch selection ?? .home {
-        case .home:     HomeView()
+        case .home:     HomeView(usesWideLayout: usesWideHomeLayout)
         case .devices:  DeviceListView()
         case .groups:   GroupListView()
         case .logs:
@@ -145,6 +156,10 @@ struct MainSplitView: View {
                         GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                     }
             }
+        case .deviceLibrary:
+            NavigationStack {
+                DocBrowserView()
+            }
         case .settings: SettingsView()
         }
     }
@@ -152,9 +167,23 @@ struct MainSplitView: View {
     @ViewBuilder
     private var threeColumnContent: some View {
         switch selection ?? .home {
-        case .devices:  DeviceListView(embedInNavigationStack: false)
-        case .groups:   GroupListView(embedInNavigationStack: false)
-        case .home, .logs, .settings:
+        case .devices:
+            DeviceListView(
+                embedInNavigationStack: false,
+                selection: $selectedDeviceRoute
+            )
+        case .groups:
+            GroupListView(
+                embedInNavigationStack: false,
+                selection: $selectedGroupRoute
+            )
+        case .logs:
+            LogsView(selection: $selectedLogsPaneRoute)
+        case .deviceLibrary:
+            DocBrowserView()
+        case .settings:
+            SettingsView(embedInNavigationStack: false)
+        case .home:
             EmptyView()
         }
     }
@@ -163,18 +192,80 @@ struct MainSplitView: View {
     private var threeColumnDetail: some View {
         switch selection ?? .home {
         case .devices:
+            if let route = selectedDeviceRoute {
+                NavigationStack {
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Device",
+                    systemImage: "sensor.tag.radiowaves.forward.fill",
+                    description: Text("Pick a device from the list to view its details.")
+                )
+            }
+        case .groups:
+            if let route = selectedGroupRoute {
+                NavigationStack {
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                        .navigationDestination(for: DeviceRoute.self) { deviceRoute in
+                            DeviceDetailView(
+                                bridgeID: deviceRoute.bridgeID,
+                                device: deviceRoute.device
+                            )
+                        }
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Group",
+                    systemImage: "rectangle.3.group.fill",
+                    description: Text("Pick a group from the list to view its members and scenes.")
+                )
+            }
+        case .logs:
+            if let route = selectedLogsPaneRoute {
+                NavigationStack {
+                    switch route {
+                    case .activity(let logRoute):
+                        LogDetailView(bridgeID: logRoute.bridgeID, entry: logRoute.entry)
+                            .navigationDestination(for: DeviceRoute.self) { deviceRoute in
+                                DeviceDetailView(
+                                    bridgeID: deviceRoute.bridgeID,
+                                    device: deviceRoute.device
+                                )
+                            }
+                            .navigationDestination(for: GroupRoute.self) { groupRoute in
+                                GroupDetailView(
+                                    bridgeID: groupRoute.bridgeID,
+                                    group: groupRoute.group
+                                )
+                            }
+                    case .bridge(let logRoute):
+                        BridgeLogDetailView(entry: logRoute.entry)
+                    }
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Log",
+                    systemImage: "list.bullet.rectangle",
+                    description: Text("Pick a log entry from the list to view its details.")
+                )
+            }
+        case .settings:
+            ContentUnavailableView(
+                "Select a Setting",
+                systemImage: "gearshape.fill",
+                description: Text("Pick a setting from the list to view its options.")
+            )
+        case .deviceLibrary:
             ContentUnavailableView(
                 "Select a Device",
-                systemImage: "sensor.tag.radiowaves.forward.fill",
-                description: Text("Pick a device from the list to view its details.")
+                systemImage: "books.vertical.fill",
+                description: Text("Pick a device from the library to view its documentation.")
             )
-        case .groups:
-            ContentUnavailableView(
-                "Select a Group",
-                systemImage: "rectangle.3.group.fill",
-                description: Text("Pick a group from the list to view its members and scenes.")
-            )
-        case .home, .logs, .settings:
+        case .home:
             EmptyView()
         }
     }

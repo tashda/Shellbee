@@ -40,6 +40,7 @@ struct ConnectionEditorView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
+        .connectionEditorPresentationSizing()
         .navigationTitle(viewModel.editorTitle)
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
@@ -77,6 +78,17 @@ struct ConnectionEditorView: View {
             return draft.canConnect
         case .save:
             return draft.canConnect && draft.normalizedForComparison() != initialDraft.normalizedForComparison()
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func connectionEditorPresentationSizing() -> some View {
+        if #available(iOS 18.0, *) {
+            presentationSizing(.page)
+        } else {
+            self
         }
     }
 }

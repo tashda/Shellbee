@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HomeView: View {
+    var usesWideLayout: Bool = false
+
     @Environment(AppEnvironment.self) private var environment
 
     @State private var isPermitJoinConfigPresented = false
@@ -121,68 +123,14 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(layout.visibleOrder) { id in
-                        HomeCardSlot(
-                            card: id,
-                            isEditing: layout.isEditing,
-                            onHide: {
-                                withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
-                                    layout.hide(id)
-                                }
-                            },
-                            onEnterEdit: {
-                                withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
-                                    layout.isEditing = true
-                                }
-                            }
-                        ) {
-                            cardView(for: id)
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(
-                            top: DesignTokens.Spacing.sm,
-                            leading: DesignTokens.Spacing.lg,
-                            bottom: DesignTokens.Spacing.sm,
-                            trailing: DesignTokens.Spacing.lg
-                        ))
-                    }
-                    .onMove { source, destination in
-                        layout.move(from: source, to: destination)
-                    }
-                }
-
-                if layout.isEditing && !layout.hidden.isEmpty {
-                    Section {
-                        HomeAddCardsSection(
-                            hidden: HomeCardID.allCases.filter { layout.hidden.contains($0) }
-                        ) { card in
-                            withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
-                                layout.show(card)
-                            }
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(
-                            top: DesignTokens.Spacing.md,
-                            leading: DesignTokens.Spacing.lg,
-                            bottom: DesignTokens.Spacing.lg,
-                            trailing: DesignTokens.Spacing.lg
-                        ))
-                    }
-                }
-
-                if layout.visibleOrder.isEmpty {
-                    emptyLayoutState
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                }
+            HomeCardsCollection(
+                layout: layout,
+                usesWideLayout: usesWideLayout
+            ) { id in
+                cardView(for: id)
+            } emptyContent: {
+                emptyLayoutState
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .environment(\.editMode, .constant(layout.isEditing ? .active : .inactive))
             .background(HomeBackgroundGradient().ignoresSafeArea())
             .navigationDestination(isPresented: $showingAllLogs) {
                 LogsView()
@@ -282,13 +230,26 @@ struct HomeView: View {
                 entries: environment.allLogEntries
                     .lazy
                     .filter { !LogRowIconography.isLinkQualityOnly($0.entry) }
-                    .prefix(recentEventsCount)
+                    .prefix(
+                        usesWideLayout
+                            ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
+                            : recentEventsCount
+                    )
                     .map(\.entry),
+                showsExpandedDetails: usesWideLayout,
                 onOpenEntry: { entry in
                     environment.pendingLogSheet = LogSheetRequest(entryIDs: [entry.id])
                 },
-                onOpenAll: { showingAllLogs = true }
+                onOpenAll: openAllLogs
             )
+        }
+    }
+
+    private func openAllLogs() {
+        if AdaptiveLayout.isPad {
+            environment.selectedTab = .logs
+        } else {
+            showingAllLogs = true
         }
     }
 

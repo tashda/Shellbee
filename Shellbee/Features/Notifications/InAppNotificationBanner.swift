@@ -49,6 +49,7 @@ struct InAppNotificationBanner: View {
         .contentShape(bannerHitShape)
         .highPriorityGesture(dragGesture, including: .all)
         .animation(Self.settleAnimation, value: isExpanded)
+        .iPadReadableWidth(maxWidth: DesignTokens.Size.notificationMaxWidth)
     }
 
     private static var settleAnimation: Animation {

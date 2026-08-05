@@ -1,7 +1,7 @@
 import Foundation
 
 enum AppTab: Hashable, CaseIterable {
-    case home, devices, groups, logs, settings
+    case home, devices, groups, logs, deviceLibrary, settings
 }
 
 enum DeviceQuickFilter: Hashable {

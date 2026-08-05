@@ -26,6 +26,7 @@ struct ConnectionOverviewView: View {
                     }
                 }
             }
+            .iPadReadableWidth()
             .navigationTitle("Connect")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeLogsCard: View {
     let entries: [LogEntry]
+    var showsExpandedDetails = false
     let onOpenEntry: (LogEntry) -> Void
     let onOpenAll: () -> Void
 
@@ -27,7 +28,10 @@ struct HomeLogsCard: View {
                         Divider().padding(.top, DesignTokens.Spacing.xs)
                         ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                             Button { onOpenEntry(entry) } label: {
-                                HomeLogRow(entry: entry)
+                                HomeLogRow(
+                                    entry: entry,
+                                    showsExpandedDetails: showsExpandedDetails
+                                )
                             }
                             .buttonStyle(HomeAlertRowButtonStyle())
                             if index < entries.count - 1 {
@@ -43,6 +47,7 @@ struct HomeLogsCard: View {
 
 struct HomeLogRow: View {
     let entry: LogEntry
+    var showsExpandedDetails = false
 
     static let badgeSize: CGFloat = 32
     static var leadingInset: CGFloat { badgeSize + DesignTokens.Spacing.md }
@@ -53,21 +58,43 @@ struct HomeLogRow: View {
             // change LogRowIconography once and both surfaces update.
             LogRowAvatar(entry: entry, size: Self.badgeSize)
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                Text(entry.summaryTitle)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(titleColor)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Text(entry.summaryTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(titleColor)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    if showsExpandedDetails {
+                        StatusChip(entry.category)
+                        StatusChip(entry.level)
+                    }
+                }
                 Text(entry.summarySubtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+
+                if showsExpandedDetails {
+                    Text(LogEntry.stripZ2MPrefix(entry.message))
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .padding(.top, DesignTokens.Spacing.xxs)
+                }
             }
             Spacer(minLength: DesignTokens.Spacing.sm)
-            Text(entry.timestamp, style: .relative)
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(.tertiary)
+            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xxs) {
+                if showsExpandedDetails {
+                    Text(entry.timestamp, format: .dateTime.hour().minute().second())
+                        .foregroundStyle(.secondary)
+                }
+                Text(entry.timestamp, style: .relative)
+                    .foregroundStyle(.tertiary)
+            }
+            .font(.caption2.monospacedDigit())
         }
         .padding(.vertical, DesignTokens.Spacing.sm)
     }

@@ -117,6 +117,7 @@ private struct WelcomePage: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .iPadReadableWidth()
         }
     }
 }
@@ -157,6 +158,7 @@ private struct DonePage: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .iPadReadableWidth()
         }
     }
 }

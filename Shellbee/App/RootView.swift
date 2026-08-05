@@ -118,7 +118,7 @@ struct RootView: View {
 
     @ViewBuilder
     private var mainShell: some View {
-        if hSizeClass == .regular {
+        if AdaptiveLayout.isPad, hSizeClass == .regular {
             MainSplitView()
         } else {
             MainTabView()

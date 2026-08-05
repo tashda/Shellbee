@@ -9,15 +9,18 @@ struct LogsView: View {
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
     private let onDone: (() -> Void)?
+    private let selection: Binding<LogsPaneRoute?>?
 
     init(
         initialEntryFilter: Set<UUID>? = nil,
         notificationSheetStyle: Bool = false,
-        onDone: (() -> Void)? = nil
+        onDone: (() -> Void)? = nil,
+        selection: Binding<LogsPaneRoute?>? = nil
     ) {
         self.initialEntryFilter = initialEntryFilter
         self.notificationSheetStyle = notificationSheetStyle
         self.onDone = onDone
+        self.selection = selection
     }
 
     enum LogMode: String, CaseIterable, Hashable {
@@ -37,7 +40,7 @@ struct LogsView: View {
         // could land on either stack, depending on iOS version, leaving the
         // user dropped back to a parent screen with nothing pushed.
         if notificationSheetStyle {
-            ActivityLogContent(viewModel: activityVM)
+            ActivityLogContent(viewModel: activityVM, selection: nil)
                 .navigationTitle("Logs")
                 .navigationBarTitleDisplayMode(.inline)
                 .onAppear { applyInitialFilter(autoOpenSingle: false) }
@@ -103,10 +106,10 @@ struct LogsView: View {
         GeometryReader { geo in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
-                    ActivityLogContent(viewModel: activityVM)
+                    ActivityLogContent(viewModel: activityVM, selection: selection)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.activity)
-                    BridgeLogView(viewModel: bridgeVM)
+                    BridgeLogView(viewModel: bridgeVM, selection: selection)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.log)
                 }
@@ -137,7 +140,12 @@ struct LogsView: View {
         // know the entry id but not the source bridge.
         for session in environment.registry.orderedSessions {
             if let entry = session.store.logEntries.first(where: { $0.id == id }) {
-                autoOpenedEntry = LogRoute(bridgeID: session.bridgeID, entry: entry)
+                let route = LogRoute(bridgeID: session.bridgeID, entry: entry)
+                if let selection {
+                    selection.wrappedValue = .activity(route)
+                } else {
+                    autoOpenedEntry = route
+                }
                 return
             }
         }
@@ -149,6 +157,7 @@ struct LogsView: View {
 private struct ActivityLogContent: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: LogsViewModel
+    let selection: Binding<LogsPaneRoute?>?
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
@@ -175,7 +184,7 @@ private struct ActivityLogContent: View {
            let session = environment.registry.session(for: bridgeID) {
             singleBridgeListBody(bridgeID: bridgeID, store: session.store)
         } else {
-            List { EmptyView() }
+            selectableList { EmptyView() }
             .listStyle(.plain)
             .overlay {
                 ContentUnavailableView(
@@ -190,16 +199,13 @@ private struct ActivityLogContent: View {
     @ViewBuilder
     private func singleBridgeListBody(bridgeID: UUID, store: AppStore) -> some View {
         let entries = viewModel.filteredEntries(store: store)
-        List {
+        selectableList {
             ForEach(entries) { entry in
-                ZStack {
-                    LogRowView(entry: entry, store: store, bridgeID: bridgeID)
-                    NavigationLink {
-                        LogDetailView(bridgeID: bridgeID, entry: entry)
-                    } label: { EmptyView() }
-                    .opacity(0)
-                }
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+                activityRow(entry: entry, store: store, bridgeID: bridgeID)
+                    .modifier(BridgeRowLeadingBarBackground(
+                        bridgeID: bridgeID,
+                        enabled: selection == nil
+                    ))
             }
         }
         .listStyle(.plain)
@@ -222,17 +228,14 @@ private struct ActivityLogContent: View {
         // bridge's own store (so device/group lookups in filters resolve
         // correctly), then merge by timestamp.
         let bound = mergedFilteredEntries()
-        List {
+        selectableList {
             ForEach(bound) { item in
                 let rowStore = environment.registry.session(for: item.bridgeID)?.store
-                ZStack {
-                    LogRowView(entry: item.entry, store: rowStore, bridgeID: item.bridgeID)
-                    NavigationLink {
-                        LogDetailView(bridgeID: item.bridgeID, entry: item.entry)
-                    } label: { EmptyView() }
-                    .opacity(0)
-                }
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
+                activityRow(entry: item.entry, store: rowStore, bridgeID: item.bridgeID)
+                    .modifier(BridgeRowLeadingBarBackground(
+                        bridgeID: item.bridgeID,
+                        enabled: selection == nil
+                    ))
             }
         }
         .listStyle(.plain)
@@ -263,6 +266,37 @@ private struct ActivityLogContent: View {
             }
         }
         return perBridge.sorted { $0.entry.timestamp > $1.entry.timestamp }
+    }
+
+    @ViewBuilder
+    private func activityRow(entry: LogEntry, store: AppStore?, bridgeID: UUID) -> some View {
+        let route = LogRoute(bridgeID: bridgeID, entry: entry)
+        if selection != nil {
+            NavigationLink(value: LogsPaneRoute.activity(route)) {
+                LogRowView(entry: entry, store: store, bridgeID: bridgeID)
+            }
+        } else {
+            ZStack {
+                LogRowView(entry: entry, store: store, bridgeID: bridgeID)
+                NavigationLink {
+                    LogDetailView(bridgeID: bridgeID, entry: entry)
+                } label: { EmptyView() }
+                .opacity(0)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
+            }
+        }
     }
 }
 

@@ -8,6 +8,7 @@ struct HomeCardContainer<Content: View>: View {
             content()
         }
         .padding(DesignTokens.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity), radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)

@@ -5,6 +5,12 @@ struct DeviceListView: View {
     /// the iPad three-column shell so list rows route their detail into
     /// the trailing column instead of pushing onto an inner stack.
     var embedInNavigationStack: Bool = true
+    private let selection: Binding<DeviceRoute?>?
+
+    init(embedInNavigationStack: Bool = true, selection: Binding<DeviceRoute?>? = nil) {
+        self.embedInNavigationStack = embedInNavigationStack
+        self.selection = selection
+    }
 
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = DeviceListViewModel()
@@ -89,7 +95,8 @@ struct DeviceListView: View {
             onPendingAlert: { alert, bridgeID in
                 pendingDeviceAlert = alert
                 pendingAlertBridgeID = bridgeID
-            }
+            },
+            selection: selection
         )
         // `.plain` in iPad 3-column mode: `.insetGrouped` renders rounded
         // card sections, and iPadOS 26's selection chrome overlays them
@@ -98,9 +105,7 @@ struct DeviceListView: View {
         .modifier(AdaptiveListStyle(useGrouped: embedInNavigationStack))
         .navigationTitle("Devices")
         .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(for: DeviceRoute.self) { route in
-            DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-        }
+        .modifier(DeviceListNavigationDestination(isEnabled: embedInNavigationStack))
         .searchable(text: $viewModel.searchText, prompt: "Search")
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
@@ -151,6 +156,10 @@ struct DeviceListView: View {
     // path in the same cycle raised AnyNavigationPath.comparisonTypeMismatch
     // when the stack already contained a Device entry.
     private func pushDeviceResettingPath(_ route: DeviceRoute) {
+        if let selection {
+            selection.wrappedValue = route
+            return
+        }
         if !navigationPath.isEmpty {
             navigationPath.removeLast(navigationPath.count)
         }
@@ -195,6 +204,21 @@ struct DeviceListView: View {
     }
 }
 
+private struct DeviceListNavigationDestination: ViewModifier {
+    let isEnabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.navigationDestination(for: DeviceRoute.self) { route in
+                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+            }
+        } else {
+            content
+        }
+    }
+}
+
 // Isolating the per-device state observation in a child view keeps OTA
 // progress ticks from invalidating the parent's `.toolbar` modifier, which
 // would otherwise dismiss any open Filter submenu mid-interaction.
@@ -207,6 +231,7 @@ private struct DeviceListContent: View {
     /// Phase 1 multi-bridge: the bridgeID is required so reconfigure/interview
     /// alerts route to the right bridge.
     let onPendingAlert: (PendingDeviceAlert, UUID) -> Void
+    let selection: Binding<DeviceRoute?>?
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
@@ -237,7 +262,7 @@ private struct DeviceListContent: View {
            let session = environment.registry.session(for: bridgeID) {
             singleBridgeListBody(bridgeID: bridgeID, store: session.store, bridgeName: session.displayName)
         } else {
-            List {
+            selectableList {
                 EmptyView()
             }
             .overlay {
@@ -252,7 +277,7 @@ private struct DeviceListContent: View {
 
     @ViewBuilder
     private func singleBridgeListBody(bridgeID: UUID, store: AppStore, bridgeName: String) -> some View {
-        List {
+        selectableList {
             if isGrouped {
                 if viewModel.showRecents {
                     let recents = viewModel.recentDevices(store: store)
@@ -301,7 +326,7 @@ private struct DeviceListContent: View {
     @ViewBuilder
     private var mergedList: some View {
         let allBound = filteredMergedDevices()
-        List {
+        selectableList {
             if viewModel.showRecents {
                 let recents = recentMergedDevices()
                 if !recents.isEmpty {
@@ -341,6 +366,19 @@ private struct DeviceListContent: View {
                 )
             } else if !viewModel.searchText.isEmpty && allBound.isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
             }
         }
     }

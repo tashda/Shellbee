@@ -4,6 +4,12 @@ struct GroupListView: View {
     /// `false` lets a parent `NavigationSplitView` own navigation — see
     /// `DeviceListView` for the matching pattern.
     var embedInNavigationStack: Bool = true
+    private let selection: Binding<GroupRoute?>?
+
+    init(embedInNavigationStack: Bool = true, selection: Binding<GroupRoute?>? = nil) {
+        self.embedInNavigationStack = embedInNavigationStack
+        self.selection = selection
+    }
 
     @Environment(AppEnvironment.self) private var environment
     @State private var viewModel = GroupListViewModel()
@@ -47,81 +53,76 @@ struct GroupListView: View {
 
     @ViewBuilder
     private var listContent: some View {
-            List {
-                if isMergedMode {
-                    let merged = mergedFilteredGroups()
-                    ForEach(merged) { item in
-                        // Bridge attribution lives on the row's leading-bar
-                        // background (handled inside `GroupListRow`), so the
-                        // merged path no longer wraps in an HStack with a
-                        // separate dot — the bar is the uniform multi-bridge
-                        // indicator across Devices, Groups, and Logs.
-                        GroupListRow(
-                            group: item.group,
-                            memberDevices: mergedMembers(for: item),
-                            bridgeID: item.bridgeID,
-                            onRename: { groupToRename = item },
-                            onRemove: { groupToRemove = item }
-                        )
-                    }
-                } else if let bridgeID = singleBridgeID,
-                          let session = environment.registry.session(for: bridgeID) {
-                    let groups = viewModel.filteredGroups(store: session.store)
-                    ForEach(groups) { group in
-                        GroupListRow(
-                            group: group,
-                            memberDevices: memberDevices(for: group, store: session.store),
-                            bridgeID: bridgeID,
-                            onRename: { groupToRename = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
-                            onRemove: { groupToRemove = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) }
-                        )
-                    }
-                }
-            }
-            .modifier(AdaptiveListStyle(useGrouped: embedInNavigationStack))
-            .navigationTitle("Groups")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: GroupRoute.self) { route in
-                GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-            }
-            .navigationDestination(for: DeviceRoute.self) { route in
-                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-            }
-            .searchable(text: $viewModel.searchText, prompt: "Search")
-            .minimizeSearchToolbarIfAvailable()
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        showAddGroup = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Add Group")
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if isMergedMode {
-                        bridgeFilterMenu
-                    }
-                    sortMenu
-                }
-            }
-            .refreshable {
-                if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
-                    await environment.refreshBridgeData(bridgeID: id)
-                }
-            }
-            .overlay {
-                let totalGroups = environment.allGroups.count
-                if totalGroups == 0 {
-                    ContentUnavailableView(
-                        "No Groups",
-                        systemImage: "rectangle.3.group.fill",
-                        description: Text("Create a group to control multiple devices together.")
+        selectableList {
+            if isMergedMode {
+                let merged = mergedFilteredGroups()
+                ForEach(merged) { item in
+                    // Bridge attribution lives on the row's leading-bar
+                    // background (handled inside `GroupListRow`), so the
+                    // merged path no longer wraps in an HStack with a
+                    // separate dot — the bar is the uniform multi-bridge
+                    // indicator across Devices, Groups, and Logs.
+                    GroupListRow(
+                        group: item.group,
+                        memberDevices: mergedMembers(for: item),
+                        bridgeID: item.bridgeID,
+                        onRename: { groupToRename = item },
+                        onRemove: { groupToRemove = item }
                     )
-                } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
-                    ContentUnavailableView.search(text: viewModel.searchText)
+                }
+            } else if let bridgeID = singleBridgeID,
+                      let session = environment.registry.session(for: bridgeID) {
+                let groups = viewModel.filteredGroups(store: session.store)
+                ForEach(groups) { group in
+                    GroupListRow(
+                        group: group,
+                        memberDevices: memberDevices(for: group, store: session.store),
+                        bridgeID: bridgeID,
+                        onRename: { groupToRename = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
+                        onRemove: { groupToRemove = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) }
+                    )
                 }
             }
+        }
+        .modifier(AdaptiveListStyle(useGrouped: embedInNavigationStack))
+        .navigationTitle("Groups")
+        .navigationBarTitleDisplayMode(.large)
+        .modifier(GroupListNavigationDestinations(isEnabled: embedInNavigationStack))
+        .searchable(text: $viewModel.searchText, prompt: "Search")
+        .minimizeSearchToolbarIfAvailable()
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    showAddGroup = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add Group")
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if isMergedMode {
+                    bridgeFilterMenu
+                }
+                sortMenu
+            }
+        }
+        .refreshable {
+            if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
+                await environment.refreshBridgeData(bridgeID: id)
+            }
+        }
+        .overlay {
+            let totalGroups = environment.allGroups.count
+            if totalGroups == 0 {
+                ContentUnavailableView(
+                    "No Groups",
+                    systemImage: "rectangle.3.group.fill",
+                    description: Text("Create a group to control multiple devices together.")
+                )
+            } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
+                ContentUnavailableView.search(text: viewModel.searchText)
+            }
+        }
     }
 
     private var bridgeFilterMenu: some View {
@@ -197,6 +198,38 @@ struct GroupListView: View {
                 return groups.map { BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: $0) }
             }
             .sorted { $0.group.friendlyName.localizedCompare($1.group.friendlyName) == .orderedAscending }
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
+            }
+        }
+    }
+}
+
+private struct GroupListNavigationDestinations: ViewModifier {
+    let isEnabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content
+                .navigationDestination(for: GroupRoute.self) { route in
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                }
+                .navigationDestination(for: DeviceRoute.self) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+        } else {
+            content
+        }
     }
 }
 
