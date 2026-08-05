@@ -72,6 +72,11 @@ jobs:
       - name: Start dual mock Z2M bridges (native)
         env:
           MULTI_BRIDGE: "1"
+          # The integration tests open one connection each. Replaying retained
+          # state is sufficient; a 173-device drift burst per connection only
+          # overloads the bridge and makes first-frame timing nondeterministic.
+          DRIFT_ON_CLIENT_CONNECT: "0"
+          MOCK_SEED_INTERVAL: "60"
         run: ./.github/scripts/start-mock-bridge.sh
 
       - name: Select latest Xcode
@@ -368,4 +373,3 @@ jobs:
             ${{ env.DERIVED_DATA }}/UITests.xcresult
           if-no-files-found: ignore
           retention-days: 14
-

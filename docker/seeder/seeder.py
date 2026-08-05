@@ -78,6 +78,9 @@ MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
 Z2M_TOPIC = os.environ.get("Z2M_TOPIC", "zigbee2mqtt")
 MODE = os.environ.get("MODE", "continuous")            # "once" | "continuous"
 SEED_INTERVAL = int(os.environ.get("SEED_INTERVAL", "60"))
+DRIFT_ON_CLIENT_CONNECT = os.environ.get("DRIFT_ON_CLIENT_CONNECT", "1").lower() not in {
+    "0", "false", "no"
+}
 OTA_TICK_MS = int(os.environ.get("OTA_TICK_MS", "400"))
 OTA_STEP = int(os.environ.get("OTA_STEP", "10"))
 
@@ -842,7 +845,8 @@ def on_message(client, userdata, msg):
         # app's Activity log has at least one state-diff entry ready by
         # the time it reaches the Logs view. Delay long enough for the
         # retained-message replay to finish ingesting in the client.
-        threading.Timer(1.0, lambda: drift_tick(client)).start()
+        if DRIFT_ON_CLIENT_CONNECT:
+            threading.Timer(1.0, lambda: drift_tick(client)).start()
         return
 
     if sub.endswith("/set"):

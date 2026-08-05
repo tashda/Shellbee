@@ -7,6 +7,12 @@ name: CI (Fast)
 # Typical duration: 5-8 min.
 
 on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are you running Fast CI?'
+        required: false
+        default: 'Manual run'
   pull_request:
     branches: [main]
     paths-ignore:
