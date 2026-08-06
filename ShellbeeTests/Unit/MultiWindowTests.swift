@@ -37,6 +37,23 @@ final class MultiWindowTests: XCTestCase {
         )
     }
 
+    func testEveryWindowDestinationEntersItsOwningAppSection() {
+        let bridgeID = UUID()
+        let entryID = UUID()
+
+        XCTAssertEqual(ShellbeeWindowDestination.home.rootSection, .home)
+        XCTAssertEqual(ShellbeeWindowDestination.section(.settings).rootSection, .settings)
+        XCTAssertEqual(
+            ShellbeeWindowDestination.device(bridgeID: bridgeID, ieeeAddress: "same-ieee").rootSection,
+            .devices
+        )
+        XCTAssertEqual(ShellbeeWindowDestination.group(bridgeID: bridgeID, groupID: 1).rootSection, .groups)
+        XCTAssertEqual(ShellbeeWindowDestination.activity.rootSection, .logs)
+        XCTAssertEqual(ShellbeeWindowDestination.log(bridgeID: bridgeID, entryID: entryID).rootSection, .logs)
+        XCTAssertEqual(ShellbeeWindowDestination.settings(bridgeID: bridgeID).rootSection, .settings)
+        XCTAssertEqual(ShellbeeWindowDestination.networkMap(bridgeID: bridgeID).rootSection, .networkMap)
+    }
+
     func testSceneNavigationStateIsIndependentPerWindow() {
         let first = SceneNavigationState(selectedTab: .home)
         let second = SceneNavigationState(selectedTab: .logs)

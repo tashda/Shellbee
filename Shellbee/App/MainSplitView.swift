@@ -16,6 +16,7 @@ import SwiftUI
 struct MainSplitView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
+    let initialDestination: ShellbeeWindowDestination
     @State private var selection: AppTab? = .home
     @State private var twoColumnVisibility: NavigationSplitViewVisibility = .all
     @State private var threeColumnVisibility: NavigationSplitViewVisibility = .all
@@ -28,6 +29,11 @@ struct MainSplitView: View {
     @State private var deviceListViewModel = DeviceListViewModel()
     @State private var logsWorkspace = LogsWorkspaceState()
     @State private var groupsWorkspace = GroupsWorkspaceState()
+    @State private var didApplyInitialDestination = false
+
+    init(initialDestination: ShellbeeWindowDestination = .home) {
+        self.initialDestination = initialDestination
+    }
 
     private var anyBridgeNeedsRestart: Bool {
         environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
@@ -65,6 +71,7 @@ struct MainSplitView: View {
         }
         .onAppear {
             selection = sceneNavigation.selectedTab
+            applyInitialDestinationIfPossible()
             if let route = sceneNavigation.pendingSettingsNavigation {
                 selectedSettingsRoute = .bridgeOverview(route.bridgeID)
                 sceneNavigation.pendingSettingsNavigation = nil
@@ -86,9 +93,14 @@ struct MainSplitView: View {
         }
         .onChange(of: environment.allGroups) { _, groups in
             groupsWorkspace.reconcile(groups: groups, devices: environment.allDevices)
+            applyInitialDestinationIfPossible()
         }
         .onChange(of: environment.allDevices) { _, devices in
             groupsWorkspace.reconcile(groups: environment.allGroups, devices: devices)
+            applyInitialDestinationIfPossible()
+        }
+        .onChange(of: environment.allLogEntries) { _, _ in
+            applyInitialDestinationIfPossible()
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
@@ -395,6 +407,45 @@ struct MainSplitView: View {
             get: { groupsWorkspace.selectedGroup },
             set: { groupsWorkspace.selectGroup($0) }
         )
+    }
+
+    /// Resolves a restored bridge-scoped destination into this scene's own
+    /// navigation state. Data can arrive after the scene appears, so entity
+    /// routes remain pending until their bridge publishes the matching item.
+    private func applyInitialDestinationIfPossible() {
+        guard !didApplyInitialDestination else { return }
+
+        selection = initialDestination.rootSection
+        switch initialDestination {
+        case .home, .section, .activity:
+            break
+        case .device(let bridgeID, let ieeeAddress):
+            guard let device = environment.registry.session(for: bridgeID)?.store.devices
+                .first(where: { $0.ieeeAddress == ieeeAddress })
+            else { return }
+            selectedDeviceRoute = DeviceRoute(bridgeID: bridgeID, device: device)
+        case .group(let bridgeID, let groupID):
+            guard let group = environment.registry.session(for: bridgeID)?.store.groups
+                .first(where: { $0.id == groupID })
+            else { return }
+            groupsWorkspace.selectGroup(GroupRoute(bridgeID: bridgeID, group: group))
+        case .log(let bridgeID, let entryID):
+            guard let entry = environment.registry.session(for: bridgeID)?.store.logEntries
+                .first(where: { $0.id == entryID })
+            else { return }
+            selectedLogsPaneRoute = .activity(LogRoute(bridgeID: bridgeID, entry: entry))
+        case .settings(let bridgeID):
+            if let bridgeID {
+                guard environment.registry.session(for: bridgeID) != nil else { return }
+                selectedSettingsRoute = .bridgeOverview(bridgeID)
+            }
+        case .networkMap(let bridgeID):
+            if let bridgeID {
+                guard environment.registry.session(for: bridgeID) != nil else { return }
+                sceneNavigation.pendingNetworkMapBridgeID = bridgeID
+            }
+        }
+        didApplyInitialDestination = true
     }
 
 }

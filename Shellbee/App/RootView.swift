@@ -116,20 +116,14 @@ struct RootView: View {
     @ViewBuilder
     private var mainShell: some View {
         if AdaptiveLayout.isPad {
-            MainSplitView()
+            MainSplitView(initialDestination: windowDestination)
         } else {
             MainTabView()
         }
     }
 
     private var mainInterface: some View {
-        SwiftUI.Group {
-            if windowDestination.rootSection != nil {
-                mainShell
-            } else {
-                RestoredWindowDestinationView(destination: windowDestination)
-            }
-        }
+        mainShell
             .overlay(alignment: .top) { connectionBanner }
             .alert("Connection Lost", isPresented: lostBinding) {
                 Button("Try Again") {

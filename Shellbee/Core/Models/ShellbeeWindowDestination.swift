@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// A stable, restorable identity for every scene Shellbee can open.
 ///
@@ -28,11 +28,29 @@ enum ShellbeeWindowDestination: Codable, Hashable {
         }
     }
 
-    var rootSection: AppTab? {
+    /// The app section that owns this destination. Every scene enters through
+    /// the regular app shell so a detached detail remains navigable instead
+    /// of becoming an isolated, dead-end NavigationStack.
+    var rootSection: AppTab {
         switch self {
         case .home: .home
         case .section(let section): section
-        default: nil
+        case .device: .devices
+        case .group: .groups
+        case .activity, .log: .logs
+        case .settings: .settings
+        case .networkMap: .networkMap
         }
+    }
+}
+
+private struct CurrentWindowDestinationKey: EnvironmentKey {
+    static let defaultValue = ShellbeeWindowDestination.home
+}
+
+extension EnvironmentValues {
+    var currentWindowDestination: ShellbeeWindowDestination {
+        get { self[CurrentWindowDestinationKey.self] }
+        set { self[CurrentWindowDestinationKey.self] = newValue }
     }
 }

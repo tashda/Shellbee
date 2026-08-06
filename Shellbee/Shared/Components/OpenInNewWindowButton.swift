@@ -2,10 +2,11 @@ import SwiftUI
 
 struct OpenInNewWindowButton: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.currentWindowDestination) private var currentWindowDestination
     let destination: ShellbeeWindowDestination
 
     var body: some View {
-        if AdaptiveLayout.isPad {
+        if AdaptiveLayout.isPad, currentWindowDestination != destination {
             Button {
                 openWindow(value: destination)
             } label: {

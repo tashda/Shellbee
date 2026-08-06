@@ -27,6 +27,9 @@ struct ConnectionOverviewView: View {
                 }
             }
             .iPadReadableWidth()
+            // Keep the readable list width without exposing the navigation
+            // stack's white background as hard vertical bands on iPad.
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Connect")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
