@@ -4,6 +4,7 @@ struct GroupMembersSection: View {
     @Environment(AppEnvironment.self) private var environment
     let bridgeID: UUID
     let group: Group
+    var selection: Binding<DeviceRoute?>? = nil
     let onRemove: (GroupMember) -> Void
     var onAdd: (() -> Void)? = nil
 
@@ -58,14 +59,7 @@ struct GroupMembersSection: View {
                 let device = scope.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
                 SwiftUI.Group {
                     if let device {
-                        NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) {
-                            GroupMemberRow(
-                                member: member,
-                                device: device,
-                                state: scope.store.state(for: device.friendlyName),
-                                isAvailable: scope.store.isAvailable(device.friendlyName)
-                            )
-                        }
+                        memberDestination(member: member, device: device)
                     } else {
                         GroupMemberRow(member: member, device: nil, state: [:], isAvailable: false)
                     }
@@ -79,6 +73,48 @@ struct GroupMembersSection: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func memberDestination(member: GroupMember, device: Device) -> some View {
+        let route = DeviceRoute(bridgeID: bridgeID, device: device)
+        if let selection {
+            Button {
+                selection.wrappedValue = route
+            } label: {
+                GroupMemberRow(
+                    member: member,
+                    device: device,
+                    state: scope.store.state(for: device.friendlyName),
+                    isAvailable: scope.store.isAvailable(device.friendlyName)
+                )
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(
+                isSelected(route, selection: selection)
+                    ? Color.accentColor.opacity(DesignTokens.Opacity.chipFill)
+                    : Color.clear
+            )
+            .accessibilityValue(isSelected(route, selection: selection) ? "Selected" : "")
+            .iPadPointerEffect(.highlight)
+        } else {
+            NavigationLink(value: route) {
+                GroupMemberRow(
+                    member: member,
+                    device: device,
+                    state: scope.store.state(for: device.friendlyName),
+                    isAvailable: scope.store.isAvailable(device.friendlyName)
+                )
+            }
+        }
+    }
+
+    private func isSelected(
+        _ route: DeviceRoute,
+        selection: Binding<DeviceRoute?>
+    ) -> Bool {
+        selection.wrappedValue?.bridgeID == route.bridgeID
+            && selection.wrappedValue?.device.ieeeAddress == route.device.ieeeAddress
     }
 }
 

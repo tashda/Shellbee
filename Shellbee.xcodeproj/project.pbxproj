@@ -190,6 +190,8 @@
 				Features/Groups/GroupRowView.swift,
 				Features/Groups/GroupScenesSection.swift,
 				Features/Groups/GroupSettingsView.swift,
+				Features/Groups/GroupsWorkspaceState.swift,
+				Features/Groups/GroupWorkspaceSidebarSection.swift,
 				Features/Groups/RemoveGroupSheet.swift,
 				Features/Groups/RenameGroupSheet.swift,
 				Features/Home/HomeAddCardsSection.swift,

@@ -18,13 +18,13 @@ struct MainSplitView: View {
     @State private var twoColumnVisibility: NavigationSplitViewVisibility = .all
     @State private var threeColumnVisibility: NavigationSplitViewVisibility = .all
     @State private var selectedDeviceRoute: DeviceRoute?
-    @State private var selectedGroupRoute: GroupRoute?
     @State private var selectedLogsPaneRoute: LogsPaneRoute?
     @State private var selectedSettingsRoute: SettingsWorkspaceRoute?
     @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
     @State private var deviceListViewModel = DeviceListViewModel()
     @State private var logsWorkspace = LogsWorkspaceState()
+    @State private var groupsWorkspace = GroupsWorkspaceState()
 
     private var anyBridgeNeedsRestart: Bool {
         environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
@@ -80,6 +80,12 @@ struct MainSplitView: View {
         }
         .onChange(of: logsWorkspace.mode) { _, _ in
             selectedLogsPaneRoute = nil
+        }
+        .onChange(of: environment.allGroups) { _, groups in
+            groupsWorkspace.reconcile(groups: groups, devices: environment.allDevices)
+        }
+        .onChange(of: environment.allDevices) { _, devices in
+            groupsWorkspace.reconcile(groups: environment.allGroups, devices: devices)
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
@@ -140,6 +146,9 @@ struct MainSplitView: View {
             if selection == .logs {
                 ActivityWorkspaceFilters(workspace: logsWorkspace)
             }
+            if selection == .groups {
+                GroupWorkspaceSidebarSection(workspace: groupsWorkspace)
+            }
         }
         .listStyle(.sidebar)
     }
@@ -193,11 +202,22 @@ struct MainSplitView: View {
                 viewModel: deviceListViewModel
             )
         case .groups:
-            GroupListView(
-                embedInNavigationStack: false,
-                selection: $selectedGroupRoute,
-                searchFocusRequest: searchFocusRequest
-            )
+            if let route = groupsWorkspace.selectedGroup {
+                NavigationStack {
+                    GroupDetailView(
+                        bridgeID: route.bridgeID,
+                        group: route.group,
+                        memberSelection: groupMemberSelection
+                    )
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Group",
+                    systemImage: "rectangle.3.group.fill",
+                    description: Text("Pick a group from the sidebar to view its controls, members, and scenes.")
+                )
+            }
         case .logs:
             LogsView(
                 selection: $selectedLogsPaneRoute,
@@ -230,22 +250,22 @@ struct MainSplitView: View {
                 )
             }
         case .groups:
-            if let route = selectedGroupRoute {
+            if let route = groupsWorkspace.selectedMember {
                 NavigationStack {
-                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-                        .navigationDestination(for: DeviceRoute.self) { deviceRoute in
-                            DeviceDetailView(
-                                bridgeID: deviceRoute.bridgeID,
-                                device: deviceRoute.device
-                            )
-                        }
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
                 .id(route)
             } else {
                 ContentUnavailableView(
-                    "Select a Group",
-                    systemImage: "rectangle.3.group.fill",
-                    description: Text("Pick a group from the list to view its members and scenes.")
+                    groupsWorkspace.selectedGroup == nil ? "Select a Group" : "Select a Member",
+                    systemImage: groupsWorkspace.selectedGroup == nil
+                        ? "rectangle.3.group.fill"
+                        : "sensor.tag.radiowaves.forward.fill",
+                    description: Text(
+                        groupsWorkspace.selectedGroup == nil
+                            ? "Pick a group from the sidebar to begin."
+                            : "Pick a member to view its device details."
+                    )
                 )
             }
         case .logs:
@@ -324,6 +344,13 @@ struct MainSplitView: View {
             showCommandPalette: {
                 isCommandPalettePresented = true
             }
+        )
+    }
+
+    private var groupMemberSelection: Binding<DeviceRoute?> {
+        Binding(
+            get: { groupsWorkspace.selectedMember },
+            set: { groupsWorkspace.selectMember($0) }
         )
     }
 }

@@ -18,6 +18,17 @@ struct GroupDetailView: View {
     /// is the only reliable way to disambiguate.
     let bridgeID: UUID
     let group: Group
+    private let memberSelection: Binding<DeviceRoute?>?
+
+    init(
+        bridgeID: UUID,
+        group: Group,
+        memberSelection: Binding<DeviceRoute?>? = nil
+    ) {
+        self.bridgeID = bridgeID
+        self.group = group
+        self.memberSelection = memberSelection
+    }
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
@@ -102,6 +113,7 @@ struct GroupDetailView: View {
             GroupMembersSection(
                 bridgeID: bridgeID,
                 group: currentGroup,
+                selection: memberSelection,
                 onRemove: { memberToRemove = $0 },
                 onAdd: { showAddMembers = true }
             )
