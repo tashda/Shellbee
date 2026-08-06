@@ -115,6 +115,11 @@ nonisolated enum DesignTokens {
         static let notificationMaxWidth: CGFloat = 640
         static let permitJoinRingStroke: CGFloat = 8
         static let lightSelectionStroke: CGFloat = 2
+        static let deviceGridMinimumWidth: CGFloat = 220
+        static let deviceTableTypeWidth: CGFloat = 34
+        static let deviceTableBridgeWidth: CGFloat = 54
+        static let deviceTableMetricWidth: CGFloat = 38
+        static let deviceTableOTAWidth: CGFloat = 44
         // Offsets (pixel-pushing for badge alignment over a parent shape)
         static let logRowBadgeOffset: CGFloat = 3
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4

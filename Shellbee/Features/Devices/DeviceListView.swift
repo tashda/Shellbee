@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct DeviceListView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(DevicePresentationPreference.storageKey)
+    private var storedPresentationMode = DevicePresentationMode.list.rawValue
     /// `false` lets a parent `NavigationSplitView` own navigation — used by
     /// the iPad three-column shell so list rows route their detail into
     /// the trailing column instead of pushing onto an inner stack.
@@ -32,6 +35,13 @@ struct DeviceListView: View {
 
     private var isGrouped: Bool {
         viewModel.groupByCategory
+    }
+
+    private var presentationMode: DevicePresentationMode {
+        DevicePresentationPreference.effectiveMode(
+            storedValue: storedPresentationMode,
+            usesRegularWidth: horizontalSizeClass == .regular
+        )
     }
 
     /// The bridge that toolbar actions (firmware menu, refresh) target. In
@@ -105,7 +115,8 @@ struct DeviceListView: View {
                 pendingDeviceAlert = alert
                 pendingAlertBridgeID = bridgeID
             },
-            selection: selection
+            selection: selection,
+            presentationMode: presentationMode
         )
         // `.plain` in iPad 3-column mode: `.insetGrouped` renders rounded
         // card sections, and iPadOS 26's selection chrome overlays them
@@ -128,6 +139,9 @@ struct DeviceListView: View {
                 if let toolbarID = toolbarBridgeID {
                     DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
                     DeviceFirmwareMenu(bridgeID: toolbarID)
+                }
+                if horizontalSizeClass == .regular {
+                    presentationModeMenu
                 }
                 sortMenu
             }
@@ -193,7 +207,22 @@ struct DeviceListView: View {
         }
     }
 
-    // MARK: - Sort menu
+    // MARK: - Presentation and sort
+
+    private var presentationModeMenu: some View {
+        Menu {
+            Picker("Presentation", selection: $storedPresentationMode) {
+                ForEach(DevicePresentationMode.allCases) { mode in
+                    Label(mode.title, systemImage: mode.systemImage)
+                        .tag(mode.rawValue)
+                }
+            }
+        } label: {
+            Image(systemName: presentationMode.systemImage)
+        }
+        .accessibilityLabel("Device Presentation")
+        .accessibilityValue(presentationMode.title)
+    }
 
     private var sortMenu: some View {
         Menu {
@@ -247,8 +276,8 @@ private struct DeviceListNavigationDestination: ViewModifier {
 // Isolating the per-device state observation in a child view keeps OTA
 // progress ticks from invalidating the parent's `.toolbar` modifier, which
 // would otherwise dismiss any open Filter submenu mid-interaction.
-private struct DeviceListContent: View {
-    @Environment(AppEnvironment.self) private var environment
+struct DeviceListContent: View {
+    @Environment(AppEnvironment.self) var environment
     @Bindable var viewModel: DeviceListViewModel
     let isGrouped: Bool
     let onRename: (BridgeBoundDevice) -> Void
@@ -257,23 +286,28 @@ private struct DeviceListContent: View {
     /// alerts route to the right bridge.
     let onPendingAlert: (PendingDeviceAlert, UUID) -> Void
     let selection: Binding<DeviceRoute?>?
+    let presentationMode: DevicePresentationMode
 
-    private var isMergedMode: Bool {
+    var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
     }
 
     /// In single-bridge mode, the only connected session's id (used to wrap
     /// every device into a `BridgeBoundDevice` so the row, callbacks, and
     /// nav route all carry the same bridge identity).
-    private var singleBridgeID: UUID? {
+    var singleBridgeID: UUID? {
         environment.registry.orderedSessions.first(where: \.isConnected)?.bridgeID
     }
 
     var body: some View {
-        if isMergedMode {
-            mergedList
+        if presentationMode == .list {
+            if isMergedMode {
+                mergedList
+            } else {
+                singleBridgeList
+            }
         } else {
-            singleBridgeList
+            alternativePresentation
         }
     }
 
@@ -422,7 +456,7 @@ private struct DeviceListContent: View {
 
     /// Apply the full filter set to the aggregated multi-bridge list. Status
     /// filtering resolves state/availability/OTA from each row's owning bridge.
-    private func filteredMergedDevices() -> [BridgeBoundDevice] {
+    func filteredMergedDevices() -> [BridgeBoundDevice] {
         let q = viewModel.searchText.lowercased()
         var all = environment.allDevices.filter { $0.device.type != .coordinator }
         if let bridgeID = viewModel.bridgeFilter {
