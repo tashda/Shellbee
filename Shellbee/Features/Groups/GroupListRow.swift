@@ -38,6 +38,7 @@ struct GroupListRow: View {
                 Label("Remove Group", systemImage: "trash")
             }
         }
+        .iPadPointerEffect(.highlight)
     }
 
     @ViewBuilder

@@ -35,5 +35,6 @@ struct HomeCardSlot<Content: View>: View {
                     }
                 }
             }
+            .iPadPointerEffect(.lift)
     }
 }

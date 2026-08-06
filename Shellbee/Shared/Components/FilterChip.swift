@@ -17,6 +17,7 @@ struct FilterChip: View {
         }
         .buttonStyle(.plain)
         .animation(.easeInOut(duration: DesignTokens.Duration.quickFade), value: isSelected)
+        .iPadPointerEffect(.highlight)
     }
 }
 

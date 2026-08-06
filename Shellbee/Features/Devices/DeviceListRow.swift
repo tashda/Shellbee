@@ -272,6 +272,7 @@ struct DeviceListRow: View {
             }
             .disabled(isDeleting)
         }
+        .iPadPointerEffect(.highlight)
     }
 
     private var effectiveTransferAvailability: Bool {
