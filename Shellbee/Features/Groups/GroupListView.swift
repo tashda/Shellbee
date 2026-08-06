@@ -23,6 +23,7 @@ struct GroupListView: View {
     @State private var groupToRemove: BridgeBoundGroup?
     @State private var showAddGroup = false
     @State private var isSearchPresented = false
+    @State private var autoOpenedGroupRoute: GroupRoute?
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
@@ -95,6 +96,9 @@ struct GroupListView: View {
         .navigationTitle("Groups")
         .navigationBarTitleDisplayMode(.large)
         .modifier(GroupListNavigationDestinations(isEnabled: embedInNavigationStack))
+        .navigationDestination(item: $autoOpenedGroupRoute) { route in
+            GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+        }
         .searchable(text: $viewModel.searchText, isPresented: $isSearchPresented, prompt: "Search")
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
@@ -133,6 +137,11 @@ struct GroupListView: View {
         .onChange(of: searchFocusRequest) { _, request in
             guard request.section == .groups else { return }
             isSearchPresented = true
+        }
+        .onAppear { consumePendingGroupNavigation() }
+        .onChange(of: environment.pendingGroupNavigation) { _, route in
+            guard route != nil else { return }
+            consumePendingGroupNavigation()
         }
     }
 
@@ -209,6 +218,16 @@ struct GroupListView: View {
                 return groups.map { BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: $0) }
             }
             .sorted { $0.group.friendlyName.localizedCompare($1.group.friendlyName) == .orderedAscending }
+    }
+
+    private func consumePendingGroupNavigation() {
+        guard let route = environment.pendingGroupNavigation else { return }
+        environment.pendingGroupNavigation = nil
+        if let selection {
+            selection.wrappedValue = route
+        } else {
+            autoOpenedGroupRoute = route
+        }
     }
 
     @ViewBuilder

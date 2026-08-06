@@ -4,6 +4,7 @@ struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var tabSelection: AppTab = .home
     @State private var searchFocusRequest = AppSearchFocusRequest()
+    @State private var isCommandPalettePresented = false
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
     /// connected bridge has pending config that needs a restart. Single-
@@ -37,6 +38,10 @@ struct MainTabView: View {
             set: { environment.pendingLogSheet = $0 }
         )) { request in
             LogSheetHost(request: request)
+        }
+        .sheet(isPresented: $isCommandPalettePresented) {
+            CommandPaletteView()
+                .environment(environment)
         }
         .onAppear {
             tabSelection = environment.selectedTab
@@ -117,6 +122,9 @@ struct MainTabView: View {
                         || [.home, .devices, .groups, .settings].contains(section)
                 else { return }
                 tabSelection = section
+            },
+            showCommandPalette: {
+                isCommandPalettePresented = true
             }
         )
     }

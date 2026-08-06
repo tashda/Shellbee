@@ -41,6 +41,12 @@ private struct AppNavigationCommands: Commands {
             }
             .keyboardShortcut("f", modifiers: .command)
             .disabled(actions == nil)
+
+            Button("Command Palette") {
+                actions?.showCommandPalette()
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .disabled(actions == nil)
         }
     }
 }

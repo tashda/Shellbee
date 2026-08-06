@@ -32,3 +32,8 @@ enum LogsPaneRoute: Hashable {
     case activity(LogRoute)
     case bridge(LogRoute)
 }
+
+struct BridgeSettingsRoute: Hashable, Identifiable {
+    let bridgeID: UUID
+    var id: UUID { bridgeID }
+}

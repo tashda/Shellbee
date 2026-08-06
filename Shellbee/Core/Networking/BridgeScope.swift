@@ -84,6 +84,37 @@ struct BridgeScope: Identifiable {
         }
     }
 
+    /// Request an OTA availability check for one explicit device.
+    func checkOTA(for friendlyName: String) {
+        guard let store = session?.store,
+              store.devices.first(where: { $0.friendlyName == friendlyName })?.definition?.supportsOTA == true,
+              store.otaStatus(for: friendlyName)?.isActive != true
+        else { return }
+        store.startOTACheck(for: friendlyName)
+        send(
+            topic: Z2MTopics.Request.deviceOTACheck,
+            payload: .object(["id": .string(friendlyName)])
+        )
+    }
+
+    /// Open or close pairing on this bridge only. The optimistic update is
+    /// shared by every UI surface while the bridge response is in flight.
+    func setPermitJoin(enabled: Bool, duration: Int = 254) {
+        guard let session else { return }
+        let seconds = enabled ? duration : 0
+        send(
+            topic: Z2MTopics.Request.permitJoin,
+            payload: .object(["time": .int(seconds), "value": .bool(enabled)])
+        )
+        if let info = session.store.bridgeInfo {
+            session.store.bridgeInfo = info.copyUpdatingPermitJoin(
+                enabled: enabled,
+                timeout: enabled ? seconds : nil,
+                target: nil
+            )
+        }
+    }
+
     /// Optimistically rename a device on the scoped bridge.
     func renameDevice(from: String, to: String, homeassistantRename: Bool) {
         guard let store = session?.store else { return }

@@ -21,6 +21,7 @@ struct MainSplitView: View {
     @State private var selectedGroupRoute: GroupRoute?
     @State private var selectedLogsPaneRoute: LogsPaneRoute?
     @State private var searchFocusRequest = AppSearchFocusRequest()
+    @State private var isCommandPalettePresented = false
 
     private var anyBridgeNeedsRestart: Bool {
         environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
@@ -51,6 +52,10 @@ struct MainSplitView: View {
             set: { environment.pendingLogSheet = $0 }
         )) { request in
             LogSheetHost(request: request)
+        }
+        .sheet(isPresented: $isCommandPalettePresented) {
+            CommandPaletteView()
+                .environment(environment)
         }
         .onAppear { selection = environment.selectedTab }
         .onChange(of: selection) { _, newValue in
@@ -269,6 +274,9 @@ struct MainSplitView: View {
             },
             selectSection: { section in
                 selection = section
+            },
+            showCommandPalette: {
+                isCommandPalettePresented = true
             }
         )
     }

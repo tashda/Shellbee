@@ -17,6 +17,10 @@ final class AppEnvironment {
     /// Carries the source bridge id so the route lands on the right store
     /// without a `setPrimary()` side effect at the call site.
     var pendingDeviceNavigation: DeviceRoute?
+    var pendingGroupNavigation: GroupRoute?
+    var pendingSettingsNavigation: BridgeSettingsRoute?
+    var pendingNetworkMapBridgeID: UUID?
+    var pendingNetworkMapRefreshBridgeID: UUID?
     private var hasStarted = false
 
     init() {

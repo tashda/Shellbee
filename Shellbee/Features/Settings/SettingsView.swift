@@ -11,6 +11,7 @@ struct SettingsView: View {
     /// mode to add a new saved bridge without leaving Settings.
     @State private var editorViewModel: ConnectionViewModel?
     @State private var removeConfirmation: ConnectionConfig?
+    @State private var autoOpenedBridgeRoute: BridgeSettingsRoute?
 
     /// Phase 2 multi-bridge: when the user has more than one saved bridge, the
     /// top-level Settings page swaps to the merged layout — every per-bridge
@@ -80,6 +81,9 @@ struct SettingsView: View {
         .navigationDestination(for: GroupRoute.self) { route in
             GroupDetailView(bridgeID: route.bridgeID, group: route.group)
         }
+        .navigationDestination(item: $autoOpenedBridgeRoute) { route in
+            BridgeSettingsView(bridgeID: route.bridgeID)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -135,6 +139,11 @@ struct SettingsView: View {
         } message: {
             Text("The app returns to the setup screen. Your server address is remembered.")
         }
+        .onAppear { consumePendingSettingsNavigation() }
+        .onChange(of: environment.pendingSettingsNavigation) { _, route in
+            guard route != nil else { return }
+            consumePendingSettingsNavigation()
+        }
     }
 
     // MARK: - Multi-bridge layout
@@ -187,6 +196,12 @@ struct SettingsView: View {
         let vm = ConnectionViewModel(environment: environment)
         vm.presentNewServer()
         editorViewModel = vm
+    }
+
+    private func consumePendingSettingsNavigation() {
+        guard let route = environment.pendingSettingsNavigation else { return }
+        environment.pendingSettingsNavigation = nil
+        autoOpenedBridgeRoute = route
     }
 
     private func presentEditor(for config: ConnectionConfig) {

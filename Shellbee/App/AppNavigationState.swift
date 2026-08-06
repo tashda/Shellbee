@@ -51,6 +51,7 @@ struct AppSearchFocusRequest: Equatable {
 struct AppKeyboardActions {
     let focusSearch: () -> Void
     let selectSection: (AppTab) -> Void
+    let showCommandPalette: () -> Void
 }
 
 private struct AppKeyboardActionsKey: FocusedValueKey {
