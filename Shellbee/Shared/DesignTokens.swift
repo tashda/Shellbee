@@ -120,6 +120,19 @@ nonisolated enum DesignTokens {
         static let deviceTableBridgeWidth: CGFloat = 54
         static let deviceTableMetricWidth: CGFloat = 38
         static let deviceTableOTAWidth: CGFloat = 44
+        static let networkMapCoordinatorNode: CGFloat = 54
+        static let networkMapRouterNode: CGFloat = 44
+        static let networkMapEndDeviceNode: CGFloat = 34
+        static let networkMapInteractionTarget: CGFloat = 58
+        static let networkMapLayerHeight: CGFloat = 140
+        static let networkMapMinimumHeight: CGFloat = 480
+        static let networkMapEdgeWidth: CGFloat = 2
+        static let networkMapSecondaryEdgeWidth: CGFloat = 1
+        static let networkMapDashLength: CGFloat = 6
+        static let networkMapWeakRingWidth: CGFloat = 3
+        static let networkMapMinimumScale: CGFloat = 0.35
+        static let networkMapMaximumScale: CGFloat = 3
+        static let networkMapThumbnailScale: CGFloat = 1.2
         // Offsets (pixel-pushing for badge alignment over a parent shape)
         static let logRowBadgeOffset: CGFloat = 3
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4
@@ -325,6 +338,7 @@ nonisolated enum DesignTokens {
         static let checkResultDisplay: Double = 3
         static let pendingDeleteTimeout: Double = 15
         static let discoveryScanWindow: Double = 15
+        static let frameInterval: Double = 1.0 / 30.0
     }
 
     nonisolated enum Typography {

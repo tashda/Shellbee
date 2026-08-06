@@ -7,6 +7,9 @@ final class AppStore {
     var groups: [Group] = []
     var bridgeInfo: BridgeInfo?
     var bridgeHealth: BridgeHealth?
+    var networkTopology: NetworkTopology?
+    var networkMapLastUpdated: Date?
+    var networkMapIsRefreshing = false
     var bridgeOnline = false
     var isConnected = false
     var deviceStates: [String: [String: JSONValue]] = [:]
@@ -42,6 +45,7 @@ final class AppStore {
     /// which writes one record per bridge so two stores running concurrently
     /// can't race the read-modify-write loop.
     private static let firstSeenByBridgeStoreKey = "AppStore.deviceFirstSeenByBridge"
+    let networkMapCache: NetworkMapCache
     private static func firstSeenKey(for bridgeID: UUID) -> String {
         "AppStore.deviceFirstSeen.\(bridgeID.uuidString)"
     }
@@ -94,7 +98,8 @@ final class AppStore {
     static let logLimit = 1000
     static let coalesceWindow: TimeInterval = AppConfig.UX.notificationCoalesceWindow
 
-    init() {
+    init(networkMapCache: NetworkMapCache = .shared) {
+        self.networkMapCache = networkMapCache
         loadFirstSeen()
     }
 
@@ -156,6 +161,14 @@ final class AppStore {
         activeBridgeID = id
         activeBridgeName = name
         deviceFirstSeen = firstSeenByBridge[id] ?? [:]
+        if let cached = networkMapCache.load(bridgeID: id) {
+            networkTopology = cached.topology
+            networkMapLastUpdated = cached.updatedAt
+        } else {
+            networkTopology = nil
+            networkMapLastUpdated = nil
+        }
+        networkMapIsRefreshing = false
         // Persist now (handles legacy migration too) — safe because
         // persistFirstSeen only writes activeBridgeID's slot.
         if pendingLegacyFirstSeen == nil && firstSeenByBridge[id]?.isEmpty == false {

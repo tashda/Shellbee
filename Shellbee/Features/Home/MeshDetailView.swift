@@ -31,6 +31,11 @@ struct MeshDetailView: View {
                 if let lqi = snapshot.averageLinkQuality {
                     CopyableRow(label: "Average LQI", value: "\(lqi)")
                 }
+                NavigationLink {
+                    NetworkMapView()
+                } label: {
+                    Label("Network Map", systemImage: "point.3.connected.trianglepath.dotted")
+                }
             }
         }
         .navigationTitle("Mesh")

@@ -75,7 +75,7 @@ struct MainTabView: View {
                         }
                     }
                     Tab("Network Map", systemImage: AppTab.networkMap.systemImage, value: AppTab.networkMap) {
-                        networkMapPlaceholder
+                        NetworkMapView()
                     }
                 }
                 Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
@@ -100,7 +100,7 @@ struct MainTabView: View {
                     }
                     .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
                     .tag(AppTab.logs)
-                    networkMapPlaceholder
+                    NetworkMapView()
                         .tabItem { Label("Network Map", systemImage: AppTab.networkMap.systemImage) }
                         .tag(AppTab.networkMap)
                 }
@@ -129,16 +129,6 @@ struct MainTabView: View {
         )
     }
 
-    private var networkMapPlaceholder: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "No Network Map",
-                systemImage: AppTab.networkMap.systemImage,
-                description: Text("Refresh the map to inspect the Zigbee topology.")
-            )
-            .navigationTitle("Network Map")
-        }
-    }
 }
 
 #Preview { MainTabView().environment(AppEnvironment()) }

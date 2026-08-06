@@ -107,6 +107,10 @@ struct Z2MMessageRouter: Sendable {
                 ?? ""
             return .deviceRemoveResponse(id: id, ok: ok, error: error)
 
+        case Z2MTopics.bridgeResponseNetworkMap:
+            guard let response = raw.decode(NetworkMapResponse.self) else { return nil }
+            return .networkMapResponse(response)
+
         case Z2MTopics.bridgeHealth:
             guard let health = raw.decode(BridgeHealth.self) else { return nil }
             return .bridgeHealth(health)

@@ -20,6 +20,7 @@ struct MainSplitView: View {
     @State private var selectedDeviceRoute: DeviceRoute?
     @State private var selectedLogsPaneRoute: LogsPaneRoute?
     @State private var selectedSettingsRoute: SettingsWorkspaceRoute?
+    @State private var selectedNetworkDeviceRoute: DeviceRoute?
     @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
     @State private var deviceListViewModel = DeviceListViewModel()
@@ -193,7 +194,7 @@ struct MainSplitView: View {
                         GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                     }
             }
-        case .networkMap: networkMapPlaceholder
+        case .networkMap: NetworkMapView()
         case .settings: SettingsView()
         }
     }
@@ -232,7 +233,10 @@ struct MainSplitView: View {
                 workspace: logsWorkspace
             )
         case .networkMap:
-            networkMapPlaceholder
+            NetworkMapView(
+                embedInNavigationStack: false,
+                selection: $selectedNetworkDeviceRoute
+            )
         case .settings:
             SettingsWorkspaceList(selection: $selectedSettingsRoute)
         case .home:
@@ -319,24 +323,20 @@ struct MainSplitView: View {
                 )
             }
         case .networkMap:
-            ContentUnavailableView(
-                "Network Map",
-                systemImage: AppTab.networkMap.systemImage,
-                description: Text("The Zigbee topology will appear here after it is fetched.")
-            )
+            if let route = selectedNetworkDeviceRoute {
+                NavigationStack {
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Device",
+                    systemImage: "sensor.tag.radiowaves.forward.fill",
+                    description: Text("Pick a node from the map to view its device details.")
+                )
+            }
         case .home:
             EmptyView()
-        }
-    }
-
-    private var networkMapPlaceholder: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "No Network Map",
-                systemImage: AppTab.networkMap.systemImage,
-                description: Text("Refresh the map to inspect the Zigbee topology.")
-            )
-            .navigationTitle("Network Map")
         }
     }
 

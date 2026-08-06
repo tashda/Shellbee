@@ -17,7 +17,7 @@ What is faithfully simulated
   Covered: device rename/remove/options/interview/configure/bind/unbind,
   OTA check/update (with progress ticks), group add/remove/rename/options +
   group members add/remove, permit_join, info, restart, backup, options,
-  health_check, install_code/add, devices, groups, touchlink scan/identify/
+  health_check, install_code/add, devices, groups, networkmap, touchlink scan/identify/
   factory_reset, action, configure_reporting.
 - ``bridge/event``: emitted for device_joined, device_leave, device_renamed,
   device_interview, device_announce, and permit_join state changes.
@@ -739,6 +739,61 @@ def _req_devices(client, payload):
 def _req_groups(client, payload):
     _publish_groups(client)
     return []
+
+
+@_register("networkmap")
+def _req_networkmap(client, payload):
+    """Return a deterministic raw topology matching Z2M's networkmap shape."""
+    with _lock:
+        devices = copy.deepcopy(_devices)
+        states = copy.deepcopy(_states)
+
+    coordinator = next((d for d in devices if d.get("type") == "Coordinator"), None)
+    if coordinator is None:
+        raise RequestError("Coordinator is unavailable")
+    routers = [d for d in devices if d.get("type") == "Router"]
+
+    nodes = [
+        {
+            "friendlyName": d["friendly_name"],
+            "ieeeAddr": d["ieee_address"],
+            "networkAddress": d.get("network_address"),
+            "type": d.get("type", "Unknown"),
+            "manufacturerName": d.get("manufacturer"),
+            "modelID": d.get("model_id"),
+        }
+        for d in devices
+    ]
+    links = []
+    end_index = 0
+    for device in devices:
+        if device is coordinator:
+            continue
+        if device.get("type") == "Router" or not routers:
+            parent = coordinator
+            depth = 1
+        else:
+            parent = routers[end_index % len(routers)]
+            end_index += 1
+            depth = 2
+        lqi = states.get(device["friendly_name"], {}).get("linkquality")
+        links.append({
+            "source": {"ieeeAddr": device["ieee_address"], "networkAddress": device.get("network_address")},
+            "sourceIeeeAddr": device["ieee_address"],
+            "target": {"ieeeAddr": parent["ieee_address"], "networkAddress": parent.get("network_address")},
+            "targetIeeeAddr": parent["ieee_address"],
+            "linkquality": lqi,
+            "lqi": lqi,
+            "depth": depth,
+            "relationship": 1,
+            "routes": [],
+        })
+
+    return {
+        "routes": bool(payload.get("routes", False)),
+        "type": payload.get("type", "raw"),
+        "value": {"nodes": nodes, "links": links},
+    }
 
 
 @_register("touchlink/scan")

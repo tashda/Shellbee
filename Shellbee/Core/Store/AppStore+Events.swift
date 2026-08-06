@@ -289,6 +289,28 @@ extension AppStore {
                 bridgeHealth = health
             }
 
+        case .networkMapResponse(let response):
+            networkMapIsRefreshing = false
+            guard response.status == "ok", let topology = response.data?.value else {
+                let error = Z2MOperationError(
+                    id: UUID(),
+                    topic: Z2MTopics.bridgeResponseNetworkMap,
+                    message: response.error ?? "Network map refresh failed",
+                    timestamp: .now
+                )
+                apply(.operationError(error))
+                break
+            }
+            let updatedAt = Date()
+            networkTopology = topology
+            networkMapLastUpdated = updatedAt
+            if let activeBridgeID {
+                networkMapCache.save(
+                    NetworkMapCacheRecord(topology: topology, updatedAt: updatedAt),
+                    bridgeID: activeBridgeID
+                )
+            }
+
         case .touchlinkScanResult(let devices):
             touchlinkDevices = devices
             touchlinkScanInProgress = false
