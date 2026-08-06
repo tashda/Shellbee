@@ -10,6 +10,22 @@ extension XCUIApplication {
         launch()
     }
 
+    /// Launches against both native mock bridges with stable display names.
+    /// The secondary seeder can use duplicate friendly names while retaining
+    /// distinct IEEEs, which lets iPad tests catch bridge-scoping regressions.
+    func launchForIPadMatrixTesting() {
+        launchEnvironment["UI_TEST_Z2M_HOST"] = "localhost"
+        launchEnvironment["UI_TEST_Z2M_PORT"] = "8080"
+        launchEnvironment["UI_TEST_Z2M_TOKEN"] = "shellbee-integration-token"
+        launchEnvironment["UI_TEST_Z2M_NAME"] = "Primary"
+        launchEnvironment["UI_TEST_Z2M_SECONDARY_HOST"] = "localhost"
+        launchEnvironment["UI_TEST_Z2M_SECONDARY_PORT"] = "8082"
+        launchEnvironment["UI_TEST_Z2M_SECONDARY_TOKEN"] = "shellbee-integration-token-2"
+        launchEnvironment["UI_TEST_Z2M_SECONDARY_NAME"] = "Secondary"
+        launchEnvironment["UI_TEST_MODE"] = "1"
+        launch()
+    }
+
     // MARK: - Common navigation
 
     var tabBar: XCUIElement { tabBars.firstMatch }

@@ -120,7 +120,8 @@ services:
       - MODE=continuous
       - SEED_INTERVAL=10
       - CONTROL_PORT=8765
-      - FIXTURE_PREFIX=Lab
+      - FIXTURE_PREFIX=${SECONDARY_FIXTURE_PREFIX-Lab}
+      - FIXTURE_IEEE_SALT=Lab
     restart: unless-stopped
 
 volumes:

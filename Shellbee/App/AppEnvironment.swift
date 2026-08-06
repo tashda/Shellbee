@@ -293,7 +293,32 @@ final class AppEnvironment {
                let portStr = env["UI_TEST_Z2M_PORT"],
                let port = Int(portStr) {
                 let token = env["UI_TEST_Z2M_TOKEN"].flatMap { $0.isEmpty ? nil : $0 }
-                connect(config: ConnectionConfig(host: host, port: port, useTLS: false, basePath: "/", authToken: token))
+                let name = env["UI_TEST_Z2M_NAME"].flatMap { $0.isEmpty ? nil : $0 }
+                connect(config: ConnectionConfig(
+                    host: host,
+                    port: port,
+                    useTLS: false,
+                    basePath: "/",
+                    authToken: token,
+                    name: name
+                ))
+
+                if let secondaryHost = env["UI_TEST_Z2M_SECONDARY_HOST"],
+                   let secondaryPortString = env["UI_TEST_Z2M_SECONDARY_PORT"],
+                   let secondaryPort = Int(secondaryPortString) {
+                    let secondaryToken = env["UI_TEST_Z2M_SECONDARY_TOKEN"]
+                        .flatMap { $0.isEmpty ? nil : $0 }
+                    let secondaryName = env["UI_TEST_Z2M_SECONDARY_NAME"]
+                        .flatMap { $0.isEmpty ? nil : $0 }
+                    connect(config: ConnectionConfig(
+                        host: secondaryHost,
+                        port: secondaryPort,
+                        useTLS: false,
+                        basePath: "/",
+                        authToken: secondaryToken,
+                        name: secondaryName
+                    ))
+                }
                 return
             }
         }

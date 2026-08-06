@@ -74,6 +74,7 @@ struct RootView: View {
             // First-launch only. Defer until splash dismisses so the cover
             // doesn't fight the splash transition.
             guard !stillInitializing,
+                  ProcessInfo.processInfo.environment["UI_TEST_MODE"] != "1",
                   !onboardingCompleted,
                   !environment.hasSavedBridges
             else { return }

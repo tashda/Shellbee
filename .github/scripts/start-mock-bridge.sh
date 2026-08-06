@@ -13,6 +13,8 @@
 # Set MULTI_BRIDGE=1 (or pass --dual) to also start a second isolated stack
 # on ports 1884/8082 with token `shellbee-integration-token-2` and
 # FIXTURE_PREFIX=Lab so it's visibly distinct from the primary bridge.
+# Set SECONDARY_DUPLICATE_NAMES=1 to keep duplicate friendly names while
+# still salting secondary IEEEs for bridge-routing UI tests.
 # Used by MultiBridgeIntegrationTests to exercise BridgeRegistry against
 # two real WebSocket peers.
 
@@ -98,6 +100,10 @@ wait_port 8080 30 || {
 
 # ── Secondary bridge (optional) ─────────────────────────────────────────────
 if [[ "$DUAL" == "1" ]]; then
+  SECONDARY_FIXTURE_PREFIX=Lab
+  if [[ "${SECONDARY_DUPLICATE_NAMES:-0}" == "1" ]]; then
+    SECONDARY_FIXTURE_PREFIX=""
+  fi
   echo "==> [secondary] mosquitto config (port 1884)"
   write_mosq_conf 1884 "$LOG_DIR/mosquitto-ci-2.conf"
 
@@ -114,12 +120,13 @@ if [[ "$DUAL" == "1" ]]; then
     echo $! > "$LOG_DIR/z2m-bridge-2.pid"
   )
 
-  echo "==> [secondary] Starting seeder (FIXTURE_PREFIX=Lab)"
+  echo "==> [secondary] Starting seeder (FIXTURE_PREFIX=${SECONDARY_FIXTURE_PREFIX:-<none>})"
   (
     cd "$REPO_ROOT/docker/seeder"
     MQTT_HOST=localhost MQTT_PORT=1884 Z2M_TOPIC=zigbee2mqtt \
     MODE=continuous SEED_INTERVAL="${MOCK_SEED_INTERVAL:-10}" \
-    DRIFT_ON_CLIENT_CONNECT="${DRIFT_ON_CLIENT_CONNECT:-1}" FIXTURE_PREFIX=Lab \
+    DRIFT_ON_CLIENT_CONNECT="${DRIFT_ON_CLIENT_CONNECT:-1}" \
+    FIXTURE_PREFIX="$SECONDARY_FIXTURE_PREFIX" FIXTURE_IEEE_SALT=Lab \
     nohup "$PYTHON" -u seeder.py >"$LOG_DIR/z2m-seeder-2.log" 2>&1 &
     echo $! > "$LOG_DIR/z2m-seeder-2.pid"
   )

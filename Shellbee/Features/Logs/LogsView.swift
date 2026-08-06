@@ -288,13 +288,16 @@ private struct ActivityLogContent: View {
     @ViewBuilder
     private func activityRow(entry: LogEntry, store: AppStore?, bridgeID: UUID) -> some View {
         let route = LogRoute(bridgeID: bridgeID, entry: entry)
+        let bridgeName = environment.registry.session(for: bridgeID)?.displayName ?? "Unknown"
         if selection != nil {
             NavigationLink(value: LogsPaneRoute.activity(route)) {
                 LogRowView(entry: entry, store: store, bridgeID: bridgeID)
+                    .accessibilityIdentifier("activity-log-\(bridgeName)")
             }
         } else {
             ZStack {
                 LogRowView(entry: entry, store: store, bridgeID: bridgeID)
+                    .accessibilityIdentifier("activity-log-\(bridgeName)")
                 NavigationLink {
                     LogDetailView(bridgeID: bridgeID, entry: entry)
                 } label: { EmptyView() }
