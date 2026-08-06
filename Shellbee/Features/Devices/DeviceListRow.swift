@@ -129,6 +129,7 @@ struct DeviceListRow: View {
         .accessibilityAction(named: "Copy Device Information") {
             UIPasteboard.general.string = transferPayload.plainText
         }
+        .accessibilityAction(named: "Add to Favorites", addToFavorites)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if otaStatus?.phase == .scheduled, let onUnschedule {
                 Button(action: onUnschedule) {
@@ -211,6 +212,9 @@ struct DeviceListRow: View {
             } label: {
                 Label("Copy Device Information", systemImage: "doc.on.doc")
             }
+            Button(action: addToFavorites) {
+                Label("Add to Favorites", systemImage: "star")
+            }
             Divider()
             if device.supportsIdentify {
                 Button(action: onIdentify) {
@@ -277,6 +281,12 @@ struct DeviceListRow: View {
 
     private var effectiveTransferAvailability: Bool {
         isDeleting ? false : isAvailable
+    }
+
+    private func addToFavorites() {
+        if DeviceFavoritesStore().add(transferPayload) {
+            Haptics.impact(.light)
+        }
     }
 }
 

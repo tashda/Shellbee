@@ -151,6 +151,13 @@ struct MainSplitView: View {
             }
         }
         .listStyle(.sidebar)
+        .toolbar {
+            if selection == .groups {
+                ToolbarItem(placement: .topBarTrailing) {
+                    EditButton()
+                }
+            }
+        }
     }
 
     private var sidebarTabs: [AppTab] { AppTab.allCases }
