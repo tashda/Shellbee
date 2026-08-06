@@ -89,6 +89,16 @@ enum DeviceStatusFilter: String, CaseIterable, Hashable {
     }
 }
 
+struct DeviceFilterState: Equatable {
+    let searchText: String
+    let category: Device.Category?
+    let type: DeviceType?
+    let vendor: String?
+    let status: DeviceStatusFilter
+    let bridgeID: UUID?
+    let showsRecents: Bool
+}
+
 @Observable
 final class DeviceListViewModel {
     var searchText     = ""
@@ -116,6 +126,50 @@ final class DeviceListViewModel {
 
     var hasActiveFilter: Bool {
         categoryFilter != nil || typeFilter != nil || vendorFilter != nil || statusFilter != .all || bridgeFilter != nil
+    }
+
+    var filterState: DeviceFilterState {
+        DeviceFilterState(
+            searchText: searchText,
+            category: categoryFilter,
+            type: typeFilter,
+            vendor: vendorFilter,
+            status: statusFilter,
+            bridgeID: bridgeFilter,
+            showsRecents: showRecents
+        )
+    }
+
+    var activeFilterDescription: String {
+        var labels: [String] = []
+        if statusFilter != .all { labels.append(statusFilter.rawValue) }
+        if let categoryFilter { labels.append(categoryFilter.label) }
+        if let typeFilter { labels.append(typeFilter.chipLabel) }
+        if let vendorFilter { labels.append(vendorFilter) }
+        if bridgeFilter != nil { labels.append("selected bridge") }
+        return labels.isEmpty ? "the current filters" : labels.joined(separator: ", ")
+    }
+
+    func includes(device: Device, bridgeID: UUID, store: AppStore) -> Bool {
+        if let bridgeFilter, bridgeFilter != bridgeID { return false }
+        if let categoryFilter, device.category != categoryFilter { return false }
+        if let typeFilter, device.type != typeFilter { return false }
+        if let vendorFilter, device.definition?.vendor != vendorFilter { return false }
+        if let condition = statusFilter.condition,
+           !condition.matches(
+               device: device,
+               state: store.state(for: device.friendlyName),
+               availabilityStatus: store.availabilityStatus(for: device.friendlyName),
+               otaStatus: store.otaStatus(for: device.friendlyName)
+           ) {
+            return false
+        }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return true }
+        return device.friendlyName.lowercased().contains(query)
+            || device.description?.lowercased().contains(query) == true
+            || device.definition?.vendor.lowercased().contains(query) == true
+            || device.definition?.model.lowercased().contains(query) == true
     }
 
     /// Devices currently interviewing or whose interview hasn't completed.

@@ -163,6 +163,7 @@
 				Features/Devices/DeviceListRow.swift,
 				Features/Devices/DeviceListView.swift,
 				Features/Devices/DeviceListViewModel.swift,
+				Features/Devices/DeviceWorkspaceFilters.swift,
 				Features/Devices/DeviceLogsView.swift,
 				Features/Devices/DevicePairingSheet.swift,
 				Features/Devices/DeviceReportingView.swift,

@@ -11,15 +11,17 @@ struct DeviceListView: View {
     init(
         embedInNavigationStack: Bool = true,
         selection: Binding<DeviceRoute?>? = nil,
-        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest()
+        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest(),
+        viewModel: DeviceListViewModel? = nil
     ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
         self.searchFocusRequest = searchFocusRequest
+        _viewModel = State(initialValue: viewModel ?? DeviceListViewModel())
     }
 
     @Environment(AppEnvironment.self) private var environment
-    @State private var viewModel = DeviceListViewModel()
+    @State private var viewModel: DeviceListViewModel
     @State private var navigationPath = NavigationPath()
     @State private var deviceToRename: BridgeBoundDevice?
     @State private var deviceToRemove: BridgeBoundDevice?
@@ -161,6 +163,9 @@ struct DeviceListView: View {
             guard request.section == .devices else { return }
             isSearchPresented = true
         }
+        .onChange(of: viewModel.filterState) { _, _ in
+            reconcileSelectionWithFilters()
+        }
     }
 
     // Pop to root then push on the next runloop. Replacing and appending the
@@ -176,6 +181,15 @@ struct DeviceListView: View {
         }
         Task { @MainActor in
             navigationPath.append(route)
+        }
+    }
+
+    private func reconcileSelectionWithFilters() {
+        guard let route = selection?.wrappedValue,
+              let store = environment.registry.session(for: route.bridgeID)?.store
+        else { return }
+        if !viewModel.includes(device: route.device, bridgeID: route.bridgeID, store: store) {
+            selection?.wrappedValue = nil
         }
     }
 
@@ -328,6 +342,12 @@ private struct DeviceListContent: View {
                 )
             } else if !viewModel.searchText.isEmpty && viewModel.filteredDevices(store: store).isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
+            } else if viewModel.hasActiveFilter && viewModel.filteredDevices(store: store).isEmpty {
+                ContentUnavailableView(
+                    "No Matching Devices",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("No devices match \(viewModel.activeFilterDescription).")
+                )
             }
         }
     }
@@ -377,6 +397,12 @@ private struct DeviceListContent: View {
                 )
             } else if !viewModel.searchText.isEmpty && allBound.isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
+            } else if viewModel.hasActiveFilter && allBound.isEmpty {
+                ContentUnavailableView(
+                    "No Matching Devices",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("No devices match \(viewModel.activeFilterDescription).")
+                )
             }
         }
     }

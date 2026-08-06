@@ -23,6 +23,7 @@ struct MainSplitView: View {
     @State private var selectedSettingsRoute: SettingsWorkspaceRoute?
     @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
+    @State private var deviceListViewModel = DeviceListViewModel()
 
     private var anyBridgeNeedsRestart: Bool {
         environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
@@ -123,8 +124,15 @@ struct MainSplitView: View {
     }
 
     private var sidebar: some View {
-        List(sidebarTabs, id: \.self, selection: $selection) { tab in
-            sidebarRow(for: tab)
+        List(selection: $selection) {
+            Section("Shellbee") {
+                ForEach(sidebarTabs, id: \.self) { tab in
+                    sidebarRow(for: tab)
+                }
+            }
+            if selection == .devices {
+                DeviceWorkspaceFilters(viewModel: deviceListViewModel)
+            }
         }
         .listStyle(.sidebar)
     }
@@ -143,7 +151,11 @@ struct MainSplitView: View {
     private func twoColumnDetail(usesWideHomeLayout: Bool) -> some View {
         switch selection ?? .home {
         case .home:     HomeView(usesWideLayout: usesWideHomeLayout)
-        case .devices:  DeviceListView(searchFocusRequest: searchFocusRequest)
+        case .devices:
+            DeviceListView(
+                searchFocusRequest: searchFocusRequest,
+                viewModel: deviceListViewModel
+            )
         case .groups:   GroupListView(searchFocusRequest: searchFocusRequest)
         case .logs:
             NavigationStack {
@@ -167,7 +179,8 @@ struct MainSplitView: View {
             DeviceListView(
                 embedInNavigationStack: false,
                 selection: $selectedDeviceRoute,
-                searchFocusRequest: searchFocusRequest
+                searchFocusRequest: searchFocusRequest,
+                viewModel: deviceListViewModel
             )
         case .groups:
             GroupListView(

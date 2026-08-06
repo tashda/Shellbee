@@ -315,6 +315,43 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         XCTAssertTrue(vm.hasActiveFilter)
     }
 
+    // MARK: - Workspace selection policy
+
+    @MainActor
+    func testSelectedDeviceRemainsIncludedByMatchingFilter() {
+        let device = store.devices.first { $0.friendlyName == "Office Sensor" }!
+        vm.categoryFilter = device.category
+
+        XCTAssertTrue(vm.includes(device: device, bridgeID: UUID(), store: store))
+    }
+
+    @MainActor
+    func testSelectedDeviceIsExcludedByNonmatchingFilter() {
+        let device = store.devices.first { $0.friendlyName == "Office Sensor" }!
+        vm.typeFilter = .router
+
+        XCTAssertFalse(vm.includes(device: device, bridgeID: UUID(), store: store))
+    }
+
+    @MainActor
+    func testBridgeFilterNeverIncludesDeviceFromAnotherBridge() {
+        let selectedBridge = UUID()
+        let otherBridge = UUID()
+        let device = store.devices[0]
+        vm.bridgeFilter = selectedBridge
+
+        XCTAssertTrue(vm.includes(device: device, bridgeID: selectedBridge, store: store))
+        XCTAssertFalse(vm.includes(device: device, bridgeID: otherBridge, store: store))
+    }
+
+    @MainActor
+    func testActiveFilterDescriptionNamesEmptyResultScope() {
+        vm.statusFilter = .offline
+        vm.typeFilter = .endDevice
+
+        XCTAssertEqual(vm.activeFilterDescription, "Offline, End Device")
+    }
+
     // MARK: - applyQuickFilter
 
     @MainActor
