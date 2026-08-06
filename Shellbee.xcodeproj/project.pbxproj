@@ -264,6 +264,8 @@
 				Features/Settings/SerialSettingsView.swift,
 				Features/Settings/ServerDetailView.swift,
 				Features/Settings/SettingsView.swift,
+				Features/Settings/SettingsWorkspaceDestinationView.swift,
+				Features/Settings/SettingsWorkspaceList.swift,
 				LiveActivities/ConnectionLiveActivityCoordinator.swift,
 				LiveActivities/InterviewLiveActivityCoordinator.swift,
 				LiveActivities/LiveActivityController.swift,

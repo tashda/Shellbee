@@ -20,6 +20,7 @@ struct MainSplitView: View {
     @State private var selectedDeviceRoute: DeviceRoute?
     @State private var selectedGroupRoute: GroupRoute?
     @State private var selectedLogsPaneRoute: LogsPaneRoute?
+    @State private var selectedSettingsRoute: SettingsWorkspaceRoute?
     @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
 
@@ -57,12 +58,23 @@ struct MainSplitView: View {
             CommandPaletteView()
                 .environment(environment)
         }
-        .onAppear { selection = environment.selectedTab }
+        .onAppear {
+            selection = environment.selectedTab
+            if let route = environment.pendingSettingsNavigation {
+                selectedSettingsRoute = .bridgeOverview(route.bridgeID)
+                environment.pendingSettingsNavigation = nil
+            }
+        }
         .onChange(of: selection) { _, newValue in
             if let newValue { environment.selectedTab = newValue }
         }
         .onChange(of: environment.selectedTab) { _, newValue in
             selection = newValue
+        }
+        .onChange(of: environment.pendingSettingsNavigation) { _, route in
+            guard let route else { return }
+            selectedSettingsRoute = .bridgeOverview(route.bridgeID)
+            environment.pendingSettingsNavigation = nil
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
@@ -168,7 +180,7 @@ struct MainSplitView: View {
         case .networkMap:
             networkMapPlaceholder
         case .settings:
-            SettingsView(embedInNavigationStack: false)
+            SettingsWorkspaceList(selection: $selectedSettingsRoute)
         case .home:
             EmptyView()
         }
@@ -240,11 +252,18 @@ struct MainSplitView: View {
                 )
             }
         case .settings:
-            ContentUnavailableView(
-                "Select a Setting",
-                systemImage: "gearshape.fill",
-                description: Text("Pick a setting from the list to view its options.")
-            )
+            if let route = selectedSettingsRoute {
+                NavigationStack {
+                    SettingsWorkspaceDestinationView(route: route)
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Setting",
+                    systemImage: "gearshape.fill",
+                    description: Text("Pick a setting from the list to view its options.")
+                )
+            }
         case .networkMap:
             ContentUnavailableView(
                 "Network Map",
