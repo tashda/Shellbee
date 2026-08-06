@@ -213,6 +213,7 @@
 				Features/Home/PermitJoinActiveSheet.swift,
 				Features/Home/PermitJoinSheet.swift,
 				Features/Home/PermitJoinToolbarButton.swift,
+				Features/Logs/ActivityWorkspaceFilters.swift,
 				Features/Logs/BridgeLogView.swift,
 				Features/Logs/BridgeLogViewModel.swift,
 				Features/Logs/LogDetailDevicesSection.swift,

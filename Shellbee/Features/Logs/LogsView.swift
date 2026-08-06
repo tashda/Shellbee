@@ -2,9 +2,7 @@ import SwiftUI
 
 struct LogsView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var mode: LogMode = .activity
-    @State private var activityVM = LogsViewModel()
-    @State private var bridgeVM = BridgeLogViewModel()
+    @State private var workspace: LogsWorkspaceState
     @State private var autoOpenedEntry: LogRoute?
     @State private var isSearchPresented = false
     let initialEntryFilter: Set<UUID>?
@@ -18,13 +16,15 @@ struct LogsView: View {
         notificationSheetStyle: Bool = false,
         onDone: (() -> Void)? = nil,
         selection: Binding<LogsPaneRoute?>? = nil,
-        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest()
+        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest(),
+        workspace: LogsWorkspaceState? = nil
     ) {
         self.initialEntryFilter = initialEntryFilter
         self.notificationSheetStyle = notificationSheetStyle
         self.onDone = onDone
         self.selection = selection
         self.searchFocusRequest = searchFocusRequest
+        _workspace = State(initialValue: workspace ?? LogsWorkspaceState())
     }
 
     enum LogMode: String, CaseIterable, Hashable {
@@ -44,7 +44,7 @@ struct LogsView: View {
         // could land on either stack, depending on iOS version, leaving the
         // user dropped back to a parent screen with nothing pushed.
         if notificationSheetStyle {
-            ActivityLogContent(viewModel: activityVM, selection: nil)
+            ActivityLogContent(viewModel: workspace.activity, selection: nil)
                 .navigationTitle("Logs")
                 .navigationBarTitleDisplayMode(.inline)
                 .onAppear { applyInitialFilter(autoOpenSingle: false) }
@@ -69,19 +69,19 @@ struct LogsView: View {
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Picker("Mode", selection: $mode) {
+                    Picker("Mode", selection: $workspace.mode) {
                         ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .fixedSize()
                 }
-                if mode == .activity {
+                if workspace.mode == .activity {
                     ToolbarItem(placement: .topBarTrailing) {
-                        LogFilterMenu(viewModel: activityVM)
+                        LogFilterMenu(viewModel: workspace.activity)
                     }
                 } else {
                     ToolbarItem(placement: .topBarTrailing) {
-                        BridgeLevelFilterMenu(viewModel: bridgeVM)
+                        BridgeLevelFilterMenu(viewModel: workspace.bridge)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -108,16 +108,16 @@ struct LogsView: View {
     @ViewBuilder
     private var modeContent: some View {
         let position = Binding<LogMode?>(
-            get: { mode },
-            set: { if let new = $0, new != mode { mode = new } }
+            get: { workspace.mode },
+            set: { if let new = $0, new != workspace.mode { workspace.mode = new } }
         )
         GeometryReader { geo in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
-                    ActivityLogContent(viewModel: activityVM, selection: selection)
+                    ActivityLogContent(viewModel: workspace.activity, selection: selection)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.activity)
-                    BridgeLogView(viewModel: bridgeVM, selection: selection)
+                    BridgeLogView(viewModel: workspace.bridge, selection: selection)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.log)
                 }
@@ -131,18 +131,24 @@ struct LogsView: View {
 
     private var searchBinding: Binding<String> {
         Binding(
-            get: { mode == .activity ? activityVM.searchText : bridgeVM.searchText },
-            set: { if mode == .activity { activityVM.searchText = $0 } else { bridgeVM.searchText = $0 } }
+            get: { workspace.mode == .activity ? workspace.activity.searchText : workspace.bridge.searchText },
+            set: {
+                if workspace.mode == .activity {
+                    workspace.activity.searchText = $0
+                } else {
+                    workspace.bridge.searchText = $0
+                }
+            }
         )
     }
 
     private var searchPrompt: String {
-        mode == .activity ? "Search logs" : "Search messages"
+        workspace.mode == .activity ? "Search logs" : "Search messages"
     }
 
     private func applyInitialFilter(autoOpenSingle: Bool) {
-        guard let filter = initialEntryFilter, activityVM.entryIDFilter == nil else { return }
-        activityVM.entryIDFilter = filter
+        guard let filter = initialEntryFilter, workspace.activity.entryIDFilter == nil else { return }
+        workspace.activity.entryIDFilter = filter
         guard autoOpenSingle, filter.count == 1, let id = filter.first else { return }
         // Search every connected bridge for the entry — deep-link callers
         // know the entry id but not the source bridge.

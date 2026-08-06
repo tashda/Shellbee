@@ -24,6 +24,7 @@ struct MainSplitView: View {
     @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
     @State private var deviceListViewModel = DeviceListViewModel()
+    @State private var logsWorkspace = LogsWorkspaceState()
 
     private var anyBridgeNeedsRestart: Bool {
         environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
@@ -76,6 +77,9 @@ struct MainSplitView: View {
             guard let route else { return }
             selectedSettingsRoute = .bridgeOverview(route.bridgeID)
             environment.pendingSettingsNavigation = nil
+        }
+        .onChange(of: logsWorkspace.mode) { _, _ in
+            selectedLogsPaneRoute = nil
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
@@ -133,6 +137,9 @@ struct MainSplitView: View {
             if selection == .devices {
                 DeviceWorkspaceFilters(viewModel: deviceListViewModel)
             }
+            if selection == .logs {
+                ActivityWorkspaceFilters(workspace: logsWorkspace)
+            }
         }
         .listStyle(.sidebar)
     }
@@ -159,7 +166,10 @@ struct MainSplitView: View {
         case .groups:   GroupListView(searchFocusRequest: searchFocusRequest)
         case .logs:
             NavigationStack {
-                LogsView(searchFocusRequest: searchFocusRequest)
+                LogsView(
+                    searchFocusRequest: searchFocusRequest,
+                    workspace: logsWorkspace
+                )
                     .navigationDestination(for: DeviceRoute.self) { route in
                         DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                     }
@@ -189,7 +199,11 @@ struct MainSplitView: View {
                 searchFocusRequest: searchFocusRequest
             )
         case .logs:
-            LogsView(selection: $selectedLogsPaneRoute, searchFocusRequest: searchFocusRequest)
+            LogsView(
+                selection: $selectedLogsPaneRoute,
+                searchFocusRequest: searchFocusRequest,
+                workspace: logsWorkspace
+            )
         case .networkMap:
             networkMapPlaceholder
         case .settings:
