@@ -2,10 +2,11 @@ import SwiftUI
 
 /// iPad / regular-width shell. Adaptive shape based on width and section:
 ///
-/// - **Wide iPad landscape sections** → 3-column:
+/// - **Expansive scene sections** → 3-column:
 ///   sidebar + list + detail. Sidebar pinned inline. Tap a row, detail
 ///   fills the trailing column.
-/// - **iPad portrait and iPhone** → 2-column: sidebar + section view.
+/// - **Compact and standard iPad scenes** → adaptive split view. The system
+///   collapses it to one or two visible columns without discarding selection.
 ///   Each section pushes detail within its own column (Reminders/Files
 ///   pattern).
 ///
@@ -105,9 +106,14 @@ struct MainSplitView: View {
         NavigationSplitView(columnVisibility: $twoColumnVisibility) {
             sidebar
                 .navigationTitle("Shellbee")
+                .navigationSplitViewColumnWidth(
+                    min: DesignTokens.Size.iPadSidebarMinimumWidth,
+                    ideal: DesignTokens.Size.iPadSidebarIdealWidth
+                )
         } detail: {
             twoColumnDetail(usesWideHomeLayout: usesWideHomeLayout)
         }
+        .navigationSplitViewStyle(.balanced)
     }
 
     private var threeColumnShell: some View {
@@ -124,15 +130,24 @@ struct MainSplitView: View {
         NavigationSplitView(columnVisibility: $threeColumnVisibility) {
             sidebar
                 .navigationTitle("Shellbee")
+                .navigationSplitViewColumnWidth(
+                    min: DesignTokens.Size.iPadSidebarMinimumWidth,
+                    ideal: DesignTokens.Size.iPadSidebarIdealWidth
+                )
         } content: {
             threeColumnContent
-                .navigationSplitViewColumnWidth(min: 360, ideal: 420)
+                .navigationSplitViewColumnWidth(
+                    min: DesignTokens.Size.iPadContentColumnMinimumWidth,
+                    ideal: DesignTokens.Size.iPadContentColumnIdealWidth,
+                    max: DesignTokens.Size.iPadContentColumnMaximumWidth
+                )
                 .environment(\.isSelectableListContext, true)
         } detail: {
             threeColumnDetail
         }
         .id(selection)
         .transaction(value: selection) { $0.animation = nil }
+        .navigationSplitViewStyle(.balanced)
     }
 
     private var sidebar: some View {
@@ -177,26 +192,56 @@ struct MainSplitView: View {
         switch selection ?? .home {
         case .home:     HomeView(usesWideLayout: usesWideHomeLayout)
         case .devices:
-            DeviceListView(
-                searchFocusRequest: searchFocusRequest,
-                viewModel: deviceListViewModel
-            )
-        case .groups:   GroupListView(searchFocusRequest: searchFocusRequest)
+            NavigationStack {
+                DeviceListView(
+                    embedInNavigationStack: false,
+                    selection: $selectedDeviceRoute,
+                    searchFocusRequest: searchFocusRequest,
+                    viewModel: deviceListViewModel
+                )
+                .navigationDestination(item: $selectedDeviceRoute) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+            }
+        case .groups:
+            NavigationStack {
+                GroupListView(
+                    embedInNavigationStack: false,
+                    selection: groupSelection,
+                    searchFocusRequest: searchFocusRequest
+                )
+                .navigationDestination(item: groupSelection) { route in
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                }
+            }
         case .logs:
             NavigationStack {
                 LogsView(
+                    selection: $selectedLogsPaneRoute,
                     searchFocusRequest: searchFocusRequest,
                     workspace: logsWorkspace
                 )
-                    .navigationDestination(for: DeviceRoute.self) { route in
-                        DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-                    }
-                    .navigationDestination(for: GroupRoute.self) { route in
-                        GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                .navigationDestination(item: $selectedLogsPaneRoute) { route in
+                    LogsPaneDestinationView(route: route)
+                }
+            }
+        case .networkMap:
+            NavigationStack {
+                NetworkMapView(
+                    embedInNavigationStack: false,
+                    selection: $selectedNetworkDeviceRoute
+                )
+                .navigationDestination(item: $selectedNetworkDeviceRoute) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+            }
+        case .settings:
+            NavigationStack {
+                SettingsWorkspaceList(selection: $selectedSettingsRoute)
+                    .navigationDestination(item: $selectedSettingsRoute) { route in
+                        SettingsWorkspaceDestinationView(route: route)
                     }
             }
-        case .networkMap: NetworkMapView()
-        case .settings: SettingsView()
         }
     }
 
@@ -283,24 +328,7 @@ struct MainSplitView: View {
         case .logs:
             if let route = selectedLogsPaneRoute {
                 NavigationStack {
-                    switch route {
-                    case .activity(let logRoute):
-                        LogDetailView(bridgeID: logRoute.bridgeID, entry: logRoute.entry)
-                            .navigationDestination(for: DeviceRoute.self) { deviceRoute in
-                                DeviceDetailView(
-                                    bridgeID: deviceRoute.bridgeID,
-                                    device: deviceRoute.device
-                                )
-                            }
-                            .navigationDestination(for: GroupRoute.self) { groupRoute in
-                                GroupDetailView(
-                                    bridgeID: groupRoute.bridgeID,
-                                    group: groupRoute.group
-                                )
-                            }
-                    case .bridge(let logRoute):
-                        BridgeLogDetailView(entry: logRoute.entry)
-                    }
+                    LogsPaneDestinationView(route: route)
                 }
                 .id(route)
             } else {
@@ -361,6 +389,14 @@ struct MainSplitView: View {
             set: { groupsWorkspace.selectMember($0) }
         )
     }
+
+    private var groupSelection: Binding<GroupRoute?> {
+        Binding(
+            get: { groupsWorkspace.selectedGroup },
+            set: { groupsWorkspace.selectGroup($0) }
+        )
+    }
+
 }
 
 #Preview { MainSplitView().environment(AppEnvironment()) }

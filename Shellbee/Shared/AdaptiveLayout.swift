@@ -3,14 +3,32 @@ import UIKit
 
 @MainActor
 enum AdaptiveLayout {
+    enum WindowClass: Equatable {
+        case compact
+        case standard
+        case expansive
+    }
+
     static var isPad: Bool {
         UIDevice.current.userInterfaceIdiom == .pad
     }
 
+    /// Classifies the space offered by the current scene. This deliberately
+    /// ignores device orientation and model: Stage Manager and external
+    /// displays can produce landscape-shaped narrow windows or very wide
+    /// portrait scenes.
+    static func windowClass(in size: CGSize) -> WindowClass {
+        if size.width < DesignTokens.Size.iPadStandardWindowMinimumWidth {
+            return .compact
+        }
+        if size.width < DesignTokens.Size.iPadThreeColumnMinimumWidth {
+            return .standard
+        }
+        return .expansive
+    }
+
     static func usesWideIPadLayout(in size: CGSize) -> Bool {
-        isPad
-            && size.width > size.height
-            && size.width >= DesignTokens.Size.iPadLandscapeMinimumWidth
+        isPad && windowClass(in: size) == .expansive
     }
 }
 

@@ -110,7 +110,13 @@ nonisolated enum DesignTokens {
         static let permitJoinQR: CGFloat = 220
         static let homeAddDividerInset: CGFloat = 60
         static let docLabelColumnWidth: CGFloat = 90
-        static let iPadLandscapeMinimumWidth: CGFloat = 1000
+        static let iPadStandardWindowMinimumWidth: CGFloat = 700
+        static let iPadThreeColumnMinimumWidth: CGFloat = 1100
+        static let iPadSidebarMinimumWidth: CGFloat = 220
+        static let iPadSidebarIdealWidth: CGFloat = 260
+        static let iPadContentColumnMinimumWidth: CGFloat = 320
+        static let iPadContentColumnIdealWidth: CGFloat = 380
+        static let iPadContentColumnMaximumWidth: CGFloat = 460
         static let readableContentMaxWidth: CGFloat = 720
         static let notificationMaxWidth: CGFloat = 640
         static let permitJoinRingStroke: CGFloat = 8

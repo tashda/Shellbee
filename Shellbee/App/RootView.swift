@@ -3,7 +3,6 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.horizontalSizeClass) private var hSizeClass
     @State private var isInitializing = true
     @State private var pendingCrash: PendingCrash?
     @AppStorage(OnboardingStep.completedKey) private var onboardingCompleted: Bool = false
@@ -115,7 +114,7 @@ struct RootView: View {
 
     @ViewBuilder
     private var mainShell: some View {
-        if AdaptiveLayout.isPad, hSizeClass == .regular {
+        if AdaptiveLayout.isPad {
             MainSplitView()
         } else {
             MainTabView()

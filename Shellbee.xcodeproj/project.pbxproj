@@ -235,6 +235,7 @@
 				Features/Logs/LogRowAvatar.swift,
 				Features/Logs/LogRowIconography.swift,
 				Features/Logs/LogRowView.swift,
+				Features/Logs/LogsPaneDestinationView.swift,
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
 				Features/NetworkMap/NetworkMapCanvasView.swift,
