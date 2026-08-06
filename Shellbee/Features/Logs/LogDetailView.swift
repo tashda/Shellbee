@@ -106,6 +106,12 @@ struct LogDetailView: View {
         .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .log(
+                    bridgeID: bridgeID,
+                    entryID: entry.id
+                ))
+            }
             ToolbarItem(placement: .principal) {
                 // Inline two-line title: subject on top, timestamp
                 // beneath. Same pattern Apple Calendar uses for event

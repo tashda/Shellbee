@@ -68,6 +68,9 @@ struct LogsView: View {
             .minimizeSearchToolbarIfAvailable()
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    OpenInNewWindowButton(destination: .activity)
+                }
                 ToolbarItem(placement: .principal) {
                     Picker("Mode", selection: $workspace.mode) {
                         ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }

@@ -14,6 +14,7 @@ import SwiftUI
 /// `AppTab.allCases`.
 struct MainSplitView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var selection: AppTab? = .home
     @State private var twoColumnVisibility: NavigationSplitViewVisibility = .all
     @State private var threeColumnVisibility: NavigationSplitViewVisibility = .all
@@ -52,8 +53,8 @@ struct MainSplitView: View {
                 .safeAreaPadding(.bottom)
         }
         .sheet(item: Binding(
-            get: { environment.pendingLogSheet },
-            set: { environment.pendingLogSheet = $0 }
+            get: { sceneNavigation.pendingLogSheet },
+            set: { sceneNavigation.pendingLogSheet = $0 }
         )) { request in
             LogSheetHost(request: request)
         }
@@ -62,22 +63,22 @@ struct MainSplitView: View {
                 .environment(environment)
         }
         .onAppear {
-            selection = environment.selectedTab
-            if let route = environment.pendingSettingsNavigation {
+            selection = sceneNavigation.selectedTab
+            if let route = sceneNavigation.pendingSettingsNavigation {
                 selectedSettingsRoute = .bridgeOverview(route.bridgeID)
-                environment.pendingSettingsNavigation = nil
+                sceneNavigation.pendingSettingsNavigation = nil
             }
         }
         .onChange(of: selection) { _, newValue in
-            if let newValue { environment.selectedTab = newValue }
+            if let newValue { sceneNavigation.selectedTab = newValue }
         }
-        .onChange(of: environment.selectedTab) { _, newValue in
+        .onChange(of: sceneNavigation.selectedTab) { _, newValue in
             selection = newValue
         }
-        .onChange(of: environment.pendingSettingsNavigation) { _, route in
+        .onChange(of: sceneNavigation.pendingSettingsNavigation) { _, route in
             guard let route else { return }
             selectedSettingsRoute = .bridgeOverview(route.bridgeID)
-            environment.pendingSettingsNavigation = nil
+            sceneNavigation.pendingSettingsNavigation = nil
         }
         .onChange(of: logsWorkspace.mode) { _, _ in
             selectedLogsPaneRoute = nil

@@ -3,6 +3,7 @@ import SwiftUI
 struct CommandPaletteView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var query = ""
     @State private var pendingConfirmation: CommandPaletteItem?
     @State private var isSearchPresented = true
@@ -132,13 +133,13 @@ struct CommandPaletteView: View {
 
         switch command.action {
         case .navigate(let section):
-            environment.selectedTab = section
+            sceneNavigation.selectedTab = section
         case .openDevice(let route):
-            environment.pendingDeviceNavigation = route
-            environment.selectedTab = .devices
+            sceneNavigation.pendingDeviceNavigation = route
+            sceneNavigation.selectedTab = .devices
         case .openGroup(let route):
-            environment.pendingGroupNavigation = route
-            environment.selectedTab = .groups
+            sceneNavigation.pendingGroupNavigation = route
+            sceneNavigation.selectedTab = .groups
         case .identify(let bridgeID, let friendlyName):
             environment.scope(for: bridgeID).identifyDevice(friendlyName)
         case .checkOTA(let bridgeID, let friendlyName):
@@ -148,15 +149,15 @@ struct CommandPaletteView: View {
         case .refreshBridge(let bridgeID):
             Task { await environment.refreshBridgeData(bridgeID: bridgeID) }
         case .openDiagnostics(let bridgeID):
-            environment.pendingSettingsNavigation = BridgeSettingsRoute(bridgeID: bridgeID)
-            environment.selectedTab = .settings
+            sceneNavigation.pendingSettingsNavigation = BridgeSettingsRoute(bridgeID: bridgeID)
+            sceneNavigation.selectedTab = .settings
         case .openNetworkMap(let bridgeID):
-            environment.pendingNetworkMapBridgeID = bridgeID
-            environment.selectedTab = .networkMap
+            sceneNavigation.pendingNetworkMapBridgeID = bridgeID
+            sceneNavigation.selectedTab = .networkMap
         case .refreshNetworkMap(let bridgeID):
-            environment.pendingNetworkMapBridgeID = bridgeID
-            environment.pendingNetworkMapRefreshBridgeID = bridgeID
-            environment.selectedTab = .networkMap
+            sceneNavigation.pendingNetworkMapBridgeID = bridgeID
+            sceneNavigation.pendingNetworkMapRefreshBridgeID = bridgeID
+            sceneNavigation.selectedTab = .networkMap
         }
 
         dismiss()

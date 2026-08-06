@@ -82,6 +82,12 @@ struct DeviceDetailView: View {
         .navigationTitle(device.friendlyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .device(
+                    bridgeID: bridgeID,
+                    ieeeAddress: device.ieeeAddress
+                ))
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 deviceConfigMenu(for: device)
             }

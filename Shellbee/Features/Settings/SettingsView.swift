@@ -4,6 +4,7 @@ struct SettingsView: View {
     var embedInNavigationStack: Bool = true
 
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
     @State private var showingDisconnectConfirmation = false
     @State private var showingRestartAlert = false
@@ -87,6 +88,8 @@ struct SettingsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    OpenInNewWindowButton(destination: .settings(bridgeID: singleBridgeID))
+                    Divider()
                     Button { presentNewBridgeEditor() } label: {
                         Label("Add Bridge", systemImage: "plus")
                     }
@@ -140,7 +143,7 @@ struct SettingsView: View {
             Text("The app returns to the setup screen. Your server address is remembered.")
         }
         .onAppear { consumePendingSettingsNavigation() }
-        .onChange(of: environment.pendingSettingsNavigation) { _, route in
+        .onChange(of: sceneNavigation.pendingSettingsNavigation) { _, route in
             guard route != nil else { return }
             consumePendingSettingsNavigation()
         }
@@ -199,8 +202,8 @@ struct SettingsView: View {
     }
 
     private func consumePendingSettingsNavigation() {
-        guard let route = environment.pendingSettingsNavigation else { return }
-        environment.pendingSettingsNavigation = nil
+        guard let route = sceneNavigation.pendingSettingsNavigation else { return }
+        sceneNavigation.pendingSettingsNavigation = nil
         autoOpenedBridgeRoute = route
     }
 

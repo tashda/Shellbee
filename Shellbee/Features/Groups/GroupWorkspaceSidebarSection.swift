@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GroupWorkspaceSidebarSection: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @Bindable var workspace: GroupsWorkspaceState
     @State private var favorites = DeviceFavoritesStore()
     @State private var activeDropTargetID: String?
@@ -36,7 +37,7 @@ struct GroupWorkspaceSidebarSection: View {
             }
         }
         .onAppear { consumePendingNavigation() }
-        .onChange(of: environment.pendingGroupNavigation) { _, route in
+        .onChange(of: sceneNavigation.pendingGroupNavigation) { _, route in
             guard route != nil else { return }
             consumePendingNavigation()
         }
@@ -119,11 +120,11 @@ struct GroupWorkspaceSidebarSection: View {
                 )
                 return
             }
-            environment.pendingDeviceNavigation = DeviceRoute(
+            sceneNavigation.pendingDeviceNavigation = DeviceRoute(
                 bridgeID: bound.bridgeID,
                 device: bound.device
             )
-            environment.selectedTab = .devices
+            sceneNavigation.selectedTab = .devices
         } label: {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 Label(favorite.friendlyName, systemImage: "star.fill")
@@ -193,8 +194,8 @@ struct GroupWorkspaceSidebarSection: View {
     }
 
     private func consumePendingNavigation() {
-        guard let route = environment.pendingGroupNavigation else { return }
-        environment.pendingGroupNavigation = nil
+        guard let route = sceneNavigation.pendingGroupNavigation else { return }
+        sceneNavigation.pendingGroupNavigation = nil
         workspace.selectGroup(route)
     }
 

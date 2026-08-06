@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum AppTab: Hashable, CaseIterable {
+enum AppTab: String, Codable, Hashable, CaseIterable {
     case home, devices, groups, logs, networkMap, settings
 
     static let keyboardSections: [AppTab] = [

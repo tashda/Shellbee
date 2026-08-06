@@ -10,17 +10,6 @@ final class AppEnvironment {
     /// Per-bridge OTA queues. Each bridge's bulk-OTA work runs independently —
     /// a 200-device check on bridge A doesn't serialize bridge B's update.
     private var otaQueues: [UUID: OTABulkOperationQueue] = [:]
-    var selectedTab: AppTab = .home
-    var pendingDeviceFilter: DeviceQuickFilter?
-    var pendingLogSheet: LogSheetRequest?
-    /// Phase 1 multi-bridge: a deep-link request to push a device detail.
-    /// Carries the source bridge id so the route lands on the right store
-    /// without a `setPrimary()` side effect at the call site.
-    var pendingDeviceNavigation: DeviceRoute?
-    var pendingGroupNavigation: GroupRoute?
-    var pendingSettingsNavigation: BridgeSettingsRoute?
-    var pendingNetworkMapBridgeID: UUID?
-    var pendingNetworkMapRefreshBridgeID: UUID?
     private var hasStarted = false
 
     init() {
@@ -204,7 +193,6 @@ final class AppEnvironment {
     /// bridge never tears down others. The first session connected becomes
     /// the focused (primary) bridge automatically.
     func connect(config: ConnectionConfig) {
-        selectedTab = .home
         let isFirst = registry.primary == nil
         registry.connect(config: config)
         if let session = registry.session(for: config.id) {
@@ -285,13 +273,6 @@ final class AppEnvironment {
         send(bridge: bridgeID, topic: Z2MTopics.Request.options, payload: .object(["options": .object(options)]))
     }
 
-    // MARK: - Tab-level navigation helpers
-
-    func showDevices(filter: DeviceQuickFilter) {
-        pendingDeviceFilter = filter
-        selectedTab = .devices
-    }
-
     // MARK: - Lifecycle
 
     func start() async {
@@ -329,6 +310,21 @@ final class AppEnvironment {
         let toConnect = history.connections.filter { history.isAutoConnect($0) }
         for config in toConnect {
             connect(config: config)
+        }
+    }
+
+    /// Resume recoverable bridge sessions once when any scene becomes active.
+    /// Controllers transition to `.connecting` synchronously, so another
+    /// scene becoming active cannot start a duplicate connection loop.
+    func resumeConnectionsIfNeeded() {
+        for session in registry.orderedSessions {
+            guard session.controller.hasBeenConnected else { continue }
+            switch session.connectionState {
+            case .lost, .failed, .idle:
+                session.controller.retryFromLost()
+            case .connecting, .connected, .reconnecting:
+                continue
+            }
         }
     }
 

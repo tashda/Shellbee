@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var tabSelection: AppTab = .home
     @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
@@ -34,8 +35,8 @@ struct MainTabView: View {
                 .padding(.bottom, DesignTokens.Size.mainTabBarInset)
         }
         .sheet(item: Binding(
-            get: { environment.pendingLogSheet },
-            set: { environment.pendingLogSheet = $0 }
+            get: { sceneNavigation.pendingLogSheet },
+            set: { sceneNavigation.pendingLogSheet = $0 }
         )) { request in
             LogSheetHost(request: request)
         }
@@ -44,12 +45,12 @@ struct MainTabView: View {
                 .environment(environment)
         }
         .onAppear {
-            tabSelection = environment.selectedTab
+            tabSelection = sceneNavigation.selectedTab
         }
         .onChange(of: tabSelection) { _, newValue in
-            environment.selectedTab = newValue
+            sceneNavigation.selectedTab = newValue
         }
-        .onChange(of: environment.selectedTab) { _, newValue in
+        .onChange(of: sceneNavigation.selectedTab) { _, newValue in
             tabSelection = newValue
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)

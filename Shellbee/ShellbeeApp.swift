@@ -10,13 +10,32 @@ struct ShellbeeApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
-            RootView()
+        WindowGroup("Shellbee", for: ShellbeeWindowDestination.self) { $destination in
+            ShellbeeSceneView(destination: $destination)
                 .environment(environment)
                 .preferredColorScheme(appearanceMode.colorScheme)
+        } defaultValue: {
+            .home
         }
         .commands {
             AppNavigationCommands()
+            ShellbeeWindowCommands()
+        }
+    }
+}
+
+private struct ShellbeeWindowCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Menu("Open in New Window") {
+                Button("Home") { openWindow(value: ShellbeeWindowDestination.home) }
+                Button("Activity") { openWindow(value: ShellbeeWindowDestination.activity) }
+                    .keyboardShortcut("l", modifiers: [.command, .shift])
+                Button("Network Map") { openWindow(value: ShellbeeWindowDestination.networkMap(bridgeID: nil)) }
+                Button("Settings") { openWindow(value: ShellbeeWindowDestination.settings(bridgeID: nil)) }
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ struct GroupListView: View {
     }
 
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var viewModel = GroupListViewModel()
     @State private var groupToRename: BridgeBoundGroup?
     @State private var groupToRemove: BridgeBoundGroup?
@@ -139,7 +140,7 @@ struct GroupListView: View {
             isSearchPresented = true
         }
         .onAppear { consumePendingGroupNavigation() }
-        .onChange(of: environment.pendingGroupNavigation) { _, route in
+        .onChange(of: sceneNavigation.pendingGroupNavigation) { _, route in
             guard route != nil else { return }
             consumePendingGroupNavigation()
         }
@@ -221,8 +222,8 @@ struct GroupListView: View {
     }
 
     private func consumePendingGroupNavigation() {
-        guard let route = environment.pendingGroupNavigation else { return }
-        environment.pendingGroupNavigation = nil
+        guard let route = sceneNavigation.pendingGroupNavigation else { return }
+        sceneNavigation.pendingGroupNavigation = nil
         if let selection {
             selection.wrappedValue = route
         } else {

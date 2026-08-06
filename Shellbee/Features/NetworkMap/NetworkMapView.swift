@@ -2,8 +2,10 @@ import SwiftUI
 
 struct NetworkMapView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     var embedInNavigationStack = true
     private let selection: Binding<DeviceRoute?>?
+    private let initialBridgeID: UUID?
 
     @State private var selectedBridgeID: UUID?
     @State private var filters: Set<NetworkMapFilter> = []
@@ -15,10 +17,12 @@ struct NetworkMapView: View {
 
     init(
         embedInNavigationStack: Bool = true,
-        selection: Binding<DeviceRoute?>? = nil
+        selection: Binding<DeviceRoute?>? = nil,
+        initialBridgeID: UUID? = nil
     ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
+        self.initialBridgeID = initialBridgeID
     }
 
     private var connectedSessions: [BridgeSession] {
@@ -83,11 +87,12 @@ struct NetworkMapView: View {
             Text(alert.message)
         }
         .onAppear { establishSelectedBridge() }
-        .onChange(of: environment.pendingNetworkMapBridgeID) { _, _ in
+        .onChange(of: sceneNavigation.pendingNetworkMapBridgeID) { _, _ in
             consumePendingNavigation()
         }
         .onChange(of: selectedBridgeID) { _, _ in
             routeBinding.wrappedValue = nil
+            sceneNavigation.selectedBridgeID = selectedBridgeID
         }
     }
 
@@ -133,6 +138,7 @@ struct NetworkMapView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .networkMap(bridgeID: selectedBridgeID))
                 if connectedSessions.count > 1 {
                     bridgePicker
                 }
@@ -180,29 +186,30 @@ struct NetworkMapView: View {
                 "routes": .bool(false)
             ])
         )
-        if environment.pendingNetworkMapRefreshBridgeID == session.bridgeID {
-            environment.pendingNetworkMapRefreshBridgeID = nil
+        if sceneNavigation.pendingNetworkMapRefreshBridgeID == session.bridgeID {
+            sceneNavigation.pendingNetworkMapRefreshBridgeID = nil
         }
     }
 
     private func establishSelectedBridge() {
         consumePendingNavigation()
         if selectedBridgeID == nil {
-            selectedBridgeID = environment.registry.primaryBridgeID
+            selectedBridgeID = initialBridgeID ?? sceneNavigation.selectedBridgeID
+                ?? environment.registry.primaryBridgeID
                 ?? connectedSessions.first?.bridgeID
         }
-        if environment.pendingNetworkMapRefreshBridgeID == selectedBridgeID {
+        if sceneNavigation.pendingNetworkMapRefreshBridgeID == selectedBridgeID {
             refresh()
         }
     }
 
     private func consumePendingNavigation() {
-        guard let bridgeID = environment.pendingNetworkMapBridgeID,
+        guard let bridgeID = sceneNavigation.pendingNetworkMapBridgeID,
               environment.registry.session(for: bridgeID) != nil
         else { return }
         selectedBridgeID = bridgeID
-        environment.pendingNetworkMapBridgeID = nil
-        if environment.pendingNetworkMapRefreshBridgeID == bridgeID {
+        sceneNavigation.pendingNetworkMapBridgeID = nil
+        if sceneNavigation.pendingNetworkMapRefreshBridgeID == bridgeID {
             refresh()
         }
     }

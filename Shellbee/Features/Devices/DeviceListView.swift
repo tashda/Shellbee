@@ -24,6 +24,7 @@ struct DeviceListView: View {
     }
 
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var viewModel: DeviceListViewModel
     @State private var navigationPath = NavigationPath()
     @State private var deviceToRename: BridgeBoundDevice?
@@ -152,25 +153,25 @@ struct DeviceListView: View {
             }
         }
         .onAppear {
-            if let filter = environment.pendingDeviceFilter {
+            if let filter = sceneNavigation.pendingDeviceFilter {
                 navigationPath = NavigationPath()
                 viewModel.applyQuickFilter(filter)
-                environment.pendingDeviceFilter = nil
+                sceneNavigation.pendingDeviceFilter = nil
             }
-            if let route = environment.pendingDeviceNavigation {
-                environment.pendingDeviceNavigation = nil
+            if let route = sceneNavigation.pendingDeviceNavigation {
+                sceneNavigation.pendingDeviceNavigation = nil
                 pushDeviceResettingPath(route)
             }
         }
-        .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
+        .onChange(of: sceneNavigation.pendingDeviceFilter) { _, newFilter in
             guard let filter = newFilter else { return }
             navigationPath = NavigationPath()
             viewModel.applyQuickFilter(filter)
-            environment.pendingDeviceFilter = nil
+            sceneNavigation.pendingDeviceFilter = nil
         }
-        .onChange(of: environment.pendingDeviceNavigation) { _, newRoute in
+        .onChange(of: sceneNavigation.pendingDeviceNavigation) { _, newRoute in
             guard let route = newRoute else { return }
-            environment.pendingDeviceNavigation = nil
+            sceneNavigation.pendingDeviceNavigation = nil
             pushDeviceResettingPath(route)
         }
         .onChange(of: searchFocusRequest) { _, request in

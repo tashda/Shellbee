@@ -5,6 +5,7 @@ import UIKit
 
 struct InAppNotificationOverlay: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var isExpanded = false
     // Index into notification pages that the user is viewing while expanded.
     // When collapsed, always shows the newest (last). When expanded, this
@@ -287,7 +288,7 @@ struct InAppNotificationOverlay: View {
 
     private func goToLog(for page: NotificationPage) {
         guard !page.notification.logEntryIDs.isEmpty else { return }
-        environment.pendingLogSheet = LogSheetRequest(entryIDs: page.notification.logEntryIDs)
+        sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: page.notification.logEntryIDs)
         // Keep the banner expanded so it's still there when the sheet/nav
         // is dismissed. The user dismisses it by swiping down.
         autoDismissTask?.cancel()
@@ -301,8 +302,8 @@ struct InAppNotificationOverlay: View {
         guard let bridgeID = page.bridgeID,
               let device = environment.registry.session(for: bridgeID)?.store.device(named: name)
         else { return }
-        environment.pendingDeviceNavigation = DeviceRoute(bridgeID: bridgeID, device: device)
-        environment.selectedTab = .devices
+        sceneNavigation.pendingDeviceNavigation = DeviceRoute(bridgeID: bridgeID, device: device)
+        sceneNavigation.selectedTab = .devices
         autoDismissTask?.cancel()
     }
 

@@ -8,6 +8,11 @@ struct RootView: View {
     @State private var pendingCrash: PendingCrash?
     @AppStorage(OnboardingStep.completedKey) private var onboardingCompleted: Bool = false
     @State private var showOnboarding = false
+    let windowDestination: ShellbeeWindowDestination
+
+    init(windowDestination: ShellbeeWindowDestination = .home) {
+        self.windowDestination = windowDestination
+    }
 
     /// Phase 2 multi-bridge: the most-attention-needing state across every
     /// connected session. `lost` always wins so the banner / alert surface
@@ -102,15 +107,7 @@ struct RootView: View {
             // means we only retry bridges the user successfully connected to
             // before — never undo an explicit disconnect.
             guard phase == .active else { return }
-            for session in environment.registry.orderedSessions {
-                guard session.controller.hasBeenConnected else { continue }
-                switch session.connectionState {
-                case .lost, .failed, .idle:
-                    environment.retryFromLost(bridgeID: session.bridgeID)
-                case .connecting, .connected, .reconnecting:
-                    continue
-                }
-            }
+            environment.resumeConnectionsIfNeeded()
         }
     }
 
@@ -126,7 +123,13 @@ struct RootView: View {
     }
 
     private var mainInterface: some View {
-        mainShell
+        SwiftUI.Group {
+            if windowDestination.rootSection != nil {
+                mainShell
+            } else {
+                RestoredWindowDestinationView(destination: windowDestination)
+            }
+        }
             .overlay(alignment: .top) { connectionBanner }
             .alert("Connection Lost", isPresented: lostBinding) {
                 Button("Try Again") {

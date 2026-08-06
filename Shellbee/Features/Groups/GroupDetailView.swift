@@ -129,6 +129,11 @@ struct GroupDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    OpenInNewWindowButton(destination: .group(
+                        bridgeID: bridgeID,
+                        groupID: currentGroup.id
+                    ))
+                    Divider()
                     Button { menuDestination = .settings } label: {
                         Label("Group Settings", systemImage: "slider.horizontal.3")
                     }

@@ -140,6 +140,12 @@ final class ConnectionSessionController {
 
     func retryFromLost() {
         guard let config = connectionConfig else { return }
+        switch connectionState {
+        case .lost, .failed, .idle:
+            connectionState = .connecting
+        case .connecting, .connected, .reconnecting:
+            return
+        }
         errorMessage = nil
         startSession(config: config)
     }
