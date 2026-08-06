@@ -40,6 +40,14 @@ struct DeviceListRow: View {
         device.definition?.supportsOTA == true
     }
 
+    private var transferPayload: DeviceTransferPayload {
+        DeviceTransferPayload(
+            device: device,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName
+        )
+    }
+
     private var rejectionMessage: (text: String, icon: String)? {
         if !supportsOTA {
             return ("OTA not supported", "xmark.circle")
@@ -111,6 +119,16 @@ struct DeviceListRow: View {
         // Skipped in iPad 3-column mode — iPadOS 26's row selection chrome
         // overlays a custom listRowBackground and squashes row content.
         .modifier(BridgeRowLeadingBarBackground(bridgeID: bridgeID, enabled: !isSelectableListContext))
+        .draggable(transferPayload) {
+            DeviceTransferPreview(
+                device: device,
+                isAvailable: effectiveTransferAvailability,
+                otaStatus: otaStatus
+            )
+        }
+        .accessibilityAction(named: "Copy Device Information") {
+            UIPasteboard.general.string = transferPayload.plainText
+        }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if otaStatus?.phase == .scheduled, let onUnschedule {
                 Button(action: onUnschedule) {
@@ -188,6 +206,12 @@ struct DeviceListRow: View {
             }
         }
         .contextMenu {
+            Button {
+                UIPasteboard.general.string = transferPayload.plainText
+            } label: {
+                Label("Copy Device Information", systemImage: "doc.on.doc")
+            }
+            Divider()
             if device.supportsIdentify {
                 Button(action: onIdentify) {
                     Label("Identify", systemImage: "wave.3.right.circle")
@@ -250,6 +274,9 @@ struct DeviceListRow: View {
         }
     }
 
+    private var effectiveTransferAvailability: Bool {
+        isDeleting ? false : isAvailable
+    }
 }
 
 #Preview {

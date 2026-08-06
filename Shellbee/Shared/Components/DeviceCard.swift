@@ -18,12 +18,35 @@ struct DeviceCard: View {
 
     private var isUpdating: Bool { otaStatus?.isActive == true }
 
+    private var transferPayload: DeviceTransferPayload {
+        DeviceTransferPayload(device: device, bridgeID: bridgeID, bridgeName: bridgeName)
+    }
+
     var body: some View {
-        switch displayMode {
-        case .prominent:
-            prominentHeader
-        case .compact:
-            compactHeader
+        SwiftUI.Group {
+            switch displayMode {
+            case .prominent:
+                prominentHeader
+            case .compact:
+                compactHeader
+            }
+        }
+        .draggable(transferPayload) {
+            DeviceTransferPreview(
+                device: device,
+                isAvailable: isAvailable,
+                otaStatus: otaStatus
+            )
+        }
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = transferPayload.plainText
+            } label: {
+                Label("Copy Device Information", systemImage: "doc.on.doc")
+            }
+        }
+        .accessibilityAction(named: "Copy Device Information") {
+            UIPasteboard.general.string = transferPayload.plainText
         }
     }
 
