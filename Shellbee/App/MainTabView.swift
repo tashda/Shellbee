@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var tabSelection: AppTab = .home
+    @State private var searchFocusRequest = AppSearchFocusRequest()
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
     /// connected bridge has pending config that needs a restart. Single-
@@ -46,6 +47,7 @@ struct MainTabView: View {
         .onChange(of: environment.selectedTab) { _, newValue in
             tabSelection = newValue
         }
+        .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
 
     @ViewBuilder
@@ -56,10 +58,20 @@ struct MainTabView: View {
                     HomeView()
                 }
                 Tab("Devices", systemImage: "sensor.tag.radiowaves.forward.fill", value: AppTab.devices) {
-                    DeviceListView()
+                    DeviceListView(searchFocusRequest: searchFocusRequest)
                 }
                 Tab("Groups", systemImage: "square.on.square.fill", value: AppTab.groups) {
-                    GroupListView()
+                    GroupListView(searchFocusRequest: searchFocusRequest)
+                }
+                if AdaptiveLayout.isPad {
+                    Tab("Activity", systemImage: "list.bullet.rectangle", value: AppTab.logs) {
+                        NavigationStack {
+                            LogsView(searchFocusRequest: searchFocusRequest)
+                        }
+                    }
+                    Tab("Network Map", systemImage: AppTab.networkMap.systemImage, value: AppTab.networkMap) {
+                        networkMapPlaceholder
+                    }
                 }
                 Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
                     SettingsView()
@@ -71,17 +83,52 @@ struct MainTabView: View {
                 HomeView()
                     .tabItem { Label("Home", systemImage: "house.fill") }
                     .tag(AppTab.home)
-                DeviceListView()
+                DeviceListView(searchFocusRequest: searchFocusRequest)
                     .tabItem { Label("Devices", systemImage: "sensor.tag.radiowaves.forward.fill") }
                     .tag(AppTab.devices)
-                GroupListView()
+                GroupListView(searchFocusRequest: searchFocusRequest)
                     .tabItem { Label("Groups", systemImage: "square.on.square.fill") }
                     .tag(AppTab.groups)
+                if AdaptiveLayout.isPad {
+                    NavigationStack {
+                        LogsView(searchFocusRequest: searchFocusRequest)
+                    }
+                    .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
+                    .tag(AppTab.logs)
+                    networkMapPlaceholder
+                        .tabItem { Label("Network Map", systemImage: AppTab.networkMap.systemImage) }
+                        .tag(AppTab.networkMap)
+                }
                 SettingsView()
                     .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                     .tag(AppTab.settings)
                     .badge(anyBridgeNeedsRestart ? Text("!") : nil)
             }
+        }
+    }
+
+    private var keyboardActions: AppKeyboardActions {
+        AppKeyboardActions(
+            focusSearch: {
+                searchFocusRequest.request(for: tabSelection)
+            },
+            selectSection: { section in
+                guard AdaptiveLayout.isPad
+                        || [.home, .devices, .groups, .settings].contains(section)
+                else { return }
+                tabSelection = section
+            }
+        )
+    }
+
+    private var networkMapPlaceholder: some View {
+        NavigationStack {
+            ContentUnavailableView(
+                "No Network Map",
+                systemImage: AppTab.networkMap.systemImage,
+                description: Text("Refresh the map to inspect the Zigbee topology.")
+            )
+            .navigationTitle("Network Map")
         }
     }
 }

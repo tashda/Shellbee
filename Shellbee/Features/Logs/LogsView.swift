@@ -6,21 +6,25 @@ struct LogsView: View {
     @State private var activityVM = LogsViewModel()
     @State private var bridgeVM = BridgeLogViewModel()
     @State private var autoOpenedEntry: LogRoute?
+    @State private var isSearchPresented = false
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
     private let onDone: (() -> Void)?
     private let selection: Binding<LogsPaneRoute?>?
+    let searchFocusRequest: AppSearchFocusRequest
 
     init(
         initialEntryFilter: Set<UUID>? = nil,
         notificationSheetStyle: Bool = false,
         onDone: (() -> Void)? = nil,
-        selection: Binding<LogsPaneRoute?>? = nil
+        selection: Binding<LogsPaneRoute?>? = nil,
+        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest()
     ) {
         self.initialEntryFilter = initialEntryFilter
         self.notificationSheetStyle = notificationSheetStyle
         self.onDone = onDone
         self.selection = selection
+        self.searchFocusRequest = searchFocusRequest
     }
 
     enum LogMode: String, CaseIterable, Hashable {
@@ -56,7 +60,7 @@ struct LogsView: View {
             modeContent
             .navigationTitle("Logs")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: searchBinding, prompt: searchPrompt)
+            .searchable(text: searchBinding, isPresented: $isSearchPresented, prompt: searchPrompt)
             .onAppear { applyInitialFilter(autoOpenSingle: true) }
             .navigationDestination(item: $autoOpenedEntry) { route in
                 LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
@@ -93,6 +97,10 @@ struct LogsView: View {
                         Image(systemName: "trash")
                     }
                 }
+            }
+            .onChange(of: searchFocusRequest) { _, request in
+                guard request.section == .logs else { return }
+                isSearchPresented = true
             }
         }
     }

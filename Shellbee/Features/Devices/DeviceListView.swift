@@ -6,10 +6,16 @@ struct DeviceListView: View {
     /// the trailing column instead of pushing onto an inner stack.
     var embedInNavigationStack: Bool = true
     private let selection: Binding<DeviceRoute?>?
+    let searchFocusRequest: AppSearchFocusRequest
 
-    init(embedInNavigationStack: Bool = true, selection: Binding<DeviceRoute?>? = nil) {
+    init(
+        embedInNavigationStack: Bool = true,
+        selection: Binding<DeviceRoute?>? = nil,
+        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest()
+    ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
+        self.searchFocusRequest = searchFocusRequest
     }
 
     @Environment(AppEnvironment.self) private var environment
@@ -20,6 +26,7 @@ struct DeviceListView: View {
     @State private var pendingDeviceAlert: PendingDeviceAlert?
     @State private var pendingAlertBridgeID: UUID?
     @State private var showPairingWizard = false
+    @State private var isSearchPresented = false
 
     private var isGrouped: Bool {
         viewModel.groupByCategory
@@ -106,7 +113,7 @@ struct DeviceListView: View {
         .navigationTitle("Devices")
         .navigationBarTitleDisplayMode(.large)
         .modifier(DeviceListNavigationDestination(isEnabled: embedInNavigationStack))
-        .searchable(text: $viewModel.searchText, prompt: "Search")
+        .searchable(text: $viewModel.searchText, isPresented: $isSearchPresented, prompt: "Search")
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -149,6 +156,10 @@ struct DeviceListView: View {
             guard let route = newRoute else { return }
             environment.pendingDeviceNavigation = nil
             pushDeviceResettingPath(route)
+        }
+        .onChange(of: searchFocusRequest) { _, request in
+            guard request.section == .devices else { return }
+            isSearchPresented = true
         }
     }
 

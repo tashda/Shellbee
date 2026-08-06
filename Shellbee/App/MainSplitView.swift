@@ -20,6 +20,7 @@ struct MainSplitView: View {
     @State private var selectedDeviceRoute: DeviceRoute?
     @State private var selectedGroupRoute: GroupRoute?
     @State private var selectedLogsPaneRoute: LogsPaneRoute?
+    @State private var searchFocusRequest = AppSearchFocusRequest()
 
     private var anyBridgeNeedsRestart: Bool {
         environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
@@ -28,7 +29,7 @@ struct MainSplitView: View {
     private func usesThreeColumns(wideIPadLayout: Bool) -> Bool {
         guard wideIPadLayout else { return false }
         switch selection ?? .home {
-        case .devices, .groups, .logs, .deviceLibrary, .settings: return true
+        case .devices, .groups, .logs, .networkMap, .settings: return true
         case .home: return false
         }
     }
@@ -58,6 +59,7 @@ struct MainSplitView: View {
         .onChange(of: environment.selectedTab) { _, newValue in
             selection = newValue
         }
+        .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
 
     @ViewBuilder
@@ -110,31 +112,11 @@ struct MainSplitView: View {
         .listStyle(.sidebar)
     }
 
-    private var sidebarTabs: [AppTab] {
-        if AdaptiveLayout.isPad {
-            AppTab.allCases
-        } else {
-            AppTab.allCases.filter { $0 != .deviceLibrary }
-        }
-    }
+    private var sidebarTabs: [AppTab] { AppTab.allCases }
 
-    @ViewBuilder
     private func sidebarRow(for tab: AppTab) -> some View {
-        switch tab {
-        case .home:
-            Label("Home", systemImage: "house.fill")
-        case .devices:
-            Label("Devices", systemImage: "sensor.tag.radiowaves.forward.fill")
-        case .groups:
-            Label("Groups", systemImage: "square.on.square.fill")
-        case .logs:
-            Label("Logs", systemImage: "list.bullet.rectangle")
-        case .deviceLibrary:
-            Label("Device Library", systemImage: "books.vertical.fill")
-        case .settings:
-            Label("Settings", systemImage: "gearshape.fill")
-                .badge(anyBridgeNeedsRestart ? Text("!") : nil)
-        }
+        Label(tab.title, systemImage: tab.systemImage)
+            .badge(tab == .settings && anyBridgeNeedsRestart ? Text("!") : nil)
     }
 
     /// 2-column detail: each section is self-contained with its own
@@ -144,11 +126,11 @@ struct MainSplitView: View {
     private func twoColumnDetail(usesWideHomeLayout: Bool) -> some View {
         switch selection ?? .home {
         case .home:     HomeView(usesWideLayout: usesWideHomeLayout)
-        case .devices:  DeviceListView()
-        case .groups:   GroupListView()
+        case .devices:  DeviceListView(searchFocusRequest: searchFocusRequest)
+        case .groups:   GroupListView(searchFocusRequest: searchFocusRequest)
         case .logs:
             NavigationStack {
-                LogsView()
+                LogsView(searchFocusRequest: searchFocusRequest)
                     .navigationDestination(for: DeviceRoute.self) { route in
                         DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                     }
@@ -156,10 +138,7 @@ struct MainSplitView: View {
                         GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                     }
             }
-        case .deviceLibrary:
-            NavigationStack {
-                DocBrowserView()
-            }
+        case .networkMap: networkMapPlaceholder
         case .settings: SettingsView()
         }
     }
@@ -170,17 +149,19 @@ struct MainSplitView: View {
         case .devices:
             DeviceListView(
                 embedInNavigationStack: false,
-                selection: $selectedDeviceRoute
+                selection: $selectedDeviceRoute,
+                searchFocusRequest: searchFocusRequest
             )
         case .groups:
             GroupListView(
                 embedInNavigationStack: false,
-                selection: $selectedGroupRoute
+                selection: $selectedGroupRoute,
+                searchFocusRequest: searchFocusRequest
             )
         case .logs:
-            LogsView(selection: $selectedLogsPaneRoute)
-        case .deviceLibrary:
-            DocBrowserView()
+            LogsView(selection: $selectedLogsPaneRoute, searchFocusRequest: searchFocusRequest)
+        case .networkMap:
+            networkMapPlaceholder
         case .settings:
             SettingsView(embedInNavigationStack: false)
         case .home:
@@ -259,15 +240,37 @@ struct MainSplitView: View {
                 systemImage: "gearshape.fill",
                 description: Text("Pick a setting from the list to view its options.")
             )
-        case .deviceLibrary:
+        case .networkMap:
             ContentUnavailableView(
-                "Select a Device",
-                systemImage: "books.vertical.fill",
-                description: Text("Pick a device from the library to view its documentation.")
+                "Network Map",
+                systemImage: AppTab.networkMap.systemImage,
+                description: Text("The Zigbee topology will appear here after it is fetched.")
             )
         case .home:
             EmptyView()
         }
+    }
+
+    private var networkMapPlaceholder: some View {
+        NavigationStack {
+            ContentUnavailableView(
+                "No Network Map",
+                systemImage: AppTab.networkMap.systemImage,
+                description: Text("Refresh the map to inspect the Zigbee topology.")
+            )
+            .navigationTitle("Network Map")
+        }
+    }
+
+    private var keyboardActions: AppKeyboardActions {
+        AppKeyboardActions(
+            focusSearch: {
+                searchFocusRequest.request(for: selection ?? .home)
+            },
+            selectSection: { section in
+                selection = section
+            }
+        )
     }
 }
 

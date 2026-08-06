@@ -5,10 +5,16 @@ struct GroupListView: View {
     /// `DeviceListView` for the matching pattern.
     var embedInNavigationStack: Bool = true
     private let selection: Binding<GroupRoute?>?
+    let searchFocusRequest: AppSearchFocusRequest
 
-    init(embedInNavigationStack: Bool = true, selection: Binding<GroupRoute?>? = nil) {
+    init(
+        embedInNavigationStack: Bool = true,
+        selection: Binding<GroupRoute?>? = nil,
+        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest()
+    ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
+        self.searchFocusRequest = searchFocusRequest
     }
 
     @Environment(AppEnvironment.self) private var environment
@@ -16,6 +22,7 @@ struct GroupListView: View {
     @State private var groupToRename: BridgeBoundGroup?
     @State private var groupToRemove: BridgeBoundGroup?
     @State private var showAddGroup = false
+    @State private var isSearchPresented = false
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
@@ -88,7 +95,7 @@ struct GroupListView: View {
         .navigationTitle("Groups")
         .navigationBarTitleDisplayMode(.large)
         .modifier(GroupListNavigationDestinations(isEnabled: embedInNavigationStack))
-        .searchable(text: $viewModel.searchText, prompt: "Search")
+        .searchable(text: $viewModel.searchText, isPresented: $isSearchPresented, prompt: "Search")
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -122,6 +129,10 @@ struct GroupListView: View {
             } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
                 ContentUnavailableView.search(text: viewModel.searchText)
             }
+        }
+        .onChange(of: searchFocusRequest) { _, request in
+            guard request.section == .groups else { return }
+            isSearchPresented = true
         }
     }
 

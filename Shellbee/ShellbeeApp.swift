@@ -15,5 +15,32 @@ struct ShellbeeApp: App {
                 .environment(environment)
                 .preferredColorScheme(appearanceMode.colorScheme)
         }
+        .commands {
+            AppNavigationCommands()
+        }
+    }
+}
+
+private struct AppNavigationCommands: Commands {
+    @FocusedValue(\.appKeyboardActions) private var actions
+
+    var body: some Commands {
+        CommandMenu("Navigate") {
+            ForEach(Array(AppTab.keyboardSections.enumerated()), id: \.element) { index, section in
+                Button(section.title) {
+                    actions?.selectSection(section)
+                }
+                .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+                .disabled(actions == nil)
+            }
+
+            Divider()
+
+            Button("Search") {
+                actions?.focusSearch()
+            }
+            .keyboardShortcut("f", modifiers: .command)
+            .disabled(actions == nil)
+        }
     }
 }
