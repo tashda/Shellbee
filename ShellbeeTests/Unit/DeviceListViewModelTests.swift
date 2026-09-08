@@ -102,6 +102,23 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         XCTAssertTrue(result.contains { $0.friendlyName == "Office Sensor" })
     }
 
+    // Regression: the filter boundary must be exactly Threshold.isLowBattery.
+    @MainActor
+    func testFilterBatteryLowHonoursThresholdBoundary() {
+        vm.statusFilter = .batteryLow
+        for level in [DesignTokens.Threshold.lowBattery - 1, DesignTokens.Threshold.lowBattery] {
+            store.apply(.deviceState(
+                friendlyName: "Office Sensor",
+                state: StateFixture.batteryLow(level: level)
+            ))
+            XCTAssertEqual(
+                vm.filteredDevices(store: store).contains { $0.friendlyName == "Office Sensor" },
+                DesignTokens.Threshold.isLowBattery(level),
+                "battery \(level)"
+            )
+        }
+    }
+
     @MainActor
     func testFilterWeakSignal() {
         store.apply(.deviceState(

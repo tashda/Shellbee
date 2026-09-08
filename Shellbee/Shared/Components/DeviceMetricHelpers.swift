@@ -12,7 +12,7 @@ extension Int {
     }
 
     var batteryColor: Color {
-        if self < DesignTokens.Threshold.lowBattery { return .red }
+        if DesignTokens.Threshold.isLowBattery(self) { return .red }
         if self < 50 { return .orange }
         return .green
     }
