@@ -266,7 +266,7 @@ nonisolated enum DesignTokens {
         static let weakSignal = 40
 
         /// Single predicate so Home, the status filter and the card icons agree.
-        static func isLowBattery(_ level: Int) -> Bool { level <= lowBattery }
+        static func isLowBattery(_ level: Int) -> Bool { level < lowBattery }
     }
 
     /// Proportional layout ratios — multipliers applied to a parent dimension
