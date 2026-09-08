@@ -105,6 +105,19 @@ final class HomeSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.weakSignalDevices, 1)
     }
 
+    // Regression: Home banner and status filter must agree at the threshold.
+    func testLowBatteryCountAgreesWithStatusFilterAtThreshold() {
+        let sensor = DeviceFixture.sensor()
+        let state = StateFixture.batteryLow(level: DesignTokens.Threshold.lowBattery)
+        let snapshot = makeSnapshot(devices: [sensor], states: [sensor.friendlyName: state])
+
+        XCTAssertEqual(snapshot.lowBatteryDevices, 1)
+        XCTAssertTrue(
+            DeviceCondition.batteryLow.matches(device: sensor, state: state, isAvailable: true),
+            "Home counts this device as low battery, so the status filter must match it too"
+        )
+    }
+
     // Behavior: the PAN ID label shown on MeshDetailView formats the raw
     // integer as "PAN 0xXXXX" (uppercase, 4-digit zero-padded).
     func testPanIDTextFormatting() {

@@ -102,6 +102,23 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         XCTAssertTrue(result.contains { $0.friendlyName == "Office Sensor" })
     }
 
+    // Regression: a device at exactly the threshold must match the filter.
+    @MainActor
+    func testFilterBatteryLowIncludesExactThreshold() {
+        store.apply(.deviceState(
+            friendlyName: "Office Sensor",
+            state: StateFixture.batteryLow(level: DesignTokens.Threshold.lowBattery)
+        ))
+        vm.statusFilter = .batteryLow
+        XCTAssertTrue(vm.filteredDevices(store: store).contains { $0.friendlyName == "Office Sensor" })
+
+        store.apply(.deviceState(
+            friendlyName: "Office Sensor",
+            state: StateFixture.batteryLow(level: DesignTokens.Threshold.lowBattery + 1)
+        ))
+        XCTAssertFalse(vm.filteredDevices(store: store).contains { $0.friendlyName == "Office Sensor" })
+    }
+
     @MainActor
     func testFilterWeakSignal() {
         store.apply(.deviceState(

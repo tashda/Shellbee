@@ -49,7 +49,7 @@ enum DeviceCondition: String, CaseIterable, Sendable {
         case .online:           return availabilityStatus == .online
         case .offline:          return availabilityStatus == .offline
         case .availabilityOff:  return availabilityStatus == .untracked
-        case .batteryLow:       return (state.battery ?? 100) < DesignTokens.Threshold.lowBattery
+        case .batteryLow:       return DesignTokens.Threshold.isLowBattery(state.battery ?? 100)
         case .weakSignal:       return (state.linkQuality ?? 999) < DesignTokens.Threshold.weakSignal
         case .interviewing:     return device.isInterviewing
         case .unsupported:      return !device.supported

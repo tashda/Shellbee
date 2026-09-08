@@ -95,7 +95,7 @@ struct HomeSnapshot: Sendable {
         }.count
         lowBatteryDevices = nonCoordinatorDevices.filter {
             guard let battery = (states[$0.friendlyName] ?? [:]).battery else { return false }
-            return battery <= DesignTokens.Threshold.lowBattery
+            return DesignTokens.Threshold.isLowBattery(battery)
         }.count
         weakSignalDevices = nonCoordinatorDevices.filter {
             guard let quality = (states[$0.friendlyName] ?? [:]).linkQuality else { return false }
