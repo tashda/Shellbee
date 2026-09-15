@@ -44,7 +44,13 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
                 )
             )
         } catch {
-            await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
+            await Self.updateMatchingActivities(
+                for: attributes,
+                state: state,
+                staleDate: staleDate,
+                relevanceScore: relevanceScore,
+                matches: matches
+            )
         }
     }
 
