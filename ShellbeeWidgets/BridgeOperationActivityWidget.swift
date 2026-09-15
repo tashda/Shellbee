@@ -6,7 +6,7 @@ struct BridgeOperationActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: BridgeOperationActivityAttributes.self) { context in
             BridgeOperationLockScreenView(context: context)
-                .activityBackgroundTint(context.state.phase.backgroundTint(for: context.attributes.operation))
+                .activityBackgroundTint(nil)
                 .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -59,24 +59,31 @@ private struct BridgeOperationLockScreenView: View {
     let context: ActivityViewContext<BridgeOperationActivityAttributes>
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            LiveActivityStatusMark(
-                symbol: context.attributes.operation.symbol(for: context.state.phase),
-                color: context.state.phase.accentColor,
-                size: DesignTokens.Size.liveActivityLockSymbol
-            )
+        LiveActivityLockScreenContent {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                LiveActivityStatusMark(
+                    symbol: context.attributes.operation.symbol(for: context.state.phase),
+                    color: context.state.phase.accentColor,
+                    size: DesignTokens.Size.liveActivityLockSymbol
+                )
 
-            LiveActivityTitleBlock(
-                title: context.attributes.operation.title,
-                subtitle: context.state.detail,
-                tertiary: context.attributes.bridgeDisplayName.isEmpty ? nil : context.attributes.bridgeDisplayName
-            )
+                LiveActivityTitleBlock(
+                    title: context.attributes.operation.title,
+                    subtitle: lockScreenDetail
+                )
 
-            Spacer(minLength: DesignTokens.Spacing.sm)
+                Spacer(minLength: DesignTokens.Spacing.sm)
 
-            BridgeOperationMetric(context: context)
+                BridgeOperationMetric(context: context)
+            }
         }
-        .padding(DesignTokens.Spacing.lg)
+    }
+
+    private var lockScreenDetail: String {
+        if context.attributes.bridgeDisplayName.isEmpty {
+            return context.state.detail
+        }
+        return "\(context.state.detail) · \(context.attributes.bridgeDisplayName)"
     }
 }
 
@@ -121,19 +128,12 @@ private extension BridgeOperationActivityAttributes.Operation {
 private extension BridgeOperationActivityAttributes.ContentState.Phase {
     var accentColor: Color {
         switch self {
-        case .active: return .blue
+        case .active: return .primary
         case .completed: return .green
         case .failed: return .red
         }
     }
 
-    func backgroundTint(for operation: BridgeOperationActivityAttributes.Operation) -> Color? {
-        switch self {
-        case .active: return operation == .touchlinkIdentify ? .orange.opacity(0.06) : .blue.opacity(0.06)
-        case .completed: return .green.opacity(0.06)
-        case .failed: return .red.opacity(0.08)
-        }
-    }
 }
 
 #Preview("Touchlink scan", as: .content, using: bridgeOperationScanPreviewAttributes) {

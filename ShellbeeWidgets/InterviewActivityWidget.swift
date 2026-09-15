@@ -6,7 +6,7 @@ struct InterviewActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: InterviewActivityAttributes.self) { context in
             InterviewLockScreenView(context: context)
-                .activityBackgroundTint(context.state.phase.backgroundTint)
+                .activityBackgroundTint(nil)
                 .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -52,26 +52,27 @@ private struct InterviewLockScreenView: View {
     let context: ActivityViewContext<InterviewActivityAttributes>
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            LiveActivityStatusMark(
-                symbol: context.state.phase.symbol,
-                color: context.state.phase.accentColor,
-                size: DesignTokens.Size.liveActivityLockSymbol
-            )
+        LiveActivityLockScreenContent {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                LiveActivityStatusMark(
+                    symbol: context.state.phase.symbol,
+                    color: context.state.phase.accentColor,
+                    size: DesignTokens.Size.liveActivityLockSymbol
+                )
 
-            LiveActivityTitleBlock(
-                title: context.attributes.deviceName,
-                subtitle: context.state.phase.label
-            )
+                LiveActivityTitleBlock(
+                    title: context.attributes.deviceName,
+                    subtitle: context.state.phase.label
+                )
 
-            Spacer(minLength: DesignTokens.Spacing.sm)
+                Spacer(minLength: DesignTokens.Spacing.sm)
 
-            if context.state.phase == .interviewing {
-                ProgressView()
-                    .controlSize(.small)
+                if context.state.phase == .interviewing {
+                    ProgressView()
+                        .controlSize(.small)
+                }
             }
         }
-        .padding(DesignTokens.Spacing.lg)
     }
 }
 
@@ -105,14 +106,6 @@ private extension InterviewActivityAttributes.ContentState.Phase {
         case .interviewing: return .orange
         case .successful: return .green
         case .failed: return .red
-        }
-    }
-
-    var backgroundTint: Color? {
-        switch self {
-        case .interviewing: return .orange.opacity(0.08)
-        case .successful: return .green.opacity(0.06)
-        case .failed: return .red.opacity(0.08)
         }
     }
 

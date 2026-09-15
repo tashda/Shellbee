@@ -10,7 +10,7 @@ struct LiveActivityStatusMark: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: size, weight: .semibold))
+            .font(.system(size: size, weight: .medium))
             .symbolRenderingMode(.hierarchical)
             .foregroundStyle(color)
             .frame(width: size, height: size)
@@ -39,12 +39,24 @@ struct LiveActivityTitleBlock: View {
 
             if let tertiary, !tertiary.isEmpty {
                 Text(tertiary)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
         }
+    }
+}
+
+/// The system supplies the Lock Screen activity surface and its outer insets.
+/// Keep content compact so the activity stays within Apple's standard height.
+struct LiveActivityLockScreenContent<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+            .padding(.horizontal, DesignTokens.Spacing.md)
+            .padding(.vertical, DesignTokens.Spacing.sm)
     }
 }
 
