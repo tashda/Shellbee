@@ -15,7 +15,12 @@ final class BridgeOperationLiveActivityCoordinator {
 
     private init() {}
 
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: ConnectionSessionController.touchlinkLiveActivityEnabledKey) as? Bool ?? true
+    }
+
     func startScan(bridgeID: UUID?, bridgeDisplayName: String) {
+        guard Self.isEnabled else { return }
         let attributes = makeAttributes(
             bridgeID: bridgeID,
             operation: .touchlinkScan,
@@ -42,6 +47,7 @@ final class BridgeOperationLiveActivityCoordinator {
     }
 
     func startIdentify(bridgeID: UUID?, bridgeDisplayName: String, deviceName: String) {
+        guard Self.isEnabled else { return }
         let attributes = makeAttributes(
             bridgeID: bridgeID,
             operation: .touchlinkIdentify,

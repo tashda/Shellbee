@@ -19,7 +19,12 @@ final class BridgeDiscoveryLiveActivityCoordinator {
 
     private init() {}
 
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: ConnectionSessionController.bridgeDiscoveryLiveActivityEnabledKey) as? Bool ?? true
+    }
+
     func start(duration: TimeInterval) {
+        guard Self.isEnabled else { return }
         expiryTask?.cancel()
         let now = Date.now
         let endsAt = now.addingTimeInterval(duration)

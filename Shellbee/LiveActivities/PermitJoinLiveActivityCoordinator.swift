@@ -18,6 +18,10 @@ final class PermitJoinLiveActivityCoordinator {
 
     private init() {}
 
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: ConnectionSessionController.permitJoinLiveActivityEnabledKey) as? Bool ?? true
+    }
+
     func sync(
         bridgeID: UUID?,
         bridgeDisplayName: String,
@@ -26,6 +30,10 @@ final class PermitJoinLiveActivityCoordinator {
         targetName: String?,
         joinedCount: Int
     ) {
+        guard Self.isEnabled else {
+            clear(bridgeID: bridgeID)
+            return
+        }
         guard isOpen,
               let endMilliseconds,
               endMilliseconds > 0,
