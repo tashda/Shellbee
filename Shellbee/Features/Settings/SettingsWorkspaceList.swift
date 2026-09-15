@@ -3,21 +3,24 @@ import SwiftUI
 struct SettingsWorkspaceList: View {
     @Environment(AppEnvironment.self) private var environment
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
+    @AppStorage(BridgeColorObserver.revisionKey) private var bridgeColorRevision: Int = 0
     @Binding var selection: SettingsWorkspaceRoute?
     @State private var editorViewModel: ConnectionViewModel?
 
-    private var activeBridgeID: UUID? {
+    private var selectedBridgeID: UUID? {
         selection?.bridgeID
-            ?? environment.registry.primaryBridgeID
-            ?? environment.history.connections.first?.id
     }
 
     var body: some View {
+        // Keep visible bridge tiles in sync after the color picker saves a
+        // change, including when this list stays mounted in a split view.
+        let _ = bridgeColorRevision
+
         List(selection: $selection) {
-            applicationSection
             bridgesSection
-            if let activeBridgeID {
-                bridgeCategorySections(bridgeID: activeBridgeID)
+            applicationSection
+            if let selectedBridgeID {
+                bridgeCategorySections(bridgeID: selectedBridgeID)
             }
         }
         // The settings content column is a Settings-style surface in its own
@@ -71,7 +74,7 @@ struct SettingsWorkspaceList: View {
                     HStack(spacing: DesignTokens.Spacing.md) {
                         FeatureIconTile(
                             symbol: "antenna.radiowaves.left.and.right",
-                            tint: .blue,
+                            tint: BridgeColor.color(for: config.id),
                             size: DesignTokens.Size.settingsIconFrame
                         )
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {

@@ -175,8 +175,14 @@ final class ConnectionViewModel {
             environment.history.add(config)
         }
         environment.history.setAutoConnect(config, autoConnect)
+        let previousColorHex = DesignTokens.Bridge.customColorHex(for: config.id)
         let selectedColor = usesAutoBridgeColor ? nil : bridgeColor
         DesignTokens.Bridge.setCustomColor(selectedColor, for: config.id)
+        if previousColorHex != DesignTokens.Bridge.customColorHex(for: config.id) {
+            Task { @MainActor in
+                BridgeColorObserver.shared.bump()
+            }
+        }
 
         editingConnection = config
         return true
