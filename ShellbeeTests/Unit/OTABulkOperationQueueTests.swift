@@ -22,6 +22,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
             sender: { topic, payload in
                 let id = payload.object?["id"]?.stringValue ?? ""
                 recorder.sends.append((topic, id))
+                return true
             },
             onCompletion: { summary in
                 recorder.summaries.append(summary)
@@ -157,6 +158,73 @@ final class OTABulkOperationQueueTests: XCTestCase {
         }
         await waitUntil { !queue.isActive }
         XCTAssertEqual(recorder.summaries.first?.succeeded, 4)
+    }
+
+    func testUpdateRetriesSendUntilTransmitted() async {
+        // Simulates a WebSocket blip: the first two send attempts fail to
+        // transmit (as if mid-reconnect), the third succeeds. The queue
+        // should retry rather than silently stalling — see #144.
+        final class FlakyRecorder {
+            var attempts = 0
+            var transmittedSends: [String] = []
+        }
+        let flaky = FlakyRecorder()
+        let sendRetryDelay = OTABulkOperationQueue.sendRetryDelay
+        let queue = OTABulkOperationQueue(
+            sender: { _, payload in
+                flaky.attempts += 1
+                guard flaky.attempts >= 3 else { return false }
+                flaky.transmittedSends.append(payload.object?["id"]?.stringValue ?? "")
+                return true
+            },
+            onCompletion: nil,
+            sleep: { duration in
+                // Fast-forward the send-retry backoff so the test doesn't
+                // actually wait; but let the per-device timeout be a no-op
+                // long sleep instead of instant, so it doesn't fire and
+                // trigger the unrelated timeout-retry path mid-test.
+                if duration == sendRetryDelay { return }
+                try await Task.sleep(for: .seconds(1_000))
+            }
+        )
+
+        queue.enqueue(["a"], kind: .update)
+        await waitUntil { flaky.transmittedSends.count == 1 }
+        XCTAssertEqual(flaky.attempts, 3, "should retry failed transmissions instead of giving up immediately")
+
+        queue.handleResponse(friendlyName: "a", success: true, kind: .update)
+        await waitUntil { !queue.isActive }
+    }
+
+    func testUpdateTimeoutRetriesOnceBeforeFailing() async {
+        // A missed completion event (socket down when Z2M published it) looks
+        // identical to a genuinely stuck device: no response before timeout.
+        // Update requests get one reissue before being marked failed — the
+        // retry succeeds here, simulating the response having arrived late.
+        let recorder = Recorder()
+        var sendCount = 0
+        let queue = OTABulkOperationQueue(
+            sender: { topic, payload in
+                sendCount += 1
+                let id = payload.object?["id"]?.stringValue ?? ""
+                recorder.sends.append((topic, id))
+                return true
+            },
+            onCompletion: { summary in recorder.summaries.append(summary) },
+            updateTimeout: .milliseconds(20),
+            sleep: { try await Task.sleep(for: $0) }
+        )
+
+        queue.enqueue(["a"], kind: .update)
+        await waitUntil { sendCount == 1 }
+
+        // Let the first attempt time out, then answer the retry.
+        await waitUntil(timeout: 2.0) { sendCount == 2 }
+        queue.handleResponse(friendlyName: "a", success: true, kind: .update)
+
+        await waitUntil(timeout: 2.0) { !queue.isActive }
+        XCTAssertEqual(recorder.summaries.first?.succeeded, 1)
+        XCTAssertEqual(recorder.summaries.first?.failed, 0)
     }
 
     func testEnqueueWhileRunningAppendsToCurrentRun() async {

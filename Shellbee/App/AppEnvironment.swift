@@ -266,6 +266,16 @@ final class AppEnvironment {
         registry.session(for: bridgeID)?.controller.send(topic: topic, payload: payload)
     }
 
+    /// Like `send(bridge:topic:payload:)`, but awaits actual transmission
+    /// and reports whether the request left the device — used by the bulk
+    /// OTA queue, which needs to distinguish "never sent" (e.g. mid-
+    /// reconnect) from a genuine lack of response from Z2M (see #144).
+    @discardableResult
+    func sendAwaitingTransmission(bridge bridgeID: UUID, topic: String, payload: JSONValue) async -> Bool {
+        guard let session = registry.session(for: bridgeID) else { return false }
+        return await session.controller.sendAwaitingTransmission(topic: topic, payload: payload)
+    }
+
     /// Multi-bridge variant of `sendBridgeOptions` — addresses a specific
     /// bridge by id rather than the focused one. Used by per-bridge Settings
     /// pages when more than one bridge is connected.
@@ -375,7 +385,7 @@ final class AppEnvironment {
         if let existing = otaQueues[bridgeID] { return existing }
         let queue = OTABulkOperationQueue(
             sender: { [weak self, bridgeID] topic, payload in
-                self?.send(bridge: bridgeID, topic: topic, payload: payload)
+                await self?.sendAwaitingTransmission(bridge: bridgeID, topic: topic, payload: payload) ?? false
             },
             onCompletion: { [weak store] summary in
                 store?.enqueueOTABulkSummary(summary)
