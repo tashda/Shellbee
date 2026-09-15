@@ -182,6 +182,24 @@ final class ConnectionSessionController {
         }
     }
 
+    /// Like `send`, but awaits actual transmission and reports whether the
+    /// request left the device. `send` is fire-and-forget and swallows a
+    /// `notConnected` failure (e.g. mid-reconnect) silently, which is fine
+    /// for one-off UI actions but hides a lost request from callers that
+    /// need to know — such as the bulk OTA queue, which would otherwise
+    /// wait out its full per-device timeout for a response that can never
+    /// arrive (see #144).
+    func sendAwaitingTransmission(topic: String, payload: JSONValue) async -> Bool {
+        let envelope = Z2MOutboundEnvelope(topic: topic, payload: payload)
+        guard let data = try? JSONEncoder().encode(envelope) else { return false }
+        do {
+            try await client.send(data)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     private func prepareForDisconnect() -> Task<Void, Never> {
         sessionTask?.cancel()
         sessionTask = nil
