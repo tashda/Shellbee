@@ -5,6 +5,9 @@ struct GenericExposeCard: View {
     let state: [String: JSONValue]
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
+    /// When true, only writable exposes are shown — used alongside SensorCard
+    /// so read-only readings (temperature, humidity, …) aren't duplicated.
+    var writableOnly: Bool = false
 
     private static let skipTypes: Set<String> = ["light", "switch", "cover", "lock", "fan", "climate"]
 
@@ -23,7 +26,7 @@ struct GenericExposeCard: View {
 
     @ViewBuilder
     var body: some View {
-        let rows = Self.rows(for: device, state: state)
+        let rows = Self.rows(for: device, state: state, writableOnly: writableOnly)
         if mode == .snapshot {
             snapshotContent(rows: rows)
         } else if !rows.isEmpty {
@@ -105,17 +108,24 @@ struct GenericExposeCard: View {
         Divider().padding(.leading, rowHorizontalPadding + rowIconWidth + DesignTokens.Spacing.md)
     }
 
-    static func rows(for device: Device, state: [String: JSONValue]) -> [ExposeRow] {
+    static func rows(for device: Device, state: [String: JSONValue], writableOnly: Bool = false) -> [ExposeRow] {
         let exposes = device.definition?.exposes ?? []
         let flat = exposes.flattenedLeaves
         return flat.compactMap { expose -> ExposeRow? in
             guard !Self.skipTypes.contains(expose.type) else { return nil }
             guard expose.isReadable || expose.isWritable else { return nil }
+            if writableOnly, !expose.isWritable { return nil }
             let prop = expose.property ?? expose.name ?? ""
             guard !prop.isEmpty else { return nil }
             guard !Self.skipProperties.contains(prop), !prop.hasPrefix("identify") else { return nil }
             return ExposeRow(expose: expose, property: prop, stateValue: state[prop])
         }
+    }
+
+    /// Whether this device has any writable exposes worth showing alongside
+    /// (or instead of) a read-only SensorCard.
+    static func hasWritableRows(device: Device, state: [String: JSONValue]) -> Bool {
+        !rows(for: device, state: state, writableOnly: true).isEmpty
     }
 }
 
