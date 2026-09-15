@@ -64,6 +64,7 @@ struct PhilipsHueResetSheet: View {
                 }
             }
         }
+        .forceSoftTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }

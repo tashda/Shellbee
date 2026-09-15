@@ -74,6 +74,7 @@ struct MainTabView: View {
                         NavigationStack {
                             LogsView(searchFocusRequest: searchFocusRequest)
                         }
+                        .forceSoftTopScrollEdgeEffect()
                     }
                     Tab("Network Map", systemImage: AppTab.networkMap.systemImage, value: AppTab.networkMap) {
                         NetworkMapView()
@@ -99,6 +100,7 @@ struct MainTabView: View {
                     NavigationStack {
                         LogsView(searchFocusRequest: searchFocusRequest)
                     }
+                    .forceSoftTopScrollEdgeEffect()
                     .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
                     .tag(AppTab.logs)
                     NetworkMapView()

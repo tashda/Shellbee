@@ -31,6 +31,7 @@ struct FeatureDetailSheet<Content: View>: View {
                 }
             }
         }
+        .forceSoftTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

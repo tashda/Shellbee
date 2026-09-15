@@ -38,6 +38,7 @@ struct SettingsWorkspaceList: View {
             NavigationStack {
                 ConnectionEditorView(viewModel: viewModel, mode: .save)
             }
+            .forceSoftTopScrollEdgeEffect()
         }
         .onChange(of: availableBridgeIDs) { _, ids in
             selection = SettingsWorkspaceRoute.reconciled(selection, availableBridgeIDs: ids)

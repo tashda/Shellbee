@@ -54,6 +54,7 @@ struct RemoveGroupSheet: View {
                 .padding(.vertical, DesignTokens.Spacing.md)
             }
         }
+        .forceSoftTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }

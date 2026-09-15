@@ -199,4 +199,5 @@ private struct TouchlinkGuideSectionCard<Content: View>: View {
         TouchlinkGuideView(bridgeID: nil)
             .environment(AppEnvironment())
     }
+    .forceSoftTopScrollEdgeEffect()
 }

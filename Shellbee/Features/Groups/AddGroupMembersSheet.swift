@@ -67,6 +67,7 @@ struct AddGroupMembersSheet: View {
                 }
             }
         }
+        .forceSoftTopScrollEdgeEffect()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }

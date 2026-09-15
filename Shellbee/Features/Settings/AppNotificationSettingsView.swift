@@ -118,4 +118,5 @@ struct AppNotificationSettingsView: View {
         AppNotificationSettingsView()
             .environment(AppEnvironment())
     }
+    .forceSoftTopScrollEdgeEffect()
 }

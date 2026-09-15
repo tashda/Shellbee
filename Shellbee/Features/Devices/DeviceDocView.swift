@@ -52,6 +52,7 @@ struct DeviceDocView: View {
                         }
                     }
                 }
+                .forceSoftTopScrollEdgeEffect()
             }
         }
     }
@@ -127,4 +128,5 @@ struct DeviceDocView: View {
         DeviceDocView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
+    .forceSoftTopScrollEdgeEffect()
 }

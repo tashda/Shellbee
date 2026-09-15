@@ -310,4 +310,5 @@ struct DeviceListRow: View {
             )
         }
     }
+    .forceSoftTopScrollEdgeEffect()
 }
