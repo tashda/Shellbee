@@ -149,6 +149,7 @@
 				Features/Bridge/TouchlinkGuideView.swift,
 				Features/Bridge/TouchlinkView.swift,
 				Features/CommandPalette/CommandPaletteView.swift,
+				Features/Connection/ConnectionEditorDraft.swift,
 				Features/Connection/ConnectionEditorView.swift,
 				Features/Connection/ConnectionFormSections.swift,
 				Features/Connection/ConnectionOverviewView.swift,
@@ -199,7 +200,6 @@
 				Features/Groups/GroupScenesSection.swift,
 				Features/Groups/GroupSettingsView.swift,
 				Features/Groups/GroupsWorkspaceState.swift,
-				Features/Groups/GroupWorkspaceSidebarSection.swift,
 				Features/Groups/RemoveGroupSheet.swift,
 				Features/Groups/RenameGroupSheet.swift,
 				Features/Home/HomeAddCardsSection.swift,
@@ -239,10 +239,12 @@
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
 				Features/NetworkMap/NetworkMapCanvasView.swift,
+				Features/NetworkMap/NetworkMapDeviceQuickLookSheet.swift,
 				Features/NetworkMap/NetworkMapFilter.swift,
-				Features/NetworkMap/NetworkMapFilterBar.swift,
 				Features/NetworkMap/NetworkMapLayoutEngine.swift,
 				Features/NetworkMap/NetworkMapView.swift,
+				Features/NetworkMap/NetworkMapWorkspaceFilters.swift,
+				Features/NetworkMap/NetworkMapZoomController.swift,
 				Features/Notifications/FastTrackBanner.swift,
 				Features/Notifications/InAppNotificationBanner.swift,
 				Features/Notifications/InAppNotificationOverlay.swift,
@@ -319,7 +321,6 @@
 				Shared/Components/Doc/PairingGuideExperienceView.swift,
 				Shared/Components/Doc/PairingSectionView.swift,
 				Shared/Components/FeatureGroupDetailView.swift,
-				Shared/Components/FilterChip.swift,
 				Shared/Components/MemberAvatarStack.swift,
 				Shared/Components/OpenInNewWindowButton.swift,
 				Shared/Components/OpenWindowMenu.swift,
@@ -568,7 +569,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2640;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					0A9D450C2F96077A00DF6DF5 = {
 						CreatedOnToolsVersion = 26.4.1;
@@ -798,6 +799,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -856,6 +858,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};

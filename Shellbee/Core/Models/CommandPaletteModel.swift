@@ -58,12 +58,16 @@ struct CommandPaletteModel {
     init(
         bridges: [CommandPaletteBridge],
         devices: [BridgeBoundDevice],
-        groups: [BridgeBoundGroup]
+        groups: [BridgeBoundGroup],
+        includesNetworkMap: Bool = false
     ) {
-        var result = Self.navigationItems
+        var result = Self.navigationItems.filter { includesNetworkMap || $0.action != .navigate(.networkMap) }
         result += Self.deviceItems(devices, bridges: bridges)
         result += Self.groupItems(groups, bridges: bridges)
         result += Self.bridgeItems(bridges)
+        if !includesNetworkMap {
+            result = result.filter { $0.category != .networkMap }
+        }
         items = result
     }
 

@@ -37,21 +37,6 @@ extension View {
         }
     }
 
-    /// iOS 26 introduced `scrollEdgeEffectStyle(_:for:)` with an `.auto` default
-    /// that picked `.soft` (fade & blur). iOS 27's SDK silently changed what
-    /// `.auto` resolves to for the top edge, defaulting to `.hard` (flat,
-    /// opaque) instead — a look Shellbee's toolbars were never designed for.
-    /// This forces the old `.soft` behavior back for the top scroll edge only;
-    /// bottom edges (tab bars) are left on the system default.
-    @ViewBuilder
-    func forceSoftTopScrollEdgeEffect() -> some View {
-        if #available(iOS 26.0, *) {
-            self.scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            self
-        }
-    }
-
     /// `.symbolEffect(.bounce)` (no value) needs iOS 18 because BounceSymbolEffect
     /// only conforms to IndefiniteSymbolEffect there. iOS 17 has no equivalent
     /// without an external `value:` trigger, so the effect is dropped on 17.

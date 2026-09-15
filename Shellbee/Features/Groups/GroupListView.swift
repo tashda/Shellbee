@@ -25,6 +25,8 @@ struct GroupListView: View {
     @State private var showAddGroup = false
     @State private var isSearchPresented = false
     @State private var autoOpenedGroupRoute: GroupRoute?
+    @State private var dropAddition: PendingGroupAddition?
+    @State private var dropFeedback: DropFeedback?
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
@@ -58,6 +60,64 @@ struct GroupListView: View {
                 viewModel.removeGroup(bound.group, force: force, environment: environment, bridgeID: bound.bridgeID)
             }
         }
+        .alert(item: $dropAddition) { addition in
+            Alert(
+                title: Text("Add to \(addition.groupName)?"),
+                message: Text("Add \(addition.deviceName) to this Zigbee2MQTT group?"),
+                primaryButton: .default(Text("Add Member")) {
+                    environment.send(
+                        bridge: addition.request.bridgeID,
+                        topic: addition.request.topic,
+                        payload: addition.request.payload
+                    )
+                    Haptics.impact(.medium)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .alert(item: $dropFeedback) { feedback in
+            Alert(
+                title: Text(feedback.title),
+                message: Text(feedback.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+    }
+
+    private func handleDrop(_ payload: DeviceTransferPayload, bridgeID: UUID, group: Group) -> Bool {
+        let devices = environment.registry.session(for: bridgeID)?.store.devices ?? []
+        switch GroupDeviceDropPolicy.evaluate(
+            payload,
+            targetGroup: group,
+            targetBridgeID: bridgeID,
+            availableDevices: devices
+        ) {
+        case .request(let request, let deviceName):
+            dropAddition = PendingGroupAddition(request: request, deviceName: deviceName, groupName: group.friendlyName)
+            return true
+        case .alreadyMember(let deviceName):
+            dropFeedback = DropFeedback(
+                title: "Already a Member",
+                message: "\(deviceName) already belongs to \(group.friendlyName)."
+            )
+            return false
+        case .rejected(let reason):
+            dropFeedback = DropFeedback(title: "Cannot Add Device", message: reason)
+            return false
+        }
+    }
+
+    private struct PendingGroupAddition: Identifiable {
+        let id = UUID()
+        let request: GroupMemberAddRequest
+        let deviceName: String
+        let groupName: String
+    }
+
+    private struct DropFeedback: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
     }
 
     @ViewBuilder
@@ -76,7 +136,8 @@ struct GroupListView: View {
                         memberDevices: mergedMembers(for: item),
                         bridgeID: item.bridgeID,
                         onRename: { groupToRename = item },
-                        onRemove: { groupToRemove = item }
+                        onRemove: { groupToRemove = item },
+                        onDropDevice: { handleDrop($0, bridgeID: item.bridgeID, group: item.group) }
                     )
                 }
             } else if let bridgeID = singleBridgeID,
@@ -88,7 +149,8 @@ struct GroupListView: View {
                         memberDevices: memberDevices(for: group, store: session.store),
                         bridgeID: bridgeID,
                         onRename: { groupToRename = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
-                        onRemove: { groupToRemove = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) }
+                        onRemove: { groupToRemove = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
+                        onDropDevice: { handleDrop($0, bridgeID: bridgeID, group: group) }
                     )
                 }
             }

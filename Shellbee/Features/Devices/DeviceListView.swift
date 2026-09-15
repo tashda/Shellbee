@@ -153,6 +153,10 @@ struct DeviceListView: View {
             }
         }
         .onAppear {
+            if let bridgeID = sceneNavigation.pendingDeviceBridgeID {
+                viewModel.bridgeFilter = bridgeID
+                sceneNavigation.pendingDeviceBridgeID = nil
+            }
             if let filter = sceneNavigation.pendingDeviceFilter {
                 navigationPath = NavigationPath()
                 viewModel.applyQuickFilter(filter)
@@ -168,6 +172,11 @@ struct DeviceListView: View {
             navigationPath = NavigationPath()
             viewModel.applyQuickFilter(filter)
             sceneNavigation.pendingDeviceFilter = nil
+        }
+        .onChange(of: sceneNavigation.pendingDeviceBridgeID) { _, bridgeID in
+            guard let bridgeID else { return }
+            viewModel.bridgeFilter = bridgeID
+            sceneNavigation.pendingDeviceBridgeID = nil
         }
         .onChange(of: sceneNavigation.pendingDeviceNavigation) { _, newRoute in
             guard let route = newRoute else { return }

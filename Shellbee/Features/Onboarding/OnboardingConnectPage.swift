@@ -21,7 +21,6 @@ struct OnboardingConnectPage: View {
                     ConnectionHistorySection(viewModel: viewModel)
                     ConnectionDiscoverySection(viewModel: viewModel)
                 }
-                .iPadReadableWidth()
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {

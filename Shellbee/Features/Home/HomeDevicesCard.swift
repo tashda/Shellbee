@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeDevicesCard: View {
     let snapshot: HomeSnapshot
+    var bridgeName: String? = nil
     let onTap: () -> Void
     let onFilter: (DeviceQuickFilter) -> Void
 
@@ -16,7 +17,7 @@ struct HomeDevicesCard: View {
     var body: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                HomeCardTitle(symbol: "sensor.tag.radiowaves.forward.fill", title: "Devices", tint: .orange)
+                HomeCardTitle(symbol: "sensor.tag.radiowaves.forward.fill", title: cardTitle, tint: .orange)
                 statsRow
                 if hasAlerts {
                     HomeCardAlertList { alertRows }
@@ -25,6 +26,10 @@ struct HomeDevicesCard: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .gesture(TapGesture().onEnded(onTap), including: .gesture)
+    }
+
+    private var cardTitle: String {
+        bridgeName.map { "Devices · \($0)" } ?? "Devices"
     }
 
     private var statsRow: some View {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeMeshCard: View {
     let snapshot: HomeSnapshot
+    var bridgeName: String? = nil
     let onTap: () -> Void
     let onFilter: (DeviceQuickFilter) -> Void
 
@@ -12,7 +13,7 @@ struct HomeMeshCard: View {
     var body: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                HomeCardTitle(symbol: "point.3.connected.trianglepath.dotted", title: "Mesh", tint: .indigo)
+                HomeCardTitle(symbol: "point.3.connected.trianglepath.dotted", title: cardTitle, tint: .indigo)
                 statsRow
                 if hasAlerts {
                     HomeCardAlertList { alertRows }
@@ -21,6 +22,10 @@ struct HomeMeshCard: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .gesture(TapGesture().onEnded(onTap), including: .gesture)
+    }
+
+    private var cardTitle: String {
+        bridgeName.map { "Mesh · \($0)" } ?? "Mesh"
     }
 
     private var statsRow: some View {

@@ -8,6 +8,7 @@ final class SceneNavigationState {
     var selectedTab: AppTab
     var selectedBridgeID: UUID?
     var pendingDeviceFilter: DeviceQuickFilter?
+    var pendingDeviceBridgeID: UUID?
     var pendingLogSheet: LogSheetRequest?
     var pendingDeviceNavigation: DeviceRoute?
     var pendingGroupNavigation: GroupRoute?

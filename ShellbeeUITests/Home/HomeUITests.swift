@@ -127,6 +127,22 @@ final class HomeUITests: ShellbeeUITestCase {
         )
     }
 
+    // Behavior: Network Map is iPad-only (see MainTabView / MeshDetailView),
+    // so the Mesh detail screen on iPhone should not offer a way to open it.
+    func testMeshDetailHasNoNetworkMapRowOnIPhone() {
+        let mesh = app.staticTexts["Mesh"].firstMatch
+        XCTAssertTrue(mesh.waitForExistence(timeout: 10), "Mesh card not rendered")
+        mesh.tap()
+        XCTAssertTrue(
+            app.navigationBars["Mesh"].firstMatch.waitForExistence(timeout: 5),
+            "Mesh card should push MeshDetailView"
+        )
+        XCTAssertFalse(
+            app.buttons["Network Map"].firstMatch.exists,
+            "Network Map should not be reachable from Mesh detail on iPhone"
+        )
+    }
+
     func testRestartAlertAppears() {
         let restartBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Restart'")).firstMatch
         guard restartBtn.waitForExistence(timeout: 5) else { return }

@@ -13,6 +13,16 @@ import SwiftUI
 /// `Logs` and `Device Library` are sidebar-only entries; the iPhone tab
 /// bar declares its four tabs explicitly and never iterates
 /// `AppTab.allCases`.
+///
+/// None of the nested `NavigationStack`s below call
+/// `forceSoftTopScrollEdgeEffect()` themselves — `RootView` already applies
+/// it once at the app root, and it cascades through this view's plain
+/// (non-modal) hierarchy. Re-applying it per-stack here doesn't change the
+/// resolved style, but the doubled-up scroll-edge region it creates right at
+/// the sidebar/content column seam is what caused the system's automatic
+/// sidebar-toggle button to render with a stray hairline on hover. Only
+/// content presented across a `.sheet`/`.fullScreenCover` boundary needs its
+/// own call, since that's where the environment cascade actually breaks.
 struct MainSplitView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
@@ -30,6 +40,8 @@ struct MainSplitView: View {
     @State private var logsWorkspace = LogsWorkspaceState()
     @State private var groupsWorkspace = GroupsWorkspaceState()
     @State private var didApplyInitialDestination = false
+    @State private var networkMapFilters: Set<NetworkMapFilter> = []
+    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
 
     init(initialDestination: ShellbeeWindowDestination = .home) {
         self.initialDestination = initialDestination
@@ -42,8 +54,8 @@ struct MainSplitView: View {
     private func usesThreeColumns(wideIPadLayout: Bool) -> Bool {
         guard wideIPadLayout else { return false }
         switch selection ?? .home {
-        case .devices, .groups, .logs, .networkMap, .settings: return true
-        case .home: return false
+        case .devices, .groups, .logs, .settings: return true
+        case .home, .networkMap: return false
         }
     }
 
@@ -91,12 +103,14 @@ struct MainSplitView: View {
         .onChange(of: logsWorkspace.mode) { _, _ in
             selectedLogsPaneRoute = nil
         }
+        .onChange(of: developerModeEnabled) { _, enabled in
+            if !enabled, selection == .networkMap { selection = .home }
+        }
         .onChange(of: environment.allGroups) { _, groups in
-            groupsWorkspace.reconcile(groups: groups, devices: environment.allDevices)
+            groupsWorkspace.reconcile(groups: groups)
             applyInitialDestinationIfPossible()
         }
-        .onChange(of: environment.allDevices) { _, devices in
-            groupsWorkspace.reconcile(groups: environment.allGroups, devices: devices)
+        .onChange(of: environment.allDevices) { _, _ in
             applyInitialDestinationIfPossible()
         }
         .onChange(of: environment.allLogEntries) { _, _ in
@@ -175,21 +189,16 @@ struct MainSplitView: View {
             if selection == .logs {
                 ActivityWorkspaceFilters(workspace: logsWorkspace)
             }
-            if selection == .groups {
-                GroupWorkspaceSidebarSection(workspace: groupsWorkspace)
+            if selection == .networkMap {
+                NetworkMapWorkspaceFilters(filters: $networkMapFilters)
             }
         }
         .listStyle(.sidebar)
-        .toolbar {
-            if selection == .groups {
-                ToolbarItem(placement: .topBarTrailing) {
-                    EditButton()
-                }
-            }
-        }
     }
 
-    private var sidebarTabs: [AppTab] { AppTab.allCases }
+    private var sidebarTabs: [AppTab] {
+        AppTab.allCases.filter { $0 != .networkMap || developerModeEnabled }
+    }
 
     private func sidebarRow(for tab: AppTab) -> some View {
         Label(tab.title, systemImage: tab.systemImage)
@@ -215,7 +224,6 @@ struct MainSplitView: View {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
             }
-            .forceSoftTopScrollEdgeEffect()
         case .groups:
             NavigationStack {
                 GroupListView(
@@ -226,8 +234,10 @@ struct MainSplitView: View {
                 .navigationDestination(item: groupSelection) { route in
                     GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                 }
+                .navigationDestination(for: DeviceRoute.self) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
             }
-            .forceSoftTopScrollEdgeEffect()
         case .logs:
             NavigationStack {
                 LogsView(
@@ -239,18 +249,17 @@ struct MainSplitView: View {
                     LogsPaneDestinationView(route: route)
                 }
             }
-            .forceSoftTopScrollEdgeEffect()
         case .networkMap:
             NavigationStack {
                 NetworkMapView(
                     embedInNavigationStack: false,
-                    selection: $selectedNetworkDeviceRoute
+                    selection: $selectedNetworkDeviceRoute,
+                    filters: $networkMapFilters
                 )
                 .navigationDestination(item: $selectedNetworkDeviceRoute) { route in
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
             }
-            .forceSoftTopScrollEdgeEffect()
         case .settings:
             NavigationStack {
                 SettingsWorkspaceList(selection: $selectedSettingsRoute)
@@ -258,7 +267,6 @@ struct MainSplitView: View {
                         SettingsWorkspaceDestinationView(route: route)
                     }
             }
-            .forceSoftTopScrollEdgeEffect()
         }
     }
 
@@ -273,23 +281,11 @@ struct MainSplitView: View {
                 viewModel: deviceListViewModel
             )
         case .groups:
-            if let route = groupsWorkspace.selectedGroup {
-                NavigationStack {
-                    GroupDetailView(
-                        bridgeID: route.bridgeID,
-                        group: route.group,
-                        memberSelection: groupMemberSelection
-                    )
-                }
-                .forceSoftTopScrollEdgeEffect()
-                .id(route)
-            } else {
-                ContentUnavailableView(
-                    "Select a Group",
-                    systemImage: "rectangle.3.group.fill",
-                    description: Text("Pick a group from the sidebar to view its controls, members, and scenes.")
-                )
-            }
+            GroupListView(
+                embedInNavigationStack: false,
+                selection: groupSelection,
+                searchFocusRequest: searchFocusRequest
+            )
         case .logs:
             LogsView(
                 selection: $selectedLogsPaneRoute,
@@ -316,7 +312,6 @@ struct MainSplitView: View {
                 NavigationStack {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
-                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -326,23 +321,19 @@ struct MainSplitView: View {
                 )
             }
         case .groups:
-            if let route = groupsWorkspace.selectedMember {
+            if let route = groupsWorkspace.selectedGroup {
                 NavigationStack {
-                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                        .navigationDestination(for: DeviceRoute.self) { route in
+                            DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                        }
                 }
-                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
-                    groupsWorkspace.selectedGroup == nil ? "Select a Group" : "Select a Member",
-                    systemImage: groupsWorkspace.selectedGroup == nil
-                        ? "rectangle.3.group.fill"
-                        : "sensor.tag.radiowaves.forward.fill",
-                    description: Text(
-                        groupsWorkspace.selectedGroup == nil
-                            ? "Pick a group from the sidebar to begin."
-                            : "Pick a member to view its device details."
-                    )
+                    "Select a Group",
+                    systemImage: "rectangle.3.group.fill",
+                    description: Text("Pick a group from the list to view its controls, members, and scenes.")
                 )
             }
         case .logs:
@@ -350,7 +341,6 @@ struct MainSplitView: View {
                 NavigationStack {
                     LogsPaneDestinationView(route: route)
                 }
-                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -364,7 +354,6 @@ struct MainSplitView: View {
                 NavigationStack {
                     SettingsWorkspaceDestinationView(route: route)
                 }
-                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -378,7 +367,6 @@ struct MainSplitView: View {
                 NavigationStack {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
-                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -406,13 +394,6 @@ struct MainSplitView: View {
         )
     }
 
-    private var groupMemberSelection: Binding<DeviceRoute?> {
-        Binding(
-            get: { groupsWorkspace.selectedMember },
-            set: { groupsWorkspace.selectMember($0) }
-        )
-    }
-
     private var groupSelection: Binding<GroupRoute?> {
         Binding(
             get: { groupsWorkspace.selectedGroup },
@@ -426,7 +407,9 @@ struct MainSplitView: View {
     private func applyInitialDestinationIfPossible() {
         guard !didApplyInitialDestination else { return }
 
-        selection = initialDestination.rootSection
+        selection = initialDestination.rootSection == .networkMap && !developerModeEnabled
+            ? .home
+            : initialDestination.rootSection
         switch initialDestination {
         case .home, .section, .activity:
             break
@@ -451,6 +434,7 @@ struct MainSplitView: View {
                 selectedSettingsRoute = .bridgeOverview(bridgeID)
             }
         case .networkMap(let bridgeID):
+            guard developerModeEnabled else { return }
             if let bridgeID {
                 guard environment.registry.session(for: bridgeID) != nil else { return }
                 sceneNavigation.pendingNetworkMapBridgeID = bridgeID

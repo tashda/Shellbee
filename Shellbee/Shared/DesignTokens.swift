@@ -130,7 +130,7 @@ nonisolated enum DesignTokens {
         static let networkMapRouterNode: CGFloat = 44
         static let networkMapEndDeviceNode: CGFloat = 34
         static let networkMapInteractionTarget: CGFloat = 58
-        static let networkMapLayerHeight: CGFloat = 140
+        static let networkMapRingSpacing: CGFloat = 130
         static let networkMapMinimumHeight: CGFloat = 480
         static let networkMapEdgeWidth: CGFloat = 2
         static let networkMapSecondaryEdgeWidth: CGFloat = 1
@@ -138,7 +138,11 @@ nonisolated enum DesignTokens {
         static let networkMapWeakRingWidth: CGFloat = 3
         static let networkMapMinimumScale: CGFloat = 0.35
         static let networkMapMaximumScale: CGFloat = 3
-        static let networkMapThumbnailScale: CGFloat = 1.2
+        static let networkMapMinimumNodeSpacing: CGFloat = 88
+        static let networkMapMeshEdgeScale: CGFloat = 1.4
+        static let networkMapZoomStep: CGFloat = 1.3
+        static let networkMapQuickLookImage: CGFloat = 88
+        static let networkMapLegibleMinimumScale: CGFloat = 0.55
         // Offsets (pixel-pushing for badge alignment over a parent shape)
         static let logRowBadgeOffset: CGFloat = 3
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4

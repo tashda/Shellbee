@@ -20,7 +20,7 @@ struct SettingsWorkspaceList: View {
                 bridgeCategorySections(bridgeID: activeBridgeID)
             }
         }
-        .listStyle(.sidebar)
+        .listStyle(.plain)
         .navigationTitle("Settings")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
