@@ -222,6 +222,8 @@ device("Hallway Motion",             model="RTCGQ11LM",         ieee="0x00158d00
        type="EndDevice", power_source="Battery")
 device("Garage Motion",              model="E1525/E1745",       ieee="0x000b57fffec0b333",
        type="EndDevice", power_source="Battery")
+device("Attic Presence Sensor",      model="ZG-204ZV",          ieee="0x00158d00055ee005",
+       type="EndDevice", power_source="Battery")
 device("Back Door Contact",          model="MCCGQ11LM",         ieee="0x00158d00022bb002",
        type="EndDevice", power_source="Battery")
 device("Washing Machine Vibration",  model="DJT11LM",           ieee="0x00158d00033cc003",
