@@ -1,6 +1,15 @@
 import Foundation
 
 extension AppStore {
+    func refreshOTAActivity() {
+        OTAUpdateLiveActivityCoordinator.shared.sync(
+            with: activeOTAUpdates,
+            devices: devices,
+            bridgeID: activeBridgeID,
+            bridgeDisplayName: activeBridgeName
+        )
+    }
+
     var activeOTAUpdates: [OTAUpdateStatus] {
         otaUpdates.values.filter(\.isActive)
     }

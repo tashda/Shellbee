@@ -15,7 +15,12 @@ final class InterviewLiveActivityCoordinator {
 
     private init() {}
 
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: ConnectionSessionController.interviewLiveActivityEnabledKey) as? Bool ?? true
+    }
+
     func start(deviceName: String, ieeeAddress: String) {
+        guard Self.isEnabled else { return }
         let attributes = InterviewActivityAttributes(deviceName: deviceName, ieeeAddress: ieeeAddress)
         let state = InterviewActivityAttributes.ContentState(phase: .interviewing)
         tracked[ieeeAddress] = attributes
@@ -37,6 +42,7 @@ final class InterviewLiveActivityCoordinator {
     }
 
     func finish(deviceName: String, ieeeAddress: String, success: Bool) {
+        guard Self.isEnabled else { return }
         let attributes = InterviewActivityAttributes(deviceName: deviceName, ieeeAddress: ieeeAddress)
         let state = InterviewActivityAttributes.ContentState(phase: success ? .successful : .failed)
         let duration = success

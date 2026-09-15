@@ -50,6 +50,10 @@ final class ConnectionSessionController {
      // live activities on.
     static let maxReconnectAttemptsKey = "connectionMaxReconnectAttempts"
     static let connectionLiveActivityEnabledKey = "connectionLiveActivityEnabled"
+    static let permitJoinLiveActivityEnabledKey = "permitJoinLiveActivityEnabled"
+    static let touchlinkLiveActivityEnabledKey = "touchlinkLiveActivityEnabled"
+    static let bridgeDiscoveryLiveActivityEnabledKey = "bridgeDiscoveryLiveActivityEnabled"
+    static let interviewLiveActivityEnabledKey = "interviewLiveActivityEnabled"
     static let otaLiveActivityEnabledKey = "otaLiveActivityEnabled"
     static let otaScheduledLiveActivityEnabledKey = "otaScheduledLiveActivityEnabled"
     static let defaultMaxReconnectAttempts: Int = 3

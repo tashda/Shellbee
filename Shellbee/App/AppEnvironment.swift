@@ -138,6 +138,35 @@ final class AppEnvironment {
         }
     }
 
+    /// Reconcile already-running activities after a Live Activities setting
+    /// changes. New work is guarded by the same preferences in each
+    /// coordinator, while active pairing and OTA state can be refreshed
+    /// immediately without waiting for another bridge message.
+    func refreshLiveActivityPreferences() {
+        for session in registry.orderedSessions {
+            session.store.syncPermitJoinLiveActivity()
+            session.store.refreshOTAActivity()
+        }
+        if !ConnectionSessionController.connectionLiveActivityEnabled {
+            ConnectionLiveActivityCoordinator.shared.clearAll()
+        }
+        if !PermitJoinLiveActivityCoordinator.isEnabled {
+            PermitJoinLiveActivityCoordinator.shared.clearAll()
+        }
+        if !OTAUpdateLiveActivityCoordinator.isEnabled {
+            OTAUpdateLiveActivityCoordinator.shared.clearAll()
+        }
+        if !InterviewLiveActivityCoordinator.isEnabled {
+            InterviewLiveActivityCoordinator.shared.clearAll()
+        }
+        if !BridgeOperationLiveActivityCoordinator.isEnabled {
+            BridgeOperationLiveActivityCoordinator.shared.clearAll()
+        }
+        if !BridgeDiscoveryLiveActivityCoordinator.isEnabled {
+            BridgeDiscoveryLiveActivityCoordinator.shared.clearAll()
+        }
+    }
+
     /// Pop the next fast-track notification from whichever bridge has one.
     /// Fast-track is "show this once briefly" (e.g., "Copied").
     func popNextFastTrackNotification() -> BridgeBoundNotification? {
