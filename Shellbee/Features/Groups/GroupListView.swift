@@ -163,8 +163,15 @@ struct GroupListView: View {
             GroupDetailView(bridgeID: route.bridgeID, group: route.group)
         }
         .searchable(text: $viewModel.searchText, isPresented: $isSearchPresented, prompt: "Search")
+        .avoidHidingSearchToolbarContentIfAvailable()
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if isMergedMode {
+                    bridgeFilterMenu
+                }
+                sortMenu
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showAddGroup = true
@@ -172,12 +179,6 @@ struct GroupListView: View {
                     Image(systemName: "plus")
                 }
                 .accessibilityLabel("Add Group")
-            }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if isMergedMode {
-                    bridgeFilterMenu
-                }
-                sortMenu
             }
         }
         .refreshable {

@@ -8,7 +8,31 @@ struct DeviceWorkspaceFilters: View {
         environment.registry.orderedSessions.filter(\.isConnected)
     }
 
+    private var filterStores: [AppStore] {
+        connectedBridges
+            .filter { bridge in
+                viewModel.bridgeFilter.map { $0 == bridge.bridgeID } ?? true
+            }
+            .map(\.store)
+    }
+
+    private var availableVendors: [String] {
+        Set(filterStores.flatMap { store in
+            store.devices.compactMap { $0.definition?.vendor }
+        }).sorted()
+    }
+
     var body: some View {
+        if viewModel.hasActiveFilter {
+            Section {
+                Button {
+                    viewModel.clearFilters()
+                } label: {
+                    Label("Clear filter", systemImage: "xmark.circle")
+                }
+            }
+        }
+
         if connectedBridges.count >= 2 {
             Section("Bridge") {
                 filterButton(
@@ -17,22 +41,26 @@ struct DeviceWorkspaceFilters: View {
                     isSelected: viewModel.bridgeFilter == nil
                 ) { viewModel.bridgeFilter = nil }
                 ForEach(connectedBridges, id: \.bridgeID) { bridge in
-                    filterButton(
-                        title: bridge.displayName,
-                        systemImage: "antenna.radiowaves.left.and.right",
-                        isSelected: viewModel.bridgeFilter == bridge.bridgeID
-                    ) { viewModel.bridgeFilter = bridge.bridgeID }
+                    if viewModel.bridgeFilter == bridge.bridgeID || hasDevices(on: bridge) {
+                        filterButton(
+                            title: bridge.displayName,
+                            systemImage: "antenna.radiowaves.left.and.right",
+                            isSelected: viewModel.bridgeFilter == bridge.bridgeID
+                        ) { viewModel.bridgeFilter = bridge.bridgeID }
+                    }
                 }
             }
         }
 
         Section("Availability & Updates") {
             ForEach(DeviceStatusFilter.allCases, id: \.self) { status in
-                filterButton(
-                    title: status.rawValue,
-                    systemImage: status.systemImage,
-                    isSelected: viewModel.statusFilter == status
-                ) { viewModel.statusFilter = status }
+                if status == .all || viewModel.statusFilter == status || hasDevices(for: status) {
+                    filterButton(
+                        title: status.rawValue,
+                        systemImage: status.systemImage,
+                        isSelected: viewModel.statusFilter == status
+                    ) { viewModel.statusFilter = status }
+                }
             }
         }
 
@@ -43,11 +71,32 @@ struct DeviceWorkspaceFilters: View {
                 isSelected: viewModel.categoryFilter == nil
             ) { viewModel.categoryFilter = nil }
             ForEach(Device.Category.allCases, id: \.self) { category in
+                if viewModel.categoryFilter == category || hasDevices(for: category) {
+                    filterButton(
+                        title: category.label,
+                        systemImage: category.systemImage,
+                        isSelected: viewModel.categoryFilter == category
+                    ) { viewModel.categoryFilter = category }
+                }
+            }
+        }
+
+        if !availableVendors.isEmpty {
+            Section("Manufacturer") {
                 filterButton(
-                    title: category.label,
-                    systemImage: category.systemImage,
-                    isSelected: viewModel.categoryFilter == category
-                ) { viewModel.categoryFilter = category }
+                    title: "All Manufacturers",
+                    systemImage: "building.2",
+                    isSelected: viewModel.vendorFilter == nil
+                ) { viewModel.vendorFilter = nil }
+                ForEach(availableVendors, id: \.self) { vendor in
+                    if viewModel.vendorFilter == vendor || hasDevices(for: vendor) {
+                        filterButton(
+                            title: vendor,
+                            systemImage: "building.2",
+                            isSelected: viewModel.vendorFilter == vendor
+                        ) { viewModel.vendorFilter = vendor }
+                    }
+                }
             }
         }
 
@@ -57,33 +106,45 @@ struct DeviceWorkspaceFilters: View {
                 systemImage: "point.3.connected.trianglepath.dotted",
                 isSelected: viewModel.typeFilter == nil
             ) { viewModel.typeFilter = nil }
-            filterButton(
-                title: "Routers",
-                systemImage: "router",
-                isSelected: viewModel.typeFilter == .router
-            ) { viewModel.typeFilter = .router }
-            filterButton(
-                title: "End Devices",
-                systemImage: "leaf",
-                isSelected: viewModel.typeFilter == .endDevice
-            ) { viewModel.typeFilter = .endDevice }
+            if viewModel.typeFilter == .router || hasDevices(for: .router) {
+                filterButton(
+                    title: "Routers",
+                    systemImage: "router",
+                    isSelected: viewModel.typeFilter == .router
+                ) { viewModel.typeFilter = .router }
+            }
+            if viewModel.typeFilter == .endDevice || hasDevices(for: .endDevice) {
+                filterButton(
+                    title: "End Devices",
+                    systemImage: "leaf",
+                    isSelected: viewModel.typeFilter == .endDevice
+                ) { viewModel.typeFilter = .endDevice }
+            }
         }
 
         Section("Recency") {
             Toggle("Show Recently Added", isOn: $viewModel.showRecents)
         }
+    }
 
-        if viewModel.hasActiveFilter {
-            Section {
-                Button("Clear Filters", role: .destructive) {
-                    viewModel.statusFilter = .all
-                    viewModel.categoryFilter = nil
-                    viewModel.vendorFilter = nil
-                    viewModel.typeFilter = nil
-                    viewModel.bridgeFilter = nil
-                }
-            }
-        }
+    private func hasDevices(for status: DeviceStatusFilter) -> Bool {
+        filterStores.contains { viewModel.statusCount(for: status, store: $0) > 0 }
+    }
+
+    private func hasDevices(for category: Device.Category) -> Bool {
+        filterStores.contains { viewModel.typeCount(for: category, store: $0) > 0 }
+    }
+
+    private func hasDevices(for type: DeviceType) -> Bool {
+        filterStores.contains { viewModel.roleCount(for: type, store: $0) > 0 }
+    }
+
+    private func hasDevices(for vendor: String) -> Bool {
+        filterStores.contains { viewModel.vendorCount(for: vendor, store: $0) > 0 }
+    }
+
+    private func hasDevices(on bridge: BridgeSession) -> Bool {
+        !viewModel.filteredDevices(store: bridge.store).isEmpty
     }
 
     private func filterButton(

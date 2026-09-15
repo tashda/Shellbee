@@ -128,8 +128,21 @@ struct DeviceListView: View {
         .navigationBarTitleDisplayMode(.large)
         .modifier(DeviceListNavigationDestination(isEnabled: embedInNavigationStack))
         .searchable(text: $viewModel.searchText, isPresented: $isSearchPresented, prompt: "Search")
+        .avoidHidingSearchToolbarContentIfAvailable()
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if !AdaptiveLayout.isPad, let toolbarID = toolbarBridgeID {
+                    DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
+                }
+                if let toolbarID = toolbarBridgeID {
+                    DeviceFirmwareMenu(bridgeID: toolbarID)
+                }
+                if horizontalSizeClass == .regular {
+                    presentationModeMenu
+                }
+                sortMenu
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showPairingWizard = true
@@ -137,14 +150,6 @@ struct DeviceListView: View {
                     Image(systemName: "plus")
                 }
                 .accessibilityLabel("Add Device")
-                if let toolbarID = toolbarBridgeID {
-                    DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
-                    DeviceFirmwareMenu(bridgeID: toolbarID)
-                }
-                if horizontalSizeClass == .regular {
-                    presentationModeMenu
-                }
-                sortMenu
             }
         }
         .refreshable {

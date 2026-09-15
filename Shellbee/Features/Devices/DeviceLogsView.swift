@@ -42,6 +42,7 @@ struct DeviceLogsView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search logs")
+        .avoidHidingSearchToolbarContentIfAvailable()
         .navigationTitle("Logs")
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -9,6 +9,20 @@ struct ActivityWorkspaceFilters: View {
     }
 
     var body: some View {
+        if activeHasFilters {
+            Section {
+                Button {
+                    if workspace.mode == .activity {
+                        workspace.activity.clearAllFilters()
+                    } else {
+                        workspace.bridge.clearAllFilters()
+                    }
+                } label: {
+                    Label("Clear filter", systemImage: "xmark.circle")
+                }
+            }
+        }
+
         Section("View") {
             Picker("Mode", selection: $workspace.mode) {
                 ForEach(LogsView.LogMode.allCases, id: \.self) { mode in
@@ -33,17 +47,6 @@ struct ActivityWorkspaceFilters: View {
             }
         }
 
-        if activeHasFilters {
-            Section {
-                Button("Clear Filters", role: .destructive) {
-                    if workspace.mode == .activity {
-                        workspace.activity.clearAllFilters()
-                    } else {
-                        workspace.bridge.clearAllFilters()
-                    }
-                }
-            }
-        }
     }
 
     private var bridgeSection: some View {

@@ -61,6 +61,7 @@ struct LogsView: View {
             .navigationTitle("Logs")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: searchBinding, isPresented: $isSearchPresented, prompt: searchPrompt)
+            .avoidHidingSearchToolbarContentIfAvailable()
             .onAppear { applyInitialFilter(autoOpenSingle: true) }
             .navigationDestination(item: $autoOpenedEntry) { route in
                 LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
@@ -68,7 +69,7 @@ struct LogsView: View {
             .minimizeSearchToolbarIfAvailable()
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     OpenInNewWindowButton(destination: .activity)
                 }
                 ToolbarItem(placement: .principal) {
@@ -78,16 +79,18 @@ struct LogsView: View {
                     .pickerStyle(.segmented)
                     .fixedSize()
                 }
-                if workspace.mode == .activity {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        LogFilterMenu(viewModel: workspace.activity)
-                    }
-                } else {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        BridgeLevelFilterMenu(viewModel: workspace.bridge)
+                if !AdaptiveLayout.isPad {
+                    if workspace.mode == .activity {
+                        ToolbarItemGroup(placement: .topBarTrailing) {
+                            LogFilterMenu(viewModel: workspace.activity)
+                        }
+                    } else {
+                        ToolbarItemGroup(placement: .topBarTrailing) {
+                            BridgeLevelFilterMenu(viewModel: workspace.bridge)
+                        }
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     Button(role: .destructive) {
                         // Phase 1 multi-bridge: always clear across every
                         // connected session — the activity tab merges by
