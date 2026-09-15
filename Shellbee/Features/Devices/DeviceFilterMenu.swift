@@ -95,11 +95,7 @@ struct DeviceFilterMenu: View {
             if viewModel.hasActiveFilter {
                 Divider()
                 Button(role: .destructive) {
-                    viewModel.statusFilter = .all
-                    viewModel.categoryFilter = nil
-                    viewModel.vendorFilter = nil
-                    viewModel.typeFilter = nil
-                    viewModel.bridgeFilter = nil
+                    viewModel.clearFilters()
                     refreshSnapshot()
                 } label: {
                     Label("Clear Filters", systemImage: "xmark.circle")
