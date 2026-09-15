@@ -6,101 +6,76 @@ struct InterviewActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: InterviewActivityAttributes.self) { context in
             InterviewLockScreenView(context: context)
+                .activityBackgroundTint(context.state.phase.backgroundTint)
                 .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: context.state.phase.symbol)
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(context.state.phase.accentColor)
-                        .symbolEffect(
-                            .variableColor.iterative,
-                            options: .repeating,
-                            isActive: context.state.phase == .interviewing
-                        )
-                        .padding(.leading, DesignTokens.Spacing.xs)
+                    LiveActivityStatusMark(
+                        symbol: context.state.phase.symbol,
+                        color: context.state.phase.accentColor
+                    )
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    InterviewProgressBadge(state: context.state)
-                        .padding(.trailing, DesignTokens.Spacing.xs)
+                    InterviewExpandedMetric(state: context.state)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(context.attributes.deviceName)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                        Text(context.state.phase.label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
+                    LiveActivityTitleBlock(
+                        title: context.attributes.deviceName,
+                        subtitle: context.state.phase.label,
+                        titleFont: .subheadline.weight(.semibold)
+                    )
                 }
             } compactLeading: {
-                Image(systemName: context.state.phase.symbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(context.state.phase.accentColor)
-                    .symbolEffect(
-                        .variableColor.iterative,
-                        options: .repeating,
-                        isActive: context.state.phase == .interviewing
-                    )
+                LiveActivityStatusMark(
+                    symbol: context.state.phase.symbol,
+                    color: context.state.phase.accentColor,
+                    size: DesignTokens.Size.liveActivityCompactSymbol
+                )
             } compactTrailing: {
                 if context.state.phase == .interviewing {
                     ProgressView()
                         .controlSize(.mini)
                 }
             } minimal: {
-                Image(systemName: context.state.phase.symbol)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(context.state.phase.accentColor)
-                    .symbolEffect(
-                        .variableColor.iterative,
-                        options: .repeating,
-                        isActive: context.state.phase == .interviewing
-                    )
+                LiveActivityStatusMark(
+                    symbol: context.state.phase.symbol,
+                    color: context.state.phase.accentColor,
+                    size: DesignTokens.Size.liveActivityMinimalSymbol
+                )
             }
         }
     }
 }
-
-// MARK: - Lock Screen
 
 private struct InterviewLockScreenView: View {
     let context: ActivityViewContext<InterviewActivityAttributes>
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: context.state.phase.lockSymbol)
-                .font(.system(size: 44))
-                .foregroundStyle(context.state.phase.accentColor)
-                .symbolEffect(
-                    .variableColor.iterative,
-                    options: .repeating,
-                    isActive: context.state.phase == .interviewing
-                )
+            LiveActivityStatusMark(
+                symbol: context.state.phase.symbol,
+                color: context.state.phase.accentColor,
+                size: DesignTokens.Size.liveActivityLockSymbol
+            )
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(context.attributes.deviceName)
-                    .font(.headline)
-                Text(context.state.phase.label)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            LiveActivityTitleBlock(
+                title: context.attributes.deviceName,
+                subtitle: context.state.phase.label
+            )
 
-            Spacer()
+            Spacer(minLength: DesignTokens.Spacing.sm)
 
             if context.state.phase == .interviewing {
                 ProgressView()
-                    .controlSize(.regular)
+                    .controlSize(.small)
             }
         }
         .padding(DesignTokens.Spacing.lg)
     }
 }
 
-// MARK: - Expanded trailing badge
-
-private struct InterviewProgressBadge: View {
+private struct InterviewExpandedMetric: View {
     let state: InterviewActivityAttributes.ContentState
 
     var body: some View {
@@ -109,33 +84,17 @@ private struct InterviewProgressBadge: View {
             ProgressView()
                 .controlSize(.small)
         case .successful:
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 28))
-                .foregroundStyle(.green)
-                .symbolEffect(.bounce, value: state.phase)
+            LiveActivityStatusMark(symbol: "checkmark", color: state.phase.accentColor)
         case .failed:
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 28))
-                .foregroundStyle(.red)
-                .symbolEffect(.bounce, value: state.phase)
+            LiveActivityStatusMark(symbol: "xmark", color: state.phase.accentColor)
         }
     }
 }
 
-// MARK: - ContentState helpers
-
 private extension InterviewActivityAttributes.ContentState.Phase {
     var symbol: String {
         switch self {
-        case .interviewing: return "waveform.path.ecg"
-        case .successful: return "checkmark.circle.fill"
-        case .failed: return "xmark.circle.fill"
-        }
-    }
-
-    var lockSymbol: String {
-        switch self {
-        case .interviewing: return "waveform.path.ecg.rectangle.fill"
+        case .interviewing: return "antenna.radiowaves.left.and.right"
         case .successful: return "checkmark.circle.fill"
         case .failed: return "xmark.circle.fill"
         }
@@ -149,16 +108,22 @@ private extension InterviewActivityAttributes.ContentState.Phase {
         }
     }
 
+    var backgroundTint: Color? {
+        switch self {
+        case .interviewing: return .orange.opacity(0.08)
+        case .successful: return .green.opacity(0.06)
+        case .failed: return .red.opacity(0.08)
+        }
+    }
+
     var label: String {
         switch self {
         case .interviewing: return "Interviewing"
-        case .successful: return "Interview Successful"
-        case .failed: return "Interview Failed"
+        case .successful: return "Interview successful"
+        case .failed: return "Interview failed"
         }
     }
 }
-
-// MARK: - Previews
 
 private extension InterviewActivityAttributes.ContentState {
     static let interviewing = Self(phase: .interviewing)

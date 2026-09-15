@@ -10,7 +10,9 @@ import Foundation
 final class OTAUpdateLiveActivityCoordinator {
     static let shared = OTAUpdateLiveActivityCoordinator()
 
-    private let controller = LiveActivityController<OTAUpdateActivityAttributes> {
+    private let controller = LiveActivityController<OTAUpdateActivityAttributes>(
+        dismissesOtherActivities: false
+    ) {
         (existing: OTAUpdateActivityAttributes, requested: OTAUpdateActivityAttributes) in
         existing.identifier == requested.identifier
     }
@@ -75,7 +77,7 @@ final class OTAUpdateLiveActivityCoordinator {
         let alreadyVisible = visibleBridges.contains(key)
         Task { [attributes] in
             if alreadyVisible {
-                await controller.update(state: content)
+                await controller.update(attributes: attributes, state: content)
             } else {
                 await controller.present(attributes: attributes, state: content)
             }
@@ -103,9 +105,11 @@ final class OTAUpdateLiveActivityCoordinator {
 
         let key = bridgeID ?? defaultKey
         visibleBridges.remove(key)
+        let attributes = makeAttributes(bridgeID: bridgeID, bridgeDisplayName: "")
 
-        Task {
+        Task { [attributes] in
             await controller.finish(
+                attributes: attributes,
                 state: state,
                 displayFor: success
                     ? DesignTokens.Duration.liveActivitySuccess
@@ -126,8 +130,9 @@ final class OTAUpdateLiveActivityCoordinator {
             progress: nil,
             items: []
         )
-        Task {
-            await controller.cancel(with: cancelState)
+        let attributes = makeAttributes(bridgeID: bridgeID, bridgeDisplayName: "")
+        Task { [attributes] in
+            await controller.cancel(attributes: attributes, with: cancelState)
         }
     }
 
@@ -158,7 +163,7 @@ final class OTAUpdateLiveActivityCoordinator {
         OTAUpdateActivityAttributes.ContentState(
             phase: phase,
             activeCount: statuses.count,
-            headline: statuses.count == 1 ? "1 upgrade running" : "\(statuses.count) upgrades running",
+            headline: statuses.count == 1 ? "Updating" : "\(statuses.count) device updates",
             detail: detail,
             progress: aggregateProgress(for: statuses),
             items: statuses.map {
@@ -176,15 +181,15 @@ final class OTAUpdateLiveActivityCoordinator {
     private func detailText(for statuses: [OTAUpdateStatus]) -> String {
         if let updating = statuses.first(where: { $0.phase == .updating }) {
             let progressText = updating.progress.map { "\(Int($0))%" } ?? "Preparing"
-            return "\(updating.deviceName) • \(progressText)"
+            return "\(updating.deviceName) · \(progressText)"
         }
 
         if let scheduled = statuses.first(where: { $0.phase == .scheduled }) {
-            return "\(scheduled.deviceName) • Scheduled"
+            return "\(scheduled.deviceName) · Scheduled"
         }
 
         if let requested = statuses.first(where: { $0.phase == .requested }) {
-            return "\(requested.deviceName) • Starting"
+            return "\(requested.deviceName) · Starting"
         }
 
         return "Preparing upgrades"
