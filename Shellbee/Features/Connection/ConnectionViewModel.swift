@@ -68,6 +68,7 @@ final class ConnectionViewModel {
 
     private let environment: AppEnvironment
     private var editingConnection: ConnectionConfig?
+    private var discoveryTask: Task<Void, Never>?
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -77,17 +78,39 @@ final class ConnectionViewModel {
     }
 
     func startDiscovery() {
-        Task { @MainActor in
+        guard !environment.discovery.isScanning else { return }
+        discoveryTask?.cancel()
+        discoveryTask = Task { @MainActor [weak self] in
+            guard let self else { return }
             environment.discovery.start()
-            try? await Task.sleep(for: .seconds(DesignTokens.Duration.discoveryScanWindow))
-            environment.discovery.stop()
+            BridgeDiscoveryLiveActivityCoordinator.shared.start(
+                duration: DesignTokens.Duration.discoveryScanWindow
+            )
+            let deadline = Date.now.addingTimeInterval(DesignTokens.Duration.discoveryScanWindow)
+            while environment.discovery.isScanning && Date.now < deadline {
+                BridgeDiscoveryLiveActivityCoordinator.shared.update(
+                    foundCount: discoveredEndpoints.count
+                )
+                do {
+                    try await Task.sleep(for: .milliseconds(400))
+                } catch {
+                    return
+                }
+            }
+            if environment.discovery.isScanning {
+                environment.discovery.stop()
+            }
+            guard !Task.isCancelled else { return }
+            BridgeDiscoveryLiveActivityCoordinator.shared.finish(foundCount: discoveredEndpoints.count)
+            discoveryTask = nil
         }
     }
 
     func stopDiscovery() {
-        Task { @MainActor in
-            environment.discovery.stop()
-        }
+        discoveryTask?.cancel()
+        discoveryTask = nil
+        environment.discovery.stop()
+        BridgeDiscoveryLiveActivityCoordinator.shared.cancel()
     }
 
     func deleteConnection(_ config: ConnectionConfig) {

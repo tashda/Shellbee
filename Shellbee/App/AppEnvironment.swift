@@ -242,6 +242,16 @@ final class AppEnvironment {
     /// current — Z2M won't republish those until reconnect, which can take
     /// several seconds and makes the user doubt the restart actually fired.
     func restartBridge(_ bridgeID: UUID) {
+        if let config = registry.session(for: bridgeID)?.config,
+           ConnectionSessionController.connectionLiveActivityEnabled {
+            ConnectionLiveActivityCoordinator.shared.show(
+                bridge: config,
+                phase: .restarting,
+                attempt: 0,
+                maxAttempts: 0,
+                message: "Restarting"
+            )
+        }
         if let store = registry.session(for: bridgeID)?.store {
             store.bridgeHealth = nil
             store.bridgeOnline = false
@@ -291,6 +301,10 @@ final class AppEnvironment {
 
         ConnectionLiveActivityCoordinator.shared.clearAll()
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
+        InterviewLiveActivityCoordinator.shared.clearAll()
+        PermitJoinLiveActivityCoordinator.shared.clearAll()
+        BridgeOperationLiveActivityCoordinator.shared.clearAll()
+        BridgeDiscoveryLiveActivityCoordinator.shared.clearAll()
         await Task.yield()
 
         let env = ProcessInfo.processInfo.environment

@@ -342,6 +342,12 @@ nonisolated enum DesignTokens {
         static let liveActivityFailure: Double = 8
         static let liveActivityMinimumVisible: Double = 2
         static let liveActivityCancel: Double = 0.5
+        static let liveActivityConnectionStale: Double = 60
+        static let liveActivityBridgeRestart: Double = 20
+        static let liveActivityTouchlinkScan: Double = 30
+        static let liveActivityTouchlinkIdentify: Double = 20
+        static let liveActivityInterviewTimeout: Double = 300
+        static let liveActivityOTAStale: Double = 120
         static let statusPulse: Double = 1.8
         static let otaBadgeSpin: Double = 1.1
         static let pressedState: Double = 0.16

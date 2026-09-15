@@ -102,11 +102,20 @@ struct TouchlinkView: View {
 
     private func scan() {
         store.touchlinkScanInProgress = true
+        BridgeOperationLiveActivityCoordinator.shared.startScan(
+            bridgeID: bridgeID,
+            bridgeDisplayName: scope.displayName
+        )
         scope.send(topic: Z2MTopics.Request.touchlinkScan, payload: .string(""))
     }
 
     private func identify(_ device: TouchlinkDevice) {
         store.touchlinkIdentifyInProgress = true
+        BridgeOperationLiveActivityCoordinator.shared.startIdentify(
+            bridgeID: bridgeID,
+            bridgeDisplayName: scope.displayName,
+            deviceName: store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName ?? "Touchlink device"
+        )
         scope.send(
             topic: Z2MTopics.Request.touchlinkIdentify,
             payload: .object([

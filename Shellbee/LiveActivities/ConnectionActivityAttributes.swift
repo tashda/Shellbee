@@ -7,6 +7,7 @@ nonisolated struct ConnectionActivityAttributes: ActivityAttributes, Sendable {
             case connecting
             case connected
             case reconnecting
+            case restarting
             case failed
             case cancelled
         }

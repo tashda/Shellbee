@@ -22,7 +22,7 @@ struct ConnectionActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.center) {
                     LiveActivityTitleBlock(
                         title: context.attributes.bridgeDisplayName,
-                        subtitle: context.state.phase.label,
+                        subtitle: context.state.displayLabel,
                         titleFont: .subheadline.weight(.semibold)
                     )
                 }
@@ -58,7 +58,7 @@ private struct ConnectionLockScreenView: View {
 
             LiveActivityTitleBlock(
                 title: context.attributes.bridgeDisplayName,
-                subtitle: context.state.phase.label,
+                subtitle: context.state.displayLabel,
                 tertiary: context.state.attemptDescription
             )
 
@@ -114,6 +114,7 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
     var accentColor: Color {
         switch self {
         case .connecting, .reconnecting: return .orange
+        case .restarting: return .orange
         case .connected: return .green
         case .failed: return .red
         case .cancelled: return .secondary
@@ -122,7 +123,7 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
 
     var backgroundTint: Color? {
         switch self {
-        case .connecting, .reconnecting: return .orange.opacity(0.08)
+        case .connecting, .reconnecting, .restarting: return .orange.opacity(0.08)
         case .connected: return .green.opacity(0.06)
         case .failed: return .red.opacity(0.08)
         case .cancelled: return nil
@@ -134,6 +135,7 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
         case .connecting: return "Connecting"
         case .connected: return "Connected"
         case .reconnecting: return "Reconnecting"
+        case .restarting: return "Restarting"
         case .failed: return "Connection failed"
         case .cancelled: return "Cancelled"
         }
@@ -145,6 +147,7 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
         case .failed: return "xmark.circle.fill"
         case .cancelled: return "minus.circle.fill"
         case .connecting, .reconnecting: return "wifi"
+        case .restarting: return "arrow.clockwise"
         }
     }
 }
@@ -157,6 +160,10 @@ private extension ConnectionActivityAttributes.ContentState {
     var attemptDescription: String? {
         guard phase == .reconnecting else { return nil }
         return maxAttempts > 0 ? "Attempt \(attempt) of \(maxAttempts)" : "Attempt \(attempt)"
+    }
+
+    var displayLabel: String {
+        message.isEmpty ? phase.label : message
     }
 }
 
