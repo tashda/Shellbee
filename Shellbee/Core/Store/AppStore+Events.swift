@@ -48,6 +48,7 @@ extension AppStore {
                 ))
             }
             bridgeOnline = nextOnline
+            networkMapRenderRevision &+= 1
         case .devices(let list):
             // Backfill first-seen for any device we've never recorded.
             // Covers the case where a device joined while the app was closed
@@ -61,6 +62,7 @@ extension AppStore {
                 }
             }
             devices = list.map(applyingConfiguredAvailability)
+            networkMapRenderRevision &+= 1
         case .groups(let list):
             groups = list
         case .logMessage(let msg):
@@ -189,6 +191,7 @@ extension AppStore {
                     break
                 }
             }
+            networkMapRenderRevision &+= 1
         case .deviceState(let name, let state):
             let previous = deviceStates[name] ?? [:]
             // Devices: skip the empty → value transition because retained MQTT
@@ -209,6 +212,7 @@ extension AppStore {
             }
             deviceStates[name] = state
             handleOTAState(for: name, state: state)
+            networkMapRenderRevision &+= 1
         case .deviceAvailability(let name, let available):
             // Only log transitions — the first availability snapshot after
             // (re)connect would otherwise produce a flood of "X online"
@@ -225,10 +229,13 @@ extension AppStore {
                 ))
             }
             deviceAvailability[name] = available
+            networkMapRenderRevision &+= 1
         case .deviceOTAUpdateResponse(let response):
             handleOTAResponse(response)
+            networkMapRenderRevision &+= 1
         case .deviceOTACheckResponse(let response):
             handleOTACheckResponse(response)
+            networkMapRenderRevision &+= 1
         case .permitJoinChanged(let enabled, let remaining):
             // Log the transition — pairing-window state is security-relevant
             // and worth a discrete row even though `bridge/info` will
@@ -314,6 +321,7 @@ extension AppStore {
             let updatedAt = Date()
             networkTopology = topology
             networkMapLastUpdated = updatedAt
+            networkMapRenderRevision &+= 1
             if let activeBridgeID {
                 networkMapCache.save(
                     NetworkMapCacheRecord(topology: topology, updatedAt: updatedAt),

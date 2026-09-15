@@ -30,7 +30,7 @@ struct NetworkTopologyNode: Codable, Sendable, Equatable, Identifiable {
     let manufacturerName: String?
     let modelID: String?
 
-    var id: String { ieeeAddress }
+    nonisolated var id: String { ieeeAddress }
 
     enum CodingKeys: String, CodingKey {
         case ieeeAddress = "ieeeAddr"

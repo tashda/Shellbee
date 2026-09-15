@@ -10,6 +10,10 @@ final class AppStore {
     var networkTopology: NetworkTopology?
     var networkMapLastUpdated: Date?
     var networkMapIsRefreshing = false
+    /// Lightweight invalidation for the map's derived render index. Keeping
+    /// this separate from the topology avoids rebuilding the node/action
+    /// layer during pan and zoom while still reflecting live health changes.
+    var networkMapRenderRevision = 0
     var bridgeOnline = false
     var isConnected = false
     var deviceStates: [String: [String: JSONValue]] = [:]

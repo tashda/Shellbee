@@ -6,6 +6,17 @@ import UIKit
 struct DevicePresentationActionsModifier: ViewModifier {
     let bound: BridgeBoundDevice
     let actions: DevicePresentationActions
+    let pointerEffect: IPadPointerEffect
+
+    init(
+        bound: BridgeBoundDevice,
+        actions: DevicePresentationActions,
+        pointerEffect: IPadPointerEffect = .highlight
+    ) {
+        self.bound = bound
+        self.actions = actions
+        self.pointerEffect = pointerEffect
+    }
 
     func body(content: Content) -> some View {
         let payload = DeviceTransferPayload(
@@ -63,7 +74,7 @@ struct DevicePresentationActionsModifier: ViewModifier {
             .accessibilityAction(named: "Interview", actions.interview)
             .accessibilityAction(named: "Check for Updates", actions.checkUpdate)
             .accessibilityAction(named: "Remove Device", actions.remove)
-            .iPadPointerEffect(.highlight)
+            .iPadPointerEffect(pointerEffect)
     }
 
     private func copyInformation() {

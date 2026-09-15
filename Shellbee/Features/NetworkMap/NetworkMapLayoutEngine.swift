@@ -1,16 +1,16 @@
 import CoreGraphics
 import Foundation
 
-struct NetworkMapLayout: Equatable {
-    struct Node: Identifiable, Equatable {
+struct NetworkMapLayout: Equatable, Sendable {
+    struct Node: Identifiable, Equatable, Sendable {
         let topology: NetworkTopologyNode
         let position: CGPoint
         let depth: Int
 
-        var id: String { topology.id }
+        nonisolated var id: String { topology.id }
     }
 
-    struct Edge: Identifiable, Equatable {
+    struct Edge: Identifiable, Equatable, Sendable {
         let id: Int
         let link: NetworkTopologyLink
         let source: CGPoint
@@ -23,12 +23,11 @@ struct NetworkMapLayout: Equatable {
     let contentSize: CGSize
 }
 
-/// Lays the mesh out the way Z2M's own frontend (and Unifi/HA topology maps)
-/// do: the coordinator sits at the center and every device radiates outward
-/// on a ring sized by its hop depth, so the shape of the network — who
-/// routes for whom — reads at a glance and there's room to pan in every
-/// direction instead of just scrolling a tall column.
-enum NetworkMapLayoutEngine {
+/// Lays the mesh as a compact, deterministic routing tree. Each child stays
+/// close to its parent in the next routing layer, while subtree ordering keeps
+/// links legible and prevents branches from crossing. The result is structured
+/// like a network diagram without becoming a rigid device grid.
+nonisolated enum NetworkMapLayoutEngine {
     static func layout(
         topology: NetworkTopology,
         width: CGFloat,
@@ -44,7 +43,6 @@ enum NetworkMapLayoutEngine {
         // keys instead of trapping on `Dictionary(uniqueKeysWithValues:)`.
         var seenNodeIDs: Set<String> = []
         let nodes = topology.nodes.filter { seenNodeIDs.insert($0.id).inserted }
-        let nodesByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
 
         let nodeIDs = Set(nodes.map(\.id))
         let links = topology.links.filter {
@@ -54,37 +52,26 @@ enum NetworkMapLayoutEngine {
             ?? nodes.sorted(by: nodeOrder).first!
 
         let tree = spanningTree(root: coordinator.id, nodes: nodes, links: links)
-        let children = childrenByParent(tree: tree, root: coordinator.id, nodesByID: nodesByID)
-        let maximumDepth = max(tree.depths.values.max() ?? 0, 1)
+        let positioning = hierarchicalPositions(
+            nodes: nodes,
+            tree: tree,
+            width: width,
+            minimumHeight: minimumHeight
+        )
 
-        let countsByDepth = tree.depths.values.reduce(into: [Int: Int]()) { counts, depth in
-            counts[depth, default: 0] += 1
-        }
-        let radiusByDepth = ringRadii(maximumDepth: maximumDepth, countsByDepth: countsByDepth)
-
-        var angles: [String: CGFloat] = [:]
-        assignAngles(node: coordinator.id, range: 0..<(2 * .pi), children: children, angles: &angles)
-
-        let maxRadius = radiusByDepth[maximumDepth] ?? 0
-        let side = max(width, minimumHeight, maxRadius * 2 + DesignTokens.Size.networkMapCoordinatorNode * 2)
-        let center = CGPoint(x: side / 2, y: side / 2)
-
-        var positioned: [NetworkMapLayout.Node] = []
-        positioned.reserveCapacity(nodes.count)
-        for node in nodes {
+        let positioned = nodes.map { node in
             let depth = tree.depths[node.id] ?? fallbackDepth(for: node)
-            let radius = radiusByDepth[depth] ?? 0
-            let angle = angles[node.id] ?? 0
-            let position = radius == 0
-                ? center
-                : CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
-            positioned.append(.init(topology: node, position: position, depth: depth))
+            return NetworkMapLayout.Node(
+                topology: node,
+                position: positioning.positions[node.id] ?? .zero,
+                depth: depth
+            )
         }
 
-        let positions = Dictionary(uniqueKeysWithValues: positioned.map { ($0.id, $0.position) })
+        let positionsByID = Dictionary(uniqueKeysWithValues: positioned.map { ($0.id, $0.position) })
         let edges = links.enumerated().compactMap { index, link -> NetworkMapLayout.Edge? in
-            guard let source = positions[link.sourceIEEEAddress],
-                  let target = positions[link.targetIEEEAddress]
+            guard let source = positionsByID[link.sourceIEEEAddress],
+                  let target = positionsByID[link.targetIEEEAddress]
             else { return nil }
             return .init(
                 id: index,
@@ -98,122 +85,206 @@ enum NetworkMapLayoutEngine {
         return NetworkMapLayout(
             nodes: positioned,
             edges: edges,
-            contentSize: CGSize(width: side, height: side)
+            contentSize: positioning.contentSize
         )
     }
 
     private struct SpanningTree {
         let depths: [String: Int]
-        let parents: [String: String]
         let primaryLinkIndices: Set<Int>
+        let parentByID: [String: String]
     }
 
     /// Builds a maximum-quality spanning tree from the coordinator (Prim's
     /// algorithm, greedily attaching whichever unvisited node has the best
-    /// link quality to the visited set). A weak historical shortcut stays a
-    /// secondary edge instead of pulling a multi-hop child onto an inner ring.
+    /// link quality to the visited set). The heap keeps this O(E log E), which
+    /// matters when a raw map contains hundreds of heard-neighbor links.
     private static func spanningTree(
         root: String,
         nodes: [NetworkTopologyNode],
         links: [NetworkTopologyLink]
     ) -> SpanningTree {
         var depths = [root: 0]
-        var parents: [String: String] = [:]
         var primaryLinkIndices: Set<Int> = []
+        var parentByID: [String: String] = [:]
         var visited: Set<String> = [root]
         let allNodeIDs = Set(nodes.map(\.id))
-        let indexedLinks = Array(links.enumerated())
-        while visited.count < allNodeIDs.count {
-            let candidates = indexedLinks.compactMap { index, link -> (Int, String, String, Int)? in
-                let sourceVisited = visited.contains(link.sourceIEEEAddress)
-                let targetVisited = visited.contains(link.targetIEEEAddress)
-                guard sourceVisited != targetVisited else { return nil }
-                let parent = sourceVisited ? link.sourceIEEEAddress : link.targetIEEEAddress
-                let child = sourceVisited ? link.targetIEEEAddress : link.sourceIEEEAddress
-                return (index, parent, child, link.linkQuality ?? -1)
-            }
-            guard let best = candidates.sorted(by: {
-                if $0.3 != $1.3 { return $0.3 > $1.3 }
-                if $0.1 != $1.1 { return $0.1 < $1.1 }
-                return $0.2 < $1.2
-            }).first else { break }
-            let (index, parent, child, _) = best
-            depths[child] = (depths[parent] ?? 0) + 1
-            parents[child] = parent
-            primaryLinkIndices.insert(index)
-            visited.insert(child)
+        var adjacency: [String: [(index: Int, neighbor: String, quality: Int)]] = [:]
+        adjacency.reserveCapacity(nodes.count)
+        for (index, link) in links.enumerated() {
+            let quality = link.linkQuality ?? -1
+            adjacency[link.sourceIEEEAddress, default: []].append(
+                (index, link.targetIEEEAddress, quality)
+            )
+            adjacency[link.targetIEEEAddress, default: []].append(
+                (index, link.sourceIEEEAddress, quality)
+            )
         }
-        return SpanningTree(depths: depths, parents: parents, primaryLinkIndices: primaryLinkIndices)
+
+        var candidates = MaxHeap<SpanningTreeCandidate>()
+        func enqueue(_ parent: String) {
+            for edge in adjacency[parent] ?? [] where !visited.contains(edge.neighbor) {
+                candidates.insert(.init(
+                    index: edge.index,
+                    parent: parent,
+                    child: edge.neighbor,
+                    quality: edge.quality
+                ))
+            }
+        }
+
+        enqueue(root)
+        while visited.count < allNodeIDs.count, let best = candidates.popMaximum() {
+            guard !visited.contains(best.child), visited.contains(best.parent) else { continue }
+            depths[best.child] = (depths[best.parent] ?? 0) + 1
+            parentByID[best.child] = best.parent
+            primaryLinkIndices.insert(best.index)
+            visited.insert(best.child)
+            enqueue(best.child)
+        }
+        return SpanningTree(
+            depths: depths,
+            primaryLinkIndices: primaryLinkIndices,
+            parentByID: parentByID
+        )
     }
 
-    /// Nodes the spanning tree couldn't reach (a genuinely disconnected
-    /// fixture/fragment) are hung directly off the coordinator so every
-    /// device still renders somewhere, ordered for deterministic layout.
-    private static func childrenByParent(
+    private struct SpanningTreeCandidate: Comparable {
+        let index: Int
+        let parent: String
+        let child: String
+        let quality: Int
+
+        static func < (lhs: Self, rhs: Self) -> Bool {
+            if lhs.quality != rhs.quality { return lhs.quality < rhs.quality }
+            if lhs.parent != rhs.parent { return lhs.parent > rhs.parent }
+            if lhs.child != rhs.child { return lhs.child > rhs.child }
+            return lhs.index > rhs.index
+        }
+    }
+
+    private struct MaxHeap<Element: Comparable> {
+        private var elements: [Element] = []
+
+        mutating func insert(_ element: Element) {
+            elements.append(element)
+            siftUp(from: elements.count - 1)
+        }
+
+        mutating func popMaximum() -> Element? {
+            guard !elements.isEmpty else { return nil }
+            if elements.count == 1 { return elements.removeLast() }
+            elements.swapAt(0, elements.count - 1)
+            let result = elements.removeLast()
+            siftDown(from: 0)
+            return result
+        }
+
+        private mutating func siftUp(from index: Int) {
+            var child = index
+            while child > 0 {
+                let parent = (child - 1) / 2
+                guard elements[parent] < elements[child] else { break }
+                elements.swapAt(parent, child)
+                child = parent
+            }
+        }
+
+        private mutating func siftDown(from index: Int) {
+            var parent = index
+            while true {
+                let left = parent * 2 + 1
+                let right = left + 1
+                var candidate = parent
+                if left < elements.count, elements[candidate] < elements[left] { candidate = left }
+                if right < elements.count, elements[candidate] < elements[right] { candidate = right }
+                guard candidate != parent else { break }
+                elements.swapAt(parent, candidate)
+                parent = candidate
+            }
+        }
+    }
+
+    private static func hierarchicalPositions(
+        nodes: [NetworkTopologyNode],
         tree: SpanningTree,
-        root: String,
-        nodesByID: [String: NetworkTopologyNode]
-    ) -> [String: [String]] {
-        var children: [String: [String]] = [:]
-        for (child, parent) in tree.parents {
-            children[parent, default: []].append(child)
+        width: CGFloat,
+        minimumHeight: CGFloat
+    ) -> (positions: [String: CGPoint], contentSize: CGSize) {
+        let nodeSpacing = DesignTokens.Size.networkMapMinimumNodeSpacing
+        let depthGap = DesignTokens.Size.networkMapDepthSpacing
+        let nodesByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
+        var childrenByParent: [String: [String]] = [:]
+
+        for (child, parent) in tree.parentByID {
+            childrenByParent[parent, default: []].append(child)
         }
-        for (id, node) in nodesByID where id != root && tree.parents[id] == nil {
-            children[root, default: []].append(node.id)
-        }
-        for key in children.keys {
-            children[key]?.sort {
-                guard let lhs = nodesByID[$0], let rhs = nodesByID[$1] else { return $0 < $1 }
-                return nodeOrder(lhs, rhs)
+        for parent in childrenByParent.keys {
+            childrenByParent[parent]?.sort { lhs, rhs in
+                guard let left = nodesByID[lhs], let right = nodesByID[rhs] else { return lhs < rhs }
+                return nodeOrder(left, right)
             }
         }
-        return children
-    }
 
-    /// Classic radial-tree angle assignment: each node gets an angular slice
-    /// proportional to its subtree's leaf count, and sits at that slice's
-    /// midpoint. Siblings stay grouped near their parent's angle, which is
-    /// what keeps spokes from crossing each other.
-    private static func assignAngles(
-        node: String,
-        range: Range<CGFloat>,
-        children: [String: [String]],
-        angles: inout [String: CGFloat]
-    ) {
-        angles[node] = (range.lowerBound + range.upperBound) / 2
-        let kids = children[node] ?? []
-        guard !kids.isEmpty else { return }
-        let weights = kids.map { leafWeight(of: $0, children: children) }
-        let totalWeight = CGFloat(weights.reduce(0, +))
-        var cursor = range.lowerBound
-        let span = range.upperBound - range.lowerBound
-        for (child, weight) in zip(kids, weights) {
-            let slice = span * CGFloat(weight) / totalWeight
-            assignAngles(node: child, range: cursor..<(cursor + slice), children: children, angles: &angles)
-            cursor += slice
+        let roots = nodes
+            .filter { tree.parentByID[$0.id] == nil }
+            .sorted(by: nodeOrder)
+
+        // Give every subtree one continuous vertical interval. Children are
+        // placed in deterministic order inside that interval, which keeps the
+        // routing tree readable without forcing devices into a global grid.
+        var subtreeSpans: [String: CGFloat] = [:]
+        func span(for id: String) -> CGFloat {
+            if let cached = subtreeSpans[id] { return cached }
+            let children = childrenByParent[id] ?? []
+            let childSpans = children.map { span(for: $0) }
+            let childTotal = childSpans.reduce(0, +)
+                + CGFloat(max(children.count - 1, 0)) * nodeSpacing
+            let result = max(nodeSpacing, childTotal)
+            subtreeSpans[id] = result
+            return result
         }
-    }
 
-    private static func leafWeight(of node: String, children: [String: [String]]) -> Int {
-        guard let kids = children[node], !kids.isEmpty else { return 1 }
-        return kids.reduce(0) { $0 + leafWeight(of: $1, children: children) }
-    }
+        var positions: [String: CGPoint] = [:]
+        func place(_ id: String, depth: Int, minY: CGFloat) {
+            let children = childrenByParent[id] ?? []
+            let childSpans = children.map { span(for: $0) }
+            let childTotal = childSpans.reduce(0, +)
+                + CGFloat(max(children.count - 1, 0)) * nodeSpacing
+            var childY = minY + (span(for: id) - childTotal) / 2
+            var childCenters: [CGFloat] = []
 
-    /// Ring radius per depth: grows by a fixed base spacing, but widens
-    /// further whenever a ring is too crowded for its nodes to sit
-    /// `networkMapMinimumNodeSpacing` apart along the circumference.
-    private static func ringRadii(maximumDepth: Int, countsByDepth: [Int: Int]) -> [Int: CGFloat] {
-        var radii: [Int: CGFloat] = [0: 0]
-        var previous: CGFloat = 0
-        for depth in 1...maximumDepth {
-            let count = countsByDepth[depth] ?? 1
-            let requiredCircumference = CGFloat(count) * DesignTokens.Size.networkMapMinimumNodeSpacing
-            let requiredRadius = requiredCircumference / (2 * .pi)
-            let radius = max(previous + DesignTokens.Size.networkMapRingSpacing, requiredRadius)
-            radii[depth] = radius
-            previous = radius
+            for (index, child) in children.enumerated() {
+                let childSpan = childSpans[index]
+                place(child, depth: depth + 1, minY: childY)
+                childCenters.append(positions[child]?.y ?? childY + childSpan / 2)
+                childY += childSpan + nodeSpacing
+            }
+
+            let centerY = childCenters.isEmpty
+                ? minY + span(for: id) / 2
+                : childCenters.reduce(0, +) / CGFloat(childCenters.count)
+            positions[id] = CGPoint(x: CGFloat(depth) * depthGap, y: centerY)
         }
-        return radii
+
+        var cursor: CGFloat = 0
+        for root in roots {
+            let rootSpan = span(for: root.id)
+            place(root.id, depth: 0, minY: cursor)
+            cursor += rootSpan + nodeSpacing * 1.5
+        }
+
+        let bounds = positions.values.reduce(into: CGRect.null) { result, point in
+            result = result.union(CGRect(origin: point, size: .zero))
+        }
+        let padding = DesignTokens.Size.networkMapContentPadding
+        let contentWidth = max(width, bounds.width + padding * 2)
+        let contentHeight = max(minimumHeight, bounds.height + padding * 2)
+        let offset = CGPoint(x: padding - bounds.minX, y: padding - bounds.minY)
+        return (
+            positions: positions.mapValues { CGPoint(x: $0.x + offset.x, y: $0.y + offset.y) },
+            contentSize: CGSize(width: contentWidth, height: contentHeight)
+        )
     }
 
     private static func fallbackDepth(for node: NetworkTopologyNode) -> Int {

@@ -5,10 +5,12 @@ import SwiftUI
 /// pointer behavior; use this only where a plain custom surface needs the
 /// equivalent affordance.
 enum IPadPointerEffect: Equatable {
+    case none
     case highlight
     case lift
 
     enum Resolved: Equatable {
+        case none
         case highlight
         case lift
     }
@@ -18,6 +20,7 @@ enum IPadPointerEffect: Equatable {
             return .highlight
         }
         switch self {
+        case .none: return .none
         case .highlight: return .highlight
         case .lift: return .lift
         }
@@ -32,6 +35,8 @@ private struct IPadPointerEffectModifier: ViewModifier {
     func body(content: Content) -> some View {
         if AdaptiveLayout.isPad {
             switch effect.resolved(reduceMotion: reduceMotion) {
+            case .none:
+                content
             case .highlight:
                 content.hoverEffect(.highlight)
             case .lift:

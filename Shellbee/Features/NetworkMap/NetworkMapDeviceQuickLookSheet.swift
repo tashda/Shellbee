@@ -56,7 +56,8 @@ struct NetworkMapDeviceQuickLookSheet: View {
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
 
                 Button("View Full Details", action: onViewDetails)
-                    .buttonStyle(.borderedProminent)
+                    .glassProminentButtonStyleIfAvailable()
+                    .controlSize(.large)
                     .frame(maxWidth: .infinity)
             }
             .padding(DesignTokens.Spacing.lg)

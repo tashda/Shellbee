@@ -14,15 +14,9 @@ import SwiftUI
 /// bar declares its four tabs explicitly and never iterates
 /// `AppTab.allCases`.
 ///
-/// None of the nested `NavigationStack`s below call
-/// `forceSoftTopScrollEdgeEffect()` themselves — `RootView` already applies
-/// it once at the app root, and it cascades through this view's plain
-/// (non-modal) hierarchy. Re-applying it per-stack here doesn't change the
-/// resolved style, but the doubled-up scroll-edge region it creates right at
-/// the sidebar/content column seam is what caused the system's automatic
-/// sidebar-toggle button to render with a stray hairline on hover. Only
-/// content presented across a `.sheet`/`.fullScreenCover` boundary needs its
-/// own call, since that's where the environment cascade actually breaks.
+/// The iPad shell keeps the split view's toolbar on the native soft scroll-edge
+/// treatment. The system-owned sidebar toggle remains a native control with
+/// its pointer interaction intact.
 struct MainSplitView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
@@ -41,6 +35,7 @@ struct MainSplitView: View {
     @State private var groupsWorkspace = GroupsWorkspaceState()
     @State private var didApplyInitialDestination = false
     @State private var networkMapFilters: Set<NetworkMapFilter> = []
+    @State private var networkMapBridgeID: UUID?
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
 
     init(initialDestination: ShellbeeWindowDestination = .home) {
@@ -61,11 +56,7 @@ struct MainSplitView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let wideIPadLayout = AdaptiveLayout.usesWideIPadLayout(in: geo.size)
-            shell(
-                usesThreeColumns: usesThreeColumns(wideIPadLayout: wideIPadLayout),
-                usesWideHomeLayout: wideIPadLayout
-            )
+            responsiveShell(for: geo.size)
         }
         .overlay(alignment: .bottom) {
             InAppNotificationOverlay()
@@ -117,6 +108,21 @@ struct MainSplitView: View {
             applyInitialDestinationIfPossible()
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
+    }
+
+    @ViewBuilder
+    private func responsiveShell(for size: CGSize) -> some View {
+        let wideIPadLayout = AdaptiveLayout.usesWideIPadLayout(in: size)
+        let shellView = shell(
+            usesThreeColumns: usesThreeColumns(wideIPadLayout: wideIPadLayout),
+            usesWideHomeLayout: wideIPadLayout
+        )
+
+        if #available(iOS 26.0, *) {
+            shellView.scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            shellView
+        }
     }
 
     @ViewBuilder
@@ -190,7 +196,10 @@ struct MainSplitView: View {
                 ActivityWorkspaceFilters(workspace: logsWorkspace)
             }
             if selection == .networkMap {
-                NetworkMapWorkspaceFilters(filters: $networkMapFilters)
+                NetworkMapWorkspaceFilters(
+                    filters: $networkMapFilters,
+                    selectedBridgeID: $networkMapBridgeID
+                )
             }
         }
         .listStyle(.sidebar)
@@ -254,7 +263,8 @@ struct MainSplitView: View {
                 NetworkMapView(
                     embedInNavigationStack: false,
                     selection: $selectedNetworkDeviceRoute,
-                    filters: $networkMapFilters
+                    filters: $networkMapFilters,
+                    bridgeSelection: $networkMapBridgeID
                 )
                 .navigationDestination(item: $selectedNetworkDeviceRoute) { route in
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
@@ -295,7 +305,9 @@ struct MainSplitView: View {
         case .networkMap:
             NetworkMapView(
                 embedInNavigationStack: false,
-                selection: $selectedNetworkDeviceRoute
+                selection: $selectedNetworkDeviceRoute,
+                filters: $networkMapFilters,
+                bridgeSelection: $networkMapBridgeID
             )
         case .settings:
             SettingsWorkspaceList(selection: $selectedSettingsRoute)
