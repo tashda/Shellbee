@@ -73,4 +73,5 @@ struct AboutView: View {
     NavigationStack {
         AboutView()
     }
+    .forceSoftTopScrollEdgeEffect()
 }

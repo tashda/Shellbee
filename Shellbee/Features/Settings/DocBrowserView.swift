@@ -343,6 +343,7 @@ private struct ManufacturerFilterSheet: View {
                 }
             }
         }
+        .forceSoftTopScrollEdgeEffect()
     }
 
     @ViewBuilder
@@ -370,4 +371,5 @@ private struct ManufacturerFilterSheet: View {
         DocBrowserView()
             .environment(AppEnvironment())
     }
+    .forceSoftTopScrollEdgeEffect()
 }

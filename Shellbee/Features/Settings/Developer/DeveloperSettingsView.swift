@@ -27,5 +27,6 @@ struct DeveloperSettingsView: View {
 
 #Preview {
     NavigationStack { DeveloperSettingsView() }
+    .forceSoftTopScrollEdgeEffect()
         .environment(AppEnvironment())
 }

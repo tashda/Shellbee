@@ -36,6 +36,7 @@ struct OnboardingConnectPage: View {
                     NavigationStack {
                         ConnectionEditorView(viewModel: viewModel)
                     }
+                    .forceSoftTopScrollEdgeEffect()
                 }
                 .alert("Connection Error", isPresented: errorBinding(viewModel)) {
                     Button("OK", role: .cancel) {}

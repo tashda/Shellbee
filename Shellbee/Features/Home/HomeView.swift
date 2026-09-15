@@ -197,6 +197,7 @@ struct HomeView: View {
                 Text("Restarting the bridge will apply pending configuration changes and temporarily disconnect all Zigbee devices.")
             }
         }
+        .forceSoftTopScrollEdgeEffect()
     }
 
     @ViewBuilder

@@ -84,4 +84,5 @@ struct GroupListRow: View {
             )
         }
     }
+    .forceSoftTopScrollEdgeEffect()
 }

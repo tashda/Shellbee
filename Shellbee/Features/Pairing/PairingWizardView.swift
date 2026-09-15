@@ -115,6 +115,7 @@ struct PairingWizardView: View {
                 Text(alert.message)
             }
         }
+        .forceSoftTopScrollEdgeEffect()
     }
 
     // MARK: - Bridge picker (multi-bridge only)

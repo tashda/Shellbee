@@ -215,6 +215,7 @@ struct MainSplitView: View {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
             }
+            .forceSoftTopScrollEdgeEffect()
         case .groups:
             NavigationStack {
                 GroupListView(
@@ -226,6 +227,7 @@ struct MainSplitView: View {
                     GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                 }
             }
+            .forceSoftTopScrollEdgeEffect()
         case .logs:
             NavigationStack {
                 LogsView(
@@ -237,6 +239,7 @@ struct MainSplitView: View {
                     LogsPaneDestinationView(route: route)
                 }
             }
+            .forceSoftTopScrollEdgeEffect()
         case .networkMap:
             NavigationStack {
                 NetworkMapView(
@@ -247,6 +250,7 @@ struct MainSplitView: View {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
             }
+            .forceSoftTopScrollEdgeEffect()
         case .settings:
             NavigationStack {
                 SettingsWorkspaceList(selection: $selectedSettingsRoute)
@@ -254,6 +258,7 @@ struct MainSplitView: View {
                         SettingsWorkspaceDestinationView(route: route)
                     }
             }
+            .forceSoftTopScrollEdgeEffect()
         }
     }
 
@@ -276,6 +281,7 @@ struct MainSplitView: View {
                         memberSelection: groupMemberSelection
                     )
                 }
+                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -310,6 +316,7 @@ struct MainSplitView: View {
                 NavigationStack {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
+                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -323,6 +330,7 @@ struct MainSplitView: View {
                 NavigationStack {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
+                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -342,6 +350,7 @@ struct MainSplitView: View {
                 NavigationStack {
                     LogsPaneDestinationView(route: route)
                 }
+                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -355,6 +364,7 @@ struct MainSplitView: View {
                 NavigationStack {
                     SettingsWorkspaceDestinationView(route: route)
                 }
+                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(
@@ -368,6 +378,7 @@ struct MainSplitView: View {
                 NavigationStack {
                     DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                 }
+                .forceSoftTopScrollEdgeEffect()
                 .id(route)
             } else {
                 ContentUnavailableView(

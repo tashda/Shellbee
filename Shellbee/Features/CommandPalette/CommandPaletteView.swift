@@ -59,6 +59,7 @@ struct CommandPaletteView: View {
                 }
             }
         }
+        .forceSoftTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .onAppear { isSearchPresented = true }

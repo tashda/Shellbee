@@ -69,6 +69,7 @@ struct RestoreGuideSheet: View {
                 }
             }
         }
+        .forceSoftTopScrollEdgeEffect()
     }
 
     private func stepRow(n: Int, title: String, body: String) -> some View {

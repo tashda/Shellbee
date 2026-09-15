@@ -25,4 +25,5 @@ struct AppLiveActivitiesView: View {
     NavigationStack {
         AppLiveActivitiesView()
     }
+    .forceSoftTopScrollEdgeEffect()
 }

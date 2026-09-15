@@ -39,6 +39,7 @@ struct LightEffectsSheet: View {
                 }
             }
         }
+        .forceSoftTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
     }
 }

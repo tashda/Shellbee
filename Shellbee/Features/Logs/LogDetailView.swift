@@ -504,4 +504,5 @@ struct LogDetailView: View {
         LogDetailView(bridgeID: UUID(), entry: LogEntry.previewEntries[3])
             .environment(AppEnvironment())
     }
+    .forceSoftTopScrollEdgeEffect()
 }
