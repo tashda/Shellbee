@@ -75,11 +75,22 @@ final class OTAUpdateLiveActivityCoordinator {
         )
 
         let alreadyVisible = visibleBridges.contains(key)
+        let staleDate = Date.now.addingTimeInterval(DesignTokens.Duration.liveActivityOTAStale)
         Task { [attributes] in
             if alreadyVisible {
-                await controller.update(attributes: attributes, state: content)
+                await controller.update(
+                    attributes: attributes,
+                    state: content,
+                    staleDate: staleDate,
+                    relevanceScore: 70
+                )
             } else {
-                await controller.present(attributes: attributes, state: content)
+                await controller.present(
+                    attributes: attributes,
+                    state: content,
+                    staleDate: staleDate,
+                    relevanceScore: 70
+                )
             }
         }
         visibleBridges.insert(key)

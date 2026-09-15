@@ -32,6 +32,7 @@ extension AppStore {
                 bridgeInfo = info
             }
             syncConfiguredAvailability()
+            syncPermitJoinLiveActivity()
         case .bridgeState(let state):
             let nextOnline = state == "online"
             // Only emit a log entry on actual transitions — Z2M republishes
@@ -118,12 +119,17 @@ extension AppStore {
                     timeout: permitted ? time : nil,
                     target: permitted ? target : nil
                 )
+                syncPermitJoinLiveActivity()
             }
             if let ieee = event.data.object?["ieee_address"]?.stringValue {
                 switch event.type {
                 case "device_joined":
                     // Restart the 30-min window on (re)join.
                     recordFirstSeen(ieee: ieee, overwrite: true)
+                    if bridgeInfo?.permitJoin == true {
+                        permitJoinJoinedCount += 1
+                        syncPermitJoinLiveActivity()
+                    }
                 case "device_leave":
                     removeFirstSeen(ieee: ieee)
                 case "device_interview":
@@ -245,11 +251,15 @@ extension AppStore {
                 ))
             }
             if let info = bridgeInfo {
+                if enabled, info.permitJoin != enabled {
+                    permitJoinJoinedCount = 0
+                }
                 bridgeInfo = info.copyUpdatingPermitJoin(
                     enabled: enabled,
                     timeout: remaining,
                     target: enabled ? info.permitJoinTarget : nil
                 )
+                syncPermitJoinLiveActivity()
             }
 
         case .bridgeResponse(let topic, let payload):
@@ -314,9 +324,17 @@ extension AppStore {
         case .touchlinkScanResult(let devices):
             touchlinkDevices = devices
             touchlinkScanInProgress = false
+            BridgeOperationLiveActivityCoordinator.shared.finishScan(
+                bridgeID: activeBridgeID,
+                foundCount: devices.count
+            )
 
         case .touchlinkIdentifyDone:
             touchlinkIdentifyInProgress = false
+            BridgeOperationLiveActivityCoordinator.shared.finishIdentify(
+                bridgeID: activeBridgeID,
+                success: true
+            )
 
         case .touchlinkFactoryResetDone:
             touchlinkResetInProgress = false
@@ -363,6 +381,10 @@ extension AppStore {
             touchlinkScanInProgress = false
             touchlinkIdentifyInProgress = false
             touchlinkResetInProgress = false
+            if error.topic == Z2MTopics.bridgeResponseTouchlinkScan
+                || error.topic == Z2MTopics.bridgeResponseTouchlinkIdentify {
+                BridgeOperationLiveActivityCoordinator.shared.failAll(bridgeID: activeBridgeID)
+            }
             operationErrors.insert(error, at: 0)
             let entry = LogEntry(
                 id: UUID(),

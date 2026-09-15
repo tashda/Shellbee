@@ -107,11 +107,15 @@ struct BridgeScope: Identifiable {
             payload: .object(["time": .int(seconds), "value": .bool(enabled)])
         )
         if let info = session.store.bridgeInfo {
+            if enabled {
+                session.store.permitJoinJoinedCount = 0
+            }
             session.store.bridgeInfo = info.copyUpdatingPermitJoin(
                 enabled: enabled,
                 timeout: enabled ? seconds : nil,
                 target: nil
             )
+            session.store.syncPermitJoinLiveActivity()
         }
     }
 

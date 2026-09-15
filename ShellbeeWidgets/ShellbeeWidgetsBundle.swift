@@ -7,5 +7,8 @@ struct ShellbeeWidgetsBundle: WidgetBundle {
         ConnectionActivityWidget()
         OTAUpdateActivityWidget()
         InterviewActivityWidget()
+        PermitJoinActivityWidget()
+        BridgeOperationActivityWidget()
+        BridgeDiscoveryActivityWidget()
     }
 }

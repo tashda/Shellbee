@@ -61,6 +61,7 @@ final class AppStore {
     var touchlinkScanInProgress = false
     var touchlinkIdentifyInProgress = false
     var touchlinkResetInProgress = false
+    var permitJoinJoinedCount = 0
     /// Friendly names of devices currently running an Identify (Zigbee
     /// Identify cluster). The action is fire-and-forget, so the row clears
     /// itself on a short timer rather than waiting for a response.
@@ -128,6 +129,7 @@ final class AppStore {
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false
         touchlinkResetInProgress = false
+        permitJoinJoinedCount = 0
         identifyInProgress = []
         // `deviceFirstSeen` itself is rebuilt by `setActiveBridge` after the
         // next successful connect — so we clear the published mirror here so
@@ -138,6 +140,8 @@ final class AppStore {
         // activities stay alive. activeBridgeID is preserved here — it's
         // cleared explicitly via `clearActiveBridge()` only on disconnect.
         OTAUpdateLiveActivityCoordinator.shared.clear(bridgeID: activeBridgeID)
+        PermitJoinLiveActivityCoordinator.shared.clear(bridgeID: activeBridgeID)
+        BridgeOperationLiveActivityCoordinator.shared.clear(bridgeID: activeBridgeID)
     }
 
     // MARK: - Active bridge tracking

@@ -25,18 +25,23 @@ final class ConnectionLiveActivityCoordinator {
     /// finish / cancel can address them by host+name without the caller having
     /// to construct attributes again.
     private var trackedByBridge: [String: ConnectionActivityAttributes] = [:]
+    private var phaseByBridge: [String: ConnectionActivityAttributes.ContentState.Phase] = [:]
+    private var expiryTasks: [String: Task<Void, Never>] = [:]
 
     private init() {}
 
     /// Present an activity for `bridge`. Existing activities for OTHER bridges
     /// stay alive; only a prior activity for the same bridge is replaced.
-    func show(bridge: ConnectionConfig, phase: ConnectionActivityAttributes.ContentState.Phase, attempt: Int, maxAttempts: Int) {
+    func show(bridge: ConnectionConfig, phase: ConnectionActivityAttributes.ContentState.Phase, attempt: Int, maxAttempts: Int, message: String = "") {
         let attributes = ConnectionActivityAttributes(
             serverHost: bridge.host,
             bridgeDisplayName: bridge.displayName
         )
         let key = trackingKey(for: attributes)
         trackedByBridge[key] = attributes
+        phaseByBridge[key] = phase
+        scheduleExpiryIfNeeded(for: bridge, key: key, phase: phase)
+        let staleDate = Date.now.addingTimeInterval(DesignTokens.Duration.liveActivityConnectionStale)
         Task {
             await controller.present(
                 attributes: attributes,
@@ -44,19 +49,25 @@ final class ConnectionLiveActivityCoordinator {
                     phase: phase,
                     attempt: attempt,
                     maxAttempts: maxAttempts,
-                    message: ""
-                )
+                    message: message
+                ),
+                staleDate: staleDate,
+                relevanceScore: phase == .restarting ? 55 : 40
             )
         }
     }
 
     /// Update the activity matching `bridge`. Caller passes the same config
     /// they used for `show` so we resolve the right slot.
-    func update(bridge: ConnectionConfig, phase: ConnectionActivityAttributes.ContentState.Phase, attempt: Int = 0, maxAttempts: Int = 0) {
+    func update(bridge: ConnectionConfig, phase: ConnectionActivityAttributes.ContentState.Phase, attempt: Int = 0, maxAttempts: Int = 0, message: String = "") {
         let attributes = ConnectionActivityAttributes(
             serverHost: bridge.host,
             bridgeDisplayName: bridge.displayName
         )
+        let key = trackingKey(for: attributes)
+        phaseByBridge[key] = phase
+        scheduleExpiryIfNeeded(for: bridge, key: key, phase: phase)
+        let staleDate = Date.now.addingTimeInterval(DesignTokens.Duration.liveActivityConnectionStale)
         Task {
             await controller.update(
                 attributes: attributes,
@@ -64,8 +75,10 @@ final class ConnectionLiveActivityCoordinator {
                     phase: phase,
                     attempt: attempt,
                     maxAttempts: maxAttempts,
-                    message: ""
-                )
+                    message: message
+                ),
+                staleDate: staleDate,
+                relevanceScore: phase == .restarting ? 55 : 40
             )
         }
     }
@@ -78,6 +91,8 @@ final class ConnectionLiveActivityCoordinator {
         )
         let key = trackingKey(for: attributes)
         trackedByBridge.removeValue(forKey: key)
+        phaseByBridge.removeValue(forKey: key)
+        expiryTasks.removeValue(forKey: key)?.cancel()
         Task {
             await controller.finish(
                 attributes: attributes,
@@ -100,6 +115,8 @@ final class ConnectionLiveActivityCoordinator {
         )
         let key = trackingKey(for: attributes)
         trackedByBridge.removeValue(forKey: key)
+        phaseByBridge.removeValue(forKey: key)
+        expiryTasks.removeValue(forKey: key)?.cancel()
         Task {
             await controller.cancel(
                 attributes: attributes,
@@ -119,6 +136,9 @@ final class ConnectionLiveActivityCoordinator {
     func cancel() {
         let snapshot = Array(trackedByBridge.values)
         trackedByBridge.removeAll()
+        phaseByBridge.removeAll()
+        expiryTasks.values.forEach { $0.cancel() }
+        expiryTasks.removeAll()
         Task { [snapshot] in
             for attributes in snapshot {
                 await controller.cancel(
@@ -136,6 +156,9 @@ final class ConnectionLiveActivityCoordinator {
 
     func clearAll() {
         trackedByBridge.removeAll()
+        phaseByBridge.removeAll()
+        expiryTasks.values.forEach { $0.cancel() }
+        expiryTasks.removeAll()
         Task {
             await LiveActivityController<ConnectionActivityAttributes>.endAllActivities()
         }
@@ -143,5 +166,20 @@ final class ConnectionLiveActivityCoordinator {
 
     private func trackingKey(for attributes: ConnectionActivityAttributes) -> String {
         "\(attributes.serverHost)|\(attributes.bridgeDisplayName)"
+    }
+
+    private func scheduleExpiryIfNeeded(
+        for bridge: ConnectionConfig,
+        key: String,
+        phase: ConnectionActivityAttributes.ContentState.Phase
+    ) {
+        expiryTasks.removeValue(forKey: key)?.cancel()
+        guard phase == .restarting else { return }
+        expiryTasks[key] = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivityBridgeRestart))
+            guard !Task.isCancelled else { return }
+            guard let self, self.phaseByBridge[key] == .restarting else { return }
+            self.cancel(bridge: bridge)
+        }
     }
 }

@@ -16,7 +16,12 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         self.matches = matches
     }
 
-    func present(attributes: Attributes, state: Attributes.ContentState) async {
+    func present(
+        attributes: Attributes,
+        state: Attributes.ContentState,
+        staleDate: Date? = nil,
+        relevanceScore: Double = 0
+    ) async {
         trackedAttributes = attributes
         endTask?.cancel()
         if dismissesOtherActivities {
@@ -32,25 +37,50 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         do {
             _ = try Activity.request(
                 attributes: attributes,
-                content: ActivityContent(state: state, staleDate: nil)
+                content: ActivityContent(
+                    state: state,
+                    staleDate: staleDate,
+                    relevanceScore: relevanceScore
+                )
             )
         } catch {
             await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
         }
     }
 
-    func update(state: Attributes.ContentState) async {
+    func update(
+        state: Attributes.ContentState,
+        staleDate: Date? = nil,
+        relevanceScore: Double = 0
+    ) async {
         guard let trackedAttributes else { return }
 
-        await Self.updateMatchingActivities(for: trackedAttributes, state: state, matches: matches)
+        await Self.updateMatchingActivities(
+            for: trackedAttributes,
+            state: state,
+            staleDate: staleDate,
+            relevanceScore: relevanceScore,
+            matches: matches
+        )
     }
 
     /// Multi-activity variant: target the activity whose attributes match
     /// `attributes`, ignoring `trackedAttributes`. Used by Phase 2 multi-bridge
     /// coordinators where N concurrent activities exist (one per bridge) and a
     /// caller must address one specifically rather than the most-recent.
-    func update(attributes: Attributes, state: Attributes.ContentState) async {
-        await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
+    func update(
+        attributes: Attributes,
+        state: Attributes.ContentState,
+        staleDate: Date? = nil,
+        relevanceScore: Double = 0
+    ) async {
+        await Self.updateMatchingActivities(
+            for: attributes,
+            state: state,
+            staleDate: staleDate,
+            relevanceScore: relevanceScore,
+            matches: matches
+        )
     }
 
     func finish(state: Attributes.ContentState, displayFor duration: Double) async {
@@ -110,11 +140,17 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
     nonisolated private static func updateMatchingActivities(
         for attributes: Attributes,
         state: Attributes.ContentState,
+        staleDate: Date? = nil,
+        relevanceScore: Double = 0,
         matches: @Sendable (Attributes, Attributes) -> Bool
     ) async {
         let activities = Activity<Attributes>.activities.filter { matches($0.attributes, attributes) }
         for activity in activities {
-            await activity.update(ActivityContent(state: state, staleDate: nil))
+            await activity.update(ActivityContent(
+                state: state,
+                staleDate: staleDate,
+                relevanceScore: relevanceScore
+            ))
         }
     }
 
