@@ -1,5 +1,28 @@
 import SwiftUI
 
+private extension View {
+    @ViewBuilder
+    func networkMapCircleGlassEffect(tint: Color) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.tint(tint.opacity(0.12)), in: Circle())
+        } else {
+            self.background(Circle().fill(.ultraThinMaterial))
+                .overlay(Circle().strokeBorder(tint.opacity(0.45), lineWidth: DesignTokens.Size.hairline))
+        }
+    }
+
+    @ViewBuilder
+    func networkMapRoundedGlassEffect(tint: Color, cornerRadius: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.tint(tint.opacity(0.12)), in: shape)
+        } else {
+            self.background(shape.fill(.ultraThinMaterial))
+                .overlay(shape.strokeBorder(tint.opacity(0.45), lineWidth: DesignTokens.Size.hairline))
+        }
+    }
+}
+
 struct NetworkMapCanvasView: View {
     @Environment(AppEnvironment.self) private var environment
     let bridgeID: UUID
@@ -20,6 +43,7 @@ struct NetworkMapCanvasView: View {
     /// hierarchical layout pass. It's recomputed only when the topology or
     /// the available canvas size actually changes (see `.task(id:)` below).
     @State private var layout: NetworkMapLayout?
+    @State private var renderIndex: NetworkMapRenderIndex?
     @State private var quickLookNode: NetworkMapLayout.Node?
 
     private var store: AppStore { environment.scope(for: bridgeID).store }
@@ -34,34 +58,31 @@ struct NetworkMapCanvasView: View {
         GeometryReader { proxy in
             let width = max(proxy.size.width, DesignTokens.Size.deviceGridMinimumWidth)
             let minimumHeight = max(proxy.size.height, DesignTokens.Size.networkMapMinimumHeight)
-            let resolvedLayout = layout ?? NetworkMapLayoutEngine.layout(
-                topology: topology,
-                width: width,
-                minimumHeight: minimumHeight
-            )
-            let index = NetworkMapRenderIndex.build(layout: resolvedLayout, store: store)
             ZStack(alignment: .topLeading) {
-                graph(layout: resolvedLayout, index: index)
-                // `.equatable()` is the whole point here: without it, every
-                // pinch/pan frame (a `scale`/`offset` @State change on this
-                // view) would re-run this closure and reconstruct ~150
-                // Buttons each carrying a `.contextMenu`, `.draggable`, and
-                // 7 accessibility actions — none of which depend on
-                // scale/offset at all. Equatable lets SwiftUI recognize
-                // "same layout, same index" and skip rebuilding the whole
-                // interactive layer on every gesture tick, which is what
-                // was making the map lag while panning/zooming.
-                NetworkMapInteractionLayer(
-                    bridgeID: bridgeID,
-                    bridgeName: environment.registry.session(for: bridgeID)?.displayName ?? "",
-                    layout: resolvedLayout,
-                    index: index,
-                    onQuickLook: { node in quickLookNode = node },
-                    actionsProvider: actions(for:)
-                )
-                .equatable()
+                if let layout, let renderIndex {
+                    // This child owns the graph and node views, so changing
+                    // pan/zoom on the parent repaints the transform without
+                    // rebuilding every node's context menu and image task.
+                    NetworkMapContentLayer(
+                        bridgeID: bridgeID,
+                        bridgeName: environment.registry.session(for: bridgeID)?.displayName ?? "",
+                        layout: layout,
+                        index: renderIndex,
+                        filters: $filters,
+                        onQuickLook: { node in quickLookNode = node },
+                        actionsProvider: actions(for:),
+                        showsMeshEdges: showsMeshEdges,
+                        showsLabels: showsLabels
+                    )
+                } else {
+                    ProgressView("Preparing Network Map")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            .frame(width: resolvedLayout.contentSize.width, height: resolvedLayout.contentSize.height)
+            .frame(
+                width: layout?.contentSize.width ?? proxy.size.width,
+                height: layout?.contentSize.height ?? proxy.size.height
+            )
             .scaleEffect(zoomController.scale, anchor: .topLeading)
             .offset(zoomController.offset)
             .contentShape(Rectangle())
@@ -76,16 +97,26 @@ struct NetworkMapCanvasView: View {
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
             .clipped()
             .task(id: LayoutKey(topology: topology, width: width, minimumHeight: minimumHeight)) {
-                let wasEmpty = layout == nil
-                let computed = NetworkMapLayoutEngine.layout(
-                    topology: topology,
-                    width: width,
-                    minimumHeight: minimumHeight
-                )
-                layout = computed
+                let computed = await Task.detached(priority: .userInitiated) {
+                    NetworkMapLayoutEngine.layout(
+                        topology: topology,
+                        width: width,
+                        minimumHeight: minimumHeight
+                    )
+                }.value
+                guard !Task.isCancelled else { return }
                 zoomController.updateBounds(contentSize: computed.contentSize, viewportSize: proxy.size)
-                if wasEmpty { zoomController.fit() }
+                zoomController.fit()
+                // Set the fitted camera before publishing the node layer. A
+                // busy map therefore starts with lightweight symbols instead
+                // of briefly creating every remote image task at scale 1.
+                layout = computed
+                renderIndex = NetworkMapRenderIndex.build(layout: computed, store: store)
             }
+        }
+        .onChange(of: store.networkMapRenderRevision) { _, _ in
+            guard let layout else { return }
+            renderIndex = NetworkMapRenderIndex.build(layout: layout, store: store)
         }
         .sheet(item: $quickLookNode) { node in
             quickLookSheet(for: node)
@@ -136,31 +167,6 @@ struct NetworkMapCanvasView: View {
         return .init(parentName: parent.topology.friendlyName, linkQuality: quality)
     }
 
-    private func graph(layout: NetworkMapLayout, index: NetworkMapRenderIndex) -> some View {
-        TimelineView(.animation(
-            minimumInterval: DesignTokens.Duration.frameInterval,
-            paused: !index.hasActiveNodes
-        )) { timeline in
-            Canvas { context, _ in
-                drawEdges(context: &context, layout: layout, index: index)
-                drawNodes(context: &context, layout: layout, index: index, date: timeline.date)
-            } symbols: {
-                ForEach(layout.nodes) { node in
-                    if let device = index.devicesByIEEE[node.topology.ieeeAddress] {
-                        DeviceImageView(
-                            device: device,
-                            isAvailable: index.onlineByNode[node.id] ?? false,
-                            hasUpdate: store.state(for: device.friendlyName).hasUpdateAvailable,
-                            otaStatus: store.otaStatus(for: device.friendlyName),
-                            size: nodeSize(node.topology)
-                        )
-                        .tag(node.id)
-                    }
-                }
-            }
-        }
-    }
-
     /// Z2M's raw mesh includes every heard neighbor, not just the routing
     /// tree — drawing all of it at once is the "orange spaghetti" that makes
     /// the map unreadable. By default this shows only the primary routing
@@ -172,109 +178,8 @@ struct NetworkMapCanvasView: View {
             || filters.contains(.offline)
     }
 
-    private func drawEdges(context: inout GraphicsContext, layout: NetworkMapLayout, index: NetworkMapRenderIndex) {
-        let showMesh = showsMeshEdges
-        for edge in layout.edges {
-            guard edge.isPrimary || showMesh else { continue }
-            var path = Path()
-            path.move(to: edge.source)
-            path.addLine(to: edge.target)
-            let online = (index.onlineByNode[edge.link.sourceIEEEAddress] ?? false)
-                && (index.onlineByNode[edge.link.targetIEEEAddress] ?? false)
-            let quality = index.qualityByLinkID[edge.link.id] ?? edge.link.linkQuality
-            let faded = !edgeMatchesFilters(edge, index: index)
-            var edgeContext = context
-            edgeContext.opacity = faded
-                ? DesignTokens.Opacity.accentFill
-                : (edge.isPrimary ? 1 : DesignTokens.Opacity.overlay)
-            edgeContext.stroke(
-                path,
-                with: .color(edgeColor(linkQuality: quality, online: online)),
-                style: StrokeStyle(
-                    lineWidth: edge.isPrimary
-                        ? DesignTokens.Size.networkMapEdgeWidth
-                        : DesignTokens.Size.networkMapSecondaryEdgeWidth,
-                    dash: online ? [] : [DesignTokens.Size.networkMapDashLength]
-                )
-            )
-        }
-    }
-
-    private func drawNodes(
-        context: inout GraphicsContext,
-        layout: NetworkMapLayout,
-        index: NetworkMapRenderIndex,
-        date: Date
-    ) {
-        for node in layout.nodes {
-            let size = nodeSize(node.topology)
-            let frame = CGRect(
-                x: node.position.x - size / 2,
-                y: node.position.y - size / 2,
-                width: size,
-                height: size
-            )
-            let online = index.onlineByNode[node.id] ?? false
-            let weak = index.weakLinkByNode[node.id] ?? false
-            let matches = NetworkMapFilter.matches(
-                node: node.topology,
-                filters: filters,
-                isOffline: !online,
-                hasWeakLink: weak
-            )
-            var nodeContext = context
-            nodeContext.opacity = matches ? 1 : DesignTokens.Opacity.accentFill
-            let path = nodePath(role: node.topology.role, frame: frame)
-            drawGlassBackground(in: &nodeContext, path: path, frame: frame, tint: nodeColor(node.topology, online: online), online: online)
-            if !online {
-                nodeContext.stroke(
-                    path,
-                    with: .color(.secondary),
-                    style: StrokeStyle(
-                        lineWidth: DesignTokens.Size.networkMapSecondaryEdgeWidth,
-                        dash: [DesignTokens.Size.networkMapDashLength]
-                    )
-                )
-            }
-            if weak {
-                nodeContext.stroke(
-                    path,
-                    with: .color(.red),
-                    lineWidth: DesignTokens.Size.networkMapWeakRingWidth
-                )
-            }
-            if index.activeByNode[node.id] == true {
-                let pulse = CGFloat((sin(date.timeIntervalSinceReferenceDate * 4) + 1) / 2)
-                nodeContext.stroke(
-                    Path(ellipseIn: frame.insetBy(
-                        dx: -(DesignTokens.Spacing.xs + pulse * DesignTokens.Spacing.xs),
-                        dy: -(DesignTokens.Spacing.xs + pulse * DesignTokens.Spacing.xs)
-                    )),
-                    with: .color(.blue.opacity(DesignTokens.Opacity.secondaryText)),
-                    lineWidth: DesignTokens.Size.networkMapEdgeWidth
-                )
-            }
-
-            if let symbol = nodeContext.resolveSymbol(id: node.id) {
-                nodeContext.draw(symbol, at: node.position, anchor: .center)
-            } else {
-                let icon = nodeContext.resolve(Image(systemName: symbolName(for: node.topology)))
-                nodeContext.draw(icon, at: node.position, anchor: .center)
-            }
-            let label = nodeContext.resolve(
-                Text(node.topology.friendlyName)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.primary)
-            )
-            nodeContext.draw(
-                label,
-                at: CGPoint(
-                    x: node.position.x,
-                    y: node.position.y + size / 2 + DesignTokens.Spacing.md
-                ),
-                anchor: .center
-            )
-        }
+    private var showsLabels: Bool {
+        zoomController.scale >= DesignTokens.Size.networkMapLabelVisibilityScale
     }
 
     private var magnificationGesture: some Gesture {
@@ -297,86 +202,6 @@ struct NetworkMapCanvasView: View {
                 )
             }
             .onEnded { _ in zoomController.settledOffset = zoomController.offset }
-    }
-
-    private func edgeMatchesFilters(_ edge: NetworkMapLayout.Edge, index: NetworkMapRenderIndex) -> Bool {
-        guard let source = index.nodesByID[edge.link.sourceIEEEAddress],
-              let target = index.nodesByID[edge.link.targetIEEEAddress]
-        else { return true }
-        return NetworkMapFilter.matches(
-            node: source,
-            filters: filters,
-            isOffline: !(index.onlineByNode[source.id] ?? false),
-            hasWeakLink: index.weakLinkByNode[source.id] ?? false
-        ) || NetworkMapFilter.matches(
-            node: target,
-            filters: filters,
-            isOffline: !(index.onlineByNode[target.id] ?? false),
-            hasWeakLink: index.weakLinkByNode[target.id] ?? false
-        )
-    }
-
-    private func nodeSize(_ node: NetworkTopologyNode) -> CGFloat {
-        switch node.role {
-        case .coordinator: DesignTokens.Size.networkMapCoordinatorNode
-        case .router: DesignTokens.Size.networkMapRouterNode
-        case .endDevice, .unknown: DesignTokens.Size.networkMapEndDeviceNode
-        }
-    }
-
-    private func nodePath(role: NetworkTopologyNode.Role, frame: CGRect) -> Path {
-        switch role {
-        case .endDevice:
-            Path(roundedRect: frame, cornerRadius: frame.width / 2, style: .continuous)
-        case .coordinator, .router, .unknown:
-            Path(ellipseIn: frame)
-        }
-    }
-
-    /// Approximates iOS's Liquid Glass look — a tinted, translucent capsule
-    /// with a glossy highlight — for the node background. `Canvas` draws
-    /// immediately into a bitmap with no access to a live backdrop to blur,
-    /// so this can't be the real `.glassEffect()` material (that needs an
-    /// actual layered SwiftUI view behind it); it's a gradient-based stand-in
-    /// that reads the same way — tinted glass, not a flat colored disc.
-    private func drawGlassBackground(in context: inout GraphicsContext, path: Path, frame: CGRect, tint: Color, online: Bool) {
-        context.fill(path, with: .color(tint.opacity(online ? 0.32 : 0.16)))
-        context.fill(
-            path,
-            with: .radialGradient(
-                Gradient(colors: [.white.opacity(online ? 0.6 : 0.25), .white.opacity(0)]),
-                center: CGPoint(x: frame.minX + frame.width * 0.32, y: frame.minY + frame.height * 0.28),
-                startRadius: 0,
-                endRadius: frame.width * 0.75
-            )
-        )
-        context.stroke(path, with: .color(tint.opacity(online ? 0.55 : 0.3)), lineWidth: 1)
-    }
-
-    private func nodeColor(_ node: NetworkTopologyNode, online: Bool) -> Color {
-        guard online else { return Color.secondary.opacity(DesignTokens.Opacity.softFill) }
-        switch node.role {
-        case .coordinator: return .accentColor
-        case .router: return .blue
-        case .endDevice: return .green
-        case .unknown: return .gray
-        }
-    }
-
-    private func symbolName(for node: NetworkTopologyNode) -> String {
-        switch node.role {
-        case .coordinator: "network"
-        case .router: "router"
-        case .endDevice: "leaf.fill"
-        case .unknown: "questionmark"
-        }
-    }
-
-    private func edgeColor(linkQuality: Int?, online: Bool) -> Color {
-        guard online, let linkQuality else { return .gray }
-        if linkQuality >= 150 { return .green }
-        if linkQuality >= 50 { return .orange }
-        return .red
     }
 
     private func actions(for bound: BridgeBoundDevice) -> DevicePresentationActions {
@@ -405,31 +230,157 @@ struct NetworkMapCanvasView: View {
     }
 }
 
-/// All per-node/per-edge facts the canvas needs to draw a frame, resolved
-/// once per topology/store update via O(1) dictionary lookups instead of
-/// the linear (or worse) scans this replaced. Building this used to happen
-/// implicitly inside the 60fps `TimelineView` draw closure — for a mesh with
-/// hundreds of links that turned every animated frame into an O(nodes ×
-/// links) pass, which is what made the map lag once anything (an interview,
-/// an OTA) kept the pulse animation running.
+/// Keeps the expensive render-index construction and the node view tree out
+/// of the pan/zoom owner. SwiftUI can transform this whole layer at 60fps
+/// without asking every node to rebuild its actions and image state.
+private struct NetworkMapContentLayer: View {
+    let bridgeID: UUID
+    let bridgeName: String
+    let layout: NetworkMapLayout
+    let index: NetworkMapRenderIndex
+    @Binding var filters: Set<NetworkMapFilter>
+    let onQuickLook: (NetworkMapLayout.Node) -> Void
+    let actionsProvider: (BridgeBoundDevice) -> DevicePresentationActions
+    let showsMeshEdges: Bool
+    let showsLabels: Bool
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Canvas { context, _ in
+                drawEdges(context: &context, layout: layout, index: index)
+                for node in layout.nodes {
+                    guard let symbol = context.resolveSymbol(id: node.id) else { continue }
+                    let labelOffset = showsLabels
+                        ? (DesignTokens.Size.networkMapNodeLabelHeight + DesignTokens.Size.networkMapNodeLabelSpacing) / 2
+                        : 0
+                    context.draw(
+                        symbol,
+                        at: CGPoint(x: node.position.x, y: node.position.y + labelOffset)
+                    )
+                }
+            }
+            symbols: {
+                ForEach(layout.nodes) { node in
+                    if let device = index.devicesByIEEE[node.topology.ieeeAddress] {
+                        NetworkMapNodeView(
+                            node: node,
+                            device: device,
+                            isOnline: index.onlineByNode[node.id] ?? false,
+                            hasWeakLink: index.weakLinkByNode[node.id] ?? false,
+                            hasUpdate: index.updateAvailableByNode[node.id] ?? false,
+                            otaStatus: index.otaStatusByNode[node.id],
+                            showsLabel: showsLabels,
+                            isDimmed: !NetworkMapFilter.matches(
+                                node: node.topology,
+                                filters: filters,
+                                isOffline: !(index.onlineByNode[node.id] ?? false),
+                                hasWeakLink: index.weakLinkByNode[node.id] ?? false
+                            )
+                        )
+                        .tag(node.id)
+                    }
+                }
+            }
+            NetworkMapInteractionLayer(
+                bridgeID: bridgeID,
+                bridgeName: bridgeName,
+                layout: layout,
+                index: index,
+                filters: filters,
+                onQuickLook: onQuickLook,
+                actionsProvider: actionsProvider,
+                showsLabels: showsLabels
+            )
+            .equatable()
+        }
+    }
+
+    private func drawEdges(
+        context: inout GraphicsContext,
+        layout: NetworkMapLayout,
+        index: NetworkMapRenderIndex
+    ) {
+        for edge in layout.edges {
+            guard edge.isPrimary || showsMeshEdges else { continue }
+            let midpointX = (edge.source.x + edge.target.x) / 2
+            var path = Path()
+            path.move(to: edge.source)
+            path.addCurve(
+                to: edge.target,
+                control1: CGPoint(x: midpointX, y: edge.source.y),
+                control2: CGPoint(x: midpointX, y: edge.target.y)
+            )
+            let online = (index.onlineByNode[edge.link.sourceIEEEAddress] ?? false)
+                && (index.onlineByNode[edge.link.targetIEEEAddress] ?? false)
+            let quality = index.qualityByLinkID[edge.link.id] ?? edge.link.linkQuality
+            var edgeContext = context
+            edgeContext.opacity = edgeMatchesFilters(edge, index: index)
+                ? (edge.isPrimary
+                    ? DesignTokens.Opacity.networkMapPrimaryEdge
+                    : DesignTokens.Opacity.networkMapSecondaryEdge)
+                : DesignTokens.Opacity.networkMapFadedEdge
+            edgeContext.stroke(
+                path,
+                with: .color(edgeColor(linkQuality: quality, online: online)),
+                style: StrokeStyle(
+                    lineWidth: edge.isPrimary
+                        ? DesignTokens.Size.networkMapEdgeWidth
+                        : DesignTokens.Size.networkMapSecondaryEdgeWidth,
+                    lineCap: .round,
+                    lineJoin: .round,
+                    dash: online ? [] : [DesignTokens.Size.networkMapDashLength]
+                )
+            )
+        }
+    }
+
+    private func edgeMatchesFilters(_ edge: NetworkMapLayout.Edge, index: NetworkMapRenderIndex) -> Bool {
+        guard let source = index.nodesByID[edge.link.sourceIEEEAddress],
+              let target = index.nodesByID[edge.link.targetIEEEAddress]
+        else { return true }
+        return NetworkMapFilter.matches(
+            node: source,
+            filters: filters,
+            isOffline: !(index.onlineByNode[source.id] ?? false),
+            hasWeakLink: index.weakLinkByNode[source.id] ?? false
+        ) || NetworkMapFilter.matches(
+            node: target,
+            filters: filters,
+            isOffline: !(index.onlineByNode[target.id] ?? false),
+            hasWeakLink: index.weakLinkByNode[target.id] ?? false
+        )
+    }
+
+    private func edgeColor(linkQuality: Int?, online: Bool) -> Color {
+        guard online, let linkQuality else { return Color.secondary }
+        if linkQuality >= 150 { return Color(red: 0.20, green: 0.48, blue: 0.76) }
+        if linkQuality >= 50 { return Color(red: 0.82, green: 0.57, blue: 0.24) }
+        return Color(red: 0.80, green: 0.36, blue: 0.46)
+    }
+}
+
+/// All per-node/per-edge facts the map needs to draw a frame, resolved once
+/// per topology/store update via O(1) dictionary lookups. Pan and zoom only
+/// transform the already-built layer; they do not rebuild this index.
 private struct NetworkMapRenderIndex: Equatable {
     let nodesByID: [String: NetworkTopologyNode]
     let devicesByIEEE: [String: Device]
     let onlineByNode: [String: Bool]
     let qualityByLinkID: [String: Int?]
     let weakLinkByNode: [String: Bool]
-    let activeByNode: [String: Bool]
-
-    var hasActiveNodes: Bool { activeByNode.values.contains(true) }
+    let updateAvailableByNode: [String: Bool]
+    let otaStatusByNode: [String: OTAUpdateStatus]
 
     static func build(layout: NetworkMapLayout, store: AppStore) -> NetworkMapRenderIndex {
         let nodesByID = Dictionary(uniqueKeysWithValues: layout.nodes.map { ($0.id, $0.topology) })
         let devicesByIEEE = Dictionary(store.devices.map { ($0.ieeeAddress, $0) }) { first, _ in first }
 
         var onlineByNode: [String: Bool] = [:]
-        var activeByNode: [String: Bool] = [:]
+        var updateAvailableByNode: [String: Bool] = [:]
+        var otaStatusByNode: [String: OTAUpdateStatus] = [:]
         onlineByNode.reserveCapacity(layout.nodes.count)
-        activeByNode.reserveCapacity(layout.nodes.count)
+        updateAvailableByNode.reserveCapacity(layout.nodes.count)
+        otaStatusByNode.reserveCapacity(layout.nodes.count)
         for node in layout.nodes {
             let topology = node.topology
             let device = devicesByIEEE[topology.ieeeAddress]
@@ -437,9 +388,12 @@ private struct NetworkMapRenderIndex: Equatable {
                 ? store.bridgeOnline
                 : device.map { store.isAvailable($0.friendlyName) } ?? false
             onlineByNode[topology.id] = online
-            activeByNode[topology.id] = device.map { device in
-                device.isInterviewing || store.otaStatus(for: device.friendlyName)?.isActive == true
-            } ?? false
+            if let device {
+                updateAvailableByNode[topology.id] = store.state(for: device.friendlyName).hasUpdateAvailable
+                if let status = store.otaStatus(for: device.friendlyName) {
+                    otaStatusByNode[topology.id] = status
+                }
+            }
         }
 
         var qualityByLinkID: [String: Int?] = [:]
@@ -465,29 +419,31 @@ private struct NetworkMapRenderIndex: Equatable {
             onlineByNode: onlineByNode,
             qualityByLinkID: qualityByLinkID,
             weakLinkByNode: weakLinkByNode,
-            activeByNode: activeByNode
+            updateAvailableByNode: updateAvailableByNode,
+            otaStatusByNode: otaStatusByNode
         )
     }
 }
 
 /// The tappable/draggable/context-menu layer over the map, split out into
 /// its own `Equatable` view so a pan or pinch gesture — which only changes
-/// `scale`/`offset` on the parent — never has to rebuild it. See the
-/// `.equatable()` call site in `NetworkMapCanvasView.body` for why that
-/// matters: each of these rows carries a `.contextMenu`, a `.draggable`, and
-/// several accessibility actions, and none of that depends on the current
-/// zoom or pan position.
+/// `scale`/`offset` on the parent — never has to rebuild it. Each node carries
+/// a context menu, drag preview, and accessibility actions, none of which
+/// depend on the current zoom or pan position.
 private struct NetworkMapInteractionLayer: View, Equatable {
     let bridgeID: UUID
     let bridgeName: String
     let layout: NetworkMapLayout
     let index: NetworkMapRenderIndex
+    let filters: Set<NetworkMapFilter>
     let onQuickLook: (NetworkMapLayout.Node) -> Void
     let actionsProvider: (BridgeBoundDevice) -> DevicePresentationActions
+    let showsLabels: Bool
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.bridgeID == rhs.bridgeID && lhs.bridgeName == rhs.bridgeName
             && lhs.layout == rhs.layout && lhs.index == rhs.index
+            && lhs.filters == rhs.filters && lhs.showsLabels == rhs.showsLabels
     }
 
     var body: some View {
@@ -497,21 +453,26 @@ private struct NetworkMapInteractionLayer: View, Equatable {
                     let bound = BridgeBoundDevice(bridgeID: bridgeID, bridgeName: bridgeName, device: device)
                     Button {
                         onQuickLook(node)
-                    } label: {
-                        Color.clear
-                            .frame(
-                                width: DesignTokens.Size.networkMapInteractionTarget,
-                                height: DesignTokens.Size.networkMapInteractionTarget
-                            )
-                            .contentShape(Circle())
-                    }
+                    } label: { Color.clear }
                     .buttonStyle(.plain)
-                    .position(node.position)
+                    .frame(
+                        width: DesignTokens.Size.networkMapNodeLabelWidth,
+                        height: DesignTokens.Size.networkMapInteractionTarget
+                            + (showsLabels ? DesignTokens.Size.networkMapNodeLabelHeight : 0)
+                    )
+                    .position(
+                        x: node.position.x,
+                        y: node.position.y + (showsLabels
+                            ? (DesignTokens.Size.networkMapNodeLabelHeight + DesignTokens.Size.networkMapNodeLabelSpacing) / 2
+                            : 0)
+                    )
                     .accessibilityLabel(node.topology.friendlyName)
                     .accessibilityValue(accessibilityStatus(for: node.topology))
+                    .hoverEffectDisabled(true)
                     .modifier(DevicePresentationActionsModifier(
                         bound: bound,
-                        actions: actionsProvider(bound)
+                        actions: actionsProvider(bound),
+                        pointerEffect: .none
                     ))
                 }
             }
@@ -522,5 +483,118 @@ private struct NetworkMapInteractionLayer: View, Equatable {
         let status = (index.onlineByNode[node.id] ?? false) ? "Online" : "Offline"
         if index.weakLinkByNode[node.id] == true { return "\(node.role.rawValue), \(status), weak link" }
         return "\(node.role.rawValue), \(status)"
+    }
+}
+
+private struct NetworkMapNodeView: View {
+    let node: NetworkMapLayout.Node
+    let device: Device
+    let isOnline: Bool
+    let hasWeakLink: Bool
+    let hasUpdate: Bool
+    let otaStatus: OTAUpdateStatus?
+    let showsLabel: Bool
+    let isDimmed: Bool
+
+    private var size: CGFloat {
+        switch node.topology.role {
+        case .coordinator: DesignTokens.Size.networkMapCoordinatorNode
+        case .router: DesignTokens.Size.networkMapRouterNode
+        case .endDevice, .unknown: DesignTokens.Size.networkMapEndDeviceNode
+        }
+    }
+
+    private var tint: Color {
+        guard isOnline else { return .secondary }
+        switch node.topology.role {
+        case .coordinator: return .accentColor
+        case .router: return .blue
+        case .endDevice: return .green
+        case .unknown: return .gray
+        }
+    }
+
+    private var statusGradient: LinearGradient {
+        if isOnline {
+            return LinearGradient(
+                colors: [
+                    .blue.opacity(0.72),
+                    .pink.opacity(0.82),
+                    .orange.opacity(0.56)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [
+                .blue.opacity(0.82),
+                .purple.opacity(0.68),
+                .blue.opacity(0.42)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    var body: some View {
+        VStack(spacing: DesignTokens.Size.networkMapNodeLabelSpacing) {
+            bubbleGlass
+            .overlay { bubbleOutline }
+            if showsLabel {
+                Text(node.topology.friendlyName)
+                    .font(.caption2.weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(DesignTokens.Size.networkMapNodeLabelScale)
+                    .frame(maxWidth: DesignTokens.Size.networkMapNodeLabelWidth)
+            }
+        }
+        .opacity(isDimmed ? DesignTokens.Opacity.accentFill : 1)
+    }
+    @ViewBuilder
+    private var bubbleContent: some View {
+        DeviceImageView(
+            device: device,
+            isAvailable: isOnline,
+            hasUpdate: hasUpdate,
+            otaStatus: otaStatus,
+            size: size * DesignTokens.Size.networkMapNodeImageRatio,
+            showsAvailabilityIndicator: false
+        )
+        .frame(width: size, height: size)
+    }
+
+    @ViewBuilder
+    private var bubbleGlass: some View {
+        switch node.topology.role {
+        case .endDevice:
+            bubbleContent.networkMapRoundedGlassEffect(
+                tint: tint,
+                cornerRadius: size / 2
+            )
+        case .coordinator, .router, .unknown:
+            bubbleContent.networkMapCircleGlassEffect(tint: tint)
+        }
+    }
+
+    @ViewBuilder
+    private var bubbleOutline: some View {
+        if !isOnline || hasWeakLink {
+            switch node.topology.role {
+            case .endDevice:
+                RoundedRectangle(cornerRadius: size / 2, style: .continuous)
+                    .stroke(
+                        statusGradient,
+                        lineWidth: DesignTokens.Size.networkMapStatusGlowWidth
+                    )
+                    .blur(radius: DesignTokens.Size.networkMapStatusGlowRadius)
+                    .opacity(DesignTokens.Opacity.networkMapStatusGlow)
+            case .coordinator, .router, .unknown:
+                Circle()
+                    .stroke(statusGradient, lineWidth: DesignTokens.Size.networkMapStatusGlowWidth)
+                    .blur(radius: DesignTokens.Size.networkMapStatusGlowRadius)
+                    .opacity(DesignTokens.Opacity.networkMapStatusGlow)
+            }
+        }
     }
 }

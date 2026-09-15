@@ -6,6 +6,7 @@ struct DeviceImageView: View {
     var hasUpdate: Bool = false
     var otaStatus: OTAUpdateStatus?
     var size: CGFloat = 44
+    var showsAvailabilityIndicator = true
 
     @State private var bundledImageData: Data?
 
@@ -22,7 +23,7 @@ struct DeviceImageView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !isAvailable {
+            if !isAvailable && showsAvailabilityIndicator {
                 offlineDot
             }
         }

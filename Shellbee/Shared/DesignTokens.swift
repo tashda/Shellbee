@@ -134,19 +134,26 @@ nonisolated enum DesignTokens {
         static let networkMapRouterNode: CGFloat = 44
         static let networkMapEndDeviceNode: CGFloat = 34
         static let networkMapInteractionTarget: CGFloat = 58
-        static let networkMapRingSpacing: CGFloat = 130
         static let networkMapMinimumHeight: CGFloat = 480
-        static let networkMapEdgeWidth: CGFloat = 2
-        static let networkMapSecondaryEdgeWidth: CGFloat = 1
+        static let networkMapEdgeWidth: CGFloat = 1.5
+        static let networkMapSecondaryEdgeWidth: CGFloat = 0.8
         static let networkMapDashLength: CGFloat = 6
-        static let networkMapWeakRingWidth: CGFloat = 3
+        static let networkMapStatusGlowRadius: CGFloat = 4
+        static let networkMapStatusGlowWidth: CGFloat = 3
         static let networkMapMinimumScale: CGFloat = 0.35
         static let networkMapMaximumScale: CGFloat = 3
-        static let networkMapMinimumNodeSpacing: CGFloat = 88
+        static let networkMapMinimumNodeSpacing: CGFloat = 112
         static let networkMapMeshEdgeScale: CGFloat = 1.4
         static let networkMapZoomStep: CGFloat = 1.3
         static let networkMapQuickLookImage: CGFloat = 88
-        static let networkMapLegibleMinimumScale: CGFloat = 0.55
+        static let networkMapDepthSpacing: CGFloat = 132
+        static let networkMapLabelVisibilityScale: CGFloat = 0.8
+        static let networkMapContentPadding: CGFloat = 72
+        static let networkMapNodeLabelSpacing: CGFloat = 6
+        static let networkMapNodeLabelHeight: CGFloat = 24
+        static let networkMapNodeLabelWidth: CGFloat = 160
+        static let networkMapNodeLabelScale: CGFloat = 0.6
+        static let networkMapNodeImageRatio: CGFloat = 0.78
         // Offsets (pixel-pushing for badge alignment over a parent shape)
         static let logRowBadgeOffset: CGFloat = 3
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4
@@ -455,6 +462,10 @@ nonisolated enum DesignTokens {
     }
 
     nonisolated enum Opacity {
+        static let networkMapPrimaryEdge: Double = 0.82
+        static let networkMapSecondaryEdge: Double = 0.28
+        static let networkMapFadedEdge: Double = 0.08
+        static let networkMapStatusGlow: Double = 0.58
         static let overlay: Double = 0.3
         static let secondaryText: Double = 0.8
         static let chipFill: Double = 0.12

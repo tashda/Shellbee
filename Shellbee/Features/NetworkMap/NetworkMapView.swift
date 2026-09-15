@@ -6,9 +6,10 @@ struct NetworkMapView: View {
     var embedInNavigationStack = true
     private let selection: Binding<DeviceRoute?>?
     private let externalFilters: Binding<Set<NetworkMapFilter>>?
+    private let externalBridgeSelection: Binding<UUID?>?
     private let initialBridgeID: UUID?
 
-    @State private var selectedBridgeID: UUID?
+    @State private var internalSelectedBridgeID: UUID?
     @State private var internalFilters: Set<NetworkMapFilter> = []
     @State private var autoOpenedDeviceRoute: DeviceRoute?
     @State private var deviceViewModel = DeviceListViewModel()
@@ -21,11 +22,13 @@ struct NetworkMapView: View {
         embedInNavigationStack: Bool = true,
         selection: Binding<DeviceRoute?>? = nil,
         filters: Binding<Set<NetworkMapFilter>>? = nil,
+        bridgeSelection: Binding<UUID?>? = nil,
         initialBridgeID: UUID? = nil
     ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
         self.externalFilters = filters
+        self.externalBridgeSelection = bridgeSelection
         self.initialBridgeID = initialBridgeID
     }
 
@@ -34,6 +37,14 @@ struct NetworkMapView: View {
     /// this view's canvas share one Set instead of drifting apart.
     private var filters: Binding<Set<NetworkMapFilter>> {
         externalFilters ?? $internalFilters
+    }
+
+    private var bridgeSelection: Binding<UUID?> {
+        externalBridgeSelection ?? $internalSelectedBridgeID
+    }
+
+    private var selectedBridgeID: UUID? {
+        bridgeSelection.wrappedValue
     }
 
     private var connectedSessions: [BridgeSession] {
@@ -111,7 +122,12 @@ struct NetworkMapView: View {
     private var content: some View {
         VStack(spacing: 0) {
             if let session = selectedSession,
-               let topology = session.store.networkTopology {
+               session.store.networkTopology == nil,
+               session.store.networkMapIsRefreshing {
+                ProgressView("Loading Network Map")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let session = selectedSession,
+                      let topology = session.store.networkTopology {
                 NetworkMapCanvasView(
                     bridgeID: session.bridgeID,
                     topology: topology,
@@ -123,6 +139,7 @@ struct NetworkMapView: View {
                     onPendingAlert: { alert, _ in pendingDeviceAlert = alert },
                     zoomController: zoomController
                 )
+                .id(session.bridgeID)
                 .overlay(alignment: .bottomLeading) {
                     lastUpdatedLabel(session.store.networkMapLastUpdated)
                         .padding(DesignTokens.Spacing.md)
@@ -134,7 +151,7 @@ struct NetworkMapView: View {
                     description: Text("Refresh to fetch the Zigbee topology. This can take up to a minute on a busy network.")
                 )
                 .overlay(alignment: .bottom) {
-                    Button("Refresh", action: refresh)
+                    Button("Refresh", action: { refresh() })
                         .buttonStyle(.borderedProminent)
                         .disabled(selectedSession == nil || selectedSession?.store.networkMapIsRefreshing == true)
                         .padding(DesignTokens.Spacing.xl)
@@ -148,10 +165,6 @@ struct NetworkMapView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                OpenInNewWindowButton(destination: .networkMap(bridgeID: selectedBridgeID))
-                if connectedSessions.count > 1 {
-                    bridgePicker
-                }
                 Button { zoomController.zoomOut() } label: {
                     Image(systemName: "minus.magnifyingglass")
                 }
@@ -164,30 +177,63 @@ struct NetworkMapView: View {
                     Image(systemName: "plus.magnifyingglass")
                 }
                 .accessibilityLabel("Zoom In")
-                Button(action: refresh) {
-                    if selectedSession?.store.networkMapIsRefreshing == true {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
-                .disabled(selectedSession == nil || selectedSession?.store.networkMapIsRefreshing == true)
-                .accessibilityLabel("Refresh Network Map")
+            }
+            if #available(iOS 26.0, *) {
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .networkMap(bridgeID: selectedBridgeID))
+                refreshToolbarItem
             }
         }
+        // Keep the navigation bar translucent over the moving map. The
+        // explicit material is important here because this screen is not a
+        // ScrollView, so the system cannot infer a scroll-edge backdrop.
+        .toolbarBackground(.thinMaterial, for: .navigationBar)
+        .forceSoftTopScrollEdgeEffect()
     }
 
-    private var bridgePicker: some View {
-        Menu {
-            Picker("Bridge", selection: $selectedBridgeID) {
+    @ViewBuilder
+    private var refreshToolbarItem: some View {
+        if connectedSessions.count > 1 {
+            Menu {
                 ForEach(connectedSessions, id: \.bridgeID) { session in
-                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
+                    Button {
+                        refresh(bridgeID: session.bridgeID)
+                    } label: {
+                        Label {
+                            Text(session.displayName)
+                        } icon: {
+                            if session.store.networkMapIsRefreshing {
+                                ProgressView()
+                            } else if session.bridgeID == selectedBridgeID {
+                                Image(systemName: "checkmark.circle")
+                            } else {
+                                Image(systemName: "point.3.connected.trianglepath.dotted")
+                            }
+                        }
+                    }
+                    .disabled(session.store.networkMapIsRefreshing)
+                }
+            } label: {
+                if connectedSessions.contains(where: { $0.store.networkMapIsRefreshing }) {
+                    ProgressView()
+                } else {
+                    Image(systemName: "arrow.clockwise")
                 }
             }
-        } label: {
-            Label(selectedSession?.displayName ?? "Bridge", systemImage: "antenna.radiowaves.left.and.right")
+            .accessibilityLabel("Refresh Network Map")
+        } else {
+            Button(action: { refresh() }) {
+                if selectedSession?.store.networkMapIsRefreshing == true {
+                    ProgressView()
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                }
+            }
+            .disabled(selectedSession == nil || selectedSession?.store.networkMapIsRefreshing == true)
+            .accessibilityLabel("Refresh Network Map")
         }
-        .accessibilityLabel("Network Map Bridge")
     }
 
     private var routeBinding: Binding<DeviceRoute?> {
@@ -197,8 +243,10 @@ struct NetworkMapView: View {
         )
     }
 
-    private func refresh() {
-        guard let session = selectedSession else { return }
+    private func refresh(bridgeID: UUID? = nil) {
+        guard let bridgeID = bridgeID ?? selectedBridgeID,
+              let session = environment.registry.session(for: bridgeID)
+        else { return }
         session.store.networkMapIsRefreshing = true
         environment.send(
             bridge: session.bridgeID,
@@ -208,7 +256,7 @@ struct NetworkMapView: View {
                 "routes": .bool(false)
             ])
         )
-        if sceneNavigation.pendingNetworkMapRefreshBridgeID == session.bridgeID {
+        if sceneNavigation.pendingNetworkMapRefreshBridgeID == bridgeID {
             sceneNavigation.pendingNetworkMapRefreshBridgeID = nil
         }
     }
@@ -216,7 +264,7 @@ struct NetworkMapView: View {
     private func establishSelectedBridge() {
         consumePendingNavigation()
         if selectedBridgeID == nil {
-            selectedBridgeID = initialBridgeID ?? sceneNavigation.selectedBridgeID
+            bridgeSelection.wrappedValue = initialBridgeID ?? sceneNavigation.selectedBridgeID
                 ?? environment.registry.primaryBridgeID
                 ?? connectedSessions.first?.bridgeID
         }
@@ -229,7 +277,7 @@ struct NetworkMapView: View {
         guard let bridgeID = sceneNavigation.pendingNetworkMapBridgeID,
               environment.registry.session(for: bridgeID) != nil
         else { return }
-        selectedBridgeID = bridgeID
+        bridgeSelection.wrappedValue = bridgeID
         sceneNavigation.pendingNetworkMapBridgeID = nil
         if sceneNavigation.pendingNetworkMapRefreshBridgeID == bridgeID {
             refresh()

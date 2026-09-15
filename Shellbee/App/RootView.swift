@@ -58,7 +58,6 @@ struct RootView: View {
             }
         }
         .animation(.spring(duration: DesignTokens.Duration.slowAnimation), value: isInitializing)
-        .forceSoftTopScrollEdgeEffect()
         .sheet(item: $pendingCrash) { crash in
             PendingCrashSheet(
                 crash: crash,
