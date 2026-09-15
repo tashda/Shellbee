@@ -1,6 +1,18 @@
 import SwiftUI
 
 extension View {
+    /// Keeps navigation-bar content in place while a searchable toolbar is
+    /// presented. Without this on iOS 26+, a large navigation title can be
+    /// re-laid out to the leading edge while the search field expands.
+    @ViewBuilder
+    func avoidHidingSearchToolbarContentIfAvailable() -> some View {
+        if #available(iOS 17.1, *) {
+            self.searchPresentationToolbarBehavior(.avoidHidingContent)
+        } else {
+            self
+        }
+    }
+
     @ViewBuilder
     func minimizeSearchToolbarIfAvailable() -> some View {
         if #available(iOS 26.0, *) {

@@ -64,7 +64,7 @@ struct ConnectionEditorView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .secondaryAction) {
                 Button {
                     runConnectionTest()
                 } label: {
