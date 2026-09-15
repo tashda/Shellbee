@@ -5,4 +5,8 @@ enum HomeSettings {
     static let recentEventsCountDefault = 3
     static let wideRecentEventsMinimum = 5
     static let recentEventsOptions = [3, 5, 10]
+
+    static func cardDisplayKey(_ card: HomeCardID) -> String {
+        "homeCardDisplayMode.\(card.rawValue)"
+    }
 }

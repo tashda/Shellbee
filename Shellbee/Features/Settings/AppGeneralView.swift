@@ -4,6 +4,11 @@ struct AppGeneralView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(BridgeGradientMode.storageKey) private var bridgeGradientModeRaw: String = BridgeGradientMode.default.rawValue
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
+    @AppStorage(HomeSettings.cardDisplayKey(.bridge)) private var bridgeCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.devices)) private var devicesCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.groups)) private var groupsCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.mesh)) private var meshCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.recentEvents)) private var recentEventsCardDisplayRaw = HomeCardDisplayMode.one.rawValue
     @AppStorage(AppConfig.UX.recentDeviceWindowKey) private var recentDeviceWindowMinutes: Int = Int(AppConfig.UX.recentDeviceWindowDefaultMinutes)
     @AppStorage(ConnectionSessionController.maxReconnectAttemptsKey) private var maxReconnectAttempts: Int = ConnectionSessionController.defaultMaxReconnectAttempts
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
@@ -41,6 +46,18 @@ struct AppGeneralView: View {
                 Text("Home")
             } footer: {
                 Text("Number of recent events shown on the Home page.")
+            }
+
+            Section {
+                cardDisplayPicker("Bridges", selection: $bridgeCardDisplayRaw)
+                cardDisplayPicker("Devices", selection: $devicesCardDisplayRaw)
+                cardDisplayPicker("Groups", selection: $groupsCardDisplayRaw)
+                cardDisplayPicker("Mesh", selection: $meshCardDisplayRaw)
+                cardDisplayPicker("Recent Events", selection: $recentEventsCardDisplayRaw)
+            } header: {
+                Text("Home Cards")
+            } footer: {
+                Text("Choose whether each card combines all bridges or shows one card per bridge. The per-bridge option appears when multiple bridges are connected.")
             }
 
             Section {
@@ -84,7 +101,7 @@ struct AppGeneralView: View {
             } header: {
                 Text("Advanced")
             } footer: {
-                Text("Exposes the MQTT Inspector and other power-user tools under a Developer section in Settings.")
+                Text("Exposes the MQTT Inspector and other power-user tools under a Developer section in Settings, and adds the Network Map tab on iPad.")
             }
         }
         .navigationTitle("General")
@@ -100,6 +117,14 @@ struct AppGeneralView: View {
         default:
             let hours = minutes / 60
             return hours == 1 ? "1 hour" : "\(hours) hours"
+        }
+    }
+
+    private func cardDisplayPicker(_ title: String, selection: Binding<String>) -> some View {
+        Picker(title, selection: selection) {
+            ForEach(HomeCardDisplayMode.allCases, id: \.rawValue) { mode in
+                Text(mode.label).tag(mode.rawValue)
+            }
         }
     }
 }

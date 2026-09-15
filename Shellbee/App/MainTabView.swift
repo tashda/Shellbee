@@ -6,6 +6,7 @@ struct MainTabView: View {
     @State private var tabSelection: AppTab = .home
     @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
+    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
     /// connected bridge has pending config that needs a restart. Single-
@@ -53,6 +54,9 @@ struct MainTabView: View {
         .onChange(of: sceneNavigation.selectedTab) { _, newValue in
             tabSelection = newValue
         }
+        .onChange(of: developerModeEnabled) { _, enabled in
+            if !enabled, tabSelection == .networkMap { tabSelection = .home }
+        }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
 
@@ -76,8 +80,10 @@ struct MainTabView: View {
                         }
                         .forceSoftTopScrollEdgeEffect()
                     }
-                    Tab("Network Map", systemImage: AppTab.networkMap.systemImage, value: AppTab.networkMap) {
-                        NetworkMapView()
+                    if developerModeEnabled {
+                        Tab("Network Map", systemImage: AppTab.networkMap.systemImage, value: AppTab.networkMap) {
+                            NetworkMapView()
+                        }
                     }
                 }
                 Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
@@ -103,9 +109,11 @@ struct MainTabView: View {
                     .forceSoftTopScrollEdgeEffect()
                     .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
                     .tag(AppTab.logs)
-                    NetworkMapView()
-                        .tabItem { Label("Network Map", systemImage: AppTab.networkMap.systemImage) }
-                        .tag(AppTab.networkMap)
+                    if developerModeEnabled {
+                        NetworkMapView()
+                            .tabItem { Label("Network Map", systemImage: AppTab.networkMap.systemImage) }
+                            .tag(AppTab.networkMap)
+                    }
                 }
                 SettingsView()
                     .tabItem { Label("Settings", systemImage: "gearshape.fill") }
@@ -121,9 +129,11 @@ struct MainTabView: View {
                 searchFocusRequest.request(for: tabSelection)
             },
             selectSection: { section in
-                guard AdaptiveLayout.isPad
-                        || [.home, .devices, .groups, .settings].contains(section)
-                else { return }
+                if section == .networkMap {
+                    guard AdaptiveLayout.isPad, developerModeEnabled else { return }
+                } else if section == .logs {
+                    guard AdaptiveLayout.isPad else { return }
+                }
                 tabSelection = section
             },
             showCommandPalette: {

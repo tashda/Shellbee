@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeLogsCard: View {
     let entries: [LogEntry]
     var showsExpandedDetails = false
+    var bridgeName: String? = nil
     let onOpenEntry: (LogEntry) -> Void
     let onOpenAll: () -> Void
 
@@ -10,7 +11,7 @@ struct HomeLogsCard: View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 HStack(alignment: .center) {
-                    HomeCardTitle(symbol: "list.bullet.rectangle.fill", title: "Recent Events", tint: .blue)
+                    HomeCardTitle(symbol: "list.bullet.rectangle.fill", title: cardTitle, tint: .blue)
                     Spacer()
                     Button("Show All", action: onOpenAll)
                         .font(.subheadline.weight(.medium))
@@ -42,6 +43,10 @@ struct HomeLogsCard: View {
                 }
             }
         }
+    }
+
+    private var cardTitle: String {
+        bridgeName.map { "Recent Events · \($0)" } ?? "Recent Events"
     }
 }
 

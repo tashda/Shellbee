@@ -78,6 +78,7 @@ struct DeviceDetailView: View {
             logsSection
         }
         .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
         .navigationTitle(device.friendlyName)
         .navigationBarTitleDisplayMode(.inline)

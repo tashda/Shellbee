@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeCardSlot<Content: View>: View {
-    let card: HomeCardID
+    let card: HomeCardInstance
     let isEditing: Bool
     let onHide: () -> Void
     let onEnterEdit: () -> Void
@@ -19,7 +19,7 @@ struct HomeCardSlot<Content: View>: View {
                             .foregroundStyle(.white, .red)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Hide \(card.title)")
+                    .accessibilityLabel("Hide \(card.type.title)")
                     .offset(x: DesignTokens.Size.homeCardSlotButtonOffset,
                             y: DesignTokens.Size.homeCardSlotButtonOffset)
                     .transition(.scale.combined(with: .opacity))
@@ -28,7 +28,7 @@ struct HomeCardSlot<Content: View>: View {
             .contextMenu {
                 if !isEditing {
                     Button(role: .destructive) { onHide() } label: {
-                        Label("Hide \(card.title)", systemImage: "eye.slash")
+                        Label("Hide \(card.type.title)", systemImage: "eye.slash")
                     }
                     Button { onEnterEdit() } label: {
                         Label("Edit Home", systemImage: "square.grid.2x2")

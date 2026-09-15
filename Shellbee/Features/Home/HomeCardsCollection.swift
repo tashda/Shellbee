@@ -3,7 +3,8 @@ import SwiftUI
 struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
     @Bindable var layout: HomeLayoutStore
     let usesWideLayout: Bool
-    @ViewBuilder let cardContent: (HomeCardID) -> CardContent
+    let cards: [HomeCardInstance]
+    @ViewBuilder let cardContent: (HomeCardInstance) -> CardContent
     @ViewBuilder let emptyContent: () -> EmptyContent
 
     var body: some View {
@@ -17,14 +18,14 @@ struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
     private var list: some View {
         List {
             Section {
-                ForEach(layout.visibleOrder) { id in
-                    cardSlot(for: id)
+                ForEach(cards) { card in
+                    cardSlot(for: card)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(cardInsets)
                 }
                 .onMove { source, destination in
-                    layout.move(from: source, to: destination)
+                    layout.move(cards: cards, from: source, to: destination)
                 }
             }
 
@@ -37,7 +38,7 @@ struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
                 }
             }
 
-            if layout.visibleOrder.isEmpty {
+            if cards.isEmpty {
                 emptyContent()
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -50,7 +51,7 @@ struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
 
     private var grid: some View {
         ScrollView {
-            if layout.visibleOrder.isEmpty {
+            if cards.isEmpty {
                 emptyContent()
                     .padding(.horizontal, DesignTokens.Spacing.lg)
             } else {
@@ -78,13 +79,13 @@ struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
         }
     }
 
-    private func cardSlot(for id: HomeCardID) -> some View {
+    private func cardSlot(for card: HomeCardInstance) -> some View {
         HomeCardSlot(
-            card: id,
+            card: card,
             isEditing: layout.isEditing,
             onHide: {
                 withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
-                    layout.hide(id)
+                    layout.hide(card.type)
                 }
             },
             onEnterEdit: {
@@ -93,19 +94,19 @@ struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
                 }
             }
         ) {
-            cardContent(id)
+            cardContent(card)
         }
     }
 
     @ViewBuilder
     private func wideGridRow(_ row: WideRow) -> some View {
         GridRow(alignment: .top) {
-            if row.isFullWidth, let id = row.cards.first {
-                cardSlot(for: id)
+            if row.isFullWidth, let card = row.cards.first {
+                cardSlot(for: card)
                     .gridCellColumns(2)
             } else {
-                ForEach(row.cards) { id in
-                    cardSlot(for: id)
+                ForEach(row.cards) { card in
+                    cardSlot(for: card)
                 }
                 if row.cards.count == 1 {
                     Color.clear
@@ -116,10 +117,10 @@ struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
 
     private var wideRows: [WideRow] {
         var rows: [WideRow] = []
-        var pendingCard: HomeCardID?
+        var pendingCard: HomeCardInstance?
 
-        for card in layout.visibleOrder {
-            if card == .recentEvents {
+        for card in cards {
+            if card.type == .recentEvents {
                 if let pending = pendingCard {
                     rows.append(WideRow(cards: [pending]))
                 }
@@ -158,11 +159,11 @@ struct HomeCardsCollection<CardContent: View, EmptyContent: View>: View {
     }
 
     private struct WideRow: Identifiable {
-        let cards: [HomeCardID]
+        let cards: [HomeCardInstance]
         var isFullWidth = false
 
         var id: String {
-            cards.map(\.rawValue).joined(separator: "-")
+            cards.map(\.id).joined(separator: "-")
         }
     }
 }

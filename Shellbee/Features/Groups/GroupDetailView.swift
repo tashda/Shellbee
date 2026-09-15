@@ -123,6 +123,7 @@ struct GroupDetailView: View {
             logsSection
         }
         .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
         .navigationTitle(currentGroup.friendlyName)
         .navigationBarTitleDisplayMode(.inline)

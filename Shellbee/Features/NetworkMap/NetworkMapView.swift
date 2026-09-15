@@ -5,24 +5,35 @@ struct NetworkMapView: View {
     @Environment(\.sceneNavigation) private var sceneNavigation
     var embedInNavigationStack = true
     private let selection: Binding<DeviceRoute?>?
+    private let externalFilters: Binding<Set<NetworkMapFilter>>?
     private let initialBridgeID: UUID?
 
     @State private var selectedBridgeID: UUID?
-    @State private var filters: Set<NetworkMapFilter> = []
+    @State private var internalFilters: Set<NetworkMapFilter> = []
     @State private var autoOpenedDeviceRoute: DeviceRoute?
     @State private var deviceViewModel = DeviceListViewModel()
     @State private var deviceToRename: BridgeBoundDevice?
     @State private var deviceToRemove: BridgeBoundDevice?
     @State private var pendingDeviceAlert: PendingDeviceAlert?
+    @State private var zoomController = NetworkMapZoomController()
 
     init(
         embedInNavigationStack: Bool = true,
         selection: Binding<DeviceRoute?>? = nil,
+        filters: Binding<Set<NetworkMapFilter>>? = nil,
         initialBridgeID: UUID? = nil
     ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
+        self.externalFilters = filters
         self.initialBridgeID = initialBridgeID
+    }
+
+    /// A host embedding the map inside its own sidebar (see `MainSplitView`)
+    /// can pass its own filter state here so a sidebar filter section and
+    /// this view's canvas share one Set instead of drifting apart.
+    private var filters: Binding<Set<NetworkMapFilter>> {
+        externalFilters ?? $internalFilters
     }
 
     private var connectedSessions: [BridgeSession] {
@@ -99,19 +110,18 @@ struct NetworkMapView: View {
     @ViewBuilder
     private var content: some View {
         VStack(spacing: 0) {
-            NetworkMapFilterBar(filters: $filters)
-            Divider()
             if let session = selectedSession,
                let topology = session.store.networkTopology {
                 NetworkMapCanvasView(
                     bridgeID: session.bridgeID,
                     topology: topology,
-                    filters: $filters,
+                    filters: filters,
                     selection: routeBinding,
                     deviceViewModel: deviceViewModel,
                     onRename: { deviceToRename = $0 },
                     onRemove: { deviceToRemove = $0 },
-                    onPendingAlert: { alert, _ in pendingDeviceAlert = alert }
+                    onPendingAlert: { alert, _ in pendingDeviceAlert = alert },
+                    zoomController: zoomController
                 )
                 .overlay(alignment: .bottomLeading) {
                     lastUpdatedLabel(session.store.networkMapLastUpdated)
@@ -142,6 +152,18 @@ struct NetworkMapView: View {
                 if connectedSessions.count > 1 {
                     bridgePicker
                 }
+                Button { zoomController.zoomOut() } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                }
+                .accessibilityLabel("Zoom Out")
+                Button { zoomController.fit() } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                }
+                .accessibilityLabel("Fit Network Map")
+                Button { zoomController.zoomIn() } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                }
+                .accessibilityLabel("Zoom In")
                 Button(action: refresh) {
                     if selectedSession?.store.networkMapIsRefreshing == true {
                         ProgressView()
