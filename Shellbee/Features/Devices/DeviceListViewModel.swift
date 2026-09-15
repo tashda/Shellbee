@@ -194,6 +194,14 @@ final class DeviceListViewModel {
 
     // MARK: - Actions
 
+    func clearFilters() {
+        statusFilter = .all
+        categoryFilter = nil
+        vendorFilter = nil
+        typeFilter = nil
+        bridgeFilter = nil
+    }
+
     func applyQuickFilter(_ filter: DeviceQuickFilter) {
         typeFilter = nil
         statusFilter = .all

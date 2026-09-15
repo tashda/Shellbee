@@ -275,8 +275,19 @@ private struct DeviceListContent: View {
                 )
             } else if !viewModel.searchText.isEmpty && viewModel.filteredDevices(store: store).isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
+            } else if viewModel.hasActiveFilter && isSingleBridgeListEmpty(store: store) {
+                noMatchingDevicesView
             }
         }
+    }
+
+    /// Recently Added ignores the status filter, so it keeps the list non-empty.
+    private func isSingleBridgeListEmpty(store: AppStore) -> Bool {
+        guard viewModel.filteredDevices(store: store).isEmpty else { return false }
+        if isGrouped, viewModel.showRecents, !viewModel.recentDevices(store: store).isEmpty {
+            return false
+        }
+        return true
     }
 
     // MARK: - Merged multi-bridge mode
@@ -324,7 +335,20 @@ private struct DeviceListContent: View {
                 )
             } else if !viewModel.searchText.isEmpty && allBound.isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
+            } else if viewModel.hasActiveFilter && allBound.isEmpty
+                        && !(viewModel.showRecents && !recentMergedDevices().isEmpty) {
+                noMatchingDevicesView
             }
+        }
+    }
+
+    private var noMatchingDevicesView: some View {
+        ContentUnavailableView {
+            Label("No Matching Devices", systemImage: "line.3.horizontal.decrease.circle")
+        } description: {
+            Text("No device matches the active filters.")
+        } actions: {
+            Button("Clear Filters") { viewModel.clearFilters() }
         }
     }
 

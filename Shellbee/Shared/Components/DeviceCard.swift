@@ -357,7 +357,7 @@ struct DeviceCard: View {
 
     private var powerIcon: String {
         if device.type == .endDevice {
-            return (state.battery ?? 100) <= DesignTokens.Threshold.lowBattery ? "battery.25" : "battery.100"
+            return DesignTokens.Threshold.isLowBattery(state.battery ?? 100) ? "battery.25" : "battery.100"
         }
         return "powerplug.fill"
     }
