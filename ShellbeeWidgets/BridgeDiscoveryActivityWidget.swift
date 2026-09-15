@@ -6,18 +6,18 @@ struct BridgeDiscoveryActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: BridgeDiscoveryActivityAttributes.self) { context in
             BridgeDiscoveryLockScreenView(context: context)
-                .activityBackgroundTint(.blue.opacity(0.06))
+                .activityBackgroundTint(nil)
                 .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    LiveActivityStatusMark(symbol: "dot.radiowaves.left.and.right", color: .blue)
+                    LiveActivityStatusMark(symbol: "dot.radiowaves.left.and.right", color: .primary)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     LiveActivityMetric(
                         value: "\(context.state.foundCount)",
                         label: "found",
-                        color: .blue
+                        color: .primary
                     )
                 }
                 DynamicIslandExpandedRegion(.center) {
@@ -32,19 +32,19 @@ struct BridgeDiscoveryActivityWidget: Widget {
             } compactLeading: {
                 LiveActivityStatusMark(
                     symbol: "dot.radiowaves.left.and.right",
-                    color: .blue,
+                    color: .primary,
                     size: DesignTokens.Size.liveActivityCompactSymbol
                 )
             } compactTrailing: {
                 LiveActivityMetric(
                     value: "\(context.state.foundCount)",
-                    color: .blue,
+                    color: .primary,
                     compact: true
                 )
             } minimal: {
                 LiveActivityStatusMark(
                     symbol: "dot.radiowaves.left.and.right",
-                    color: .blue,
+                    color: .primary,
                     size: DesignTokens.Size.liveActivityMinimalSymbol
                 )
             }
@@ -56,26 +56,27 @@ private struct BridgeDiscoveryLockScreenView: View {
     let context: ActivityViewContext<BridgeDiscoveryActivityAttributes>
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            LiveActivityStatusMark(
-                symbol: "dot.radiowaves.left.and.right",
-                color: .blue,
-                size: DesignTokens.Size.liveActivityLockSymbol
-            )
-            LiveActivityTitleBlock(
-                title: "Finding bridges",
-                subtitle: context.state.foundCount == 1
-                    ? "1 Zigbee2MQTT bridge found"
-                    : "\(context.state.foundCount) Zigbee2MQTT bridges found"
-            )
-            Spacer(minLength: DesignTokens.Spacing.sm)
-            LiveActivityMetric(
-                value: "\(context.state.foundCount)",
-                label: "found",
-                color: .blue
-            )
+        LiveActivityLockScreenContent {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                LiveActivityStatusMark(
+                    symbol: "dot.radiowaves.left.and.right",
+                    color: .primary,
+                    size: DesignTokens.Size.liveActivityLockSymbol
+                )
+                LiveActivityTitleBlock(
+                    title: "Finding bridges",
+                    subtitle: context.state.foundCount == 1
+                        ? "1 Zigbee2MQTT bridge found"
+                        : "\(context.state.foundCount) Zigbee2MQTT bridges found"
+                )
+                Spacer(minLength: DesignTokens.Spacing.sm)
+                LiveActivityMetric(
+                    value: "\(context.state.foundCount)",
+                    label: "found",
+                    color: .primary
+                )
+            }
         }
-        .padding(DesignTokens.Spacing.lg)
     }
 }
 

@@ -6,7 +6,7 @@ struct PermitJoinActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PermitJoinActivityAttributes.self) { context in
             PermitJoinLockScreenView(context: context)
-                .activityBackgroundTint(.orange.opacity(0.06))
+                .activityBackgroundTint(nil)
                 .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -47,29 +47,36 @@ private struct PermitJoinLockScreenView: View {
     let context: ActivityViewContext<PermitJoinActivityAttributes>
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            LiveActivityStatusMark(
-                symbol: "person.badge.plus",
-                color: .orange,
-                size: DesignTokens.Size.liveActivityLockSymbol
-            )
+        LiveActivityLockScreenContent {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                LiveActivityStatusMark(
+                    symbol: "person.badge.plus",
+                    color: .orange,
+                    size: DesignTokens.Size.liveActivityLockSymbol
+                )
 
-            LiveActivityTitleBlock(
-                title: "Pairing devices",
-                subtitle: context.state.targetName ?? "Open network",
-                tertiary: context.attributes.bridgeDisplayName
-            )
+                LiveActivityTitleBlock(
+                    title: "Pairing devices",
+                    subtitle: lockScreenDetail
+                )
 
-            Spacer(minLength: DesignTokens.Spacing.sm)
+                Spacer(minLength: DesignTokens.Spacing.sm)
 
-            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xxs) {
-                PermitJoinTimer(context: context, compact: false)
-                Text(context.state.joinedCount == 1 ? "1 joined" : "\(context.state.joinedCount) joined")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xxs) {
+                    PermitJoinTimer(context: context, compact: false)
+                    Text(context.state.joinedCount == 1 ? "1 joined" : "\(context.state.joinedCount) joined")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
-        .padding(DesignTokens.Spacing.lg)
+    }
+
+    private var lockScreenDetail: String {
+        let target = context.state.targetName ?? "Open network"
+        return context.attributes.bridgeDisplayName.isEmpty
+            ? target
+            : "\(target) · \(context.attributes.bridgeDisplayName)"
     }
 }
 

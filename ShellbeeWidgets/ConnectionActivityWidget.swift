@@ -6,7 +6,7 @@ struct ConnectionActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ConnectionActivityAttributes.self) { context in
             ConnectionLockScreenView(context: context)
-                .activityBackgroundTint(context.state.phase.backgroundTint)
+                .activityBackgroundTint(nil)
                 .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -49,22 +49,22 @@ private struct ConnectionLockScreenView: View {
     let context: ActivityViewContext<ConnectionActivityAttributes>
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            LiveActivityStatusMark(
-                symbol: context.state.phase.symbol,
-                color: context.state.phase.accentColor,
-                size: DesignTokens.Size.liveActivityLockSymbol
-            )
+        LiveActivityLockScreenContent {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                LiveActivityStatusMark(
+                    symbol: context.state.phase.symbol,
+                    color: context.state.phase.accentColor,
+                    size: DesignTokens.Size.liveActivityLockSymbol
+                )
 
-            LiveActivityTitleBlock(
-                title: context.attributes.bridgeDisplayName,
-                subtitle: context.state.displayLabel,
-                tertiary: context.state.attemptDescription
-            )
+                LiveActivityTitleBlock(
+                    title: context.attributes.bridgeDisplayName,
+                    subtitle: context.state.displayLabel
+                )
 
-            Spacer(minLength: DesignTokens.Spacing.sm)
+                Spacer(minLength: DesignTokens.Spacing.sm)
+            }
         }
-        .padding(DesignTokens.Spacing.lg)
     }
 }
 
@@ -121,15 +121,6 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
         }
     }
 
-    var backgroundTint: Color? {
-        switch self {
-        case .connecting, .reconnecting, .restarting: return .orange.opacity(0.08)
-        case .connected: return .green.opacity(0.06)
-        case .failed: return .red.opacity(0.08)
-        case .cancelled: return nil
-        }
-    }
-
     var label: String {
         switch self {
         case .connecting: return "Connecting"
@@ -155,11 +146,6 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
 private extension ConnectionActivityAttributes.ContentState {
     var attemptText: String {
         maxAttempts > 0 ? "\(attempt)/\(maxAttempts)" : "\(attempt)"
-    }
-
-    var attemptDescription: String? {
-        guard phase == .reconnecting else { return nil }
-        return maxAttempts > 0 ? "Attempt \(attempt) of \(maxAttempts)" : "Attempt \(attempt)"
     }
 
     var displayLabel: String {

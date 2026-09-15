@@ -49,8 +49,8 @@ nonisolated enum DesignTokens {
         static let metricSymbol: CGFloat = 18
         static let cardSymbol: CGFloat = 22
         static let toolbarSymbol: CGFloat = 18
-        static let liveActivityIslandSymbol: CGFloat = 24
-        static let liveActivityLockSymbol: CGFloat = 30
+        static let liveActivityIslandSymbol: CGFloat = 20
+        static let liveActivityLockSymbol: CGFloat = 24
         static let liveActivityCompactSymbol: CGFloat = 14
         static let liveActivityMinimalSymbol: CGFloat = 13
         static let filterChipChevron: CGFloat = 8

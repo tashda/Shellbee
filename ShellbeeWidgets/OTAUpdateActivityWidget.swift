@@ -6,26 +6,26 @@ struct OTAUpdateActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: OTAUpdateActivityAttributes.self) { context in
             OTALockScreenView(context: context)
-                .activityBackgroundTint(context.state.phase.backgroundTint)
+                .activityBackgroundTint(nil)
                 .activitySystemActionForegroundColor(.primary)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     LiveActivityStatusMark(
                         symbol: context.state.phase.symbol,
-                        color: context.state.phase.accentColor
+                        color: context.state.phase.dynamicAccentColor
                     )
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if let progress = context.state.progress, context.state.phase == .active {
                         LiveActivityMetric(
                             value: "\(progress)%",
-                            color: context.state.phase.accentColor
+                            color: context.state.phase.dynamicAccentColor
                         )
                     } else if context.state.phase == .completed {
-                        LiveActivityStatusMark(symbol: "checkmark", color: context.state.phase.accentColor)
+                        LiveActivityStatusMark(symbol: "checkmark", color: context.state.phase.dynamicAccentColor)
                     } else if context.state.phase == .failed {
-                        LiveActivityStatusMark(symbol: "xmark", color: context.state.phase.accentColor)
+                        LiveActivityStatusMark(symbol: "xmark", color: context.state.phase.dynamicAccentColor)
                     }
                 }
                 DynamicIslandExpandedRegion(.center) {
@@ -38,7 +38,7 @@ struct OTAUpdateActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     if let progress = context.state.progress, context.state.phase == .active {
-                        LiveActivityProgress(progress: progress, tint: context.state.phase.accentColor)
+                        LiveActivityProgress(progress: progress, tint: context.state.phase.dynamicAccentColor)
                             .padding(.horizontal, DesignTokens.Spacing.sm)
                             .padding(.bottom, DesignTokens.Spacing.sm)
                     }
@@ -46,14 +46,14 @@ struct OTAUpdateActivityWidget: Widget {
             } compactLeading: {
                 LiveActivityStatusMark(
                     symbol: context.state.phase.symbol,
-                    color: context.state.phase.accentColor,
+                    color: context.state.phase.dynamicAccentColor,
                     size: DesignTokens.Size.liveActivityCompactSymbol
                 )
             } compactTrailing: {
                 if let progress = context.state.progress, context.state.phase == .active {
                     LiveActivityMetric(
                         value: "\(progress)%",
-                        color: context.state.phase.accentColor,
+                        color: context.state.phase.dynamicAccentColor,
                         compact: true
                     )
                 } else if context.state.phase == .active {
@@ -63,7 +63,7 @@ struct OTAUpdateActivityWidget: Widget {
             } minimal: {
                 LiveActivityStatusMark(
                     symbol: context.state.phase.symbol,
-                    color: context.state.phase.accentColor,
+                    color: context.state.phase.dynamicAccentColor,
                     size: DesignTokens.Size.liveActivityMinimalSymbol
                 )
             }
@@ -75,7 +75,7 @@ private struct OTALockScreenView: View {
     let context: ActivityViewContext<OTAUpdateActivityAttributes>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+        LiveActivityLockScreenContent {
             HStack(spacing: DesignTokens.Spacing.md) {
                 LiveActivityStatusMark(
                     symbol: context.state.phase.symbol,
@@ -85,8 +85,7 @@ private struct OTALockScreenView: View {
 
                 LiveActivityTitleBlock(
                     title: context.state.headline,
-                    subtitle: context.state.detail,
-                    tertiary: context.attributes.bridgeDisplayName.isEmpty ? nil : context.attributes.bridgeDisplayName
+                    subtitle: lockScreenDetail
                 )
 
                 Spacer(minLength: DesignTokens.Spacing.sm)
@@ -103,7 +102,13 @@ private struct OTALockScreenView: View {
                 LiveActivityProgress(progress: progress, tint: context.state.phase.accentColor)
             }
         }
-        .padding(DesignTokens.Spacing.lg)
+    }
+
+    private var lockScreenDetail: String {
+        if context.attributes.bridgeDisplayName.isEmpty {
+            return context.state.detail
+        }
+        return "\(context.state.detail) · \(context.attributes.bridgeDisplayName)"
     }
 }
 
@@ -118,17 +123,17 @@ private extension OTAUpdateActivityAttributes.ContentState.Phase {
 
     var accentColor: Color {
         switch self {
-        case .active: return .blue
+        case .active: return .primary
         case .completed: return .green
         case .failed: return .red
         }
     }
 
-    var backgroundTint: Color? {
+    var dynamicAccentColor: Color {
         switch self {
-        case .active: return .blue.opacity(0.06)
-        case .completed: return .green.opacity(0.06)
-        case .failed: return .red.opacity(0.08)
+        case .active: return .white
+        case .completed: return .green
+        case .failed: return .red
         }
     }
 }
