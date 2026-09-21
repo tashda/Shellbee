@@ -70,6 +70,9 @@ final class AppStore {
     var touchlinkIdentifyInProgress = false
     var touchlinkResetInProgress = false
     var permitJoinJoinedCount = 0
+    /// Last permit-join state seen by `syncPermitJoinLiveActivity`, used to
+    /// detect a new pairing window however it was opened.
+    var permitJoinWasOpen = false
     /// Friendly names of devices currently running an Identify (Zigbee
     /// Identify cluster). The action is fire-and-forget, so the row clears
     /// itself on a short timer rather than waiting for a response.
@@ -138,6 +141,7 @@ final class AppStore {
         touchlinkIdentifyInProgress = false
         touchlinkResetInProgress = false
         permitJoinJoinedCount = 0
+        permitJoinWasOpen = false
         identifyInProgress = []
         networkMapIsRefreshing = false
         networkMapRefreshPhase = .idle
