@@ -212,8 +212,13 @@ struct MainSplitView: View {
     }
 
     private func sidebarRow(for tab: AppTab) -> some View {
-        Label(tab.title, symbol: tab.symbol)
-            .badge(tab == .settings && anyBridgeNeedsRestart ? Text("!") : nil)
+        Label {
+            Text(tab.title)
+        } icon: {
+            tab.symbol.image
+                .font(DesignTokens.Typography.sidebarIcon)
+        }
+        .badge(tab == .settings && anyBridgeNeedsRestart ? Text("!") : nil)
     }
 
     @ToolbarContentBuilder
