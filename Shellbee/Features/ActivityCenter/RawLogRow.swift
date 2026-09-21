@@ -23,7 +23,7 @@ struct RawLogRow: View {
         let content = RawLogLineContent(entry: entry)
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             RawLogLevelMark(level: entry.level)
-                .padding(.top, DesignTokens.Spacing.xxs)
+                .padding(.top, DesignTokens.RawLog.rowVerticalPadding)
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
