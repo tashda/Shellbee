@@ -3,8 +3,25 @@ import SwiftUI
 struct MeshDetailView: View {
     let snapshot: HomeSnapshot
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        NavigationStack {
+            form
+                .navigationTitle("Mesh")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
+                }
+        }
+        .configuredTopScrollEdgeEffect()
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var form: some View {
         Form {
             Section("Network") {
                 if let channel = snapshot.networkChannel {
@@ -43,7 +60,5 @@ struct MeshDetailView: View {
                 }
             }
         }
-        .navigationTitle("Mesh")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

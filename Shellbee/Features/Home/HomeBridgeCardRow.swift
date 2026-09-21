@@ -2,7 +2,7 @@ import SwiftUI
 
 /// One bridge's row inside the multi-bridge `HomeBridgeCard`. Compact: status
 /// dot, name, version/uptime line, and inline alert chips. Tapping the row
-/// (when `onSelect` is non-nil) sets focus to this bridge.
+/// (when `onSelect` is non-nil) opens the bridge's info sheet.
 struct HomeBridgeCardRow: View {
     let entry: HomeBridgeCardEntry
     /// Latest Z2M version from GitHub Releases, fetched once by the parent

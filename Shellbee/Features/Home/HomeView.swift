@@ -9,8 +9,7 @@ struct HomeView: View {
     @State private var isPermitJoinConfigPresented = false
     @State private var showingRestartAlert = false
     @State private var pendingRestartBridgeID: UUID?
-    @State private var showingMeshDetail = false
-    @State private var meshDetailBridgeID: UUID?
+    @State private var presentedSheet: HomeSheet?
 
     /// Phase 2 multi-bridge: every Home read goes through `selectedScope` —
     /// the user-selected bridge in the picker. Nil only when no bridge is
@@ -168,9 +167,6 @@ struct HomeView: View {
             .navigationDestination(isPresented: $showingAllLogs) {
                 LogsView()
             }
-            .navigationDestination(isPresented: $showingMeshDetail) {
-                MeshDetailView(snapshot: snapshot(for: meshDetailBridgeID))
-            }
             .task(id: selectedScope?.store.isConnected ?? false) {
                 // Phase 2 multi-bridge: probe health on every connected bridge
                 // when the selected bridge transitions to connected. The
@@ -209,6 +205,16 @@ struct HomeView: View {
                 )
                 .environment(environment)
             }
+            .sheet(item: $presentedSheet) { sheet in
+                switch sheet {
+                case .mesh(let bridgeID):
+                    MeshDetailView(snapshot: snapshot(for: bridgeID))
+                        .environment(environment)
+                case .bridge(let bridgeID):
+                    BridgeInfoSheet(bridgeID: bridgeID)
+                        .environment(environment)
+                }
+            }
             .alert("Restart Bridge?", isPresented: $showingRestartAlert) {
                 Button("Restart", role: .destructive) {
                     let id = pendingRestartBridgeID ?? selectedBridgeID
@@ -233,9 +239,9 @@ struct HomeView: View {
                     pendingRestartBridgeID = id
                     showingRestartAlert = true
                 },
-                onSelectBridge: bridgeCardEntries.count >= 2 ? { id in
-                    sceneNavigation.selectedBridgeID = id
-                } : nil
+                onOpenBridge: { id in
+                    presentedSheet = .bridge(id)
+                }
             )
         case .devices:
             HomeDevicesCard(snapshot: snapshot(for: card.bridgeID), bridgeName: bridgeName(for: card.bridgeID)) {
@@ -256,8 +262,7 @@ struct HomeView: View {
             }
         case .mesh:
             HomeMeshCard(snapshot: snapshot(for: card.bridgeID), bridgeName: bridgeName(for: card.bridgeID)) {
-                meshDetailBridgeID = card.bridgeID
-                showingMeshDetail = true
+                presentedSheet = .mesh(card.bridgeID)
             } onFilter: {
                 showDevices(filter: $0, bridgeID: card.bridgeID)
             }
@@ -407,6 +412,18 @@ struct HomeView: View {
                 timeout: duration > 0 ? duration : nil,
                 target: duration > 0 ? deviceName : nil
             )
+        }
+    }
+}
+
+private enum HomeSheet: Identifiable {
+    case mesh(UUID?)
+    case bridge(UUID)
+
+    var id: String {
+        switch self {
+        case .mesh(let bridgeID): "mesh-\(bridgeID?.uuidString ?? "all")"
+        case .bridge(let bridgeID): "bridge-\(bridgeID.uuidString)"
         }
     }
 }
