@@ -32,16 +32,18 @@ struct OTAUpdateActivityWidget: Widget {
                     LiveActivityTitleBlock(
                         title: context.state.headline,
                         subtitle: context.state.detail,
-                        tertiary: context.attributes.bridgeDisplayName.isEmpty ? nil : context.attributes.bridgeDisplayName,
                         titleFont: .subheadline.weight(.semibold)
                     )
                 }
                 DynamicIslandExpandedRegion(.bottom) {
+                    VStack(spacing: DesignTokens.Spacing.xs) {
+                        LiveActivityBridgeContext(name: context.attributes.bridgeDisplayName)
                     if let progress = context.state.progress, context.state.phase == .active {
                         LiveActivityProgress(progress: progress, tint: context.state.phase.dynamicAccentColor)
-                            .padding(.horizontal, DesignTokens.Spacing.sm)
-                            .padding(.bottom, DesignTokens.Spacing.sm)
                     }
+                    }
+                    .padding(.horizontal, DesignTokens.Spacing.sm)
+                    .padding(.bottom, DesignTokens.Spacing.sm)
                 }
             } compactLeading: {
                 LiveActivityStatusMark(
@@ -95,6 +97,7 @@ private struct OTALockScreenView: View {
                         value: "\(progress)%",
                         color: context.state.phase.accentColor
                     )
+                    .layoutPriority(1)
                 }
             }
 
