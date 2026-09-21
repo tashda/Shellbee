@@ -3,12 +3,13 @@ import SwiftUI
 /// What the Activity accessory shows on its trailing edge: the new value of
 /// a state change ("147 → 150"), or how long ago anything else happened.
 struct ActivityAccessoryChange: Equatable {
-    /// Property name for the subtitle, e.g. "Link Quality".
+    /// Z2M property key, e.g. "linkquality"; picks the glyph.
+    let property: String
+    /// Human label, e.g. "Link Quality"; read by VoiceOver.
     let label: String
     let from: String?
     let to: String
-    /// How many other properties changed in the same report.
-    let otherCount: Int
+    let toValue: JSONValue
 
     private static let metadata: Set<String> = ["linkquality", "last_seen"]
 
@@ -18,14 +19,11 @@ struct ActivityAccessoryChange: Equatable {
         let meaningful = changes.filter { !Self.metadata.contains($0.property) }
         let candidates = meaningful.isEmpty ? changes : meaningful
         guard let primary = candidates.first(where: { $0.displayFrom != nil }) ?? candidates.first else { return nil }
+        property = primary.property
         label = primary.displayLabel
         from = primary.displayFrom
         to = primary.displayTo
-        otherCount = candidates.count - 1
-    }
-
-    var subtitle: String {
-        otherCount > 0 ? "\(label) · \(otherCount) more" : label
+        toValue = primary.to
     }
 }
 
@@ -36,6 +34,10 @@ struct ActivityAccessoryTrailing: View {
     var body: some View {
         if let change = ActivityAccessoryChange(entry: entry) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
+                ActivityPropertyGlyph(property: change.property, value: change.toValue)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, DesignTokens.Spacing.xxs)
                 if !isInline, let from = change.from, from != change.to {
                     Text(from)
                         .font(.caption)
