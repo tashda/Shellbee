@@ -69,43 +69,31 @@ struct PermitJoinSheet: View {
 
     private var activeContent: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            VStack(spacing: DesignTokens.Spacing.lg) {
-                Spacer()
-                Image(systemName: "dot.radiowaves.up.forward")
-                    .font(DesignTokens.Typography.permitJoinSymbol)
-                    .foregroundStyle(.green)
-                    .symbolEffect(.pulse)
-                    .accessibilityHidden(true)
-
-                VStack(spacing: DesignTokens.Spacing.xs) {
-                    Text("Network is open")
-                        .font(.title2.weight(.semibold))
-                    Text(activeDetail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
+            VStack(spacing: DesignTokens.Spacing.sm) {
+                Text("Network is open")
+                    .font(.title3.weight(.semibold))
                 if let remaining = remainingSeconds(at: ctx.date) {
                     Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
-                        .font(DesignTokens.Typography.permitJoinCountdown.monospacedDigit())
+                        .font(DesignTokens.Typography.permitJoinActiveCountdown.monospacedDigit())
                         .foregroundStyle(.primary)
                         .contentTransition(.numericText(countsDown: true))
                         .accessibilityLabel("\(remaining / 60) minutes and \(remaining % 60) seconds remaining")
                 }
-
-                Spacer()
-                actionBar
+                if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
+                    Text("Pairing through \(target)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.horizontal, DesignTokens.Spacing.xl)
-            .padding(.bottom, DesignTokens.Spacing.sm)
+            .padding(.top, DesignTokens.Spacing.xl)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .safeAreaInset(edge: .bottom) {
+                actionBar
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .padding(.bottom, DesignTokens.Spacing.md)
+            }
         }
-    }
-
-    private var activeDetail: String {
-        if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
-            return "Pairing through \(target)"
-        }
-        return "New devices can join this network"
     }
 
     private var actionBar: some View {
