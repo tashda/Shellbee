@@ -1,117 +1,235 @@
+import ActivityKit
 import SwiftUI
+import WidgetKit
 
-/// Shared visual primitives keep every Live Activity in the same visual
-/// language. ActivityKit owns the surrounding surface; these views only
-/// provide the content that belongs inside it.
-struct LiveActivityStatusMark: View {
+// Every Shellbee Live Activity follows one blueprint: a tinted glyph, a title
+// and subtitle, and one large live value, on a glass gradient card. Each
+// widget only declares a `LiveActivityLayout`; the views below render it for
+// the Lock Screen and every Dynamic Island presentation.
+
+/// The single live value an activity is about.
+enum LiveActivityValue {
+    case countdown(ClosedRange<Date>)
+    case text(String)
+    case symbol(String)
+}
+
+/// What the minimal island shows: a ring when there's measurable progress.
+enum LiveActivityGauge {
+    case none
+    case progress(Double)
+    case countdown(ClosedRange<Date>)
+}
+
+enum LiveActivityPalette {
+    static let pairing = Color(red: 0.35, green: 0.91, blue: 0.70)
+    static let update = Color(red: 0.40, green: 0.70, blue: 1.00)
+    static let scan = Color(red: 0.62, green: 0.56, blue: 1.00)
+    static let working = Color.orange
+    static let success = Color.green
+    static let failure = Color.red
+    static let neutral = Color.white
+}
+
+struct LiveActivityLayout {
     let symbol: String
-    let color: Color
-    var size: CGFloat = DesignTokens.Size.liveActivityIslandSymbol
+    let tint: Color
+    let title: String
+    var subtitle: String? = nil
+    let value: LiveActivityValue
+    var gauge: LiveActivityGauge = .none
+}
+
+// MARK: - Lock Screen
+
+struct LiveActivityLockScreen: View {
+    let layout: LiveActivityLayout
 
     var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: size, weight: .medium))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(color)
-            .frame(width: size, height: size)
-            .accessibilityHidden(true)
+        HStack(spacing: DesignTokens.Spacing.md) {
+            LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityBadge)
+
+            LiveActivityTitle(layout: layout, titleFont: .headline, subtitleFont: .subheadline)
+
+            Spacer(minLength: DesignTokens.Spacing.sm)
+
+            LiveActivityValueView(value: layout.value, tint: layout.tint, font: DesignTokens.Typography.liveActivityValue)
+                .layoutPriority(1)
+        }
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .padding(.vertical, DesignTokens.Spacing.xl)
+        .foregroundStyle(.white)
+        .environment(\.colorScheme, .dark)
+        .background(LiveActivityGlassGradient())
+        .activityBackgroundTint(Color.black.opacity(0.2))
+        .activitySystemActionForegroundColor(.white)
     }
 }
 
-struct LiveActivityTitleBlock: View {
-    let title: String
-    let subtitle: String
-    var tertiary: String? = nil
-    var titleFont: Font = .headline
+/// Light-to-dark wash laid over the system's glass so the card reads as a
+/// lit pane of glass rather than a flat slab.
+private struct LiveActivityGlassGradient: View {
+    var body: some View {
+        LinearGradient(
+            colors: [Color.white.opacity(0.16), Color.black.opacity(0.55)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
+// MARK: - Dynamic Island
+
+extension DynamicIsland {
+    static func blueprint(_ layout: LiveActivityLayout) -> DynamicIsland {
+        DynamicIsland {
+            DynamicIslandExpandedRegion(.leading) {
+                LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityIslandBadge)
+                    .padding(.leading, DesignTokens.Spacing.xs)
+            }
+            DynamicIslandExpandedRegion(.trailing) {
+                LiveActivityValueView(value: layout.value, tint: layout.tint, font: .title2.weight(.semibold))
+                    .padding(.trailing, DesignTokens.Spacing.xs)
+                    .frame(maxHeight: .infinity)
+            }
+            DynamicIslandExpandedRegion(.bottom) {
+                LiveActivityTitle(layout: layout, titleFont: .subheadline.weight(.semibold), subtitleFont: .caption)
+                    .padding(.horizontal, DesignTokens.Spacing.xs)
+                    .padding(.top, DesignTokens.Spacing.xs)
+            }
+        } compactLeading: {
+            LiveActivityGlyph(symbol: layout.symbol, tint: layout.tint)
+        } compactTrailing: {
+            LiveActivityValueView(value: layout.value, tint: layout.tint, font: .subheadline.weight(.semibold))
+        } minimal: {
+            LiveActivityMinimal(layout: layout)
+        }
+        .keylineTint(layout.tint)
+    }
+}
+
+// MARK: - Building blocks
+
+private struct LiveActivityTitle: View {
+    let layout: LiveActivityLayout
+    let titleFont: Font
+    let subtitleFont: Font
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-            Text(title)
+            Text(layout.title)
                 .font(titleFont)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            if let tertiary, !tertiary.isEmpty {
-                Text(tertiary)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .foregroundStyle(.white)
+            if let subtitle = layout.subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(subtitleFont)
+                    .foregroundStyle(.white.opacity(0.65))
             }
         }
+        .lineLimit(1)
+        .truncationMode(.tail)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-/// The system supplies the Lock Screen activity surface and its outer insets.
-/// Keep content compact so the activity stays within Apple's standard height.
-struct LiveActivityLockScreenContent<Content: View>: View {
-    @ViewBuilder let content: () -> Content
+private struct LiveActivityBadge: View {
+    let symbol: String
+    let tint: Color
+    let size: CGFloat
 
     var body: some View {
-        content()
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.sm)
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.44, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(tint.opacity(0.2), in: Circle())
+            .accessibilityHidden(true)
     }
 }
 
-struct LiveActivityMetric: View {
-    let value: String
-    var label: String? = nil
-    let color: Color
-    var compact: Bool = false
-
-    var body: some View {
-        VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xxs) {
-            Text(value)
-                .font((compact ? Font.caption : Font.title3).weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-
-            if let label, !compact {
-                Text(label)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        }
-    }
-}
-
-struct LiveActivityProgress: View {
-    let progress: Int
+private struct LiveActivityGlyph: View {
+    let symbol: String
     let tint: Color
 
     var body: some View {
-        ProgressView(value: Double(progress), total: 100)
-            .progressViewStyle(.linear)
-            .tint(tint)
-            .accessibilityValue("\(progress) percent")
+        Image(systemName: symbol)
+            .font(.system(size: DesignTokens.Size.liveActivityCompactSymbol, weight: .semibold))
+            .foregroundStyle(tint)
+            .accessibilityHidden(true)
     }
 }
 
-/// Secondary bridge context belongs below the primary operation in an
-/// expanded Dynamic Island. Keeping it out of the center region preserves
-/// room for the operation name and its trailing timer or metric.
-struct LiveActivityBridgeContext: View {
-    let name: String
+private struct LiveActivityMinimal: View {
+    let layout: LiveActivityLayout
 
     var body: some View {
-        if !name.isEmpty {
-            Text(name)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        switch layout.gauge {
+        case .none:
+            LiveActivityGlyph(symbol: layout.symbol, tint: layout.tint)
+        case .progress(let fraction):
+            ProgressView(value: min(max(fraction, 0), 1)) { glyph }
+                .progressViewStyle(.circular)
+                .tint(layout.tint)
+        case .countdown(let range):
+            ProgressView(timerInterval: range, countsDown: true) { glyph } currentValueLabel: { glyph }
+                .progressViewStyle(.circular)
+                .tint(layout.tint)
         }
     }
+
+    private var glyph: some View {
+        Image(systemName: layout.symbol)
+            .font(.system(size: DesignTokens.Size.liveActivityMinimalSymbol, weight: .bold))
+            .foregroundStyle(layout.tint)
+    }
+}
+
+/// Renders the live value at a content-sized width. A bare
+/// `Text(timerInterval:)` reserves room for the widest possible timer and
+/// stretches the Dynamic Island, so countdowns are drawn over a hidden
+/// placeholder of the right width instead.
+private struct LiveActivityValueView: View {
+    let value: LiveActivityValue
+    let tint: Color
+    let font: Font
+
+    var body: some View {
+        switch value {
+        case .text(let text):
+            Text(text)
+                .font(font)
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        case .symbol(let name):
+            Image(systemName: name)
+                .font(font)
+                .foregroundStyle(tint)
+        case .countdown(let range):
+            Text(Self.placeholder(for: range))
+                .font(font)
+                .monospacedDigit()
+                .hidden()
+                .overlay(alignment: .trailing) {
+                    Text(timerInterval: range, countsDown: true, showsHours: range.duration >= 3600)
+                        .font(font)
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(1)
+                }
+        }
+    }
+
+    private static func placeholder(for range: ClosedRange<Date>) -> String {
+        let seconds = range.duration
+        if seconds >= 3600 { return "0:00:00" }
+        if seconds >= 600 { return "00:00" }
+        return "0:00"
+    }
+}
+
+private extension ClosedRange where Bound == Date {
+    var duration: TimeInterval { upperBound.timeIntervalSince(lowerBound) }
 }

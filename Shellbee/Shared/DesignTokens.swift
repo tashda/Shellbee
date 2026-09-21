@@ -49,10 +49,10 @@ nonisolated enum DesignTokens {
         static let metricSymbol: CGFloat = 18
         static let cardSymbol: CGFloat = 22
         static let toolbarSymbol: CGFloat = 18
-        static let liveActivityIslandSymbol: CGFloat = 20
-        static let liveActivityLockSymbol: CGFloat = 24
+        static let liveActivityBadge: CGFloat = 44
+        static let liveActivityIslandBadge: CGFloat = 40
         static let liveActivityCompactSymbol: CGFloat = 14
-        static let liveActivityMinimalSymbol: CGFloat = 13
+        static let liveActivityMinimalSymbol: CGFloat = 10
         static let filterChipChevron: CGFloat = 8
         static let levelIndicatorWidth: CGFloat = 4
         static let levelIndicatorHeight: CGFloat = 20
@@ -460,7 +460,7 @@ nonisolated enum DesignTokens {
         static let permitJoinCountdown: Font = .system(size: 64, weight: .thin)
         static let permitJoinActiveCountdown: Font = .system(size: 48, weight: .bold, design: .rounded)
         static let permitJoinSymbol: Font = .system(size: 48)
-        static let liveActivityTimer: Font = .system(size: 28, weight: .bold, design: .rounded)
+        static let liveActivityValue: Font = .system(size: 34, weight: .semibold, design: .rounded)
         // Banner level glyph — shared by InAppNotificationBanner and
         // FastTrackBanner (#36.D resolved 2026-04-29: unified on 15pt).
         static let notificationLevelIcon: Font = .system(size: 15, weight: .semibold)
