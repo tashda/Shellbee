@@ -35,3 +35,4 @@ Tools/.bundle-hash
 # Docker test artifacts
 docker/zigbee2mqtt/data/configuration_backup*.yaml
 docker/zigbee2mqtt/data/migration-*.log
+Tools/icons/__pycache__/
