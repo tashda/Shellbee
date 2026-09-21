@@ -71,19 +71,18 @@ struct SettingsWorkspaceList: View {
                             size: DesignTokens.Size.settingsIconFrame
                         )
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                            HStack {
-                                Text(config.displayName)
-                                Spacer()
-                                if session?.store.bridgeInfo?.restartRequired == true {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundStyle(.red)
-                                        .accessibilityLabel("Restart required")
-                                }
-                            }
+                            Text(config.displayName)
                             Text(statusLabel(for: session, config: config))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        Spacer()
+                        if session?.store.bridgeInfo?.restartRequired == true {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                                .accessibilityLabel("Restart required")
+                        }
+                        BridgeConnectToggle(config: config)
                     }
                 }
                 .accessibilityValue(selection?.bridgeID == config.id ? "Selected" : "")
