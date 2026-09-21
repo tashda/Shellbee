@@ -6,7 +6,7 @@ import SwiftUI
 struct InAppNotificationBanner: View {
     let notification: InAppNotification
     @Binding var isExpanded: Bool
-    let presentation: InAppNotificationPresentation
+    var presentation: InAppNotificationPresentation = .floatingOverlay
     var stackCount: Int = 1
     var stackPositionLabel: String? = nil
     /// Source bridge name. Shown as a small badge in the header when set —
@@ -27,8 +27,6 @@ struct InAppNotificationBanner: View {
     var body: some View {
         if presentation == .tabBarAccessory {
             bannerContent
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.vertical, DesignTokens.Spacing.md)
         } else {
             bannerContent
                 // iOS 26 floating tab bar uses a continuous capsule; per Apple HIG
