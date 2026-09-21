@@ -25,7 +25,7 @@ struct NetworkMapScanLiveView: View {
 
             NetworkMapScanRows {
                 if scan.visibility == .everyDevice {
-                    NetworkMapScanRow(label: "Responded", value: "\(scan.respondedCount)")
+                    NetworkMapScanRow(label: "Completed", value: "\(scan.respondedCount)")
                 } else {
                     NetworkMapScanRow(label: "Routers", value: "\(scan.targetCount)")
                 }
@@ -74,7 +74,7 @@ struct NetworkMapScanLiveView: View {
 
     private var loggingFootnote: some View {
         HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-            Text("Only failed routers are reported at this log level.")
+            Text("Zigbee2MQTT reports completed routers only with debug logging.")
             Button {
                 showsLoggingHelp = true
             } label: {
@@ -84,7 +84,7 @@ struct NetworkMapScanLiveView: View {
             .foregroundStyle(.tint)
             .accessibilityLabel("How to follow every router")
             .popover(isPresented: $showsLoggingHelp) {
-                Text("To follow every router during a scan, set Log level to Debug and turn on Log debug to MQTT and frontend in the Zigbee2MQTT settings.")
+                Text("Failures appear live. To also count each completed router, set Log level to Debug and turn on Log debug to MQTT and frontend in Zigbee2MQTT. That option needs a Zigbee2MQTT restart and may slow the bridge down.")
                     .font(.subheadline)
                     .padding()
                     .frame(idealWidth: DesignTokens.Size.networkMapScanCardWidth)

@@ -14,8 +14,8 @@ struct NetworkMapScanSummaryView: View {
             NetworkMapScanRows {
                 NetworkMapScanRow(label: "Devices", value: "\(summary.deviceCount)")
                 NetworkMapScanRow(
-                    label: "Routers Responded",
-                    value: "\(summary.respondedCount) of \(summary.queriedCount)"
+                    label: "Completed",
+                    value: "\(summary.respondedCount) of \(summary.queriedCount) routers"
                 )
                 if let duration = summary.duration {
                     NetworkMapScanRow(label: "Scan Time", value: NetworkMapScanLiveView.clock(duration))

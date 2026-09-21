@@ -783,8 +783,12 @@ def _req_networkmap(client, payload):
         # reproducible across runs.
         return device is not coordinator and sum(device["ieee_address"].encode()) % 20 == 0
 
+    def scan_log(level: str, message: str) -> None:
+        # Real z2m (2.x) prefixes forwarded lines with their namespace.
+        _emit_log(client, level, f"z2m: {message}")
+
     def run() -> None:
-        _emit_log(client, "info", f"Starting network scan (includeRoutes '{str(routes).lower()}')")
+        scan_log("info", f"Starting network scan (includeRoutes '{str(routes).lower()}')")
         failed_ieee: set[str] = set()
         for device in queried:
             time.sleep(NETWORKMAP_TICK_MS / 1000.0)
@@ -792,10 +796,10 @@ def _req_networkmap(client, payload):
                 # z2m retries once after a 5 s back-off; keep it short here.
                 time.sleep(NETWORKMAP_TICK_MS * 3 / 1000.0)
                 failed_ieee.add(device["ieee_address"])
-                _emit_log(client, "error", f"Failed to execute LQI for '{device['friendly_name']}'")
+                scan_log("error", f"Failed to execute LQI for '{device['friendly_name']}'")
             elif debug_forwarded:
-                _emit_log(client, "debug", f"LQI succeeded for '{device['friendly_name']}'")
-        _emit_log(client, "info", "Network scan finished")
+                scan_log("debug", f"LQI succeeded for '{device['friendly_name']}'")
+        scan_log("info", "Network scan finished")
 
         queried_ieee = {d["ieee_address"] for d in queried}
         nodes = []
