@@ -84,6 +84,7 @@ struct ActivityTabBarAccessory: View {
 
 @available(iOS 26.0, *)
 private struct ActivityAccessorySummary: View {
+    @Environment(AppEnvironment.self) private var environment
     let mode: ActivityAccessoryDisplayMode
     let latestActivity: BridgeBoundLogEntry?
     let latestAttention: BridgeBoundLogEntry?
@@ -93,9 +94,7 @@ private struct ActivityAccessorySummary: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: symbolName)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(symbolColor)
+            artwork
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 Text(title)
@@ -142,17 +141,48 @@ private struct ActivityAccessorySummary: View {
         }
     }
 
-    private var symbolName: String {
-        if mode == .notificationsOnly {
-            return latestAttention?.entry.level.systemImage ?? "bell"
+    /// A player-style artwork slot. Event modes show the event's own
+    /// thumbnail; Summary stays quiet unless something needs attention.
+    @ViewBuilder
+    private var artwork: some View {
+        let size = DesignTokens.ActivityFeed.accessoryArtwork
+        switch mode {
+        case .latestActivity:
+            eventArtwork(latestActivity, fallback: "tray.full.fill", size: size)
+        case .notificationsOnly:
+            eventArtwork(latestAttention, fallback: "bell.fill", size: size)
+        case .summary:
+            if recentAttentionCount > 0 {
+                symbolArtwork("exclamationmark", foreground: .white, background: Color.orange, size: size)
+            } else {
+                symbolArtwork("tray.full.fill", foreground: .secondary, background: .fill.tertiary, size: size)
+            }
         }
-        return latestActivity?.entry.level.systemImage ?? "list.bullet.rectangle"
     }
 
-    private var symbolColor: Color {
-        if mode == .notificationsOnly {
-            return latestAttention?.entry.level.color ?? .secondary
+    @ViewBuilder
+    private func eventArtwork(_ item: BridgeBoundLogEntry?, fallback: String, size: CGFloat) -> some View {
+        if let item {
+            ActivityThumbnail(entry: item.entry, store: storeFor(item.bridgeID), size: size, pipBorder: .clear)
+        } else {
+            symbolArtwork(fallback, foreground: .secondary, background: .fill.tertiary, size: size)
         }
-        return latestActivity?.entry.level.color ?? .secondary
+    }
+
+    private func storeFor(_ bridgeID: UUID) -> AppStore? {
+        environment.registry.session(for: bridgeID)?.store
+    }
+
+    private func symbolArtwork(
+        _ name: String,
+        foreground: some ShapeStyle,
+        background: some ShapeStyle,
+        size: CGFloat
+    ) -> some View {
+        Image(systemName: name)
+            .font(.system(size: size * DesignTokens.ActivityFeed.glyphRatio, weight: .semibold))
+            .foregroundStyle(foreground)
+            .frame(width: size, height: size)
+            .background(background, in: Circle())
     }
 }
