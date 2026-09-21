@@ -81,7 +81,10 @@ struct NetworkMapScanProgress: Equatable, Sendable {
     /// Folds one Z2M log line into the progress. Returns whether it was a
     /// scan message, so callers only publish a change when something moved.
     @discardableResult
-    mutating func ingest(logMessage message: String, at date: Date) -> Bool {
+    mutating func ingest(logMessage rawMessage: String, at date: Date) -> Bool {
+        // Real bridges prefix lines with their namespace ("z2m: Starting
+        // network scan …"); match the phrase wherever the line starts.
+        let message = Self.strippingNamespace(rawMessage)
         if message.hasPrefix("Starting network scan") {
             scanStartedAt = scanStartedAt ?? date
             return true
@@ -114,6 +117,16 @@ struct NetworkMapScanProgress: Equatable, Sendable {
         if recentEvents.count > Self.recentEventLimit {
             recentEvents.removeLast(recentEvents.count - Self.recentEventLimit)
         }
+    }
+
+    /// Drops a leading `namespace: ` (e.g. `z2m: `, `z2m:NetworkMap: `).
+    private static func strippingNamespace(_ message: String) -> String {
+        for phrase in ["Starting network scan", "Network scan finished", "LQI succeeded for ", "Failed to execute LQI for "] {
+            if let range = message.range(of: phrase) {
+                return String(message[range.lowerBound...])
+            }
+        }
+        return message
     }
 
     /// Extracts `name` from `<prefix>'name'`.
