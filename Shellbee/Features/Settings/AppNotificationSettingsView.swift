@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppNotificationSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var activityAccessoryDisplayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
 
     /// Connected bridges paired with their reported Z2M log level. Drives
@@ -62,15 +63,23 @@ struct AppNotificationSettingsView: View {
             aboutSection
 
             Section {
-                Picker("Show", selection: activityAccessoryDisplayMode) {
-                    ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
+                Toggle("Activity Center", isOn: $isActivityCenterEnabled)
+
+                if isActivityCenterEnabled {
+                    Picker("Show", selection: activityAccessoryDisplayMode) {
+                        ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
                     }
                 }
             } header: {
-                Text("Activity Bar")
+                Text("Activity Center")
             } footer: {
-                Text(activityAccessoryDisplayMode.wrappedValue.detail)
+                if isActivityCenterEnabled {
+                    Text(activityAccessoryDisplayMode.wrappedValue.detail)
+                } else {
+                    Text("Shellbee will not show in-app notifications. Activity and errors remain available in Logs.")
+                }
             }
 
             ForEach(visibleSections, id: \.self) { section in
@@ -91,6 +100,11 @@ struct AppNotificationSettingsView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: isActivityCenterEnabled) { _, isEnabled in
+            if !isEnabled {
+                environment.clearAllInAppNotifications()
+            }
+        }
     }
 
     @ViewBuilder

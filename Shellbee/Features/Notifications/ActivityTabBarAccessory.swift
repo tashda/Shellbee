@@ -29,17 +29,15 @@ struct ActivityTabBarAccessory: View {
 
     var body: some View {
         ZStack {
-            if displayMode != .notificationsOnly {
-                Button(action: openActivity) {
-                    ActivityAccessorySummary(
-                        mode: displayMode,
-                        latestActivity: latestActivity,
-                        recentActivityCount: recentActivityCount,
-                        isInline: isInline
-                    )
-                }
-                .buttonStyle(.plain)
+            Button(action: openActivity) {
+                ActivityAccessorySummary(
+                    mode: displayMode,
+                    latestActivity: latestActivity,
+                    recentActivityCount: recentActivityCount,
+                    isInline: isInline
+                )
             }
+            .buttonStyle(.plain)
 
             InAppNotificationOverlay(
                 presentation: .tabBarAccessory,
@@ -110,7 +108,7 @@ private struct ActivityAccessorySummary: View {
         case .summary:
             recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
         case .notificationsOnly:
-            "Activity"
+            "Notifications"
         }
     }
 
@@ -118,15 +116,18 @@ private struct ActivityAccessorySummary: View {
         switch mode {
         case .latestActivity: latestActivity?.entry.summarySubtitle
         case .summary: "View Activity"
-        case .notificationsOnly: nil
+        case .notificationsOnly: "No new notifications"
         }
     }
 
     private var symbolName: String {
-        latestActivity?.entry.level.systemImage ?? "list.bullet.rectangle"
+        if mode == .notificationsOnly {
+            return "bell"
+        }
+        return latestActivity?.entry.level.systemImage ?? "list.bullet.rectangle"
     }
 
     private var symbolColor: Color {
-        latestActivity?.entry.level.color ?? .secondary
+        mode == .notificationsOnly ? .secondary : latestActivity?.entry.level.color ?? .secondary
     }
 }

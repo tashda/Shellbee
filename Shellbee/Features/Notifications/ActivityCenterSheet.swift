@@ -6,8 +6,31 @@ import SwiftUI
 struct ActivityCenterSheet: View {
     var body: some View {
         NavigationStack {
-            LogsView(navigationTitle: "Activity")
+            LogsView(navigationTitle: "")
         }
         .configuredTopScrollEdgeEffect()
+    }
+}
+
+/// Presents the same Activity Center on every app form factor. When it is
+/// disabled, neither a direct notification action nor stale scene state can
+/// surface an in-app event UI.
+struct ActivityCenterSheetPresentation: ViewModifier {
+    @Environment(\.sceneNavigation) private var sceneNavigation
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isEnabled = true
+
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.sheet(isPresented: Binding(
+                get: { sceneNavigation.isActivityCenterPresented },
+                set: { sceneNavigation.isActivityCenterPresented = $0 }
+            )) {
+                ActivityCenterSheet()
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+        } else {
+            content
+        }
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var tabSelection: AppTab = .home
     @State private var isCommandPalettePresented = false
 
@@ -35,21 +36,14 @@ struct MainTabView: View {
         )) { request in
             LogSheetHost(request: request)
         }
-        .sheet(isPresented: Binding(
-            get: { sceneNavigation.isActivityCenterPresented },
-            set: { sceneNavigation.isActivityCenterPresented = $0 }
-        )) {
-            ActivityCenterSheet()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-        }
+        .modifier(ActivityCenterSheetPresentation())
         .sheet(isPresented: $isCommandPalettePresented) {
             CommandPaletteView()
                 .environment(environment)
         }
         .onAppear {
             if !AdaptiveLayout.isPad, sceneNavigation.selectedTab == .logs {
-                sceneNavigation.isActivityCenterPresented = true
+                sceneNavigation.isActivityCenterPresented = isActivityCenterEnabled
                 sceneNavigation.selectedTab = tabSelection
             } else {
                 tabSelection = sceneNavigation.selectedTab
@@ -60,7 +54,7 @@ struct MainTabView: View {
         }
         .onChange(of: sceneNavigation.selectedTab) { _, newValue in
             if !AdaptiveLayout.isPad, newValue == .logs {
-                sceneNavigation.isActivityCenterPresented = true
+                sceneNavigation.isActivityCenterPresented = isActivityCenterEnabled
                 sceneNavigation.selectedTab = tabSelection
             } else {
                 tabSelection = newValue
@@ -158,7 +152,7 @@ struct MainTabView: View {
                 if section == .networkMap {
                     guard AdaptiveLayout.isPad else { return }
                 } else if section == .logs, !AdaptiveLayout.isPad {
-                    sceneNavigation.isActivityCenterPresented = true
+                    sceneNavigation.isActivityCenterPresented = isActivityCenterEnabled
                     return
                 }
                 tabSelection = section
@@ -175,8 +169,12 @@ struct MainTabView: View {
 /// presentation follows the tab bar's Liquid Glass geometry and animations.
 /// Earlier releases retain the established floating presentation.
 private struct MainTabNotificationPresentation: ViewModifier {
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
+
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if !isActivityCenterEnabled {
+            content
+        } else if #available(iOS 26.0, *) {
             content
                 .tabBarMinimizeBehavior(.onScrollDown)
                 .tabViewBottomAccessory {
