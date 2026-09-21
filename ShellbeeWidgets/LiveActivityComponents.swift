@@ -32,6 +32,9 @@ enum LiveActivityPalette {
 }
 
 struct LiveActivityLayout {
+    /// The activity's fixed identity icon, shown on the left of the compact
+    /// island. It never changes with state: status belongs to `value`, on the
+    /// right, so the two sides can never show the same icon.
     let symbol: String
     let tint: Color
     /// Optional context above the title, such as which bridge this is about.

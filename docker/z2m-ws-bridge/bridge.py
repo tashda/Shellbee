@@ -54,6 +54,12 @@ def _is_client_command(topic: str) -> bool:
     )
 
 
+def _is_one_shot(full_topic: str) -> bool:
+    return any(part in full_topic for part in (
+        "/bridge/event", "/bridge/response/", "/bridge/logging",
+    ))
+
+
 def _make_envelope(full_topic: str, payload_bytes: bytes) -> str | None:
     """Return a JSON string ready for the WebSocket, or None to skip."""
     if not full_topic.startswith(BASE_TOPIC + "/"):
@@ -87,10 +93,13 @@ def on_message(client, userdata, msg):
     # the MQTT retain flag, because the seeder publishes retained messages
     # after the bridge has already subscribed — at which point they arrive
     # with retain=False, and would otherwise be skipped.
+    # One-shot topics are never cached: real z2m doesn't replay events,
+    # responses or log lines to a newly connected frontend, and replaying a
+    # stale `device_joined` makes the app count it twice.
     with retained_lock:
         if not msg.payload:
             retained.pop(topic, None)
-        else:
+        elif not _is_one_shot(topic):
             retained[topic] = msg.payload
 
     # Broadcast to all WebSocket clients

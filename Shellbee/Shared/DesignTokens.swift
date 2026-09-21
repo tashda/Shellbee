@@ -379,6 +379,8 @@ nonisolated enum DesignTokens {
         static let liveActivityTouchlinkIdentify: Double = 20
         static let liveActivityInterviewTimeout: Double = 300
         static let liveActivityOTAStale: Double = 120
+        static let liveActivityGracePoll: Double = 2
+        static let liveActivityWindowTolerance: Double = 5
         static let statusPulse: Double = 1.8
         static let otaBadgeSpin: Double = 1.1
         static let pressedState: Double = 0.16
