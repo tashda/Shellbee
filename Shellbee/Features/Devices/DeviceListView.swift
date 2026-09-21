@@ -136,6 +136,9 @@ struct DeviceListView: View {
             }
             TrailingToolbarGroupSpacer()
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if viewModel.hasActiveFilter {
+                    ClearFiltersToolbarButton { viewModel.clearFilters() }
+                }
                 if !AdaptiveLayout.isPad, let toolbarID = toolbarBridgeID {
                     DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
                 }

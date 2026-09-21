@@ -341,6 +341,7 @@
 				Shared/Components/Doc/PairingGuideExperienceView.swift,
 				Shared/Components/Doc/PairingSectionView.swift,
 				Shared/Components/FeatureGroupDetailView.swift,
+				Shared/Components/FilterMenuComponents.swift,
 				Shared/Components/MemberAvatarStack.swift,
 				Shared/Components/OpenInNewWindowButton.swift,
 				Shared/Components/OpenWindowMenu.swift,

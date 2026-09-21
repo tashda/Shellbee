@@ -72,10 +72,16 @@ struct LogsView: View {
                 if AdaptiveLayout.isPad {
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         OpenInNewWindowButton(destination: .activity)
+                        if activeModeHasFilter {
+                            ClearFiltersToolbarButton(action: clearActiveModeFilters)
+                        }
                     }
                     TrailingToolbarGroupSpacer()
                 } else {
                     ToolbarItemGroup(placement: .topBarTrailing) {
+                        if activeModeHasFilter {
+                            ClearFiltersToolbarButton(action: clearActiveModeFilters)
+                        }
                         if workspace.mode == .activity {
                             LogFilterMenu(viewModel: workspace.activity)
                         } else {
@@ -122,6 +128,18 @@ struct LogsView: View {
             .scrollTargetBehavior(.paging)
             .scrollIndicators(.hidden)
             .scrollPosition(id: position)
+        }
+    }
+
+    private var activeModeHasFilter: Bool {
+        workspace.mode == .activity ? workspace.activity.hasActiveFilter : workspace.bridge.hasActiveFilter
+    }
+
+    private func clearActiveModeFilters() {
+        if workspace.mode == .activity {
+            workspace.activity.clearAllFilters()
+        } else {
+            workspace.bridge.clearAllFilters()
         }
     }
 
@@ -309,58 +327,33 @@ private struct BridgeLevelFilterMenu: View {
     var body: some View {
         Menu {
             if connectedSessions.count >= 2 {
-                bridgeMenu
+                BridgeFilterMenu(selection: $viewModel.bridgeFilter, sessions: connectedSessions)
             }
             levelMenu
-            if viewModel.hasActiveFilter {
-                Divider()
-                Button(role: .destructive) {
-                    viewModel.clearAllFilters()
-                } label: {
-                    Label("Clear Filters", systemImage: "xmark.circle")
-                }
+            ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
+                viewModel.clearAllFilters()
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
-        }
-    }
-
-    private var bridgeMenu: some View {
-        Menu {
-            Picker("Bridge", selection: $viewModel.bridgeFilter) {
-                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
-                    .tag(UUID?.none)
-                ForEach(connectedSessions, id: \.bridgeID) { session in
-                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
-                }
-            }
-            .pickerStyle(.inline)
-        } label: {
-            if let id = viewModel.bridgeFilter,
-               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
-                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
-            } else {
-                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
-            }
+            FilterMenuLabel(isActive: viewModel.hasActiveFilter)
         }
     }
 
     private var levelMenu: some View {
         Menu {
             Picker("Level", selection: $viewModel.selectedLevel) {
-                Label("All Levels", systemImage: "square.grid.2x2").tag(LogLevel?.none)
+                Label("All Levels", systemImage: FilterMenuSymbol.all).tag(LogLevel?.none)
                 ForEach(LogLevel.allCases, id: \.self) { level in
                     Label(level.label, systemImage: level.systemImage).tag(LogLevel?.some(level))
                 }
             }
             .pickerStyle(.inline)
         } label: {
-            if let level = viewModel.selectedLevel {
-                Label("Level: \(level.label)", systemImage: level.systemImage)
-            } else {
-                Label("Level", systemImage: "exclamationmark.triangle")
-            }
+            FilterSubmenuLabel(
+                name: "Level",
+                systemImage: "exclamationmark.triangle",
+                value: viewModel.selectedLevel?.label,
+                valueSystemImage: viewModel.selectedLevel?.systemImage
+            )
         }
     }
 }

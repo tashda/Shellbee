@@ -13,7 +13,7 @@ struct LogFilterMenu: View {
     var body: some View {
         Menu {
             if connectedSessions.count >= 2 {
-                bridgeMenu
+                BridgeFilterMenu(selection: $viewModel.bridgeFilter, sessions: connectedSessions)
             }
             levelMenu
             categoryMenu
@@ -24,19 +24,13 @@ struct LogFilterMenu: View {
             // showLinkQualityChanges. The toggle exposes it for diagnostic
             // sessions without polluting the default view.
             Toggle(isOn: $viewModel.showLinkQualityChanges) {
-                Label("Signal Changes", systemImage: "dot.radiowaves.left.and.right")
+                Label("Show Signal Changes", systemImage: "dot.radiowaves.left.and.right")
             }
-            if viewModel.hasActiveFilter {
-                Divider()
-                Button(role: .destructive) {
-                    viewModel.clearAllFilters()
-                } label: {
-                    Label("Clear Filters", systemImage: "xmark.circle")
-                }
+            ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
+                viewModel.clearAllFilters()
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
+            FilterMenuLabel(isActive: viewModel.hasActiveFilter)
         }
         .simultaneousGesture(TapGesture().onEnded {
             namespaceSnapshot = availableNamespaces()
@@ -52,77 +46,55 @@ struct LogFilterMenu: View {
         }
     }
 
-    private var bridgeMenu: some View {
-        Menu {
-            Picker("Bridge", selection: $viewModel.bridgeFilter) {
-                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
-                    .tag(UUID?.none)
-                ForEach(connectedSessions, id: \.bridgeID) { session in
-                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
-                }
-            }
-            .pickerStyle(.inline)
-        } label: {
-            if let id = viewModel.bridgeFilter,
-               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
-                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
-            } else {
-                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
-            }
-        }
-    }
-
     private var levelMenu: some View {
         Menu {
             Picker("Level", selection: $viewModel.selectedLevel) {
-                Label("All Levels", systemImage: "square.grid.2x2").tag(LogLevel?.none)
+                Label("All Levels", systemImage: FilterMenuSymbol.all).tag(LogLevel?.none)
                 ForEach(LogLevel.allCases, id: \.self) { level in
                     Label(level.label, systemImage: level.systemImage).tag(LogLevel?.some(level))
                 }
             }
             .pickerStyle(.inline)
         } label: {
-            if let level = viewModel.selectedLevel {
-                Label("Level: \(level.label)", systemImage: level.systemImage)
-            } else {
-                Label("Level", systemImage: "exclamationmark.triangle")
-            }
+            FilterSubmenuLabel(
+                name: "Level",
+                systemImage: "exclamationmark.triangle",
+                value: viewModel.selectedLevel?.label,
+                valueSystemImage: viewModel.selectedLevel?.systemImage
+            )
         }
     }
 
     private var categoryMenu: some View {
         Menu {
             Picker("Category", selection: $viewModel.selectedCategory) {
-                Label("All Categories", systemImage: "square.grid.2x2").tag(LogCategory?.none)
+                Label("All Categories", systemImage: FilterMenuSymbol.all).tag(LogCategory?.none)
                 ForEach(LogCategory.allCases, id: \.self) { cat in
                     Label(cat.label, systemImage: cat.systemImage).tag(LogCategory?.some(cat))
                 }
             }
             .pickerStyle(.inline)
         } label: {
-            if let cat = viewModel.selectedCategory {
-                Label("Category: \(cat.label)", systemImage: cat.systemImage)
-            } else {
-                Label("Category", systemImage: "tag")
-            }
+            FilterSubmenuLabel(
+                name: "Category",
+                systemImage: "tag",
+                value: viewModel.selectedCategory?.label,
+                valueSystemImage: viewModel.selectedCategory?.systemImage
+            )
         }
     }
 
     private var namespaceMenu: some View {
         Menu {
             Picker("Namespace", selection: $viewModel.selectedNamespace) {
-                Label("All Namespaces", systemImage: "square.grid.2x2").tag(String?.none)
+                Label("All Namespaces", systemImage: FilterMenuSymbol.all).tag(String?.none)
                 ForEach(namespaceSnapshot, id: \.self) { ns in
                     Text(ns).tag(String?.some(ns))
                 }
             }
             .pickerStyle(.inline)
         } label: {
-            if let ns = viewModel.selectedNamespace {
-                Label(ns, systemImage: "text.magnifyingglass")
-            } else {
-                Label("Namespace", systemImage: "text.magnifyingglass")
-            }
+            FilterSubmenuLabel(name: "Namespace", systemImage: "text.magnifyingglass", value: viewModel.selectedNamespace)
         }
     }
 
@@ -130,14 +102,15 @@ struct LogFilterMenu: View {
         Button {
             deviceSheetPresented = true
         } label: {
-            switch viewModel.selectedDevices.count {
-            case 0:
-                Label("Device", systemImage: "cpu")
-            case 1:
-                Label(viewModel.selectedDevices.first!, systemImage: "cpu.fill")
-            default:
-                Label("\(viewModel.selectedDevices.count) Devices", systemImage: "cpu.fill")
-            }
+            FilterSubmenuLabel(name: "Device", systemImage: "cpu", value: selectedDevicesValue)
+        }
+    }
+
+    private var selectedDevicesValue: String? {
+        switch viewModel.selectedDevices.count {
+        case 0: nil
+        case 1: viewModel.selectedDevices.first
+        default: "\(viewModel.selectedDevices.count) selected"
         }
     }
 

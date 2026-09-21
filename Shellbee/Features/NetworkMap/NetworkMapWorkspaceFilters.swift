@@ -14,6 +14,16 @@ struct NetworkMapWorkspaceFilters: View {
     }
 
     var body: some View {
+        if !filters.isEmpty {
+            Section {
+                Button {
+                    filters.removeAll()
+                } label: {
+                    Label("Clear Filters", systemImage: FilterMenuSymbol.clear)
+                }
+            }
+        }
+
         Section("Network Map") {
             if !connectedSessions.isEmpty {
                 Picker("Network", selection: $selectedBridgeID) {
@@ -26,9 +36,6 @@ struct NetworkMapWorkspaceFilters: View {
             }
             ForEach(NetworkMapFilter.allCases) { filter in
                 filterButton(filter)
-            }
-            if !filters.isEmpty {
-                Button("Clear Filters", role: .destructive) { filters.removeAll() }
             }
         }
     }

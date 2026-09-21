@@ -160,6 +160,9 @@ struct GroupListView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if isMergedMode, viewModel.bridgeFilter != nil {
+                    ClearFiltersToolbarButton { viewModel.bridgeFilter = nil }
+                }
                 if isMergedMode {
                     bridgeFilterMenu
                 }
@@ -200,27 +203,16 @@ struct GroupListView: View {
     }
 
     private var bridgeFilterMenu: some View {
-        let connected = environment.registry.orderedSessions.filter(\.isConnected)
-        return Menu {
-            Picker("Bridge", selection: $viewModel.bridgeFilter) {
-                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
-                    .tag(UUID?.none)
-                ForEach(connected, id: \.bridgeID) { session in
-                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
-                }
-            }
-            .pickerStyle(.inline)
-            if viewModel.bridgeFilter != nil {
-                Divider()
-                Button(role: .destructive) {
-                    viewModel.bridgeFilter = nil
-                } label: {
-                    Label("Clear Filter", systemImage: "xmark.circle")
-                }
+        Menu {
+            BridgeFilterMenu(
+                selection: $viewModel.bridgeFilter,
+                sessions: environment.registry.orderedSessions.filter(\.isConnected)
+            )
+            ClearFiltersMenuItem(isActive: viewModel.bridgeFilter != nil) {
+                viewModel.bridgeFilter = nil
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(viewModel.bridgeFilter != nil ? .fill : .none)
+            FilterMenuLabel(isActive: viewModel.bridgeFilter != nil)
         }
     }
 
