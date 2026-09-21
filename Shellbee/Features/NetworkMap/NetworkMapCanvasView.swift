@@ -22,37 +22,51 @@ struct NetworkMapCanvasView: View {
     @State private var renderIndex: NetworkMapRenderIndex?
     @State private var quickLookNode: NetworkMapLayout.Node?
     @State private var laidOutTopology: NetworkTopology?
-    @State private var viewportSize: CGSize = .zero
+    @State private var viewport = Viewport(size: .zero, topInset: 0)
     @State private var indexedRevision: Int?
 
     private var store: AppStore { environment.scope(for: bridgeID).store }
 
+    private struct Viewport: Equatable {
+        let size: CGSize
+        let topInset: CGFloat
+    }
+
     var body: some View {
         GeometryReader { proxy in
-            SwiftUI.Group {
-                if let layout, let renderIndex {
-                    NetworkMapViewport(
-                        zoomController: zoomController,
-                        viewportSize: proxy.size,
-                        bridgeID: bridgeID,
-                        bridgeName: environment.registry.session(for: bridgeID)?.displayName ?? "",
-                        layout: layout,
-                        index: renderIndex,
-                        filters: filters,
-                        onQuickLook: { quickLookNode = $0 },
-                        actionsProvider: actions(for:index:)
-                    )
-                } else {
-                    ProgressView("Preparing Network Map")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // The map extends up under the navigation bar so it can pass
+            // beneath it; the camera keeps fitting and centring within the
+            // part below the bar.
+            let topInset = proxy.safeAreaInsets.top
+            let fullSize = CGSize(width: proxy.size.width, height: proxy.size.height + topInset)
+            NetworkMapScrollEdgeHost {
+                SwiftUI.Group {
+                    if let layout, let renderIndex {
+                        NetworkMapViewport(
+                            zoomController: zoomController,
+                            viewportSize: fullSize,
+                            bridgeID: bridgeID,
+                            bridgeName: environment.registry.session(for: bridgeID)?.displayName ?? "",
+                            layout: layout,
+                            index: renderIndex,
+                            filters: filters,
+                            onQuickLook: { quickLookNode = $0 },
+                            actionsProvider: actions(for:index:)
+                        )
+                    } else {
+                        ProgressView("Preparing Network Map")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(.top, topInset)
+                    }
                 }
+                .frame(width: fullSize.width, height: fullSize.height)
             }
-            .onAppear { viewportSize = proxy.size }
-            .onChange(of: proxy.size) { _, size in viewportSize = size }
+            .onAppear { viewport = Viewport(size: fullSize, topInset: topInset) }
+            .onChange(of: Viewport(size: fullSize, topInset: topInset)) { _, next in viewport = next }
         }
-        .onChange(of: viewportSize) { _, size in
+        .onChange(of: viewport) { _, next in
             guard let layout else { return }
-            zoomController.updateBounds(contentSize: layout.contentSize, viewportSize: size)
+            zoomController.updateBounds(contentSize: layout.contentSize, viewportSize: next.size, topInset: next.topInset)
         }
         .task(id: topology) {
             let topology = topology
@@ -60,7 +74,11 @@ struct NetworkMapCanvasView: View {
                 NetworkMapLayoutEngine.layout(topology: topology, width: 0, minimumHeight: 0)
             }.value
             guard !Task.isCancelled else { return }
-            zoomController.updateBounds(contentSize: computed.contentSize, viewportSize: viewportSize)
+            zoomController.updateBounds(
+                contentSize: computed.contentSize,
+                viewportSize: viewport.size,
+                topInset: viewport.topInset
+            )
             zoomController.showInitialCamera()
             layout = computed
             renderIndex = NetworkMapRenderIndex.build(layout: computed, store: store)
@@ -230,5 +248,26 @@ private struct NetworkMapViewport: View {
         MagnifyGesture()
             .onChanged { zoomController.magnify(by: $0.magnification, anchor: $0.startLocation) }
             .onEnded { _ in zoomController.endMagnify() }
+    }
+}
+
+/// Hosts the map inside a scroll view that never scrolls. iOS only draws the
+/// soft scroll-edge effect under the navigation bar for scroll-view content,
+/// so without this the map would stop hard at the bar instead of blurring
+/// softly beneath it like every other screen. Pan and zoom stay with the
+/// map's own gestures.
+private struct NetworkMapScrollEdgeHost<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        // The content is exactly one bar taller than the visible area and
+        // rests scrolled to the bottom, so its top genuinely sits under the
+        // bar (the edge effect ignores content only drawn there by offset).
+        ScrollView {
+            content
+        }
+        .defaultScrollAnchor(.bottom)
+        .scrollDisabled(true)
+        .scrollIndicators(.hidden)
     }
 }
