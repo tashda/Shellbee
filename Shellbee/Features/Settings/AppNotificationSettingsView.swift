@@ -1,151 +1,106 @@
 import SwiftUI
 
 struct AppNotificationSettingsView: View {
-    @Environment(AppEnvironment.self) private var environment
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
-    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var activityAccessoryDisplayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
-
-    /// Connected bridges paired with their reported Z2M log level. Drives
-    /// both the per-bridge rows in the About section and the visibility of
-    /// notification categories below.
-    private var connectedBridgeLevels: [(session: BridgeSession, level: String)] {
-        environment.registry.orderedSessions
-            .filter(\.isConnected)
-            .map { ($0, $0.store.bridgeInfo?.logLevel ?? "info") }
-    }
-
-    /// The most verbose log level across every connected bridge — used to
-    /// decide which notification categories to surface, so a category that
-    /// any bridge could emit stays visible/configurable.
-    private var effectiveLevel: NotificationCategory.DefaultLevel {
-        let levels = connectedBridgeLevels.compactMap {
-            NotificationCategory.DefaultLevel(z2mLogLevel: $0.level)
-        }
-        return levels.max() ?? NotificationCategory.DefaultLevel(z2mLogLevel: environment.selectedScope?.store.bridgeInfo?.logLevel ?? "") ?? .info
-    }
-
-    /// Representative bridge log level for `NotificationPreferences` reads
-    /// and writes. Mirrors `effectiveLevel` so default-baseline computation
-    /// matches the categories the user can see.
-    private var bridgeLogLevel: String? {
-        switch effectiveLevel {
-        case .error: return "error"
-        case .warning: return "warning"
-        case .info: return "info"
-        case .debug: return "debug"
-        case .optIn: return nil
-        }
-    }
-
-    private var visibleCategories: [NotificationCategory] {
-        let currentLevel = effectiveLevel
-        return NotificationCategory.allCases.filter { category in
-            switch category.defaultMinimumLogLevel {
-            case .optIn:
-                // Surface opt-in categories only when the bridge is in its
-                // most verbose mode — otherwise the user has no signal this
-                // category exists.
-                return currentLevel == .debug
-            default:
-                return category.defaultMinimumLogLevel <= currentLevel
-            }
-        }
-    }
-
-    private var visibleSections: [NotificationCategory.Section] {
-        NotificationCategory.Section.allCases.filter { section in
-            visibleCategories.contains(where: { $0.section == section })
-        }
-    }
 
     var body: some View {
         Form {
-            aboutSection
-
             Section {
-                Toggle("Activity Center", isOn: $isActivityCenterEnabled)
-
-                if isActivityCenterEnabled {
-                    Picker("Show", selection: activityAccessoryDisplayMode) {
-                        ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
-                            Text(mode.title).tag(mode)
-                        }
-                    }
+                Toggle("Show Activity Center", isOn: $isActivityCenterEnabled)
+                NavigationLink { ActivityCenterPresentationSettingsView() } label: {
+                    Label("Presentation", systemImage: "rectangle.bottomthird.inset.filled")
                 }
-            } header: {
-                Text("Activity Center")
-            } footer: {
-                if isActivityCenterEnabled {
-                    Text(activityAccessoryDisplayMode.wrappedValue.detail)
-                } else {
-                    Text("The Activity Center is hidden. Activity and errors remain available in Logs.")
-                }
-            }
-
-            ForEach(visibleSections, id: \.self) { section in
-                Section(section.title) {
-                    ForEach(visibleCategories.filter { $0.section == section }, id: \.self) { category in
-                        Toggle(category.displayName, isOn: binding(for: category))
-                    }
-                }
-            }
-
-            if environment.notificationPreferences.hasCustomSelection {
-                Section {
-                    Button("Reset to Defaults", role: .destructive) {
-                        environment.notificationPreferences.resetToDefaults(bridgeLogLevel: bridgeLogLevel)
-                    }
+                NavigationLink { ActivityNotificationSettingsView() } label: {
+                    Label("Notifications", systemImage: "bell.badge.fill")
                 }
             }
         }
-        .navigationTitle("Notifications")
+        .navigationTitle("Activity Center")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct ActivityCenterPresentationSettingsView: View {
+    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Show", selection: $displayModeRaw) {
+                    ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
+                        Text(mode.title).tag(mode.rawValue)
+                    }
+                }
+            }
+
+            Section("Preview") {
+                ActivityCenterPresentationPreview(mode: displayMode)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+        }
+        .navigationTitle("Presentation")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    @ViewBuilder
-    private var aboutSection: some View {
-        let bridges = connectedBridgeLevels
-        Section {
-            if bridges.count >= 2 {
-                ForEach(bridges, id: \.session.bridgeID) { entry in
-                    LabeledContent(entry.session.displayName, value: entry.level.capitalized)
-                }
-            } else {
-                let level = bridges.first?.level ?? "info"
-                LabeledContent("Bridge Log Level", value: level.capitalized)
+    private var displayMode: ActivityAccessoryDisplayMode {
+        ActivityAccessoryDisplayMode(rawValue: displayModeRaw) ?? .summary
+    }
+}
+
+private struct ActivityCenterPresentationPreview: View {
+    let mode: ActivityAccessoryDisplayMode
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: symbol)
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                Text(title)
+                    .font(.footnote.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-        } header: {
-            if bridges.count >= 2 {
-                Text("Bridge Log Level")
-            }
-        } footer: {
-            Text("Change in Settings → Logging.")
+            Spacer()
+            Image(systemName: "chevron.up")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.Spacing.md)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
+        .padding(.vertical, DesignTokens.Spacing.xs)
+    }
+
+    private var title: String {
+        switch mode {
+        case .latestActivity: "Kitchen Light changed"
+        case .summary: "4 recent events"
+        case .notificationsOnly: "Firmware update available"
         }
     }
 
-    private func binding(for category: NotificationCategory) -> Binding<Bool> {
-        Binding(
-            get: {
-                environment.notificationPreferences.isEnabled(category, bridgeLogLevel: bridgeLogLevel)
-            },
-            set: { newValue in
-                environment.notificationPreferences.setEnabled(category, enabled: newValue, bridgeLogLevel: bridgeLogLevel)
-            }
-        )
+    private var subtitle: String {
+        switch mode {
+        case .latestActivity: "A moment ago"
+        case .summary: "View Activity"
+        case .notificationsOnly: "Bedroom Hue"
+        }
     }
 
-    private var activityAccessoryDisplayMode: Binding<ActivityAccessoryDisplayMode> {
-        Binding(
-            get: { ActivityAccessoryDisplayMode(rawValue: activityAccessoryDisplayModeRaw) ?? .summary },
-            set: { activityAccessoryDisplayModeRaw = $0.rawValue }
-        )
+    private var symbol: String {
+        mode == .notificationsOnly ? "bell.badge.fill" : "list.bullet.rectangle.fill"
+    }
+
+    private var color: Color {
+        mode == .notificationsOnly ? .orange : .secondary
     }
 }
 
 #Preview {
     NavigationStack {
         AppNotificationSettingsView()
-            .environment(AppEnvironment())
     }
     .configuredTopScrollEdgeEffect()
 }
