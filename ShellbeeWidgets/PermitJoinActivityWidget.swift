@@ -66,7 +66,8 @@ private struct PermitJoinLockScreenView: View {
 
                 LiveActivityTitleBlock(
                     title: "Pairing devices",
-                    subtitle: lockScreenDetail
+                    subtitle: lockScreenDetail,
+                    tertiary: joinedDetail
                 )
                 .layoutPriority(0)
 
@@ -74,9 +75,6 @@ private struct PermitJoinLockScreenView: View {
 
                 VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xxs) {
                     PermitJoinTimer(context: context, compact: false)
-                    Text(context.state.joinedCount == 1 ? "1 joined" : "\(context.state.joinedCount) joined")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 }
                 .layoutPriority(1)
             }
@@ -84,10 +82,12 @@ private struct PermitJoinLockScreenView: View {
     }
 
     private var lockScreenDetail: String {
-        let target = context.state.targetName ?? "Open network"
-        return context.attributes.bridgeDisplayName.isEmpty
-            ? target
-            : "\(target) · \(context.attributes.bridgeDisplayName)"
+        context.state.targetName ?? "Network is open"
+    }
+
+    private var joinedDetail: String? {
+        guard context.state.joinedCount > 0 else { return nil }
+        return context.state.joinedCount == 1 ? "1 device joined" : "\(context.state.joinedCount) devices joined"
     }
 }
 
