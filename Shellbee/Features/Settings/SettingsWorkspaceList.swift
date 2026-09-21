@@ -7,10 +7,6 @@ struct SettingsWorkspaceList: View {
     @Binding var selection: SettingsWorkspaceRoute?
     @State private var editorViewModel: ConnectionViewModel?
 
-    private var selectedBridgeID: UUID? {
-        selection?.bridgeID
-    }
-
     var body: some View {
         // Keep visible bridge tiles in sync after the color picker saves a
         // change, including when this list stays mounted in a split view.
@@ -19,9 +15,6 @@ struct SettingsWorkspaceList: View {
         List(selection: $selection) {
             bridgesSection
             applicationSection
-            if let selectedBridgeID {
-                bridgeCategorySections(bridgeID: selectedBridgeID)
-            }
         }
         // The settings content column is a Settings-style surface in its own
         // right-hand pane. A plain list makes it read like an old table view:
@@ -95,31 +88,6 @@ struct SettingsWorkspaceList: View {
                 }
                 .accessibilityValue(selection?.bridgeID == config.id ? "Selected" : "")
             }
-        }
-    }
-
-    @ViewBuilder
-    private func bridgeCategorySections(bridgeID: UUID) -> some View {
-        Section("Bridge Configuration") {
-            routeRow(.bridgeConnection(bridgeID), title: "Connection", systemImage: "server.rack", color: .blue)
-            routeRow(.bridgeGeneral(bridgeID), title: "General", systemImage: "slider.horizontal.3", color: .purple)
-            routeRow(.mqtt(bridgeID), title: "MQTT", systemImage: "point.3.connected.trianglepath.dotted", color: .blue)
-            routeRow(.adapter(bridgeID), title: "Adapter", systemImage: "cable.connector", color: .brown)
-            routeRow(.logOutput(bridgeID), title: "Log Output", systemImage: "doc.text.magnifyingglass", color: Color(.systemGray2))
-        }
-        Section("Integrations & Features") {
-            routeRow(.homeAssistant(bridgeID), title: "Home Assistant", systemImage: "house.fill", color: .orange)
-            routeRow(.availability(bridgeID), title: "Availability", systemImage: "antenna.radiowaves.left.and.right", color: .green)
-            routeRow(.ota(bridgeID), title: "OTA Updates", systemImage: "arrow.down.circle.fill", color: .indigo)
-            routeRow(.health(bridgeID), title: "Health Checks", systemImage: "waveform.path.ecg", color: .pink)
-        }
-        Section("Network") {
-            routeRow(.network(bridgeID), title: "Network & Hardware", systemImage: "network", color: .red)
-            routeRow(.deviceFiltering(bridgeID), title: "Device Filtering", systemImage: "lock.shield.fill", color: .cyan)
-        }
-        Section("Tools") {
-            routeRow(.touchlink(bridgeID), title: "Touchlink", systemImage: "dot.radiowaves.left.and.right", color: .teal)
-            routeRow(.backup(bridgeID), title: "Backup", systemImage: "arrow.down.doc.fill", color: .indigo)
         }
     }
 
