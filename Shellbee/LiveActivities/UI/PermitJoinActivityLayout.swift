@@ -70,5 +70,5 @@ extension LiveActivityLayout {
 
 extension LiveActivityStyle {
     /// The style the Permit Join widget renders with.
-    static let permitJoinDefault: LiveActivityStyle = .classic
+    static let permitJoinDefault: LiveActivityStyle = .hero
 }
