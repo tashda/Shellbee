@@ -140,7 +140,7 @@ struct LogsView: View {
             case .activity:
                 ActivityFeedView(viewModel: workspace.activity)
             case .log:
-                BridgeLogView(viewModel: workspace.bridge, selection: selection)
+                RawLogFeedView(viewModel: workspace.bridge)
             }
         } else {
             pagedModeContent
