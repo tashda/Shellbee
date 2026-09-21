@@ -6,6 +6,7 @@ struct MainTabView: View {
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var tabSelection: AppTab = .home
     @State private var isCommandPalettePresented = false
+    @State private var activityWorkspace = LogsWorkspaceState()
     @Namespace private var activityCenterTransition
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
@@ -37,7 +38,10 @@ struct MainTabView: View {
         )) { request in
             LogSheetHost(request: request)
         }
-        .modifier(ActivityCenterSheetPresentation(transitionNamespace: activityCenterTransitionNamespace))
+        .modifier(ActivityCenterSheetPresentation(
+            transitionNamespace: activityCenterTransitionNamespace,
+            workspace: activityWorkspace
+        ))
         .sheet(isPresented: $isCommandPalettePresented) {
             CommandPaletteView()
                 .environment(environment)
