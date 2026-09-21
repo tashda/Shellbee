@@ -2,7 +2,9 @@ import SwiftUI
 
 /// All per-node/per-edge facts the map needs to draw a frame, resolved once
 /// per topology/store update via O(1) dictionary lookups. Pan and zoom only
-/// transform the already-built layer; they do not rebuild this index.
+/// transform the already-built layer; they do not rebuild this index, and it
+/// only changes when something the map shows (availability, updates, OTA,
+/// the device list) changes.
 struct NetworkMapRenderIndex: Equatable {
     let nodesByID: [String: NetworkTopologyNode]
     let devicesByIEEE: [String: Device]
@@ -11,6 +13,7 @@ struct NetworkMapRenderIndex: Equatable {
     let weakLinkByNode: [String: Bool]
     let updateAvailableByNode: [String: Bool]
     let otaStatusByNode: [String: OTAUpdateStatus]
+    let identifyingDeviceNames: Set<String>
 
     static func build(layout: NetworkMapLayout, store: AppStore) -> NetworkMapRenderIndex {
         let nodesByID = Dictionary(uniqueKeysWithValues: layout.nodes.map { ($0.id, $0.topology) })
@@ -37,21 +40,26 @@ struct NetworkMapRenderIndex: Equatable {
             }
         }
 
-        var qualityByLinkID: [String: Int?] = [:]
-        qualityByLinkID.reserveCapacity(layout.edges.count)
-        for edge in layout.edges {
-            let link = edge.link
-            let quality = devicesByIEEE[link.sourceIEEEAddress]
-                .map { store.state(for: $0.friendlyName).linkQuality ?? link.linkQuality }
-                ?? link.linkQuality
-            qualityByLinkID[link.id] = quality
-        }
+        // Link quality comes from the network scan, not from each device's
+        // live `linkquality`. The live value changes with every state message
+        // (several per second on a real mesh) and only describes the last
+        // hop a message took, so reading it would repaint the whole map
+        // continuously while describing the links less accurately.
+        let qualityByLinkID = Dictionary(
+            layout.edges.map { ($0.link.id, $0.link.linkQuality) }
+        ) { first, _ in first }
 
+        // A weak link belongs to the device hanging off it: the child end of
+        // its route to the coordinator. Flagging both ends would mark every
+        // busy router (and the coordinator) weak because of one bad child.
+        let depthByID = Dictionary(uniqueKeysWithValues: layout.nodes.map { ($0.id, $0.depth) })
         var weakLinkByNode: [String: Bool] = [:]
-        for edge in layout.edges {
-            guard (qualityByLinkID[edge.link.id].flatMap { $0 } ?? 0) < 50 else { continue }
-            weakLinkByNode[edge.link.sourceIEEEAddress] = true
-            weakLinkByNode[edge.link.targetIEEEAddress] = true
+        for edge in layout.edges where edge.isPrimary {
+            guard let quality = edge.link.linkQuality, quality < 50 else { continue }
+            let source = edge.link.sourceIEEEAddress
+            let target = edge.link.targetIEEEAddress
+            let child = (depthByID[source] ?? 0) >= (depthByID[target] ?? 0) ? source : target
+            weakLinkByNode[child] = true
         }
 
         return NetworkMapRenderIndex(
@@ -61,7 +69,8 @@ struct NetworkMapRenderIndex: Equatable {
             qualityByLinkID: qualityByLinkID,
             weakLinkByNode: weakLinkByNode,
             updateAvailableByNode: updateAvailableByNode,
-            otaStatusByNode: otaStatusByNode
+            otaStatusByNode: otaStatusByNode,
+            identifyingDeviceNames: store.identifyInProgress
         )
     }
 

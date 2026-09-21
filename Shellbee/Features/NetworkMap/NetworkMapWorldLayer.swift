@@ -15,7 +15,7 @@ struct NetworkMapWorldLayer: View, Equatable {
     let showsMeshEdges: Bool
     let showsLabels: Bool
     let onQuickLook: (NetworkMapLayout.Node) -> Void
-    let actionsProvider: (BridgeBoundDevice) -> DevicePresentationActions
+    let actionsProvider: (BridgeBoundDevice, NetworkMapRenderIndex) -> DevicePresentationActions
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.bridgeID == rhs.bridgeID && lhs.bridgeName == rhs.bridgeName
@@ -65,7 +65,7 @@ struct NetworkMapWorldLayer: View, Equatable {
         .accessibilityValue(accessibilityStatus(for: node.topology))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { onQuickLook(node) }
-        .modifier(DevicePresentationActionsModifier(bound: bound, actions: actionsProvider(bound)))
+        .modifier(DevicePresentationActionsModifier(bound: bound, actions: actionsProvider(bound, index)))
     }
 
     private func drawEdges(in context: inout GraphicsContext) {
