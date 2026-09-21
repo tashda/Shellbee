@@ -1,15 +1,22 @@
 import SwiftUI
 
-/// Lists every Live Activity so each can be reviewed on its own page. The
-/// real Lock Screen and Dynamic Island only show an activity while the app is
-/// in the background, so this gallery draws the widget's own views instead.
+/// Lists every Live Activity; each opens on a stand-in Home Screen and Lock
+/// Screen. The real surfaces only show an activity while the app is in the
+/// background, so the stage draws the widget's own views instead.
 struct LiveActivityGalleryView: View {
+    @State private var staged: LiveActivityGalleryKind?
+
     var body: some View {
         List(LiveActivityGalleryKind.allCases) { kind in
-            NavigationLink {
-                LiveActivityGalleryDetailView(kind: kind)
+            Button {
+                staged = kind
             } label: {
                 Label(kind.name, symbol: kind.symbol)
+            }
+        }
+        .fullScreenCover(item: $staged) { kind in
+            if #available(iOS 26.0, *) {
+                LiveActivityStageView(kind: kind)
             }
         }
         .navigationTitle("Live Activity Gallery")

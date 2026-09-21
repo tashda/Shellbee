@@ -21,6 +21,8 @@ nonisolated enum DesignTokens {
         static let xl: CGFloat = 28
         static let noteBar: CGFloat = 1.5
         static let liveActivityGalleryIsland: CGFloat = 44
+        static let liveActivityStageCard: CGFloat = 24
+        static let liveActivityStageIcon: CGFloat = 14
     }
 
     nonisolated enum Size {
@@ -58,6 +60,13 @@ nonisolated enum DesignTokens {
         static let liveActivityGalleryWidth: CGFloat = 371
         static let liveActivityGalleryIslandHeight: CGFloat = 37
         static let liveActivityGalleryCamera: CGFloat = 126
+        // Stage stand-in for the Home Screen and Lock Screen.
+        static let liveActivityStageIslandTop: CGFloat = 11
+        static let liveActivityStageIcon: CGFloat = 62
+        static let liveActivityStageIconsTop: CGFloat = 80
+        static let liveActivityStageLockDateTop: CGFloat = 24
+        static let liveActivityStageLockCardBottom: CGFloat = 120
+        static let liveActivityStageControl: CGFloat = 32
         static let filterChipChevron: CGFloat = 8
         static let levelIndicatorWidth: CGFloat = 4
         static let levelIndicatorHeight: CGFloat = 20
@@ -472,6 +481,7 @@ nonisolated enum DesignTokens {
         static let permitJoinActiveCountdown: Font = .system(size: 48, weight: .bold, design: .rounded)
         static let permitJoinSymbol: Font = .system(size: 48)
         static let liveActivityValue: Font = .system(size: 34, weight: .semibold, design: .rounded)
+        static let liveActivityStageClock: Font = .system(size: 96, weight: .semibold, design: .rounded)
         // Banner level glyph — shared by InAppNotificationBanner and
         // FastTrackBanner (#36.D resolved 2026-04-29: unified on 15pt).
         static let notificationLevelIcon: Font = .system(size: 15, weight: .semibold)
