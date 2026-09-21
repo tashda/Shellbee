@@ -466,6 +466,12 @@ nonisolated enum DesignTokens {
         static let climateActionIcon: Font = .system(size: 14, weight: .bold)
         // Light card secondary glyphs (compass / palette icon overlays)
         static let lightSecondaryIcon: Font = .system(size: 14, weight: .semibold)
+        // iPad NavigationSplitView sidebar row glyph. List(.sidebar) sizes a
+        // genuine SF Symbol automatically, but a custom symbolset asset
+        // doesn't pick up that implicit sizing the same way and renders tiny
+        // when unselected — so sidebarRow pins this explicitly instead of
+        // relying on the environment font.
+        static let sidebarIcon: Font = .system(size: 20, weight: .medium)
 
         // MARK: Icon glyph ratios (proportional sizing inside a parent frame)
         // e.g. an icon glyph that fills half its containing thumbnail circle.
