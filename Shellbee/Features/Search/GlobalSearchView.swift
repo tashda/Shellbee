@@ -81,7 +81,6 @@ struct GlobalSearchView: View {
 
     private func sectionHeader(for category: GlobalSearchScope) -> some View {
         Label(category.title, systemImage: category.systemImage)
-            .foregroundStyle(category.tint)
     }
 
     @ViewBuilder
