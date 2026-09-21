@@ -17,15 +17,19 @@ final class NetworkMapZoomController {
     @ObservationIgnored private var settledOffset: CGSize = .zero
     @ObservationIgnored private var contentSize: CGSize = .zero
     @ObservationIgnored private var viewportSize: CGSize = .zero
+    /// Height at the top of the viewport covered by the navigation bar. The
+    /// map draws beneath it, but fitting and centring use the area below.
+    @ObservationIgnored private var topInset: CGFloat = 0
     @ObservationIgnored private var isMagnifying = false
     @ObservationIgnored private var needsInitialCamera = false
     /// Drag translation already consumed by a pinch, so a finger left down
     /// after pinching continues panning from where the map is, not jumping.
     @ObservationIgnored private var panBaseline: CGSize?
 
-    func updateBounds(contentSize: CGSize, viewportSize: CGSize) {
+    func updateBounds(contentSize: CGSize, viewportSize: CGSize, topInset: CGFloat) {
         self.contentSize = contentSize
         self.viewportSize = viewportSize
+        self.topInset = topInset
         if needsInitialCamera { showInitialCamera() }
     }
 
@@ -116,16 +120,22 @@ final class NetworkMapZoomController {
 
     // MARK: - Helpers
 
+    private var visibleHeight: CGFloat { viewportSize.height - topInset }
+
+    private var visibleCenter: CGPoint {
+        CGPoint(x: viewportSize.width / 2, y: topInset + visibleHeight / 2)
+    }
+
     private var fitScale: CGFloat? {
-        guard contentSize.width > 0, contentSize.height > 0, viewportSize.width > 0, viewportSize.height > 0 else { return nil }
-        return clampedScale(min(viewportSize.width / contentSize.width, viewportSize.height / contentSize.height, 1))
+        guard contentSize.width > 0, contentSize.height > 0, viewportSize.width > 0, visibleHeight > 0 else { return nil }
+        return clampedScale(min(viewportSize.width / contentSize.width, visibleHeight / contentSize.height, 1))
     }
 
     private func zoom(by factor: CGFloat) {
         guard viewportSize != .zero else { return }
         let center = CGPoint(
-            x: (viewportSize.width / 2 - offset.width) / scale,
-            y: (viewportSize.height / 2 - offset.height) / scale
+            x: (visibleCenter.x - offset.width) / scale,
+            y: (visibleCenter.y - offset.height) / scale
         )
         setCamera(scale: clampedScale(scale * factor), centeredOn: center, animated: true)
     }
@@ -133,8 +143,8 @@ final class NetworkMapZoomController {
     private func setCamera(scale nextScale: CGFloat, centeredOn point: CGPoint, animated: Bool) {
         let nextOffset = clamped(
             CGSize(
-                width: viewportSize.width / 2 - point.x * nextScale,
-                height: viewportSize.height / 2 - point.y * nextScale
+                width: visibleCenter.x - point.x * nextScale,
+                height: visibleCenter.y - point.y * nextScale
             ),
             scale: nextScale
         )
@@ -159,14 +169,12 @@ final class NetworkMapZoomController {
     /// travel at most to the middle of the viewport.
     private func clamped(_ proposed: CGSize, scale: CGFloat) -> CGSize {
         guard viewportSize != .zero, contentSize != .zero else { return proposed }
-        func clamp(_ value: CGFloat, viewport: CGFloat, content: CGFloat) -> CGFloat {
-            let lower = viewport / 2 - content * scale
-            let upper = viewport / 2
-            return min(max(value, lower), upper)
+        func clamp(_ value: CGFloat, center: CGFloat, content: CGFloat) -> CGFloat {
+            min(max(value, center - content * scale), center)
         }
         return CGSize(
-            width: clamp(proposed.width, viewport: viewportSize.width, content: contentSize.width),
-            height: clamp(proposed.height, viewport: viewportSize.height, content: contentSize.height)
+            width: clamp(proposed.width, center: visibleCenter.x, content: contentSize.width),
+            height: clamp(proposed.height, center: visibleCenter.y, content: contentSize.height)
         )
     }
 }
