@@ -6,12 +6,6 @@ struct AppAppearanceSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Home") {
-                NavigationLink { HomeCardsSettingsView() } label: {
-                    Label("Home Cards", systemImage: "rectangle.grid.2x2.fill")
-                }
-            }
-
             Section {
                 Picker("Theme", selection: $appearanceMode) {
                     Text("System").tag(AppearanceMode.system)
@@ -22,12 +16,25 @@ struct AppAppearanceSettingsView: View {
                 Text("Theme")
             }
 
+            Section("Home") {
+                NavigationLink { HomeCardsSettingsView() } label: {
+                    SettingsNavigationLabel(
+                        title: "Home Cards",
+                        systemImage: "rectangle.3.group.fill",
+                        color: .blue
+                    )
+                }
+            }
+
             Section("Bridge Indicators") {
                 Picker("Show", selection: $indicatorModeRaw) {
                     ForEach(BridgeGradientMode.allCases) { mode in
                         Text(mode.label).tag(mode.rawValue)
                     }
                 }
+            }
+
+            Section("Preview") {
                 BridgeIndicatorPreview(mode: indicatorMode)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -46,16 +53,27 @@ private struct BridgeIndicatorPreview: View {
     let mode: BridgeGradientMode
 
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.xs) {
-            previewRow("Hall Motion", symbol: "figure.walk", color: .blue)
-            Divider()
-            previewRow("Kitchen Light", symbol: "lightbulb.fill", color: .orange)
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            Text(mode.description)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: .zero) {
+                previewRow("Hall Motion", symbol: "figure.walk", bridgeName: "Home", color: .blue)
+                Divider()
+                previewRow("Kitchen Light", symbol: "lightbulb.fill", bridgeName: "Studio", color: .orange)
+            }
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
         }
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
-    private func previewRow(_ title: String, symbol: String, color: Color) -> some View {
+    private func previewRow(
+        _ title: String,
+        symbol: String,
+        bridgeName: String,
+        color: Color
+    ) -> some View {
         HStack(spacing: DesignTokens.Spacing.md) {
             if mode != .off {
                 Rectangle()
@@ -69,12 +87,23 @@ private struct BridgeIndicatorPreview: View {
                 .foregroundStyle(.secondary)
             Text(title)
             Spacer()
-            Text(mode == .off ? "No indicator" : "Bridge")
+            Text(mode == .off ? "Hidden" : bridgeName)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .padding(.leading, DesignTokens.Spacing.xs)
         .padding(.vertical, DesignTokens.Spacing.md)
         .padding(.trailing, DesignTokens.Spacing.md)
+    }
+}
+
+private extension BridgeGradientMode {
+    var description: String {
+        switch self {
+        case .always: "Each row shows its source bridge."
+        case .auto: "Source bridges appear when more than one bridge is connected."
+        case .off: "Rows stay free of bridge source indicators."
+        }
     }
 }
 

@@ -13,11 +13,21 @@ struct AppNotificationSettingsView: View {
                         Text(mode.title).tag(mode.rawValue)
                     }
                 }
+            }
+
+            Section("Preview") {
                 ActivityCenterPresentationPreview(mode: displayMode)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+            }
+
+            Section("Notifications") {
                 NavigationLink { ActivityNotificationSettingsView() } label: {
-                    Label("Notifications", systemImage: "bell.badge.fill")
+                    SettingsNavigationLabel(
+                        title: "Notifications",
+                        systemImage: "bell.badge.fill",
+                        color: .red
+                    )
                 }
             }
         }
@@ -50,7 +60,7 @@ private struct ActivityCenterPresentationPreview: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
 

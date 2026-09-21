@@ -22,7 +22,6 @@ struct SettingsWorkspaceDestinationView: View {
         case .backup(let id): BackupView(bridgeID: id)
         case .appearance: AppAppearanceSettingsView()
         case .appGeneral: AppGeneralView()
-        case .activityCenter: AppNotificationSettingsView()
         case .liveActivities: AppLiveActivitiesView()
         case .deviceLibrary: DocBrowserView()
         case .about: AboutView()

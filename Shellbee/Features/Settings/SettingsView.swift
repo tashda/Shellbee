@@ -435,15 +435,7 @@ struct SettingsView: View {
     }
 
     private func settingsLabel(title: String, systemImage: String, color: Color) -> some View {
-        Label {
-            Text(title)
-        } icon: {
-            Image(systemName: systemImage)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                .background(color, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-        }
+        SettingsNavigationLabel(title: title, systemImage: systemImage, color: color)
     }
 
     @ViewBuilder

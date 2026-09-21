@@ -51,13 +51,14 @@ struct SettingsWorkspaceList: View {
             Section("Application") {
                 routeRow(.appGeneral, title: "General", systemImage: "gearshape.fill", color: .gray)
                 routeRow(.appearance, title: "Appearance", systemImage: "paintbrush.fill", color: .blue)
-                routeRow(.activityCenter, title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
                 routeRow(.liveActivities, title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
                 routeRow(.about, title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             }
             Section("Tools") {
                 routeRow(.deviceLibrary, title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
-                if developerModeEnabled {
+            }
+            if developerModeEnabled {
+                Section("Developer") {
                     routeRow(.developer, title: "Developer", systemImage: "hammer.fill", color: .purple)
                 }
             }
@@ -108,15 +109,7 @@ struct SettingsWorkspaceList: View {
     }
 
     private func settingsLabel(title: String, systemImage: String, color: Color) -> some View {
-        Label {
-            Text(title)
-        } icon: {
-            FeatureIconTile(
-                symbol: systemImage,
-                tint: color,
-                size: DesignTokens.Size.settingsIconFrame
-            )
-        }
+        SettingsNavigationLabel(title: title, systemImage: systemImage, color: color)
     }
 
     private var availableBridgeIDs: Set<UUID> {
