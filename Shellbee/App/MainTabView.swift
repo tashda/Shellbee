@@ -35,18 +35,36 @@ struct MainTabView: View {
         )) { request in
             LogSheetHost(request: request)
         }
+        .sheet(isPresented: Binding(
+            get: { sceneNavigation.isActivityCenterPresented },
+            set: { sceneNavigation.isActivityCenterPresented = $0 }
+        )) {
+            ActivityCenterSheet()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $isCommandPalettePresented) {
             CommandPaletteView()
                 .environment(environment)
         }
         .onAppear {
-            tabSelection = sceneNavigation.selectedTab
+            if !AdaptiveLayout.isPad, sceneNavigation.selectedTab == .logs {
+                sceneNavigation.isActivityCenterPresented = true
+                sceneNavigation.selectedTab = tabSelection
+            } else {
+                tabSelection = sceneNavigation.selectedTab
+            }
         }
         .onChange(of: tabSelection) { _, newValue in
             sceneNavigation.selectedTab = newValue
         }
         .onChange(of: sceneNavigation.selectedTab) { _, newValue in
-            tabSelection = newValue
+            if !AdaptiveLayout.isPad, newValue == .logs {
+                sceneNavigation.isActivityCenterPresented = true
+                sceneNavigation.selectedTab = tabSelection
+            } else {
+                tabSelection = newValue
+            }
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
@@ -70,15 +88,15 @@ struct MainTabView: View {
                 } label: {
                     Label(AppTab.groups.title, symbol: AppTab.groups.symbol)
                 }
-                Tab(value: AppTab.logs) {
-                    NavigationStack {
-                        LogsView(isTabRoot: true)
-                    }
-                    .configuredTopScrollEdgeEffect()
-                } label: {
-                    Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
-                }
                 if AdaptiveLayout.isPad {
+                    Tab(value: AppTab.logs) {
+                        NavigationStack {
+                            LogsView()
+                        }
+                        .configuredTopScrollEdgeEffect()
+                    } label: {
+                        Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
+                    }
                     Tab(value: AppTab.networkMap) {
                         NetworkMapView()
                     } label: {
@@ -109,13 +127,13 @@ struct MainTabView: View {
                 GroupListView()
                     .tabItem { Label(AppTab.groups.title, symbol: AppTab.groups.symbol) }
                     .tag(AppTab.groups)
-                NavigationStack {
-                    LogsView(isTabRoot: true)
-                }
-                .configuredTopScrollEdgeEffect()
-                .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }
-                .tag(AppTab.logs)
                 if AdaptiveLayout.isPad {
+                    NavigationStack {
+                        LogsView()
+                    }
+                    .configuredTopScrollEdgeEffect()
+                    .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }
+                    .tag(AppTab.logs)
                     NetworkMapView()
                         .tabItem { Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol) }
                         .tag(AppTab.networkMap)
@@ -139,6 +157,9 @@ struct MainTabView: View {
             selectSection: { section in
                 if section == .networkMap {
                     guard AdaptiveLayout.isPad else { return }
+                } else if section == .logs, !AdaptiveLayout.isPad {
+                    sceneNavigation.isActivityCenterPresented = true
+                    return
                 }
                 tabSelection = section
             },

@@ -7,6 +7,10 @@ import SwiftUI
 final class SceneNavigationState {
     var selectedTab: AppTab
     var selectedBridgeID: UUID?
+    /// Presents the compact app's player-like Activity Center. Keeping this
+    /// scene-local means an Activity Center opened in one window does not
+    /// interrupt another window.
+    var isActivityCenterPresented = false
     var pendingDeviceFilter: DeviceQuickFilter?
     var pendingDeviceBridgeID: UUID?
     var pendingLogSheet: LogSheetRequest?
