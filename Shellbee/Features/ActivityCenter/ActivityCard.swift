@@ -7,10 +7,11 @@ struct ActivityCard: View {
     let store: AppStore?
     /// "13 more updates" on the top card of a collapsed stack.
     var moreText: String? = nil
+    @ScaledMetric(relativeTo: .subheadline) private var thumbnailSize = DesignTokens.ActivityFeed.thumbnail
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            ActivityThumbnail(entry: entry, store: store)
+            ActivityThumbnail(entry: entry, store: store, size: thumbnailSize)
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
