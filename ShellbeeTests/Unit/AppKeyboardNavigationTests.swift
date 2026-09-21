@@ -13,30 +13,8 @@ final class AppKeyboardNavigationTests: XCTestCase {
         ])
     }
 
-    func testSearchRequestTargetsSearchableSection() {
-        var request = AppSearchFocusRequest()
-
-        request.request(for: .devices)
-
-        XCTAssertEqual(request.sequence, 1)
-        XCTAssertEqual(request.section, .devices)
-    }
-
-    func testRepeatedSearchRequestChangesSequence() {
-        var request = AppSearchFocusRequest()
-
-        request.request(for: .logs)
-        request.request(for: .logs)
-
-        XCTAssertEqual(request.sequence, 2)
-        XCTAssertEqual(request.section, .logs)
-    }
-
-    func testSearchRequestIgnoresSectionWithoutSearch() {
-        var request = AppSearchFocusRequest()
-
-        request.request(for: .settings)
-
-        XCTAssertEqual(request, AppSearchFocusRequest())
+    func testSearchIsNotANumberedShortcut() {
+        XCTAssertFalse(AppTab.keyboardSections.contains(.search))
+        XCTAssertEqual(AppTab.search.title, "Search")
     }
 }
