@@ -33,8 +33,12 @@ struct LiveActivityStageView: View {
                 }
                 .padding(.top, StageMetrics.deviceTop)
                 .padding(.bottom, StageMetrics.deviceBottom)
+                // The system redraws an activity on every update, which
+                // restarts effects like the pulse; switching states does too.
+                .id(sampleIndex)
             case .lock:
                 StageLockScreen(layout: sample.layout)
+                    .id(sampleIndex)
             }
         }
         .overlay(alignment: .bottom) {
@@ -206,7 +210,6 @@ private struct StageLockScreen: View {
             LiveActivityLockScreen(layout: layout)
                 .frame(width: StageMetrics.expandedWidth)
                 .clipShape(RoundedRectangle(cornerRadius: StageMetrics.cardRadius, style: .continuous))
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: StageMetrics.cardRadius, style: .continuous))
                 .padding(.bottom, StageMetrics.lockCardBottom)
         }
         .foregroundStyle(.white)
@@ -262,6 +265,8 @@ private struct StageControls: View {
             .accessibilityLabel("Wallpaper")
         }
         .pickerStyle(.menu)
+        .lineLimit(1)
+        .fixedSize()
         .tint(.white)
         .padding(DesignTokens.Spacing.xs)
         .glassEffect(.regular, in: Capsule())
