@@ -17,7 +17,8 @@ What is faithfully simulated
   Covered: device rename/remove/options/interview/configure/bind/unbind,
   OTA check/update (with progress ticks), group add/remove/rename/options +
   group members add/remove, permit_join, info, restart, backup, options,
-  health_check, install_code/add, devices, groups, networkmap, touchlink scan/identify/
+  health_check, install_code/add, devices, groups, networkmap (a paced scan that
+  logs z2m's per-router LQI lines, NETWORKMAP_TICK_MS), touchlink scan/identify/
   factory_reset, action, configure_reporting.
 - ``bridge/event``: emitted for device_joined, device_leave, device_renamed,
   device_interview, device_announce, and permit_join state changes.
@@ -82,6 +83,10 @@ DRIFT_ON_CLIENT_CONNECT = os.environ.get("DRIFT_ON_CLIENT_CONNECT", "1").lower()
     "0", "false", "no"
 }
 OTA_TICK_MS = int(os.environ.get("OTA_TICK_MS", "400"))
+# Pause between routers during a simulated network scan. Real z2m sleeps
+# 1 s per router plus the LQI round-trip; the default keeps a 100-router mock
+# scan around 30 s so progress is visible without being tedious.
+NETWORKMAP_TICK_MS = int(os.environ.get("NETWORKMAP_TICK_MS", "300"))
 OTA_STEP = int(os.environ.get("OTA_STEP", "10"))
 
 # ── Mutable engine state ──────────────────────────────────────────────────
@@ -712,6 +717,10 @@ def _req_options(client, payload):
     with _lock:
         options = payload.get("options", payload)
         deep_merge(_bridge_info["config"], options)
+        # z2m mirrors advanced.log_level at the top of bridge/info.
+        level = options.get("advanced", {}).get("log_level") if isinstance(options.get("advanced"), dict) else None
+        if level:
+            _bridge_info["log_level"] = level
         snapshot = copy.deepcopy(_bridge_info)
     _publish_info(client)
     return {"restart_required": False, "config": snapshot["config"]}
@@ -743,57 +752,101 @@ def _req_groups(client, payload):
 
 @_register("networkmap")
 def _req_networkmap(client, payload):
-    """Return a deterministic raw topology matching Z2M's networkmap shape."""
+    """Simulate z2m's network scan, then answer with a raw topology.
+
+    Mirrors lib/extension/networkMap.ts: the coordinator and every router are
+    queried one at a time; each logs ``LQI succeeded for '<name>'`` (debug,
+    only forwarded with log_debug_to_mqtt_frontend) or ``Failed to execute
+    LQI for '<name>'`` (error, after one retry), bracketed by the info-level
+    ``Starting network scan`` / ``Network scan finished`` lines. Every queried
+    node carries a ``failed`` list in the response; end devices do not.
+    """
+    transaction = payload.get("transaction") if isinstance(payload, dict) else None
+    routes = bool(payload.get("routes", False))
+    map_type = payload.get("type", "raw")
+
     with _lock:
         devices = copy.deepcopy(_devices)
         states = copy.deepcopy(_states)
+        advanced = copy.deepcopy(_bridge_info.get("config", {}).get("advanced", {}))
+        log_level = _bridge_info.get("log_level", "info")
 
     coordinator = next((d for d in devices if d.get("type") == "Coordinator"), None)
     if coordinator is None:
         raise RequestError("Coordinator is unavailable")
     routers = [d for d in devices if d.get("type") == "Router"]
+    queried = [coordinator] + [d for d in routers if not d.get("disabled")]
+    debug_forwarded = log_level == "debug" and bool(advanced.get("log_debug_to_mqtt_frontend"))
 
-    nodes = [
-        {
-            "friendlyName": d["friendly_name"],
-            "ieeeAddr": d["ieee_address"],
-            "networkAddress": d.get("network_address"),
-            "type": d.get("type", "Unknown"),
-            "manufacturerName": d.get("manufacturer"),
-            "modelID": d.get("model_id"),
+    def scan_fails(device: dict) -> bool:
+        # Deterministic ~1 in 20 routers never answer, so failures are
+        # reproducible across runs.
+        return device is not coordinator and sum(device["ieee_address"].encode()) % 20 == 0
+
+    def run() -> None:
+        _emit_log(client, "info", f"Starting network scan (includeRoutes '{str(routes).lower()}')")
+        failed_ieee: set[str] = set()
+        for device in queried:
+            time.sleep(NETWORKMAP_TICK_MS / 1000.0)
+            if scan_fails(device):
+                # z2m retries once after a 5 s back-off; keep it short here.
+                time.sleep(NETWORKMAP_TICK_MS * 3 / 1000.0)
+                failed_ieee.add(device["ieee_address"])
+                _emit_log(client, "error", f"Failed to execute LQI for '{device['friendly_name']}'")
+            elif debug_forwarded:
+                _emit_log(client, "debug", f"LQI succeeded for '{device['friendly_name']}'")
+        _emit_log(client, "info", "Network scan finished")
+
+        queried_ieee = {d["ieee_address"] for d in queried}
+        nodes = []
+        for d in devices:
+            node = {
+                "friendlyName": d["friendly_name"],
+                "ieeeAddr": d["ieee_address"],
+                "networkAddress": d.get("network_address"),
+                "type": d.get("type", "Unknown"),
+                "manufacturerName": d.get("manufacturer"),
+                "modelID": d.get("model_id"),
+            }
+            if d["ieee_address"] in queried_ieee:
+                node["failed"] = ["lqi"] if d["ieee_address"] in failed_ieee else []
+            nodes.append(node)
+
+        links = []
+        end_index = 0
+        for device in devices:
+            if device is coordinator:
+                continue
+            if device.get("type") == "Router" or not routers:
+                parent = coordinator
+                depth = 1
+            else:
+                parent = routers[end_index % len(routers)]
+                end_index += 1
+                depth = 2
+            lqi = states.get(device["friendly_name"], {}).get("linkquality")
+            links.append({
+                "source": {"ieeeAddr": device["ieee_address"], "networkAddress": device.get("network_address")},
+                "sourceIeeeAddr": device["ieee_address"],
+                "target": {"ieeeAddr": parent["ieee_address"], "networkAddress": parent.get("network_address")},
+                "targetIeeeAddr": parent["ieee_address"],
+                "linkquality": lqi,
+                "lqi": lqi,
+                "depth": depth,
+                "relationship": 1,
+                "routes": [],
+            })
+
+        envelope: dict[str, Any] = {
+            "data": {"routes": routes, "type": map_type, "value": {"nodes": nodes, "links": links}},
+            "status": "ok",
         }
-        for d in devices
-    ]
-    links = []
-    end_index = 0
-    for device in devices:
-        if device is coordinator:
-            continue
-        if device.get("type") == "Router" or not routers:
-            parent = coordinator
-            depth = 1
-        else:
-            parent = routers[end_index % len(routers)]
-            end_index += 1
-            depth = 2
-        lqi = states.get(device["friendly_name"], {}).get("linkquality")
-        links.append({
-            "source": {"ieeeAddr": device["ieee_address"], "networkAddress": device.get("network_address")},
-            "sourceIeeeAddr": device["ieee_address"],
-            "target": {"ieeeAddr": parent["ieee_address"], "networkAddress": parent.get("network_address")},
-            "targetIeeeAddr": parent["ieee_address"],
-            "linkquality": lqi,
-            "lqi": lqi,
-            "depth": depth,
-            "relationship": 1,
-            "routes": [],
-        })
+        if transaction is not None:
+            envelope["transaction"] = transaction
+        _pub(client, f"{Z2M_TOPIC}/bridge/response/networkmap", envelope, retain=False)
 
-    return {
-        "routes": bool(payload.get("routes", False)),
-        "type": payload.get("type", "raw"),
-        "value": {"nodes": nodes, "links": links},
-    }
+    threading.Thread(target=run, daemon=True).start()
+    raise _DeferResponse()
 
 
 @_register("touchlink/scan")
