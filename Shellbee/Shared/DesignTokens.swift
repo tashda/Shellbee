@@ -13,6 +13,10 @@ nonisolated enum DesignTokens {
         static let summaryRowVerticalPadding: CGFloat = 2
     }
 
+    nonisolated enum Count {
+        static let liveActivityQueueRows = 3
+    }
+
     nonisolated enum CornerRadius {
         static let sm: CGFloat = 8
         static let md: CGFloat = 12
@@ -62,6 +66,9 @@ nonisolated enum DesignTokens {
         static let liveActivityScoreboardIcon: CGFloat = 36
         static let liveActivityChunkyBar: CGFloat = 10
         static let liveActivityChunkyBarScale: CGFloat = 3
+        static let liveActivityQueueName: CGFloat = 110
+        static let liveActivityQueueBar: CGFloat = 6
+        static let liveActivityQueueStatus: CGFloat = 64
         static let liveActivityCompactSymbol: CGFloat = 14
         static let liveActivityMinimalSymbol: CGFloat = 10
         // Developer gallery stand-ins for the system's activity surfaces.
@@ -404,6 +411,7 @@ nonisolated enum DesignTokens {
         static let liveActivityTouchlinkScan: Double = 30
         static let liveActivityTouchlinkIdentify: Double = 20
         static let liveActivityOTAStale: Double = 120
+        static let liveActivityOTAEstimateTolerance: Double = 0.15
         static let liveActivityGracePoll: Double = 1
         static let liveActivityGraceWrapUp: Double = 12
         static let liveActivityWindowTolerance: Double = 5

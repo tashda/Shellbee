@@ -107,8 +107,8 @@ struct LiveActivityProgressLine: View {
             ProgressView(value: min(max(fraction, 0), 1))
                 .progressViewStyle(.linear)
                 .tint(tint)
-        case .countdown(let range):
-            ProgressView(timerInterval: range, countsDown: true) {
+        case .countdown(let range), .filling(let range):
+            ProgressView(timerInterval: range, countsDown: gauge.timer?.countsDown ?? true) {
                 EmptyView()
             } currentValueLabel: {
                 EmptyView()
@@ -199,8 +199,8 @@ struct LiveActivityMinimal: View {
             ProgressView(value: min(max(fraction, 0), 1)) { glyph }
                 .progressViewStyle(.circular)
                 .tint(layout.tint)
-        case .countdown(let range):
-            ProgressView(timerInterval: range, countsDown: true) { glyph } currentValueLabel: { glyph }
+        case .countdown(let range), .filling(let range):
+            ProgressView(timerInterval: range, countsDown: layout.gauge.timer?.countsDown ?? true) { glyph } currentValueLabel: { glyph }
                 .progressViewStyle(.circular)
                 .tint(layout.tint)
         }
@@ -232,6 +232,7 @@ struct LiveActivityValueView: View {
                 .foregroundStyle(textColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
         case .symbol(let name):
             Image(systemName: name)
                 .font(font)

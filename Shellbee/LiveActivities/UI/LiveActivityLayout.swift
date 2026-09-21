@@ -14,17 +14,40 @@ enum LiveActivityValue {
     case symbol(String)
 }
 
-/// What the minimal island shows: a ring when there's measurable progress.
+/// Measurable progress, drawn as bars and rings. Timer-driven cases keep
+/// moving on their own while the app is suspended.
 enum LiveActivityGauge {
     case none
     case progress(Double)
+    /// Drains from full to empty across the range.
     case countdown(ClosedRange<Date>)
+    /// Fills from empty to full across the range, e.g. towards an estimated
+    /// finish. Start the range in the past to begin part-way full.
+    case filling(ClosedRange<Date>)
+
+    var timer: (range: ClosedRange<Date>, countsDown: Bool)? {
+        switch self {
+        case .countdown(let range): return (range, true)
+        case .filling(let range): return (range, false)
+        case .none, .progress: return nil
+        }
+    }
+}
+
+/// One entry in a multi-item activity, such as a device in an update queue.
+struct LiveActivityRow: Identifiable {
+    let name: String
+    /// Nil while the item is waiting and has no progress yet.
+    let fraction: Double?
+    let status: String
+    var id: String { name }
 }
 
 enum LiveActivityPalette {
     static let pairing = Color(red: 0.35, green: 0.91, blue: 0.70)
     static let update = Color(red: 0.40, green: 0.70, blue: 1.00)
     static let scan = Color(red: 0.62, green: 0.56, blue: 1.00)
+    static let identify = Color(red: 1.00, green: 0.82, blue: 0.30)
     static let working = Color.orange
     static let success = Color.green
     static let failure = Color.red
@@ -59,11 +82,12 @@ struct LiveActivityLayout {
     var isBusy = false
     /// A supporting number some styles show, such as devices joined.
     var metric: LiveActivityMetric? = nil
+    /// Items the Queue style lists, most relevant first.
+    var rows: [LiveActivityRow] = []
     var style: LiveActivityStyle = .classic
 
     /// When the activity's countdown ends, if it has one.
     var endsAt: Date? {
-        if case .countdown(let range) = gauge { return range.upperBound }
-        return nil
+        gauge.timer?.range.upperBound
     }
 }

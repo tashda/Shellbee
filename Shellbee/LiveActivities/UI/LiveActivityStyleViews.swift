@@ -33,6 +33,10 @@ struct LiveActivityStyledLockContent: View {
             }
         case .scoreboard:
             ScoreboardContent(layout: layout)
+        case .queue:
+            LiveActivityQueueContent(layout: layout)
+        case .spotlight:
+            LiveActivitySpotlightContent(layout: layout)
         }
     }
 }
@@ -59,7 +63,7 @@ struct LiveActivityStyledIslandTrailing: View {
 
     var body: some View {
         switch layout.style {
-        case .hero, .scoreboard:
+        case .hero, .scoreboard, .spotlight:
             EmptyView()
         default:
             LiveActivityValueView(value: layout.value, tint: layout.tint, font: DesignTokens.Typography.liveActivityValue)
@@ -88,6 +92,13 @@ struct LiveActivityStyledIslandBottom: View {
             LiveActivityTitle(layout: layout, titleFont: .headline, subtitleFont: .subheadline)
         case .scoreboard:
             ScoreboardContent(layout: layout)
+        case .queue:
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                LiveActivityTitle(layout: layout, titleFont: .headline, subtitleFont: .subheadline)
+                LiveActivityQueueContent(layout: layout, showsHeader: false)
+            }
+        case .spotlight:
+            LiveActivitySpotlightContent(layout: layout, showsIcon: false)
         }
     }
 }
@@ -250,15 +261,17 @@ struct LiveActivityRing: View {
             Circle().stroke(layout.tint.opacity(0.25), lineWidth: DesignTokens.Size.liveActivityRingLine)
         case .progress(let fraction):
             drawnRing(fraction)
-        case .countdown(let range):
+        case .countdown(let range), .filling(let range):
+            let countsDown = layout.gauge.timer?.countsDown ?? true
             if isStagePreview {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let total = range.upperBound.timeIntervalSince(range.lowerBound)
                     let left = range.upperBound.timeIntervalSince(context.date)
-                    drawnRing(total > 0 ? max(0, min(1, left / total)) : 0)
+                    let remaining = total > 0 ? max(0, min(1, left / total)) : 0
+                    drawnRing(countsDown ? remaining : 1 - remaining)
                 }
             } else {
-                ProgressView(timerInterval: range, countsDown: true) {
+                ProgressView(timerInterval: range, countsDown: countsDown) {
                     EmptyView()
                 } currentValueLabel: {
                     EmptyView()
