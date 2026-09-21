@@ -155,14 +155,32 @@ struct InAppNotificationBanner: View {
             Image(systemName: notification.level.systemImage)
                 .font(DesignTokens.Typography.notificationLevelIcon)
                 .foregroundStyle(notification.level.color)
-            Text(notification.title)
-                .font(.footnote.weight(.semibold))
-                .lineLimit(1)
-            if notification.count > 1 {
-                Text("× \(notification.count)")
-                    .font(.caption2.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    Text(notification.title)
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                    if notification.count > 1 {
+                        Text("× \(notification.count)")
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let subtitle = notification.subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
             }
+
+            Spacer(minLength: DesignTokens.Spacing.xs)
+
+            Image(systemName: "chevron.up")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)

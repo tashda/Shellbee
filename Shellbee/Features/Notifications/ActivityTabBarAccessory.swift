@@ -46,10 +46,22 @@ struct ActivityTabBarAccessory: View {
                 isInlineActivityAccessory: isInline
             )
         }
+        .contentShape(Rectangle())
+        .simultaneousGesture(openActivityGesture, including: .all)
     }
 
     private func openActivity() {
         sceneNavigation.isActivityCenterPresented = true
+    }
+
+    private var openActivityGesture: some Gesture {
+        DragGesture(minimumDistance: DesignTokens.Spacing.xs)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(vertical) > abs(horizontal), vertical < -DesignTokens.Spacing.xxl else { return }
+                openActivity()
+            }
     }
 }
 

@@ -67,7 +67,7 @@ struct LogsView: View {
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
                 if !AdaptiveLayout.isPad {
-                    ToolbarItem(placement: .principal) {
+                    ToolbarItem(placement: .topBarLeading) {
                         Picker("Mode", selection: $workspace.mode) {
                             ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
