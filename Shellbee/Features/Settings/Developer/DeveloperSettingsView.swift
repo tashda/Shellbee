@@ -28,6 +28,9 @@ struct DeveloperSettingsView: View {
                 NavigationLink("Live Activity Gallery") {
                     LiveActivityGalleryView()
                 }
+                NavigationLink("Activity Instruments") {
+                    ActivityInstrumentGalleryView()
+                }
                 NavigationLink("Activity Icons") {
                     ActivityIconGalleryView()
                 }
