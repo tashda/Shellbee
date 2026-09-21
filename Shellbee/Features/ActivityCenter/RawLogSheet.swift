@@ -7,13 +7,7 @@ struct RawLogSheet: View {
 
     var body: some View {
         NavigationStack {
-            BridgeLogDetailView(entry: entry)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
-                            .fontWeight(.semibold)
-                    }
-                }
+            BridgeLogDetailView(entry: entry, doneAction: { dismiss() })
         }
         .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
