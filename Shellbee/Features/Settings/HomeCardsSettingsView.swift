@@ -10,13 +10,19 @@ struct HomeCardsSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Preview") {
+            Section("Home Preview") {
                 HomeCardsPreview(
                     recentEventsCount: recentEventsCount,
                     displayModes: displayModes
                 )
-                .listRowInsets(EdgeInsets())
+                .listRowInsets(EdgeInsets(
+                    top: DesignTokens.Spacing.sm,
+                    leading: DesignTokens.Spacing.lg,
+                    bottom: DesignTokens.Spacing.sm,
+                    trailing: DesignTokens.Spacing.lg
+                ))
                 .listRowBackground(Color.clear)
+                .allowsHitTesting(false)
             }
 
             Section {
@@ -72,49 +78,104 @@ private struct HomeCardsPreview: View {
     let displayModes: [HomeCardID: HomeCardDisplayMode]
 
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
+        VStack(spacing: DesignTokens.Spacing.md) {
             ForEach(HomeCardID.allCases) { card in
                 if displayModes[card] == .perBridge {
-                    HStack(spacing: DesignTokens.Spacing.sm) {
-                        HomeCardPreviewTile(card: card, subtitle: "Home")
-                        HomeCardPreviewTile(card: card, subtitle: "Studio")
-                    }
+                    cardPreview(card, bridgeName: "Home")
+                    cardPreview(card, bridgeName: "Studio")
                 } else {
-                    HomeCardPreviewTile(card: card, subtitle: subtitle(for: card))
+                    cardPreview(card, bridgeName: nil)
                 }
             }
         }
-        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
-    private func subtitle(for card: HomeCardID) -> String {
+    @ViewBuilder
+    private func cardPreview(_ card: HomeCardID, bridgeName: String?) -> some View {
         switch card {
-        case .recentEvents: "Last \(recentEventsCount) events"
-        default: "All bridges"
+        case .bridge:
+            HomeBridgeCard(
+                entries: [Self.bridgeEntry(name: bridgeName ?? "Zigbee2MQTT")],
+                onRestart: { _ in },
+                fetchesLatestVersion: false
+            )
+        case .devices:
+            HomeDevicesCard(
+                snapshot: Self.snapshot,
+                bridgeName: bridgeName,
+                onTap: {},
+                onFilter: { _ in }
+            )
+        case .groups:
+            HomeGroupsCard(count: Self.snapshot.groupCount, bridgeName: bridgeName, onTap: {})
+        case .mesh:
+            HomeMeshCard(
+                snapshot: Self.snapshot,
+                bridgeName: bridgeName,
+                onTap: {},
+                onFilter: { _ in }
+            )
+        case .recentEvents:
+            HomeLogsCard(
+                entries: Array(LogEntry.previewEntries.prefix(recentEventsCount)),
+                bridgeName: bridgeName,
+                onOpenEntry: { _ in },
+                onOpenAll: {}
+            )
         }
     }
-}
 
-private struct HomeCardPreviewTile: View {
-    let card: HomeCardID
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            FeatureIconTile(symbol: card.symbol, tint: card.tint, size: DesignTokens.Size.settingsIconFrame)
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                Text(card.title)
-                    .font(.subheadline.weight(.semibold))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: DesignTokens.Spacing.xs)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(DesignTokens.Spacing.md)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
+    private static func bridgeEntry(name: String) -> HomeBridgeCardEntry {
+        HomeBridgeCardEntry(
+            id: UUID(),
+            name: name,
+            isFocused: true,
+            connectionState: .connected,
+            isWebSocketConnected: true,
+            isBridgeOnline: true,
+            info: nil,
+            health: nil
+        )
     }
+
+    private static let snapshot = HomeSnapshot(
+        devices: [.preview, .fallbackPreview, previewRouter],
+        availability: [
+            Device.preview.friendlyName: true,
+            Device.fallbackPreview.friendlyName: false,
+            previewRouter.friendlyName: true
+        ],
+        states: [
+            Device.preview.friendlyName: ["linkquality": .int(132)],
+            Device.fallbackPreview.friendlyName: ["battery": .int(18), "linkquality": .int(42)],
+            previewRouter.friendlyName: ["linkquality": .int(96)]
+        ],
+        isConnected: true,
+        isBridgeOnline: true,
+        groupCount: 3,
+        bridgeVersion: nil,
+        bridgeCommit: nil,
+        coordinatorType: "EmberZNet",
+        coordinatorIEEEAddress: nil,
+        networkChannel: 20,
+        panID: nil,
+        isPermitJoinActive: false,
+        permitJoinEnd: nil,
+        restartRequired: false
+    )
+
+    private static let previewRouter = Device(
+        ieeeAddress: "preview-router",
+        type: .router,
+        networkAddress: 3,
+        supported: true,
+        friendlyName: "Kitchen Router",
+        disabled: false,
+        definition: nil,
+        powerSource: "mains",
+        interviewCompleted: true,
+        interviewing: false
+    )
 }
 
 #Preview {

@@ -2,20 +2,23 @@ import XCTest
 
 final class LogsUITests: ShellbeeUITestCase {
 
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += ["-activityCenterEnabled", "NO"]
+    }
+
     override func setUp() {
         super.setUp()
         waitForMainTab()
-        // Navigate to Logs via Settings tab. LogsView wraps itself in a
-        // nested NavigationStack, so we wait for its "Logs" navigation
-        // title rather than for a second navigation bar.
+        // With Activity Center disabled, Settings exposes the Logs fallback.
+        // It opens the same Activity feed as Activity Center.
         app.tapSettingsTab()
         let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
         XCTAssertTrue(logsRow.waitForExistence(timeout: 5),
                       "Logs row not found in Settings")
         logsRow.tap()
         XCTAssertTrue(
-            app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 10),
-            "Logs view did not appear"
+            app.navigationBars["Activity"].firstMatch.waitForExistence(timeout: 10),
+            "Activity feed did not appear"
         )
     }
 
@@ -116,20 +119,23 @@ final class LogsUITests: ShellbeeUITestCase {
                       "Kitchen Plug toggle not found")
         toggle.tap()
 
-        // Switch back to Settings; its nav stack still has Logs pushed
-        // on top from setUp, so the Logs view is already visible.
+        // Switch back to Settings; its nav stack still has Activity pushed
+        // on top from setUp, so the feed is already visible.
         app.tapSettingsTab()
-        XCTAssertTrue(app.navigationBars["Logs"].waitForExistence(timeout: 5),
-                      "Logs view should still be on the Settings nav stack")
+        XCTAssertTrue(app.navigationBars["Activity"].waitForExistence(timeout: 5),
+                      "Activity should still be on the Settings nav stack")
 
+        let activityCard = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS 'Kitchen Plug'")
+        ).firstMatch
         XCTAssertTrue(
-            app.cells.firstMatch.waitForExistence(timeout: 10),
-            "Activity log is empty after triggering a device state change"
+            activityCard.waitForExistence(timeout: 10),
+            "Activity feed is empty after triggering a device state change"
         )
-        app.cells.firstMatch.tap()
+        activityCard.tap()
         XCTAssertTrue(
-            app.navigationBars.buttons["Logs"].firstMatch.waitForExistence(timeout: 5),
-            "LogDetailView did not open — expected a 'Logs' back button"
+            app.navigationBars.buttons["Activity"].firstMatch.waitForExistence(timeout: 5),
+            "LogDetailView did not open — expected an 'Activity' back button"
         )
     }
 }

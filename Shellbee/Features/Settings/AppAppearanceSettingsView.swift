@@ -26,18 +26,17 @@ struct AppAppearanceSettingsView: View {
                 }
             }
 
-            Section("Bridge Indicators") {
+            Section {
                 Picker("Show", selection: $indicatorModeRaw) {
                     ForEach(BridgeGradientMode.allCases) { mode in
                         Text(mode.label).tag(mode.rawValue)
                     }
                 }
-            }
-
-            Section("Preview") {
                 BridgeIndicatorPreview(mode: indicatorMode)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+            } header: {
+                Text("Bridge Indicators")
+            } footer: {
+                Text(indicatorMode.description)
             }
         }
         .navigationTitle("Appearance")
@@ -53,47 +52,58 @@ private struct BridgeIndicatorPreview: View {
     let mode: BridgeGradientMode
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text(mode.description)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            VStack(spacing: .zero) {
-                previewRow("Hall Motion", symbol: "figure.walk", bridgeName: "Home", color: .blue)
-                Divider()
-                previewRow("Kitchen Light", symbol: "lightbulb.fill", bridgeName: "Studio", color: .orange)
-            }
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
+        VStack(spacing: .zero) {
+            previewRow(
+                "Hall Motion",
+                device: .fallbackPreview,
+                bridgeName: "Home",
+                color: .blue
+            )
+            Divider()
+            previewRow(
+                "Kitchen Light",
+                device: .preview,
+                bridgeName: "Studio",
+                color: .orange
+            )
         }
-        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
     private func previewRow(
         _ title: String,
-        symbol: String,
+        device: Device,
         bridgeName: String,
         color: Color
     ) -> some View {
         HStack(spacing: DesignTokens.Spacing.md) {
+            DeviceImageView(
+                device: device,
+                isAvailable: true,
+                size: DesignTokens.Size.logRowDeviceImage,
+                showsAvailabilityIndicator: false
+            )
+            Text(title)
+                .lineLimit(1)
+            Spacer()
+            Text(bridgeName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, DesignTokens.Spacing.md)
+        .overlay(alignment: .leading) {
             if mode != .off {
                 Rectangle()
                     .fill(color)
                     .frame(width: DesignTokens.Size.levelIndicatorWidth)
-            } else {
-                Color.clear
-                    .frame(width: DesignTokens.Size.levelIndicatorWidth)
+                    .accessibilityHidden(true)
             }
-            Image(systemName: symbol)
-                .foregroundStyle(.secondary)
-            Text(title)
-            Spacer()
-            Text(mode == .off ? "Hidden" : bridgeName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
-        .padding(.leading, DesignTokens.Spacing.xs)
-        .padding(.vertical, DesignTokens.Spacing.md)
-        .padding(.trailing, DesignTokens.Spacing.md)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            mode == .off
+                ? "\(title), no bridge indicator"
+                : "\(title), \(bridgeName) bridge indicator"
+        )
     }
 }
 

@@ -91,7 +91,7 @@ struct ActivityTabBarAccessory: View {
 }
 
 @available(iOS 26.0, *)
-private struct ActivityAccessorySummary: View {
+struct ActivityAccessorySummary: View {
     @Environment(AppEnvironment.self) private var environment
     let mode: ActivityAccessoryDisplayMode
     let latestActivity: BridgeBoundLogEntry?

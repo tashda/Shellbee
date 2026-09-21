@@ -537,6 +537,7 @@ nonisolated enum DesignTokens {
     }
 
     nonisolated enum Opacity {
+        static let disabled: Double = 0.5
         static let networkMapPrimaryEdge: Double = 0.82
         static let networkMapSecondaryEdge: Double = 0.28
         static let networkMapFadedEdge: Double = 0.08

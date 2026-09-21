@@ -93,7 +93,7 @@ struct MainTabView: View {
                 if AdaptiveLayout.isPad {
                     Tab(value: AppTab.logs) {
                         NavigationStack {
-                            LogsView()
+                            LogsView(usesActivityFeed: true, navigationTitle: "Activity")
                         }
                         .configuredTopScrollEdgeEffect()
                     } label: {
@@ -131,7 +131,7 @@ struct MainTabView: View {
                     .tag(AppTab.groups)
                 if AdaptiveLayout.isPad {
                     NavigationStack {
-                        LogsView()
+                        LogsView(usesActivityFeed: true, navigationTitle: "Activity")
                     }
                     .configuredTopScrollEdgeEffect()
                     .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }

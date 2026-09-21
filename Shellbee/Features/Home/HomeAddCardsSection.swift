@@ -21,7 +21,7 @@ struct HomeAddCardsSection: View {
                                     .font(.title3)
                                     .symbolRenderingMode(.palette)
                                     .foregroundStyle(.white, .green)
-                                Image(systemName: card.symbol)
+                                card.symbol.image
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(card.tint)
                                     .frame(width: DesignTokens.Size.cardSymbol)
