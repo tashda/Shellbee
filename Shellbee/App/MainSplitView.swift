@@ -183,7 +183,9 @@ struct MainSplitView: View {
 
     private var sidebar: some View {
         List(selection: $selection) {
-            Section("Shellbee") {
+            // No section title: the sidebar's navigation title already
+            // reads "Shellbee".
+            Section {
                 ForEach(sidebarTabs, id: \.self) { tab in
                     sidebarRow(for: tab)
                 }
@@ -205,10 +207,8 @@ struct MainSplitView: View {
     }
 
     private var sidebarTabs: [AppTab] {
-        // Search leads the sidebar, as in the system apps.
-        [.search] + AppTab.allCases.filter { tab in
-            tab != .search && (tab != .networkMap || developerModeEnabled)
-        }
+        // Search sits last, below the sections it searches.
+        AppTab.allCases.filter { $0 != .networkMap || developerModeEnabled }
     }
 
     private func sidebarRow(for tab: AppTab) -> some View {
