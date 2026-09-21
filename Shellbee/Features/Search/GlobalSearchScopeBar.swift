@@ -46,7 +46,7 @@ struct GlobalSearchScopeBar: View {
             selection = scope
         } label: {
             HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: scope.systemImage)
+                scope.symbol.image
                     .imageScale(.small)
                 Text(scope.title)
                 Text(count, format: .number)

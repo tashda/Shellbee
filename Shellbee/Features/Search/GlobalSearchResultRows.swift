@@ -84,7 +84,7 @@ private struct GlobalSearchBridgeRow: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: GlobalSearchScope.bridges.systemImage)
+            GlobalSearchScope.bridges.symbol.image
                 .font(.body.weight(.semibold))
                 .foregroundStyle(BridgeColor.color(for: bridge.id))
                 .frame(width: DesignTokens.Size.summaryRowSymbolFrame, height: DesignTokens.Size.summaryRowSymbolFrame)
