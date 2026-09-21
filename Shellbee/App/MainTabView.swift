@@ -70,15 +70,15 @@ struct MainTabView: View {
                 } label: {
                     Label(AppTab.groups.title, symbol: AppTab.groups.symbol)
                 }
-                if AdaptiveLayout.isPad {
-                    Tab(value: AppTab.logs) {
-                        NavigationStack {
-                            LogsView()
-                        }
-                        .configuredTopScrollEdgeEffect()
-                    } label: {
-                        Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
+                Tab(value: AppTab.logs) {
+                    NavigationStack {
+                        LogsView(isTabRoot: true)
                     }
+                    .configuredTopScrollEdgeEffect()
+                } label: {
+                    Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
+                }
+                if AdaptiveLayout.isPad {
                     Tab(value: AppTab.networkMap) {
                         NetworkMapView()
                     } label: {
@@ -109,13 +109,13 @@ struct MainTabView: View {
                 GroupListView()
                     .tabItem { Label(AppTab.groups.title, symbol: AppTab.groups.symbol) }
                     .tag(AppTab.groups)
+                NavigationStack {
+                    LogsView(isTabRoot: true)
+                }
+                .configuredTopScrollEdgeEffect()
+                .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }
+                .tag(AppTab.logs)
                 if AdaptiveLayout.isPad {
-                    NavigationStack {
-                        LogsView()
-                    }
-                    .configuredTopScrollEdgeEffect()
-                    .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }
-                    .tag(AppTab.logs)
                     NetworkMapView()
                         .tabItem { Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol) }
                         .tag(AppTab.networkMap)
@@ -139,8 +139,6 @@ struct MainTabView: View {
             selectSection: { section in
                 if section == .networkMap {
                     guard AdaptiveLayout.isPad else { return }
-                } else if section == .logs {
-                    guard AdaptiveLayout.isPad else { return }
                 }
                 tabSelection = section
             },
@@ -159,12 +157,9 @@ private struct MainTabNotificationPresentation: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-                // Keep the bar expanded for now. The current notification
-                // interaction includes expansion, paging, and actions; those
-                // need a distinct compact design before they can move inline.
-                .tabBarMinimizeBehavior(.never)
+                .tabBarMinimizeBehavior(.onScrollDown)
                 .tabViewBottomAccessory {
-                    InAppNotificationOverlay(presentation: .tabBarAccessory)
+                    ActivityTabBarAccessory()
                 }
         } else {
             content.overlay(alignment: .bottom) {
