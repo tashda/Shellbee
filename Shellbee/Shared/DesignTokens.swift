@@ -460,6 +460,7 @@ nonisolated enum DesignTokens {
         static let permitJoinCountdown: Font = .system(size: 64, weight: .thin)
         static let permitJoinActiveCountdown: Font = .system(size: 48, weight: .bold, design: .rounded)
         static let permitJoinSymbol: Font = .system(size: 48)
+        static let liveActivityTimer: Font = .system(size: 28, weight: .bold, design: .rounded)
         // Banner level glyph — shared by InAppNotificationBanner and
         // FastTrackBanner (#36.D resolved 2026-04-29: unified on 15pt).
         static let notificationLevelIcon: Font = .system(size: 15, weight: .semibold)
