@@ -23,9 +23,9 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
     var symbol: ShellbeeSymbol {
         switch self {
         case .permitJoin: return .permitJoin
-        case .otaUpdate: return .system("arrow.down.circle")
-        case .touchlinkScan: return .system("dot.radiowaves.left.and.right")
-        case .touchlinkIdentify: return .system("lightbulb.max")
+        case .otaUpdate: return .custom("firmware")
+        case .touchlinkScan: return .custom("touchlink")
+        case .touchlinkIdentify: return .custom("identify")
         }
     }
 

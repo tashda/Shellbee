@@ -74,13 +74,23 @@ struct Z2MMessageRouter: Sendable {
             }
             return .bridgeResponse(topic: raw.topic, data: raw.payload)
 
-        case Z2MTopics.bridgeResponseTouchlinkScan:
+        case Z2MTopics.bridgeResponseTouchlinkScan, Z2MTopics.bridgeResponseTouchlinkIdentify:
+            // A failed scan or identify is an error, not an empty result:
+            // route it like any other failed request so the UI and the Live
+            // Activity report the failure.
+            if let obj = raw.payload.object,
+               obj["status"]?.stringValue == "error" {
+                return .operationError(Z2MOperationError(
+                    id: UUID(), topic: raw.topic,
+                    message: obj["error"]?.stringValue ?? "Touchlink request failed", timestamp: .now
+                ))
+            }
+            if raw.topic == Z2MTopics.bridgeResponseTouchlinkIdentify {
+                return .touchlinkIdentifyDone
+            }
             guard let response = raw.decode(TouchlinkScanResponse.self) else { return nil }
             let found = response.status == "ok" ? (response.data?.found ?? []) : []
             return .touchlinkScanResult(found)
-
-        case Z2MTopics.bridgeResponseTouchlinkIdentify:
-            return .touchlinkIdentifyDone
 
         case Z2MTopics.bridgeResponseTouchlinkFactoryReset:
             return .touchlinkFactoryResetDone

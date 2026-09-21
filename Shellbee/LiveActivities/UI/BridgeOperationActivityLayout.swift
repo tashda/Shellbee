@@ -67,8 +67,8 @@ private extension BridgeOperationActivityAttributes.Operation {
 
     var symbol: String {
         switch self {
-        case .touchlinkScan: return "dot.radiowaves.left.and.right"
-        case .touchlinkIdentify: return "lightbulb.max.fill"
+        case .touchlinkScan: return "shellbee.touchlink"
+        case .touchlinkIdentify: return "shellbee.identify"
         }
     }
 
