@@ -4,6 +4,8 @@ import UIKit
 // MARK: - Overlay (queue manager)
 
 struct InAppNotificationOverlay: View {
+    let presentation: InAppNotificationPresentation
+
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var isExpanded = false
@@ -26,6 +28,10 @@ struct InAppNotificationOverlay: View {
     // page in the stack" (slide horizontally).
     private enum BannerTransitionReason { case arrival, expansion, carousel }
     @State private var transitionReason: BannerTransitionReason = .arrival
+
+    init(presentation: InAppNotificationPresentation = .floatingOverlay) {
+        self.presentation = presentation
+    }
 
     private struct NotificationPage: Identifiable, Equatable {
         let notification: InAppNotification
@@ -100,6 +106,7 @@ struct InAppNotificationOverlay: View {
                 InAppNotificationBanner(
                     notification: page.bannerNotification,
                     isExpanded: $isExpanded,
+                    presentation: presentation,
                     stackCount: pages.count,
                     stackPositionLabel: positionLabel,
                     bridgeBadge: shouldShowBridgeBadge ? page.bridgeName : nil,
@@ -119,7 +126,7 @@ struct InAppNotificationOverlay: View {
             }
 
             if let fast = currentFastTrack, fastTrackVisible {
-                FastTrackBanner(notification: fast)
+                FastTrackBanner(notification: fast, presentation: presentation)
                     .transition(.asymmetric(
                         insertion: .move(edge: .bottom).combined(with: .opacity),
                         removal: .opacity

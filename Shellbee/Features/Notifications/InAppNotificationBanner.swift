@@ -6,6 +6,7 @@ import SwiftUI
 struct InAppNotificationBanner: View {
     let notification: InAppNotification
     @Binding var isExpanded: Bool
+    let presentation: InAppNotificationPresentation
     var stackCount: Int = 1
     var stackPositionLabel: String? = nil
     /// Source bridge name. Shown as a small badge in the header when set —
@@ -24,6 +25,31 @@ struct InAppNotificationBanner: View {
     // expanded = carousel left/right. See dragGesture.
 
     var body: some View {
+        if presentation == .tabBarAccessory {
+            bannerContent
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.md)
+        } else {
+            bannerContent
+                // iOS 26 floating tab bar uses a continuous capsule; per Apple HIG
+                // (Tab bars — floating accessories), floating UI above the tab bar
+                // should match its silhouette. Expanded uses a rounded rect for body room.
+                .glassEffectIfAvailable(
+                    in: isExpanded
+                        ? AnyShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
+                        : AnyShape(Capsule(style: .continuous))
+                )
+                .shadow(
+                    color: .black.opacity(DesignTokens.Shadow.floatingOpacity),
+                    radius: DesignTokens.Shadow.floatingRadius,
+                    y: -DesignTokens.Shadow.floatingY
+                )
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .iPadReadableWidth(maxWidth: DesignTokens.Size.notificationMaxWidth)
+        }
+    }
+
+    private var bannerContent: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             header
             if isExpanded { expandedBody }
@@ -31,25 +57,10 @@ struct InAppNotificationBanner: View {
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // iOS 26 floating tab bar uses a continuous capsule; per Apple HIG
-        // (Tab bars — floating accessories), floating UI above the tab bar
-        // should match its silhouette. Expanded uses a rounded rect for body room.
-        .glassEffectIfAvailable(
-            in: isExpanded
-                ? AnyShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
-                : AnyShape(Capsule(style: .continuous))
-        )
-        .shadow(
-            color: .black.opacity(DesignTokens.Shadow.floatingOpacity),
-            radius: DesignTokens.Shadow.floatingRadius,
-            y: -DesignTokens.Shadow.floatingY
-        )
-        .padding(.horizontal, DesignTokens.Spacing.lg)
         .offset(x: dragOffset.width, y: dragOffset.height)
         .contentShape(bannerHitShape)
         .highPriorityGesture(dragGesture, including: .all)
         .animation(Self.settleAnimation, value: isExpanded)
-        .iPadReadableWidth(maxWidth: DesignTokens.Size.notificationMaxWidth)
     }
 
     private static var settleAnimation: Animation {

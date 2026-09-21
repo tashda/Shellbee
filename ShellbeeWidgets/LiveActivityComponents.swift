@@ -41,6 +41,8 @@ struct LiveActivityLayout {
     var eyebrow: String? = nil
     let title: String
     var subtitle: String? = nil
+    /// Tints the subtitle when it reports a problem; otherwise it's muted.
+    var subtitleTint: Color? = nil
     let value: LiveActivityValue
     var gauge: LiveActivityGauge = .none
 }
@@ -62,7 +64,7 @@ struct LiveActivityLockScreen: View {
                 .layoutPriority(1)
         }
         .padding(.horizontal, DesignTokens.Spacing.xl)
-        .padding(.vertical, DesignTokens.Spacing.xl)
+        .padding(.vertical, DesignTokens.Spacing.lg)
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)
         .background(LiveActivityGlassGradient())
@@ -115,8 +117,9 @@ extension DynamicIsland {
 
 // MARK: - Building blocks
 
-/// Text never truncates: each line may wrap once and then shrink slightly,
-/// so the card grows a little rather than hiding a word.
+/// Every line stays on one line and shrinks to fit instead of truncating.
+/// Wrapping is not an option: the system caps the card's height, and extra
+/// lines push the content off-centre.
 private struct LiveActivityTitle: View {
     let layout: LiveActivityLayout
     let titleFont: Font
@@ -135,7 +138,7 @@ private struct LiveActivityTitle: View {
             if let subtitle = layout.subtitle, !subtitle.isEmpty {
                 line(subtitle)
                     .font(subtitleFont)
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(layout.subtitleTint ?? .white.opacity(0.65))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -143,9 +146,8 @@ private struct LiveActivityTitle: View {
 
     private func line(_ text: String) -> some View {
         Text(text)
-            .lineLimit(2)
-            .minimumScaleFactor(0.8)
-            .fixedSize(horizontal: false, vertical: true)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 }
 

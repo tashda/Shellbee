@@ -306,7 +306,6 @@
 				LiveActivities/BridgeDiscoveryLiveActivityCoordinator.swift,
 				LiveActivities/BridgeOperationLiveActivityCoordinator.swift,
 				LiveActivities/ConnectionLiveActivityCoordinator.swift,
-				LiveActivities/InterviewLiveActivityCoordinator.swift,
 				LiveActivities/LiveActivityBackgroundGrace.swift,
 				LiveActivities/LiveActivityBridgeLabel.swift,
 				LiveActivities/LiveActivityController.swift,

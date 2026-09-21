@@ -12,6 +12,8 @@ extension AppStore {
         // closed-to-open transition rather than only on in-app opens.
         if isOpen, !permitJoinWasOpen {
             permitJoinJoinedCount = 0
+            permitJoinInterviewing = []
+            permitJoinInterviewFailure = nil
         }
         permitJoinWasOpen = isOpen
         PermitJoinLiveActivityCoordinator.shared.sync(
@@ -20,7 +22,38 @@ extension AppStore {
             isOpen: isOpen,
             endMilliseconds: info?.permitJoinEnd,
             targetName: info?.permitJoinTarget,
-            joinedCount: permitJoinJoinedCount
+            joinedCount: permitJoinJoinedCount,
+            interviewing: permitJoinInterviewing,
+            interviewFailure: permitJoinInterviewFailure
         )
+    }
+
+    /// Called just before the app is suspended: an interview that finishes
+    /// while suspended would otherwise read "Interviewing" forever, so the
+    /// card falls back to the joined count, which stays true.
+    func forgetUnfollowableInterviews() {
+        guard !permitJoinInterviewing.isEmpty else { return }
+        permitJoinInterviewing = []
+        syncPermitJoinLiveActivity()
+    }
+
+    /// Interviews are shown on the pairing card. One that started inside the
+    /// window is followed to the end even if the window closes first.
+    func trackPermitJoinInterview(name: String, status: String) {
+        let isTracked = permitJoinInterviewing.contains(name)
+        guard bridgeInfo?.permitJoin == true || isTracked else { return }
+        switch status {
+        case "started":
+            if !isTracked { permitJoinInterviewing.append(name) }
+            permitJoinInterviewFailure = nil
+        case "successful":
+            permitJoinInterviewing.removeAll { $0 == name }
+        case "failed":
+            permitJoinInterviewing.removeAll { $0 == name }
+            permitJoinInterviewFailure = name
+        default:
+            return
+        }
+        syncPermitJoinLiveActivity()
     }
 }

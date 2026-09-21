@@ -6,9 +6,15 @@ import SwiftUI
 /// then dismisses it on a fixed timer.
 struct FastTrackBanner: View {
     let notification: InAppNotification
+    let presentation: InAppNotificationPresentation
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
+        content
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        let banner = HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: notification.level.systemImage)
                 .font(DesignTokens.Typography.notificationLevelIcon)
                 .foregroundStyle(notification.level.color)
@@ -18,12 +24,18 @@ struct FastTrackBanner: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
-        .glassEffectIfAvailable(in: Capsule(style: .continuous))
-        .shadow(
-            color: .black.opacity(DesignTokens.Shadow.floatingOpacity),
-            radius: DesignTokens.Shadow.floatingRadius,
-            y: -DesignTokens.Shadow.floatingY
-        )
+
+        if presentation == .tabBarAccessory {
+            banner
+        } else {
+            banner
+                .glassEffectIfAvailable(in: Capsule(style: .continuous))
+                .shadow(
+                    color: .black.opacity(DesignTokens.Shadow.floatingOpacity),
+                    radius: DesignTokens.Shadow.floatingRadius,
+                    y: -DesignTokens.Shadow.floatingY
+                )
+        }
     }
 }
 
@@ -35,7 +47,8 @@ struct FastTrackBanner: View {
                 level: .info,
                 title: "Copied to Clipboard",
                 priority: .fastTrack
-            )
+            ),
+            presentation: .floatingOverlay
         )
         .padding(.bottom, DesignTokens.Size.notificationBottomInset)
     }
