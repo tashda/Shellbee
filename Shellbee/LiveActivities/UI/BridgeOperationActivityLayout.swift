@@ -27,6 +27,20 @@ extension LiveActivityLayout {
                 style: style
             )
         }
+        // Time ran out while the app was suspended, so the result never
+        // reached the card. Say so instead of implying an empty result.
+        if state.phase == .active {
+            return Self(
+                symbol: operation.symbol,
+                tint: LiveActivityPalette.neutral,
+                eyebrow: attributes.bridgeDisplayName,
+                title: operation.finishedTitle(failed: false),
+                subtitle: "Open Shellbee to see the result",
+                value: .symbol("arrow.up.forward.app.fill"),
+                metric: operation == .touchlinkScan ? found : nil,
+                style: style
+            )
+        }
         let failed = state.phase == .failed
         return Self(
             symbol: operation.symbol,
@@ -60,8 +74,8 @@ private extension BridgeOperationActivityAttributes.Operation {
 
     func finishedTitle(failed: Bool) -> String {
         switch self {
-        case .touchlinkScan: return failed ? "Scan failed" : "Scan complete"
-        case .touchlinkIdentify: return failed ? "Identify failed" : "Identify complete"
+        case .touchlinkScan: return failed ? "Scan failed" : "Scan finished"
+        case .touchlinkIdentify: return failed ? "Identify failed" : "Identify finished"
         }
     }
 
