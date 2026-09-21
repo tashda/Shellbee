@@ -20,7 +20,7 @@ final class SettingsWorkspaceRouteTests: XCTestCase {
 
     func testAppRoutesAreNotBridgeScoped() {
         let routes: [SettingsWorkspaceRoute] = [
-            .appGeneral, .liveActivities, .activityCenter, .deviceLibrary, .about, .developer
+            .appGeneral, .appearance, .liveActivities, .deviceLibrary, .about, .developer
         ]
 
         XCTAssertTrue(routes.allSatisfy { $0.bridgeID == nil })
@@ -43,8 +43,8 @@ final class SettingsWorkspaceRouteTests: XCTestCase {
 
     func testAppSelectionSurvivesWhenNoBridgesRemain() {
         XCTAssertEqual(
-            SettingsWorkspaceRoute.reconciled(.activityCenter, availableBridgeIDs: []),
-            .activityCenter
+            SettingsWorkspaceRoute.reconciled(.appearance, availableBridgeIDs: []),
+            .appearance
         )
     }
 }

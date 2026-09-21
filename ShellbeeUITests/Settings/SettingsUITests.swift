@@ -1,6 +1,9 @@
 import XCTest
 
 final class SettingsUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += ["-activityCenterEnabled", "NO"]
+    }
 
     override func setUp() {
         super.setUp()
@@ -318,18 +321,16 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     // MARK: - Logs
 
-    // Behavior: tapping the "Logs" row in Settings pushes LogsView.
-    // The Settings nav stack is the only one visible (LogsView's nested
-    // NavigationStack renders into the same nav bar), so we assert that
-    // the Logs title is on screen.
+    // When Activity Center is disabled, tapping the fallback Logs row opens
+    // the same Activity feed used by Activity Center.
     func testLogsNavigationFromSettings() {
         let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
         XCTAssertTrue(logsRow.waitForExistence(timeout: 5),
                       "Logs row not found in Settings")
         logsRow.tap()
         XCTAssertTrue(
-            app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 5),
-            "Logs view did not open after tapping Logs row"
+            app.navigationBars["Activity"].firstMatch.waitForExistence(timeout: 5),
+            "Activity feed did not open after tapping Logs row"
         )
     }
 
@@ -389,5 +390,25 @@ final class SettingsUITests: ShellbeeUITestCase {
             app.swipeUp()
         }
         cell.tapWhenReady()
+    }
+}
+
+final class ActivityCenterEnabledSettingsUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += ["-activityCenterEnabled", "YES"]
+    }
+
+    override func setUp() {
+        super.setUp()
+        waitForMainTab()
+        app.tapSettingsTab()
+    }
+
+    func testLogsFallbackIsHidden() {
+        let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
+        XCTAssertFalse(
+            logsRow.waitForExistence(timeout: 2),
+            "Logs should only appear in Settings when Activity Center is disabled"
+        )
     }
 }

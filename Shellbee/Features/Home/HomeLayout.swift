@@ -48,13 +48,13 @@ enum HomeCardID: String, CaseIterable, Codable, Identifiable, Hashable, Transfer
         }
     }
 
-    var symbol: String {
+    @MainActor var symbol: ShellbeeSymbol {
         switch self {
-        case .bridge:        "antenna.radiowaves.left.and.right"
-        case .devices:       "sensor.tag.radiowaves.forward.fill"
-        case .groups:        "rectangle.3.group.fill"
-        case .mesh:          "point.3.connected.trianglepath.dotted"
-        case .recentEvents:  "list.bullet.rectangle.fill"
+        case .bridge:        .custom("bridge")
+        case .devices:       .custom("devices")
+        case .groups:        .custom("groups")
+        case .mesh:          .custom("mesh")
+        case .recentEvents:  .custom("activity")
         }
     }
 

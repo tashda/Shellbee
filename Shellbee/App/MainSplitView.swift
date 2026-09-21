@@ -255,6 +255,8 @@ struct MainSplitView: View {
         case .logs:
             NavigationStack {
                 LogsView(
+                    usesActivityFeed: true,
+                    navigationTitle: "Activity",
                     selection: $selectedLogsPaneRoute,
                     workspace: logsWorkspace
                 )
@@ -300,6 +302,8 @@ struct MainSplitView: View {
             )
         case .logs:
             LogsView(
+                usesActivityFeed: true,
+                navigationTitle: "Activity",
                 selection: $selectedLogsPaneRoute,
                 workspace: logsWorkspace
             )

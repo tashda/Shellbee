@@ -109,9 +109,15 @@ class ShellbeeUITestCase: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
+        configureAppBeforeLaunch()
         app.launchForTesting()
         skipIfZ2MUnavailable()
     }
+
+    /// Override when a suite needs a persisted setting to start in a
+    /// particular state. Launch arguments participate in UserDefaults, so
+    /// property wrappers see the value before the first settings render.
+    func configureAppBeforeLaunch() {}
 
     override func tearDown() {
         app.terminate()

@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var showingDisconnectConfirmation = false
     @State private var showingRestartAlert = false
     /// Connection editor state for the toolbar `+` button. Used in multi-bridge
@@ -157,8 +158,10 @@ struct SettingsView: View {
         bridgesSection
 
         Section {
-            if showsSidebarDestinationsInSettings {
-                NavigationLink { LogsView() } label: {
+            if showsSidebarDestinationsInSettings && !isActivityCenterEnabled {
+                NavigationLink {
+                    LogsView(usesActivityFeed: true, navigationTitle: "Activity")
+                } label: {
                     settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
                 }
                 NavigationLink { DocBrowserView() } label: {
@@ -317,8 +320,10 @@ struct SettingsView: View {
             } label: {
                 settingsLabel(title: "Logging Level", systemImage: "slider.horizontal.below.square.filled.and.square", color: .gray)
             }
-            if showsSidebarDestinationsInSettings {
-                NavigationLink { LogsView() } label: {
+            if showsSidebarDestinationsInSettings && !isActivityCenterEnabled {
+                NavigationLink {
+                    LogsView(usesActivityFeed: true, navigationTitle: "Activity")
+                } label: {
                     settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
                 }
             }

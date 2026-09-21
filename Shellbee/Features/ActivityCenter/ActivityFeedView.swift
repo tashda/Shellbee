@@ -6,8 +6,14 @@ import SwiftUI
 struct ActivityFeedView: View {
     @Environment(AppEnvironment.self) private var environment
     @Bindable var viewModel: LogsViewModel
+    let selection: Binding<LogsPaneRoute?>?
     @State private var expandedStackID: String?
     @State private var presentedEntry: PresentedEntry?
+
+    init(viewModel: LogsViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
+        self.viewModel = viewModel
+        self.selection = selection
+    }
 
     var body: some View {
         let sections = feedSections()
@@ -53,7 +59,7 @@ struct ActivityFeedView: View {
             expandedHeader(ActivityCardContent(entry: stack.latest, subject: stack.subject, bridgeName: bridgeName).title)
             ForEach(stack.entries) { entry in
                 Button {
-                    presentedEntry = PresentedEntry(route: LogRoute(bridgeID: stack.bridgeID, entry: entry))
+                    open(entry, bridgeID: stack.bridgeID)
                 } label: {
                     ActivityCard(
                         entry: entry,
@@ -69,7 +75,7 @@ struct ActivityFeedView: View {
                 if stack.isStacked {
                     expandedStackID = stack.id
                 } else {
-                    presentedEntry = PresentedEntry(route: LogRoute(bridgeID: stack.bridgeID, entry: stack.latest))
+                    open(stack.latest, bridgeID: stack.bridgeID)
                 }
             } label: {
                 ActivityStackCard(
@@ -101,6 +107,15 @@ struct ActivityFeedView: View {
         }
         .padding(.leading, DesignTokens.Spacing.xs)
         .padding(.top, DesignTokens.Spacing.sm)
+    }
+
+    private func open(_ entry: LogEntry, bridgeID: UUID) {
+        let route = LogRoute(bridgeID: bridgeID, entry: entry)
+        if let selection {
+            selection.wrappedValue = .activity(route)
+        } else {
+            presentedEntry = PresentedEntry(route: route)
+        }
     }
 
     @ViewBuilder

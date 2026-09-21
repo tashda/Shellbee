@@ -165,7 +165,7 @@ struct HomeView: View {
             }
             .background(HomeBackgroundGradient().ignoresSafeArea())
             .navigationDestination(isPresented: $showingAllLogs) {
-                LogsView()
+                LogsView(usesActivityFeed: true, navigationTitle: "Activity")
             }
             .task(id: selectedScope?.store.isConnected ?? false) {
                 // Phase 2 multi-bridge: probe health on every connected bridge

@@ -13,12 +13,12 @@ struct AppNotificationSettingsView: View {
                         Text(mode.title).tag(mode.rawValue)
                     }
                 }
-            }
+                .disabled(!isActivityCenterEnabled)
 
-            Section("Preview") {
                 ActivityCenterPresentationPreview(mode: displayMode)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+                    .opacity(isActivityCenterEnabled ? 1 : DesignTokens.Opacity.disabled)
+            } footer: {
+                Text(displayMode.detail)
             }
 
             Section("Notifications") {
@@ -42,51 +42,66 @@ struct AppNotificationSettingsView: View {
 private struct ActivityCenterPresentationPreview: View {
     let mode: ActivityAccessoryDisplayMode
 
+    @ViewBuilder
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: symbol)
-                .foregroundStyle(color)
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                Text(title)
-                    .font(.footnote.weight(.semibold))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Image(systemName: "chevron.up")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.vertical, DesignTokens.Spacing.md)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous))
-        .padding(.vertical, DesignTokens.Spacing.xs)
-    }
-
-    private var title: String {
-        switch mode {
-        case .latestActivity: "Kitchen Light changed"
-        case .summary: "4 recent events"
-        case .notificationsOnly: "Firmware update available"
+        if #available(iOS 26.0, *) {
+            ActivityAccessorySummary(
+                mode: mode,
+                latestActivity: Self.latestActivity,
+                latestAttention: Self.latestAttention,
+                recentActivityCount: 4,
+                recentAttentionCount: 1,
+                isInline: false
+            )
+            .glassEffectIfAvailable(
+                in: RoundedRectangle(
+                    cornerRadius: DesignTokens.CornerRadius.lg,
+                    style: .continuous
+                )
+            )
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .accessibilityLabel("Activity Center preview")
+        } else {
+            Text("Activity Center is available on iOS 26 and later.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 
-    private var subtitle: String {
-        switch mode {
-        case .latestActivity: "A moment ago"
-        case .summary: "View Activity"
-        case .notificationsOnly: "Bedroom Hue"
-        }
-    }
+    private static let previewBridgeID = UUID()
 
-    private var symbol: String {
-        mode == .notificationsOnly ? "bell.badge.fill" : "list.bullet.rectangle.fill"
-    }
+    private static let latestActivity = BridgeBoundLogEntry(
+        bridgeID: previewBridgeID,
+        bridgeName: "Kitchen Light",
+        entry: LogEntry(
+            id: UUID(),
+            timestamp: .now,
+            level: .info,
+            category: .stateChange,
+            namespace: nil,
+            message: "Kitchen Light brightness changed",
+            deviceName: "Kitchen Light",
+            activityTitle: "Brightness changed",
+            activitySubtitle: "72%"
+        )
+    )
 
-    private var color: Color {
-        mode == .notificationsOnly ? .orange : .secondary
-    }
+    private static let latestAttention = BridgeBoundLogEntry(
+        bridgeID: previewBridgeID,
+        bridgeName: "Bedroom Hue",
+        entry: LogEntry(
+            id: UUID(),
+            timestamp: .now,
+            level: .warning,
+            category: .bridgeActivity,
+            namespace: nil,
+            message: "Firmware update available",
+            deviceName: "Bedroom Hue",
+            isActivityAttention: true,
+            activityTitle: "Firmware update available",
+            activitySubtitle: "Bedroom Hue"
+        )
+    )
 }
 
 #Preview {

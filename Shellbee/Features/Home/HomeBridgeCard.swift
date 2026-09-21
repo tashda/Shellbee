@@ -4,6 +4,7 @@ struct HomeBridgeCard: View {
     let entries: [HomeBridgeCardEntry]
     let onRestart: (UUID) -> Void
     var onOpenBridge: ((UUID) -> Void)? = nil
+    var fetchesLatestVersion = true
 
     /// Latest Z2M version from GitHub Releases. Polled at most every 5 min,
     /// shared by every bridge row so we don't fan out the same network call.
@@ -24,7 +25,9 @@ struct HomeBridgeCard: View {
             }
         }
         .task(id: entries.compactMap(\.version).joined(separator: ",")) {
-            await fetchLatestVersion()
+            if fetchesLatestVersion {
+                await fetchLatestVersion()
+            }
         }
     }
 

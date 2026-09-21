@@ -5,7 +5,13 @@ import SwiftUI
 struct RawLogFeedView: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: BridgeLogViewModel
-    @State private var presentedEntry: LogEntry?
+    let selection: Binding<LogsPaneRoute?>?
+    @State private var presentedEntry: PresentedEntry?
+
+    init(viewModel: BridgeLogViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
+        self.viewModel = viewModel
+        self.selection = selection
+    }
 
     var body: some View {
         let blocks = RawLogBlock.blocks(from: mergedEntries())
@@ -22,7 +28,7 @@ struct RawLogFeedView: View {
                         .accessibilityAddTraits(.isHeader)
                     ForEach(Array(block.lines.enumerated()), id: \.element.id) { index, item in
                         Button {
-                            presentedEntry = item.entry
+                            open(item)
                         } label: {
                             RawLogRow(
                                 entry: item.entry,
@@ -40,8 +46,8 @@ struct RawLogFeedView: View {
         }
         .background(Color(.systemGroupedBackground))
         .overlay { emptyState(isEmpty: blocks.isEmpty) }
-        .sheet(item: $presentedEntry) { entry in
-            RawLogSheet(entry: entry)
+        .sheet(item: $presentedEntry) { presented in
+            RawLogSheet(entry: presented.route.entry)
         }
     }
 
@@ -75,5 +81,19 @@ struct RawLogFeedView: View {
             }
         }
         .sorted { $0.entry.timestamp > $1.entry.timestamp }
+    }
+
+    private func open(_ item: BridgeBoundLogEntry) {
+        let route = LogRoute(bridgeID: item.bridgeID, entry: item.entry)
+        if let selection {
+            selection.wrappedValue = .bridge(route)
+        } else {
+            presentedEntry = PresentedEntry(route: route)
+        }
+    }
+
+    private struct PresentedEntry: Identifiable {
+        let route: LogRoute
+        var id: UUID { route.entry.id }
     }
 }

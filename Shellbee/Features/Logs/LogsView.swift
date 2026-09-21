@@ -138,9 +138,9 @@ struct LogsView: View {
             // switches between Activity and Log.
             switch workspace.mode {
             case .activity:
-                ActivityFeedView(viewModel: workspace.activity)
+                ActivityFeedView(viewModel: workspace.activity, selection: selection)
             case .log:
-                RawLogFeedView(viewModel: workspace.bridge)
+                RawLogFeedView(viewModel: workspace.bridge, selection: selection)
             }
         } else {
             pagedModeContent
