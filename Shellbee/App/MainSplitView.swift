@@ -66,6 +66,14 @@ struct MainSplitView: View {
         )) { request in
             LogSheetHost(request: request)
         }
+        .sheet(isPresented: Binding(
+            get: { sceneNavigation.isActivityCenterPresented },
+            set: { sceneNavigation.isActivityCenterPresented = $0 }
+        )) {
+            ActivityCenterSheet()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $isCommandPalettePresented) {
             CommandPaletteView()
                 .environment(environment)
