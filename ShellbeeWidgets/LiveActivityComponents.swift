@@ -152,7 +152,7 @@ private struct LiveActivityBadge: View {
     let size: CGFloat
 
     var body: some View {
-        Image(systemName: symbol)
+        Image(liveActivitySymbol: symbol)
             .font(.system(size: size * 0.44, weight: .semibold))
             .foregroundStyle(tint)
             .frame(width: size, height: size)
@@ -166,7 +166,7 @@ private struct LiveActivityGlyph: View {
     let tint: Color
 
     var body: some View {
-        Image(systemName: symbol)
+        Image(liveActivitySymbol: symbol)
             .font(.system(size: DesignTokens.Size.liveActivityCompactSymbol, weight: .semibold))
             .foregroundStyle(tint)
             .accessibilityHidden(true)
@@ -192,7 +192,7 @@ private struct LiveActivityMinimal: View {
     }
 
     private var glyph: some View {
-        Image(systemName: layout.symbol)
+        Image(liveActivitySymbol: layout.symbol)
             .font(.system(size: DesignTokens.Size.liveActivityMinimalSymbol, weight: .bold))
             .foregroundStyle(layout.tint)
     }
@@ -241,6 +241,18 @@ private struct LiveActivityValueView: View {
         if seconds >= 3600 { return "0:00:00" }
         if seconds >= 600 { return "00:00" }
         return "0:00"
+    }
+}
+
+private extension Image {
+    /// Activity symbols may be SF Symbols or the app's own symbol sets, which
+    /// the widget catalog carries under the same `shellbee.` prefix.
+    init(liveActivitySymbol name: String) {
+        if name.hasPrefix("shellbee.") {
+            self.init(name)
+        } else {
+            self.init(systemName: name)
+        }
     }
 }
 

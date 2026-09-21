@@ -294,7 +294,7 @@ private struct PermitJoinControls: View {
             Button {
                 onStart(duration, targetName)
             } label: {
-                Label("Start Permit Join", systemImage: "dot.radiowaves.up.forward")
+                Label("Start Permit Join", symbol: .permitJoin)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)

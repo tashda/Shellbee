@@ -6,7 +6,7 @@ struct PermitJoinToolbarButton: View {
 
     var body: some View {
         Button(action: onTap) {
-            Image(systemName: "dot.radiowaves.up.forward")
+            ShellbeeSymbol.permitJoin.image
                 .imageScale(.large)
                 .foregroundStyle(isActive ? Color.green : Color.primary)
                 .symbolEffect(.pulse, isActive: isActive)
