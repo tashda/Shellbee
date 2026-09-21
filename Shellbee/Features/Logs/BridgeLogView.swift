@@ -137,6 +137,8 @@ struct BridgeLogRowView: View {
 
 struct BridgeLogDetailView: View {
     let entry: LogEntry
+    /// Shown as a separate Done button when the viewer is presented in a sheet.
+    var doneAction: (() -> Void)? = nil
     @State private var prettyPrint = true
     @AppStorage("bridgeLogDetailFontSize") private var fontSize: Double = Double(DesignTokens.Size.bridgeLogDetailFontDefault)
 
@@ -266,6 +268,14 @@ struct BridgeLogDetailView: View {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                     }
                     .tint(prettyPrint ? .accentColor : .secondary)
+                }
+            }
+
+            if let doneAction {
+                TrailingToolbarGroupSpacer()
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done", action: doneAction)
+                        .fontWeight(.semibold)
                 }
             }
         }

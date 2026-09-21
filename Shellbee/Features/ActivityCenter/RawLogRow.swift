@@ -21,39 +21,41 @@ struct RawLogRow: View {
 
     var body: some View {
         let content = RawLogLineContent(entry: entry)
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            RawLogLevelMark(level: entry.level)
-                .padding(.top, DesignTokens.RawLog.rowVerticalPadding)
-
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
-                    Text(content.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    if let tag = content.tag {
-                        Text(tag)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, DesignTokens.Spacing.xs)
-                            .background(.fill.tertiary, in: .rect(cornerRadius: DesignTokens.RawLog.tagCornerRadius))
-                    }
-                    Spacer(minLength: 0)
-                    Text(entry.timestamp, format: .dateTime.hour().minute().second())
-                        .font(.caption)
-                        .monospacedDigit()
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
+                if let severity = RawLogSeverity(level: entry.level) {
+                    Image(systemName: severity.systemImage)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(severity.tint)
+                        .accessibilityLabel(entry.level.label)
+                }
+                Text(content.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let tag = content.tag {
+                    Text(tag)
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
+                        .padding(.horizontal, DesignTokens.Spacing.xs)
+                        .background(.fill.tertiary, in: .rect(cornerRadius: DesignTokens.RawLog.tagCornerRadius))
                 }
-                Text(content.message)
-                    .font(.system(.footnote, design: .monospaced))
-                    .foregroundStyle(entry.level == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
-                    .lineLimit(2)
+                Spacer(minLength: 0)
+                Text(entry.timestamp, format: .dateTime.hour().minute().second())
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
-            .padding(.vertical, DesignTokens.RawLog.rowVerticalPadding)
-            .overlay(alignment: .bottom) {
-                if position == .first || position == .middle {
-                    Divider()
-                }
+            .font(.subheadline)
+            Text(content.message)
+                .font(.system(.footnote, design: .monospaced))
+                .foregroundStyle(entry.level == .error ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                .lineLimit(2)
+        }
+        .padding(.vertical, DesignTokens.RawLog.rowVerticalPadding)
+        .overlay(alignment: .bottom) {
+            if position == .first || position == .middle {
+                Divider()
             }
         }
         .padding(.leading, DesignTokens.ActivityFeed.cardHorizontalPadding)
@@ -77,28 +79,22 @@ struct RawLogRow: View {
     }
 }
 
-/// Quiet grey dot for routine lines; solid orange or red with a white mark
-/// for warnings and errors, so problems stand out in a busy stream.
-private struct RawLogLevelMark: View {
-    let level: LogLevel
+/// Only warnings and errors are marked: every other line is routine, so a
+/// mark on each of them would say nothing.
+private struct RawLogSeverity {
+    let systemImage: String
+    let tint: Color
 
-    var body: some View {
-        let size = DesignTokens.RawLog.levelMark
+    init?(level: LogLevel) {
         switch level {
-        case .error, .warning:
-            Image(systemName: level == .error ? "xmark" : "exclamationmark")
-                .font(.system(size: size * DesignTokens.RawLog.levelGlyphRatio, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: size, height: size)
-                .background(level == .error ? Color.red : Color.orange, in: Circle())
-                .accessibilityLabel(level.label)
+        case .error:
+            systemImage = "xmark.octagon.fill"
+            tint = .red
+        case .warning:
+            systemImage = "exclamationmark.triangle.fill"
+            tint = .orange
         case .info, .debug:
-            Circle()
-                .fill(level == .debug ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary))
-                .frame(width: DesignTokens.RawLog.quietDot, height: DesignTokens.RawLog.quietDot)
-                .frame(width: size, height: size)
-                .background(.fill.tertiary, in: Circle())
-                .accessibilityLabel(level.label)
+            return nil
         }
     }
 }
