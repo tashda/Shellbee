@@ -19,7 +19,11 @@ struct GlobalSearchView: View {
             resultsList
                 .navigationTitle("Search")
                 .navigationBarTitleDisplayMode(.large)
-                .searchable(text: $query, prompt: "Devices, groups, logs and more")
+                .searchable(
+                    text: $query,
+                    placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Devices, groups, logs and more"
+                )
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .modifier(GlobalSearchDestinations())

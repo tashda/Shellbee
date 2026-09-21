@@ -16,7 +16,6 @@ struct GlobalSearchScopeBar: View {
     var body: some View {
         ScrollView(.horizontal) {
             bubbles
-                .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.sm)
         }
         .scrollIndicators(.hidden)

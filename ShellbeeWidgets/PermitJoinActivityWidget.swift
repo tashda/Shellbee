@@ -20,9 +20,18 @@ struct PermitJoinActivityWidget: Widget {
                     LiveActivityTitleBlock(
                         title: "Pairing devices",
                         subtitle: context.state.targetName ?? "Open network",
-                        tertiary: context.attributes.bridgeDisplayName,
                         titleFont: .subheadline.weight(.semibold)
                     )
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    if !context.attributes.bridgeDisplayName.isEmpty {
+                        Text(context.attributes.bridgeDisplayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             } compactLeading: {
                 LiveActivityStatusMark(
@@ -59,6 +68,7 @@ private struct PermitJoinLockScreenView: View {
                     title: "Pairing devices",
                     subtitle: lockScreenDetail
                 )
+                .layoutPriority(0)
 
                 Spacer(minLength: DesignTokens.Spacing.sm)
 
@@ -68,6 +78,7 @@ private struct PermitJoinLockScreenView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
+                .layoutPriority(1)
             }
         }
     }

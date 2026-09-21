@@ -42,9 +42,10 @@ struct LiveActivityTitleBlock: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.8)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
