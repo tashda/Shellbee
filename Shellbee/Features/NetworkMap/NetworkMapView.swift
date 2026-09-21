@@ -137,16 +137,16 @@ struct NetworkMapView: View {
                         onRename: { deviceToRename = $0 },
                         onRemove: { deviceToRemove = $0 },
                         onPendingAlert: { alert, _ in pendingDeviceAlert = alert },
-                        onMapRendered: {
-                            session.store.finishNetworkMapRefreshPresentation()
-                        },
                         zoomController: zoomController
                     )
                     .id(session.bridgeID)
 
                     if session.store.networkMapRefreshPhase != .idle {
+                        // The old map stays usable around the card while a
+                        // scan runs, which can take minutes on a large mesh.
                         Color.black.opacity(0.06)
                             .ignoresSafeArea()
+                            .allowsHitTesting(false)
                         refreshProgress(for: session, fillsViewport: false)
                     }
                 }
@@ -202,35 +202,15 @@ struct NetworkMapView: View {
         .configuredTopScrollEdgeEffect()
     }
 
-    @ViewBuilder
+    /// Always refreshes the bridge on screen. Switching bridges happens in
+    /// the sidebar, so a menu here only invited refreshing a map you weren't
+    /// looking at.
     private var refreshToolbarItem: some View {
-        if connectedSessions.count > 1 {
-            Menu {
-                ForEach(connectedSessions, id: \.bridgeID) { session in
-                    Button {
-                        refresh(bridgeID: session.bridgeID)
-                    } label: {
-                        Label {
-                            Text(session.displayName)
-                        } icon: {
-                            if session.bridgeID == selectedBridgeID {
-                                Image(systemName: "checkmark.circle")
-                            } else {
-                                Image(systemName: "point.3.connected.trianglepath.dotted")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                refreshToolbarIcon
-            }
-            .accessibilityLabel("Refresh Network Map")
-        } else {
-            Button(action: { refresh() }) {
-                refreshToolbarIcon
-            }
-            .accessibilityLabel("Refresh Network Map")
+        Button(action: { refresh() }) {
+            Image(systemName: "arrow.clockwise")
         }
+        .accessibilityLabel("Refresh Network Map")
+        .disabled(selectedSession == nil || selectedSession?.store.networkMapIsRefreshing == true)
     }
 
     private var routeBinding: Binding<DeviceRoute?> {
@@ -298,14 +278,14 @@ struct NetworkMapView: View {
             bridgeName: session.displayName,
             phase: session.store.networkMapRefreshPhase,
             startedAt: session.store.networkMapRefreshStartedAt,
-            totalDevices: session.store.networkMapRefreshTotalDevices,
-            reportedDevices: 0,
-            fillsViewport: fillsViewport
+            scan: session.store.networkMapScan,
+            fillsViewport: fillsViewport,
+            onDismiss: { session.store.dismissNetworkMapRefreshSummary() },
+            onRetry: {
+                session.store.dismissNetworkMapRefreshSummary()
+                refresh(bridgeID: session.bridgeID)
+            }
         )
-    }
-
-    private var refreshToolbarIcon: some View {
-        Image(systemName: "arrow.clockwise")
     }
 }
 

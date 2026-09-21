@@ -4,16 +4,24 @@ struct NetworkMapRefreshProgressView: View {
     let bridgeName: String
     let phase: NetworkMapRefreshPhase
     let startedAt: Date?
-    let totalDevices: Int
-    let reportedDevices: Int
+    let scan: NetworkMapScanProgress?
     let fillsViewport: Bool
+    let onDismiss: () -> Void
+    let onRetry: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var isWorking: Bool {
+        switch phase {
+        case .requesting, .building: true
+        case .idle, .completed, .failed: false
+        }
+    }
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: reduceMotion ? 1 : 1 / 30, paused: false)) { context in
+        TimelineView(.animation(minimumInterval: reduceMotion ? 1 : 1 / 30, paused: !isWorking)) { context in
             let elapsed = startedAt.map { max(0, context.date.timeIntervalSince($0)) } ?? 0
-            let rotation = reduceMotion ? 0 : elapsed * 42
+            let rotation = reduceMotion || !isWorking ? 0 : elapsed * 42
 
             VStack(spacing: DesignTokens.Spacing.lg) {
                 networkActivityGraphic(rotation: rotation)
@@ -23,30 +31,20 @@ struct NetworkMapRefreshProgressView: View {
                     Text(bridgeName)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text(detail(for: elapsed))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .contentTransition(.opacity)
-                }
-
-                if phase != .failed(message: failureMessage) {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(.accentColor)
-                }
-
-                if totalDevices > 0 {
-                    HStack(spacing: DesignTokens.Spacing.sm) {
-                        Image(systemName: "sensor.tag.radiowaves.forward.fill")
-                            .foregroundStyle(.tint)
-                        Text("\(reportedCount) of \(max(totalDevices, reportedCount)) devices reported")
-                            .font(.caption.weight(.medium))
+                    if let detail {
+                        Text(detail)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .contentTransition(.opacity)
                     }
                 }
+
+                content(now: context.date)
             }
-            .frame(maxWidth: fillsViewport ? 560 : 420)
+            .frame(maxWidth: fillsViewport
+                   ? DesignTokens.Size.networkMapScanCardWideWidth
+                   : DesignTokens.Size.networkMapScanCardWidth)
             .padding(DesignTokens.Spacing.xxl)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
             .glassEffectIfAvailable(in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
@@ -58,41 +56,81 @@ struct NetworkMapRefreshProgressView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(DesignTokens.Spacing.xl)
+        .animation(.smooth, value: phase)
     }
+
+    @ViewBuilder
+    private func content(now: Date) -> some View {
+        switch phase {
+        case .idle:
+            EmptyView()
+        case .requesting, .building:
+            VStack(spacing: DesignTokens.Spacing.lg) {
+                NetworkMapScanStepsView(request: requestStep, scan: scanStep, build: buildStep)
+                if let scan {
+                    NetworkMapScanLiveView(scan: scan, now: now)
+                }
+            }
+        case .completed(let summary):
+            NetworkMapScanSummaryView(summary: summary, onDismiss: onDismiss)
+        case .failed:
+            HStack(spacing: DesignTokens.Spacing.md) {
+                Button("Done", action: onDismiss)
+                    .buttonStyle(.bordered)
+                Button("Try Again", action: onRetry)
+                    .glassProminentButtonStyleIfAvailable()
+            }
+            .controlSize(.large)
+        }
+    }
+
+    // MARK: - Steps
+
+    /// Z2M logs the start of its scan at info level; with a stricter log
+    /// level that line never arrives, so the scan is assumed to be running
+    /// as soon as the request is out.
+    private var scanHasStarted: Bool {
+        guard let scan else { return true }
+        return scan.scanStartedAt != nil || scan.visibility == .failuresOnly
+    }
+
+    private var requestStep: NetworkMapScanStepsView.StepState {
+        scanHasStarted ? .done : .active
+    }
+
+    private var scanStep: NetworkMapScanStepsView.StepState {
+        if case .building = phase { return .done }
+        if scan?.scanFinishedAt != nil { return .done }
+        return scanHasStarted ? .active : .pending
+    }
+
+    private var buildStep: NetworkMapScanStepsView.StepState {
+        if case .building = phase { return .active }
+        return scan?.scanFinishedAt != nil ? .active : .pending
+    }
+
+    // MARK: - Copy
 
     private var title: String {
         switch phase {
         case .idle: "Network Map"
-        case .requesting: "Refreshing Network Map"
-        case .building: "Organizing Network Map"
+        case .requesting, .building: "Refreshing Network Map"
         case .completed: "Network Map Ready"
         case .failed: "Network Map Refresh Failed"
         }
     }
 
-    private var reportedCount: Int {
+    private var detail: String? {
         switch phase {
-        case .building(let count), .completed(let count): count
-        case .idle, .requesting, .failed: reportedDevices
-        }
-    }
-
-    private var failureMessage: String {
-        if case .failed(let message) = phase { return message }
-        return ""
-    }
-
-    private func detail(for elapsed: TimeInterval) -> String {
-        switch phase {
-        case .idle: return ""
+        case .idle, .completed:
+            return nil
         case .requesting:
-            if elapsed < 1.5 { return "Contacting the coordinator" }
-            if elapsed < 4 { return "Reading device routes and link quality" }
-            return "Waiting for the coordinator to finish its scan"
+            if scan?.scanFinishedAt != nil { return "Scan finished, waiting for the results" }
+            return scanHasStarted
+                ? "Zigbee2MQTT is asking each router for its neighbors"
+                : "Waiting for Zigbee2MQTT to start the scan"
         case .building:
             return "Arranging devices and connections"
-        case .completed:
-            return "The latest topology is now available"
         case .failed(let message):
             return message
         }
@@ -132,15 +170,33 @@ struct NetworkMapRefreshProgressView: View {
                     )
             }
 
-            Image(systemName: "point.3.connected.trianglepath.dotted")
+            Image(systemName: centerSymbol)
                 .font(.system(size: 38, weight: .medium))
-                .foregroundStyle(.tint)
+                .foregroundStyle(centerTint)
                 .symbolRenderingMode(.hierarchical)
+                .contentTransition(.symbolEffect(.replace))
         }
         .frame(
             width: DesignTokens.Size.networkMapRefreshGraphic,
             height: DesignTokens.Size.networkMapRefreshGraphic
         )
         .accessibilityHidden(true)
+    }
+
+    private var centerSymbol: String {
+        switch phase {
+        case .completed(let summary):
+            summary.failedDeviceNames.isEmpty ? "checkmark.circle" : "exclamationmark.triangle"
+        case .failed: "xmark.octagon"
+        case .idle, .requesting, .building: "point.3.connected.trianglepath.dotted"
+        }
+    }
+
+    private var centerTint: Color {
+        switch phase {
+        case .completed(let summary): summary.failedDeviceNames.isEmpty ? .green : .orange
+        case .failed: .red
+        case .idle, .requesting, .building: .accentColor
+        }
     }
 }

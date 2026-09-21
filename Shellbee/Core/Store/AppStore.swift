@@ -12,7 +12,8 @@ final class AppStore {
     var networkMapIsRefreshing = false
     var networkMapRefreshPhase: NetworkMapRefreshPhase = .idle
     var networkMapRefreshStartedAt: Date?
-    var networkMapRefreshTotalDevices = 0
+    /// Live progress of the running scan, from the bridge's own log lines.
+    var networkMapScan: NetworkMapScanProgress?
     /// Lightweight invalidation for the map's derived render index. Keeping
     /// this separate from the topology avoids rebuilding the node/action
     /// layer during pan and zoom while still reflecting live health changes.
@@ -141,7 +142,7 @@ final class AppStore {
         networkMapIsRefreshing = false
         networkMapRefreshPhase = .idle
         networkMapRefreshStartedAt = nil
-        networkMapRefreshTotalDevices = 0
+        networkMapScan = nil
         // `deviceFirstSeen` itself is rebuilt by `setActiveBridge` after the
         // next successful connect — so we clear the published mirror here so
         // the UI doesn't briefly show the prior bridge's "Recently Added"
@@ -186,7 +187,7 @@ final class AppStore {
         networkMapIsRefreshing = false
         networkMapRefreshPhase = .idle
         networkMapRefreshStartedAt = nil
-        networkMapRefreshTotalDevices = 0
+        networkMapScan = nil
         // Persist now (handles legacy migration too) — safe because
         // persistFirstSeen only writes activeBridgeID's slot.
         if pendingLegacyFirstSeen == nil && firstSeenByBridge[id]?.isEmpty == false {
@@ -202,10 +203,23 @@ final class AppStore {
     }
 
     func beginNetworkMapRefresh() {
+        let now = Date()
         networkMapIsRefreshing = true
         networkMapRefreshPhase = .requesting
-        networkMapRefreshStartedAt = .now
-        networkMapRefreshTotalDevices = devices.count
+        networkMapRefreshStartedAt = now
+        // Z2M queries the coordinator and every enabled router; end devices
+        // are reported by their parents, so they are not part of the count.
+        let targets = devices
+            .filter { ($0.type == .coordinator || $0.type == .router) && !$0.disabled }
+            .map(\.friendlyName)
+        networkMapScan = NetworkMapScanProgress(
+            targetNames: targets,
+            visibility: NetworkMapScanProgress.Visibility(
+                logLevel: bridgeInfo?.logLevel,
+                debugToFrontend: bridgeInfo?.config?.advanced?.logDebugToMqttFrontend ?? false
+            ),
+            requestedAt: now
+        )
     }
 
     func settleNetworkMapRefreshPhase(after delay: Duration = .seconds(1.2)) {
@@ -213,17 +227,23 @@ final class AppStore {
         Task { [weak self] in
             try? await Task.sleep(for: delay)
             guard let self, self.networkMapRefreshPhase == phase else { return }
-            self.networkMapRefreshPhase = .idle
-            self.networkMapRefreshStartedAt = nil
-            self.networkMapRefreshTotalDevices = 0
+            self.clearNetworkMapRefreshPresentation()
         }
     }
 
-    func finishNetworkMapRefreshPresentation() {
-        guard case .completed = networkMapRefreshPhase else { return }
+    /// Closes the finished-scan summary (or failure card) once the user has
+    /// read it.
+    func dismissNetworkMapRefreshSummary() {
+        switch networkMapRefreshPhase {
+        case .completed, .failed: clearNetworkMapRefreshPresentation()
+        case .idle, .requesting, .building: break
+        }
+    }
+
+    private func clearNetworkMapRefreshPresentation() {
         networkMapRefreshPhase = .idle
         networkMapRefreshStartedAt = nil
-        networkMapRefreshTotalDevices = 0
+        networkMapScan = nil
     }
 
     // MARK: - First-seen persistence
