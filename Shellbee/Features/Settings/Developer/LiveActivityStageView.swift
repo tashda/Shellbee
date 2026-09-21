@@ -69,6 +69,7 @@ struct LiveActivityStageView: View {
                 samples: samples,
                 sampleIndex: $sampleIndex,
                 styles: kind.styles,
+                currentStyle: kind.defaultStyle,
                 style: $style,
                 surface: $surface,
                 wallpaper: $wallpaper,
@@ -250,6 +251,8 @@ private struct StageControls: View {
     let samples: [LiveActivityGallerySample]
     @Binding var sampleIndex: Int
     let styles: [LiveActivityStyle]
+    /// The style the widget ships with, labelled so it's never in doubt.
+    let currentStyle: LiveActivityStyle
     @Binding var style: LiveActivityStyle
     @Binding var surface: LiveActivityStageView.Surface
     @Binding var wallpaper: LiveActivityStageWallpaper
@@ -271,7 +274,7 @@ private struct StageControls: View {
 
             Picker("Style", selection: $style) {
                 ForEach(styles) { style in
-                    Text(style.name).tag(style)
+                    Text(style == currentStyle ? "\(style.name) · Current" : style.name).tag(style)
                 }
             }
 

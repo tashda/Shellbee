@@ -11,13 +11,25 @@ struct LiveActivityGalleryView: View {
             Button {
                 staged = kind
             } label: {
-                Label(kind.name, symbol: kind.symbol)
+                LabeledContent {
+                    Text(kind.defaultStyle.name)
+                } label: {
+                    Label(kind.name, symbol: kind.symbol)
+                }
             }
+            .foregroundStyle(.primary)
         }
         .fullScreenCover(item: $staged) { kind in
             if #available(iOS 26.0, *) {
                 LiveActivityStageView(kind: kind)
             }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Text("The design on the right is the one each activity uses today. Open an activity to compare it with the alternatives.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, DesignTokens.Spacing.xl)
+                .padding(.bottom, DesignTokens.Spacing.md)
         }
         .navigationTitle("Live Activity Gallery")
         .navigationBarTitleDisplayMode(.inline)
