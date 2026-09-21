@@ -25,7 +25,13 @@ struct LiveActivityStageView: View {
         let samples = kind.samples(anchor: anchor)
         let sample = samples[min(sampleIndex, samples.count - 1)]
         ZStack {
-            wallpaper.view.ignoresSafeArea()
+            // The wallpaper belongs to the screen being previewed: full-screen
+            // for the Lock Screen, only inside the miniature phone otherwise.
+            if surface == .lock {
+                wallpaper.view.ignoresSafeArea()
+            } else {
+                LiveActivityPalette.stageBackdrop.ignoresSafeArea()
+            }
             switch surface {
             case .compact, .expanded:
                 StageDevice(wallpaper: wallpaper, showsStatusBar: surface == .compact) {
@@ -51,6 +57,7 @@ struct LiveActivityStageView: View {
             )
         }
         .environment(\.colorScheme, .dark)
+        .preferredColorScheme(.dark)
         .task {
             // Countdowns would otherwise run out while the stage stays open.
             while !Task.isCancelled {
