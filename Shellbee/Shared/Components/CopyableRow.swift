@@ -21,6 +21,5 @@ struct CopyableRow: View {
             LabeledContent(label, value: value)
         }
         .buttonStyle(.plain)
-        .iPadPointerEffect(.highlight)
     }
 }

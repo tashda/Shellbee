@@ -127,7 +127,7 @@ struct AddBindingSheet: View {
                 }
             }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }

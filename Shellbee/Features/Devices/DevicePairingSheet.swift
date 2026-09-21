@@ -22,7 +22,7 @@ struct DevicePairingSheet: View {
                     }
                 }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
         .task { await loadPairing() }
     }
 

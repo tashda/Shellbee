@@ -147,6 +147,18 @@ nonisolated enum DesignTokens {
         static let networkMapZoomStep: CGFloat = 1.3
         static let networkMapQuickLookImage: CGFloat = 88
         static let networkMapDepthSpacing: CGFloat = 132
+        static let networkMapPreferredLinkDistance: CGFloat = 96
+        static let networkMapNodeSeparation: CGFloat = 58
+        static let networkMapRepulsion: CGFloat = 9_600
+        static let networkMapCollisionStrength: CGFloat = 0.18
+        static let networkMapPrimarySpringStrength: CGFloat = 0.075
+        static let networkMapSecondarySpringStrength: CGFloat = 0.012
+        static let networkMapRouterGravity: CGFloat = 0.007
+        static let networkMapEndDeviceGravity: CGFloat = 0.002
+        static let networkMapVelocityDamping: CGFloat = 0.78
+        static let networkMapMaximumLayoutStep: CGFloat = 18
+        static let networkMapLayoutIterations: Int = 180
+        static let networkMapLargeLayoutIterations: Int = 120
         static let networkMapLabelVisibilityScale: CGFloat = 0.8
         static let networkMapContentPadding: CGFloat = 72
         static let networkMapNodeLabelSpacing: CGFloat = 6
@@ -154,6 +166,12 @@ nonisolated enum DesignTokens {
         static let networkMapNodeLabelWidth: CGFloat = 160
         static let networkMapNodeLabelScale: CGFloat = 0.6
         static let networkMapNodeImageRatio: CGFloat = 0.78
+        static let networkMapRefreshOuterRing: CGFloat = 116
+        static let networkMapRefreshInnerRing: CGFloat = 82
+        static let networkMapRefreshGraphic: CGFloat = 132
+        static let networkMapRefreshActiveDot: CGFloat = 9
+        static let networkMapRefreshPassiveDot: CGFloat = 6
+        static let networkMapRefreshOrbitRadius: CGFloat = 49
         // Offsets (pixel-pushing for badge alignment over a parent shape)
         static let logRowBadgeOffset: CGFloat = 3
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4

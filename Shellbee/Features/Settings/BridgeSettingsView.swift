@@ -53,7 +53,7 @@ struct BridgeSettingsView: View {
             NavigationStack {
                 ConnectionEditorView(viewModel: vm, mode: .save)
             }
-            .forceSoftTopScrollEdgeEffect()
+            .configuredTopScrollEdgeEffect()
         }
         .alert("Remove Bridge?", isPresented: removeAlertBinding, presenting: removeConfirmation) { config in
             Button("Remove", role: .destructive) {

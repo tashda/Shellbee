@@ -133,5 +133,5 @@ struct AppGeneralView: View {
     NavigationStack {
         AppGeneralView()
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

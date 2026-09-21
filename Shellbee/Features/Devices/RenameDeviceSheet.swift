@@ -51,7 +51,7 @@ struct RenameDeviceSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) { actionBar }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }

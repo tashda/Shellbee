@@ -35,7 +35,7 @@ struct SavedBridgesView: View {
             NavigationStack {
                 ConnectionEditorView(viewModel: vm, mode: .save)
             }
-            .forceSoftTopScrollEdgeEffect()
+            .configuredTopScrollEdgeEffect()
         }
         .alert("Rename Bridge", isPresented: renameAlertBinding, presenting: renameTarget) { config in
             TextField("Name", text: $renameDraft)
@@ -325,5 +325,5 @@ extension ConnectionViewModel: Identifiable {
         SavedBridgesView()
             .environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

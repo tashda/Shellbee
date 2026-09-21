@@ -24,7 +24,7 @@ struct PermitJoinSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) { actionBar }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

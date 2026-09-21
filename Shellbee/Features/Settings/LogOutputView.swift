@@ -144,5 +144,5 @@ struct LogOutputView: View {
     NavigationStack {
         LogOutputView(bridgeID: UUID()).environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

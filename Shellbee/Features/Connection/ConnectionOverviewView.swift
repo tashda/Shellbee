@@ -62,7 +62,7 @@ struct ConnectionOverviewView: View {
             }
             .onDisappear { viewModel.stopDiscovery() }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
     }
 
     private var errorBinding: Binding<Bool> {

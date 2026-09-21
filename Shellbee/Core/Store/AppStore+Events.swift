@@ -307,8 +307,13 @@ extension AppStore {
             }
 
         case .networkMapResponse(let response):
+            let wasRefreshing = networkMapIsRefreshing
             networkMapIsRefreshing = false
             guard response.status == "ok", let topology = response.data?.value else {
+                networkMapRefreshPhase = .failed(
+                    message: response.error ?? "The coordinator could not return a network map."
+                )
+                settleNetworkMapRefreshPhase()
                 let error = Z2MOperationError(
                     id: UUID(),
                     topic: Z2MTopics.bridgeResponseNetworkMap,
@@ -319,8 +324,10 @@ extension AppStore {
                 break
             }
             let updatedAt = Date()
+            networkMapRefreshPhase = .building(deviceCount: topology.nodes.count)
             networkTopology = topology
             networkMapLastUpdated = updatedAt
+            networkMapRefreshPhase = .completed(deviceCount: topology.nodes.count)
             networkMapRenderRevision &+= 1
             if let activeBridgeID {
                 networkMapCache.save(
@@ -328,6 +335,17 @@ extension AppStore {
                     bridgeID: activeBridgeID
                 )
             }
+            if wasRefreshing {
+                enqueueNotification(InAppNotification(
+                    level: .info,
+                    title: "Network Map Updated",
+                    subtitle: "\(topology.nodes.count) devices reported"
+                ))
+            }
+            // Keep the refresh presentation available until the canvas
+            // confirms it has rendered the new topology. This fallback also
+            // clears the state if the map is not currently on screen.
+            settleNetworkMapRefreshPhase(after: .seconds(6))
 
         case .touchlinkScanResult(let devices):
             touchlinkDevices = devices

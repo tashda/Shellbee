@@ -47,7 +47,7 @@ struct OnboardingView: View {
                     }
                 }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
     }
 
     @ViewBuilder

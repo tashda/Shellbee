@@ -46,7 +46,7 @@ struct GroupAvatarPickerSheet: View {
                 }
             }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

@@ -135,5 +135,5 @@ private struct ContributorsGrid: View {
     NavigationStack {
         AcknowledgementsView()
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

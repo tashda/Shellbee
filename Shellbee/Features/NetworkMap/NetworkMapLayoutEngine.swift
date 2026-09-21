@@ -23,10 +23,10 @@ struct NetworkMapLayout: Equatable, Sendable {
     let contentSize: CGSize
 }
 
-/// Lays the mesh as a compact, deterministic routing tree. Each child stays
-/// close to its parent in the next routing layer, while subtree ordering keeps
-/// links legible and prevents branches from crossing. The result is structured
-/// like a network diagram without becoming a rigid device grid.
+/// Lays the mesh as a compact, deterministic routing graph. The routing tree
+/// comes from Z2M's explicit parent/child relationships whenever available;
+/// only then do we fall back to radio quality. A bounded force pass keeps
+/// related devices together without turning a busy network into a wheel.
 nonisolated enum NetworkMapLayoutEngine {
     static func layout(
         topology: NetworkTopology,
@@ -52,9 +52,10 @@ nonisolated enum NetworkMapLayoutEngine {
             ?? nodes.sorted(by: nodeOrder).first!
 
         let tree = spanningTree(root: coordinator.id, nodes: nodes, links: links)
-        let positioning = hierarchicalPositions(
+        let positioning = forceDirectedPositions(
             nodes: nodes,
             tree: tree,
+            links: links,
             width: width,
             minimumHeight: minimumHeight
         )
@@ -109,16 +110,38 @@ nonisolated enum NetworkMapLayoutEngine {
         var parentByID: [String: String] = [:]
         var visited: Set<String> = [root]
         let allNodeIDs = Set(nodes.map(\.id))
-        var adjacency: [String: [(index: Int, neighbor: String, quality: Int)]] = [:]
+        var adjacency: [String: [(index: Int, neighbor: String, quality: Int, relationshipPriority: Int)]] = [:]
         adjacency.reserveCapacity(nodes.count)
         for (index, link) in links.enumerated() {
             let quality = link.linkQuality ?? -1
-            adjacency[link.sourceIEEEAddress, default: []].append(
-                (index, link.targetIEEEAddress, quality)
-            )
-            adjacency[link.targetIEEEAddress, default: []].append(
-                (index, link.sourceIEEEAddress, quality)
-            )
+            // Z2M reports `Neighbor is a child` from the child's perspective
+            // and `Neighbor is a parent` from the parent's perspective. Both
+            // forms encode the same directed parent -> child route.
+            switch link.relationship {
+            case 0: // Neighbor is parent: source is the parent of target.
+                adjacency[link.sourceIEEEAddress, default: []].append(
+                    (index, link.targetIEEEAddress, quality, 2)
+                )
+                adjacency[link.targetIEEEAddress, default: []].append(
+                    (index, link.sourceIEEEAddress, quality, 0)
+                )
+            case 1: // Neighbor is child: target is the parent of source.
+                adjacency[link.targetIEEEAddress, default: []].append(
+                    (index, link.sourceIEEEAddress, quality, 2)
+                )
+                adjacency[link.sourceIEEEAddress, default: []].append(
+                    (index, link.targetIEEEAddress, quality, 0)
+                )
+            default:
+                // Some adapters omit relationship metadata. Keep those links
+                // as a quality-based fallback rather than dropping devices.
+                adjacency[link.sourceIEEEAddress, default: []].append(
+                    (index, link.targetIEEEAddress, quality, 0)
+                )
+                adjacency[link.targetIEEEAddress, default: []].append(
+                    (index, link.sourceIEEEAddress, quality, 0)
+                )
+            }
         }
 
         var candidates = MaxHeap<SpanningTreeCandidate>()
@@ -128,7 +151,8 @@ nonisolated enum NetworkMapLayoutEngine {
                     index: edge.index,
                     parent: parent,
                     child: edge.neighbor,
-                    quality: edge.quality
+                    quality: edge.quality,
+                    relationshipPriority: edge.relationshipPriority
                 ))
             }
         }
@@ -154,8 +178,12 @@ nonisolated enum NetworkMapLayoutEngine {
         let parent: String
         let child: String
         let quality: Int
+        let relationshipPriority: Int
 
         static func < (lhs: Self, rhs: Self) -> Bool {
+            if lhs.relationshipPriority != rhs.relationshipPriority {
+                return lhs.relationshipPriority < rhs.relationshipPriority
+            }
             if lhs.quality != rhs.quality { return lhs.quality < rhs.quality }
             if lhs.parent != rhs.parent { return lhs.parent > rhs.parent }
             if lhs.child != rhs.child { return lhs.child > rhs.child }
@@ -205,76 +233,123 @@ nonisolated enum NetworkMapLayoutEngine {
         }
     }
 
-    private static func hierarchicalPositions(
+    private static func forceDirectedPositions(
         nodes: [NetworkTopologyNode],
         tree: SpanningTree,
+        links: [NetworkTopologyLink],
         width: CGFloat,
         minimumHeight: CGFloat
     ) -> (positions: [String: CGPoint], contentSize: CGSize) {
-        let nodeSpacing = DesignTokens.Size.networkMapMinimumNodeSpacing
-        let depthGap = DesignTokens.Size.networkMapDepthSpacing
-        let nodesByID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
-        var childrenByParent: [String: [String]] = [:]
+        let ordered = nodes.sorted(by: nodeOrder)
+        let nodeIndex = Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1.id, $0) })
+        let coordinatorIndex = ordered.firstIndex(where: { $0.role == .coordinator }) ?? 0
+        let count = max(ordered.count, 1)
+        let preferredDistance = DesignTokens.Size.networkMapPreferredLinkDistance
+        let minimumSeparation = DesignTokens.Size.networkMapNodeSeparation
+        let initialSpread = sqrt(CGFloat(count)) * preferredDistance
 
-        for (child, parent) in tree.parentByID {
-            childrenByParent[parent, default: []].append(child)
+        // Seed a stable, organic cloud rather than a circle or a grid. The
+        // simulation starts from the same point each refresh, so node movement
+        // represents a topology change rather than visual jitter.
+        var positions = ordered.enumerated().map { index, node -> CGPoint in
+            guard index != coordinatorIndex else { return .zero }
+            let seed = deterministicUnit(for: node.id)
+            let angle = CGFloat(index) * 2.399_963_23 + seed * 0.7
+            let radius = sqrt(CGFloat(index + 1)) / sqrt(CGFloat(count)) * initialSpread
+            return CGPoint(x: cos(angle) * radius, y: sin(angle) * radius)
         }
-        for parent in childrenByParent.keys {
-            childrenByParent[parent]?.sort { lhs, rhs in
-                guard let left = nodesByID[lhs], let right = nodesByID[rhs] else { return lhs < rhs }
-                return nodeOrder(left, right)
+        var velocities = Array(repeating: CGVector.zero, count: ordered.count)
+
+        let primaryPairs = tree.parentByID.compactMap { child, parent -> (Int, Int)? in
+            guard let parentIndex = nodeIndex[parent], let childIndex = nodeIndex[child] else { return nil }
+            return (parentIndex, childIndex)
+        }
+        let primaryPairIDs = Set(primaryPairs.map { pairKey($0.0, $0.1) })
+        let secondaryPairs = links.compactMap { link -> (Int, Int)? in
+            guard let source = nodeIndex[link.sourceIEEEAddress],
+                  let target = nodeIndex[link.targetIEEEAddress],
+                  source != target,
+                  !primaryPairIDs.contains(pairKey(source, target))
+            else { return nil }
+            return (source, target)
+        }
+
+        let iterationCount = count > 260
+            ? DesignTokens.Size.networkMapLargeLayoutIterations
+            : DesignTokens.Size.networkMapLayoutIterations
+        for iteration in 0..<iterationCount {
+            var forces = Array(repeating: CGVector.zero, count: ordered.count)
+            let cooling = 1 - CGFloat(iteration) / CGFloat(iterationCount + 1)
+
+            // Repulsion and a collision floor keep device bubbles distinct.
+            // This is intentionally calculated only during background layout,
+            // never while the user pans or zooms the map.
+            if count > 1 {
+                for left in 0..<(count - 1) {
+                    for right in (left + 1)..<count {
+                        var dx = positions[right].x - positions[left].x
+                        var dy = positions[right].y - positions[left].y
+                        var squaredDistance = dx * dx + dy * dy
+                        if squaredDistance < 0.01 {
+                            dx = CGFloat((right - left) % 3 + 1)
+                            dy = CGFloat((right + left) % 5 + 1)
+                            squaredDistance = dx * dx + dy * dy
+                        }
+                        let distance = sqrt(squaredDistance)
+                        let unitX = dx / distance
+                        let unitY = dy / distance
+                        let strength = DesignTokens.Size.networkMapRepulsion / squaredDistance
+                        let collision = max(0, minimumSeparation - distance)
+                            * DesignTokens.Size.networkMapCollisionStrength
+                        let force = strength + collision
+                        forces[left].dx -= unitX * force
+                        forces[left].dy -= unitY * force
+                        forces[right].dx += unitX * force
+                        forces[right].dy += unitY * force
+                    }
+                }
             }
-        }
 
-        let roots = nodes
-            .filter { tree.parentByID[$0.id] == nil }
-            .sorted(by: nodeOrder)
+            applySprings(
+                pairs: primaryPairs,
+                preferredDistance: preferredDistance,
+                strength: DesignTokens.Size.networkMapPrimarySpringStrength,
+                positions: positions,
+                forces: &forces
+            )
+            // Heard-neighbor links guide a cluster together gently, but never
+            // overpower the real parent path or recreate the old spaghetti.
+            applySprings(
+                pairs: secondaryPairs,
+                preferredDistance: preferredDistance * 1.2,
+                strength: DesignTokens.Size.networkMapSecondarySpringStrength,
+                positions: positions,
+                forces: &forces
+            )
 
-        // Give every subtree one continuous vertical interval. Children are
-        // placed in deterministic order inside that interval, which keeps the
-        // routing tree readable without forcing devices into a global grid.
-        var subtreeSpans: [String: CGFloat] = [:]
-        func span(for id: String) -> CGFloat {
-            if let cached = subtreeSpans[id] { return cached }
-            let children = childrenByParent[id] ?? []
-            let childSpans = children.map { span(for: $0) }
-            let childTotal = childSpans.reduce(0, +)
-                + CGFloat(max(children.count - 1, 0)) * nodeSpacing
-            let result = max(nodeSpacing, childTotal)
-            subtreeSpans[id] = result
-            return result
-        }
-
-        var positions: [String: CGPoint] = [:]
-        func place(_ id: String, depth: Int, minY: CGFloat) {
-            let children = childrenByParent[id] ?? []
-            let childSpans = children.map { span(for: $0) }
-            let childTotal = childSpans.reduce(0, +)
-                + CGFloat(max(children.count - 1, 0)) * nodeSpacing
-            var childY = minY + (span(for: id) - childTotal) / 2
-            var childCenters: [CGFloat] = []
-
-            for (index, child) in children.enumerated() {
-                let childSpan = childSpans[index]
-                place(child, depth: depth + 1, minY: childY)
-                childCenters.append(positions[child]?.y ?? childY + childSpan / 2)
-                childY += childSpan + nodeSpacing
+            for index in positions.indices where index != coordinatorIndex {
+                let centrality = ordered[index].role == .router
+                    ? DesignTokens.Size.networkMapRouterGravity
+                    : DesignTokens.Size.networkMapEndDeviceGravity
+                forces[index].dx -= positions[index].x * centrality
+                forces[index].dy -= positions[index].y * centrality
+                velocities[index].dx = (velocities[index].dx + forces[index].dx) * DesignTokens.Size.networkMapVelocityDamping
+                velocities[index].dy = (velocities[index].dy + forces[index].dy) * DesignTokens.Size.networkMapVelocityDamping
+                let maximumStep = DesignTokens.Size.networkMapMaximumLayoutStep * cooling
+                let stepLength = hypot(velocities[index].dx, velocities[index].dy)
+                if stepLength > maximumStep, stepLength > 0 {
+                    velocities[index].dx = velocities[index].dx / stepLength * maximumStep
+                    velocities[index].dy = velocities[index].dy / stepLength * maximumStep
+                }
+                positions[index].x += velocities[index].dx
+                positions[index].y += velocities[index].dy
             }
-
-            let centerY = childCenters.isEmpty
-                ? minY + span(for: id) / 2
-                : childCenters.reduce(0, +) / CGFloat(childCenters.count)
-            positions[id] = CGPoint(x: CGFloat(depth) * depthGap, y: centerY)
+            positions[coordinatorIndex] = .zero
+            velocities[coordinatorIndex] = .zero
         }
 
-        var cursor: CGFloat = 0
-        for root in roots {
-            let rootSpan = span(for: root.id)
-            place(root.id, depth: 0, minY: cursor)
-            cursor += rootSpan + nodeSpacing * 1.5
-        }
-
-        let bounds = positions.values.reduce(into: CGRect.null) { result, point in
+        let rawPositions = Dictionary(uniqueKeysWithValues: ordered.indices.map { (ordered[$0].id, positions[$0]) })
+        let bounds = rawPositions.values.reduce(into: CGRect.null) { result, point in
             result = result.union(CGRect(origin: point, size: .zero))
         }
         let padding = DesignTokens.Size.networkMapContentPadding
@@ -282,9 +357,43 @@ nonisolated enum NetworkMapLayoutEngine {
         let contentHeight = max(minimumHeight, bounds.height + padding * 2)
         let offset = CGPoint(x: padding - bounds.minX, y: padding - bounds.minY)
         return (
-            positions: positions.mapValues { CGPoint(x: $0.x + offset.x, y: $0.y + offset.y) },
+            positions: rawPositions.mapValues { CGPoint(x: $0.x + offset.x, y: $0.y + offset.y) },
             contentSize: CGSize(width: contentWidth, height: contentHeight)
         )
+    }
+
+    private static func applySprings(
+        pairs: [(Int, Int)],
+        preferredDistance: CGFloat,
+        strength: CGFloat,
+        positions: [CGPoint],
+        forces: inout [CGVector]
+    ) {
+        for (source, target) in pairs {
+            let dx = positions[target].x - positions[source].x
+            let dy = positions[target].y - positions[source].y
+            let distance = max(hypot(dx, dy), 0.01)
+            let force = (distance - preferredDistance) * strength
+            let unitX = dx / distance
+            let unitY = dy / distance
+            forces[source].dx += unitX * force
+            forces[source].dy += unitY * force
+            forces[target].dx -= unitX * force
+            forces[target].dy -= unitY * force
+        }
+    }
+
+    private static func pairKey(_ first: Int, _ second: Int) -> String {
+        first < second ? "\(first):\(second)" : "\(second):\(first)"
+    }
+
+    private static func deterministicUnit(for identifier: String) -> CGFloat {
+        var value: UInt64 = 1_469_598_103_934_665_603
+        for byte in identifier.utf8 {
+            value ^= UInt64(byte)
+            value &*= 1_099_511_628_211
+        }
+        return CGFloat(value % 10_000) / 10_000
     }
 
     private static func fallbackDepth(for node: NetworkTopologyNode) -> Int {

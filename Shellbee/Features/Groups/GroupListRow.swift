@@ -60,7 +60,6 @@ struct GroupListRow: View {
                 Label("Remove Group", systemImage: "trash")
             }
         }
-        .iPadPointerEffect(.highlight)
     }
 
     @ViewBuilder
@@ -106,5 +105,5 @@ struct GroupListRow: View {
             )
         }
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

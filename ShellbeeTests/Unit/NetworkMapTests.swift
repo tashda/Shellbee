@@ -59,6 +59,70 @@ final class NetworkMapTests: XCTestCase {
         XCTAssertEqual(additional.edges.filter { !$0.isPrimary }.count, 1)
     }
 
+    func testExplicitParentRelationshipWinsOverStrongerIncidentalLink() {
+        let coordinator = node(id: "coordinator", name: "Coordinator", role: .coordinator)
+        let router = node(id: "router", name: "Router", role: .router)
+        let endpoint = node(id: "endpoint", name: "Endpoint", role: .endDevice)
+        let topology = NetworkTopology(
+            nodes: [coordinator, router, endpoint],
+            links: [
+                // Z2M's `Neighbor is a child` means the target is this
+                // device's actual parent, even when another radio link has a
+                // higher LQI at the moment the map was sampled.
+                NetworkTopologyLink(
+                    sourceIEEEAddress: router.id,
+                    targetIEEEAddress: coordinator.id,
+                    linkQuality: 20,
+                    relationship: 1
+                ),
+                NetworkTopologyLink(
+                    sourceIEEEAddress: endpoint.id,
+                    targetIEEEAddress: router.id,
+                    linkQuality: 15,
+                    relationship: 1
+                ),
+                NetworkTopologyLink(
+                    sourceIEEEAddress: endpoint.id,
+                    targetIEEEAddress: coordinator.id,
+                    linkQuality: 255
+                )
+            ]
+        )
+
+        let layout = NetworkMapLayoutEngine.layout(topology: topology, width: 800, minimumHeight: 480)
+
+        XCTAssertEqual(layout.nodes.first(where: { $0.id == router.id })?.depth, 1)
+        XCTAssertEqual(layout.nodes.first(where: { $0.id == endpoint.id })?.depth, 2)
+    }
+
+    func testLargeTopologyUsesCompactTwoDimensionalLayout() {
+        let coordinator = node(id: "coordinator", name: "Coordinator", role: .coordinator)
+        let endpoints = (0..<400).map { index in
+            node(id: "endpoint-\(index)", name: "Endpoint \(index)", role: .endDevice)
+        }
+        let topology = NetworkTopology(
+            nodes: [coordinator] + endpoints,
+            links: endpoints.map {
+                NetworkTopologyLink(
+                    sourceIEEEAddress: $0.id,
+                    targetIEEEAddress: coordinator.id,
+                    linkQuality: 150
+                )
+            }
+        )
+
+        let layout = NetworkMapLayoutEngine.layout(
+            topology: topology,
+            width: 1_000,
+            minimumHeight: 700
+        )
+
+        XCTAssertLessThan(layout.contentSize.width, 12_000)
+        XCTAssertLessThan(layout.contentSize.height, 12_000)
+        XCTAssertGreaterThan(layout.contentSize.width, 1_000)
+        XCTAssertGreaterThan(layout.contentSize.height, 1_000)
+    }
+
     func testFiltersComposeRoleAndHealthFacets() {
         let router = node(id: "router", name: "Router", role: .router)
         XCTAssertTrue(NetworkMapFilter.matches(

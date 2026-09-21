@@ -130,5 +130,5 @@ struct OTASettingsView: View {
     NavigationStack {
         OTASettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

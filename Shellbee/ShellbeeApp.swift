@@ -12,6 +12,7 @@ struct ShellbeeApp: App {
     var body: some Scene {
         WindowGroup("Shellbee", for: ShellbeeWindowDestination.self) { $destination in
             ShellbeeSceneView(destination: $destination)
+                .configuredTopScrollEdgeEffect()
                 .environment(environment)
                 .preferredColorScheme(appearanceMode.colorScheme)
         } defaultValue: {

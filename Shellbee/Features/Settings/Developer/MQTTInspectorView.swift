@@ -334,6 +334,6 @@ private struct PublishView: View {
 
 #Preview {
     NavigationStack { MQTTInspectorView() }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
         .environment(AppEnvironment())
 }

@@ -68,5 +68,5 @@ struct HealthSettingsView: View {
     NavigationStack {
         HealthSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

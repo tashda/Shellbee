@@ -47,7 +47,7 @@ struct DocBrowserDetailView: View {
                         }
                     }
                 }
-                .forceSoftTopScrollEdgeEffect()
+                .configuredTopScrollEdgeEffect()
             }
         }
     }

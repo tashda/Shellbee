@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct DeveloperSettingsView: View {
+    @AppStorage(DeveloperSettings.softTopEdgeEnabledKey)
+    private var softTopEdgeEnabled = DeveloperSettings.softTopEdgeEnabledDefault
+
     var body: some View {
         Form {
             Section {
@@ -20,6 +23,14 @@ struct DeveloperSettingsView: View {
             } footer: {
                 Text("Inspect every message flowing over the bridge connection and publish arbitrary topics. For debugging Z2M behavior — be careful publishing to bridge/request/* topics.")
             }
+
+            Section {
+                Toggle("Soft Top Edge", isOn: $softTopEdgeEnabled)
+            } header: {
+                Text("Rendering")
+            } footer: {
+                Text("Use the soft toolbar edge treatment when enabled. Turn this off to compare the native iOS and iPadOS rendering.")
+            }
         }
         .navigationTitle("Developer")
     }
@@ -27,6 +38,6 @@ struct DeveloperSettingsView: View {
 
 #Preview {
     NavigationStack { DeveloperSettingsView() }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
         .environment(AppEnvironment())
 }

@@ -33,6 +33,7 @@ struct NetworkMapCanvasView: View {
     let onRename: (BridgeBoundDevice) -> Void
     let onRemove: (BridgeBoundDevice) -> Void
     let onPendingAlert: (PendingDeviceAlert, UUID) -> Void
+    let onMapRendered: () -> Void
     /// Owned by `NetworkMapView` and shared down so its toolbar's Zoom
     /// In/Out/Fit buttons can drive the same pan/zoom state this view's
     /// gestures do.
@@ -45,6 +46,7 @@ struct NetworkMapCanvasView: View {
     @State private var layout: NetworkMapLayout?
     @State private var renderIndex: NetworkMapRenderIndex?
     @State private var quickLookNode: NetworkMapLayout.Node?
+    @State private var laidOutTopology: NetworkTopology?
 
     private var store: AppStore { environment.scope(for: bridgeID).store }
 
@@ -72,29 +74,21 @@ struct NetworkMapCanvasView: View {
                         onQuickLook: { node in quickLookNode = node },
                         actionsProvider: actions(for:),
                         showsMeshEdges: showsMeshEdges,
-                        showsLabels: showsLabels
+                        showsLabels: showsLabels,
+                        viewportSize: proxy.size,
+                        scale: zoomController.scale,
+                        offset: zoomController.offset
                     )
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                 } else {
                     ProgressView("Preparing Network Map")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .frame(
-                width: layout?.contentSize.width ?? proxy.size.width,
-                height: layout?.contentSize.height ?? proxy.size.height
-            )
-            .scaleEffect(zoomController.scale, anchor: .topLeading)
-            .offset(zoomController.offset)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
             .contentShape(Rectangle())
             .simultaneousGesture(magnificationGesture)
             .simultaneousGesture(panGesture)
-            // `.scaleEffect` only changes how a view is *painted* — it never
-            // shrinks the frame that view reports to its ancestors, so
-            // without pinning that reported frame back down to the viewport
-            // here, anything anchored to this view's edges (an overlay, a
-            // sibling) would measure against the full (unscaled, possibly
-            // 3000pt+) content box instead of what's actually visible.
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
             .clipped()
             .task(id: LayoutKey(topology: topology, width: width, minimumHeight: minimumHeight)) {
                 let computed = await Task.detached(priority: .userInitiated) {
@@ -112,11 +106,16 @@ struct NetworkMapCanvasView: View {
                 // of briefly creating every remote image task at scale 1.
                 layout = computed
                 renderIndex = NetworkMapRenderIndex.build(layout: computed, store: store)
+                laidOutTopology = topology
+                onMapRendered()
             }
         }
         .onChange(of: store.networkMapRenderRevision) { _, _ in
             guard let layout else { return }
             renderIndex = NetworkMapRenderIndex.build(layout: layout, store: store)
+            if laidOutTopology == topology {
+                onMapRendered()
+            }
         }
         .sheet(item: $quickLookNode) { node in
             quickLookSheet(for: node)
@@ -243,24 +242,71 @@ private struct NetworkMapContentLayer: View {
     let actionsProvider: (BridgeBoundDevice) -> DevicePresentationActions
     let showsMeshEdges: Bool
     let showsLabels: Bool
+    let viewportSize: CGSize
+    let scale: CGFloat
+    let offset: CGSize
+
+    private var visibleWorldBounds: CGRect {
+        guard scale > 0 else { return .null }
+        let margin = DesignTokens.Size.networkMapInteractionTarget / scale
+        return CGRect(
+            x: -offset.width / scale,
+            y: -offset.height / scale,
+            width: viewportSize.width / scale,
+            height: viewportSize.height / scale
+        )
+        .insetBy(dx: -margin, dy: -margin)
+    }
+
+    private var visibleNodes: [NetworkMapLayout.Node] {
+        layout.nodes.filter { node in
+            let nodeSize = displaySize(for: node)
+            let nodeFrame = CGRect(
+                x: node.position.x - nodeSize / 2,
+                y: node.position.y - nodeSize / 2,
+                width: nodeSize,
+                height: nodeSize + (showsLabels ? DesignTokens.Size.networkMapNodeLabelHeight : 0)
+            )
+            return nodeFrame.intersects(visibleWorldBounds)
+        }
+    }
+
+    private var visibleEdges: [NetworkMapLayout.Edge] {
+        layout.edges.filter { edge in
+            guard edge.isPrimary || showsMeshEdges else { return false }
+            return CGRect(
+                x: min(edge.source.x, edge.target.x),
+                y: min(edge.source.y, edge.target.y),
+                width: max(1, abs(edge.target.x - edge.source.x)),
+                height: max(1, abs(edge.target.y - edge.source.y))
+            )
+            .insetBy(
+                dx: -DesignTokens.Size.networkMapContentPadding,
+                dy: -DesignTokens.Size.networkMapContentPadding
+            )
+            .intersects(visibleWorldBounds)
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             Canvas { context, _ in
-                drawEdges(context: &context, layout: layout, index: index)
-                for node in layout.nodes {
-                    guard let symbol = context.resolveSymbol(id: node.id) else { continue }
+                var worldContext = context
+                worldContext.translateBy(x: offset.width, y: offset.height)
+                worldContext.scaleBy(x: scale, y: scale)
+                drawEdges(context: &worldContext, edges: visibleEdges, index: index)
+                for node in visibleNodes {
+                    guard let symbol = worldContext.resolveSymbol(id: node.id) else { continue }
                     let labelOffset = showsLabels
                         ? (DesignTokens.Size.networkMapNodeLabelHeight + DesignTokens.Size.networkMapNodeLabelSpacing) / 2
                         : 0
-                    context.draw(
+                    worldContext.draw(
                         symbol,
                         at: CGPoint(x: node.position.x, y: node.position.y + labelOffset)
                     )
                 }
-            }
-            symbols: {
-                ForEach(layout.nodes) { node in
+            } symbols: {
+                ForEach(visibleNodes) { node in
                     if let device = index.devicesByIEEE[node.topology.ieeeAddress] {
                         NetworkMapNodeView(
                             node: node,
@@ -281,27 +327,31 @@ private struct NetworkMapContentLayer: View {
                     }
                 }
             }
+            .frame(width: viewportSize.width, height: viewportSize.height)
             NetworkMapInteractionLayer(
                 bridgeID: bridgeID,
                 bridgeName: bridgeName,
-                layout: layout,
+                nodes: visibleNodes,
                 index: index,
                 filters: filters,
                 onQuickLook: onQuickLook,
                 actionsProvider: actionsProvider,
-                showsLabels: showsLabels
+                showsLabels: showsLabels,
+                viewportSize: viewportSize,
+                scale: scale,
+                offset: offset
             )
             .equatable()
         }
+        .frame(width: viewportSize.width, height: viewportSize.height, alignment: .topLeading)
     }
 
     private func drawEdges(
         context: inout GraphicsContext,
-        layout: NetworkMapLayout,
+        edges: [NetworkMapLayout.Edge],
         index: NetworkMapRenderIndex
     ) {
-        for edge in layout.edges {
-            guard edge.isPrimary || showsMeshEdges else { continue }
+        for edge in edges {
             let midpointX = (edge.source.x + edge.target.x) / 2
             var path = Path()
             path.move(to: edge.source)
@@ -356,6 +406,14 @@ private struct NetworkMapContentLayer: View {
         if linkQuality >= 150 { return Color(red: 0.20, green: 0.48, blue: 0.76) }
         if linkQuality >= 50 { return Color(red: 0.82, green: 0.57, blue: 0.24) }
         return Color(red: 0.80, green: 0.36, blue: 0.46)
+    }
+
+    private func displaySize(for node: NetworkMapLayout.Node) -> CGFloat {
+        switch node.topology.role {
+        case .coordinator: DesignTokens.Size.networkMapCoordinatorNode
+        case .router: DesignTokens.Size.networkMapRouterNode
+        case .endDevice, .unknown: DesignTokens.Size.networkMapEndDeviceNode
+        }
     }
 }
 
@@ -433,22 +491,26 @@ private struct NetworkMapRenderIndex: Equatable {
 private struct NetworkMapInteractionLayer: View, Equatable {
     let bridgeID: UUID
     let bridgeName: String
-    let layout: NetworkMapLayout
+    let nodes: [NetworkMapLayout.Node]
     let index: NetworkMapRenderIndex
     let filters: Set<NetworkMapFilter>
     let onQuickLook: (NetworkMapLayout.Node) -> Void
     let actionsProvider: (BridgeBoundDevice) -> DevicePresentationActions
     let showsLabels: Bool
+    let viewportSize: CGSize
+    let scale: CGFloat
+    let offset: CGSize
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.bridgeID == rhs.bridgeID && lhs.bridgeName == rhs.bridgeName
-            && lhs.layout == rhs.layout && lhs.index == rhs.index
+            && lhs.nodes == rhs.nodes && lhs.index == rhs.index
             && lhs.filters == rhs.filters && lhs.showsLabels == rhs.showsLabels
+            && lhs.viewportSize == rhs.viewportSize && lhs.scale == rhs.scale && lhs.offset == rhs.offset
     }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            ForEach(layout.nodes) { node in
+            ForEach(nodes) { node in
                 if let device = index.devicesByIEEE[node.topology.ieeeAddress] {
                     let bound = BridgeBoundDevice(bridgeID: bridgeID, bridgeName: bridgeName, device: device)
                     Button {
@@ -456,27 +518,30 @@ private struct NetworkMapInteractionLayer: View, Equatable {
                     } label: { Color.clear }
                     .buttonStyle(.plain)
                     .frame(
-                        width: DesignTokens.Size.networkMapNodeLabelWidth,
-                        height: DesignTokens.Size.networkMapInteractionTarget
-                            + (showsLabels ? DesignTokens.Size.networkMapNodeLabelHeight : 0)
+                        width: max(
+                            DesignTokens.Size.networkMapInteractionTarget,
+                            DesignTokens.Size.networkMapNodeLabelWidth * scale
+                        ),
+                        height: max(
+                            DesignTokens.Size.networkMapInteractionTarget,
+                            DesignTokens.Size.networkMapInteractionTarget * scale
+                        )
                     )
                     .position(
-                        x: node.position.x,
-                        y: node.position.y + (showsLabels
-                            ? (DesignTokens.Size.networkMapNodeLabelHeight + DesignTokens.Size.networkMapNodeLabelSpacing) / 2
-                            : 0)
+                        x: node.position.x * scale + offset.width,
+                        y: node.position.y * scale + offset.height
                     )
                     .accessibilityLabel(node.topology.friendlyName)
                     .accessibilityValue(accessibilityStatus(for: node.topology))
                     .hoverEffectDisabled(true)
                     .modifier(DevicePresentationActionsModifier(
                         bound: bound,
-                        actions: actionsProvider(bound),
-                        pointerEffect: .none
+                        actions: actionsProvider(bound)
                     ))
                 }
             }
         }
+        .frame(width: viewportSize.width, height: viewportSize.height, alignment: .topLeading)
     }
 
     private func accessibilityStatus(for node: NetworkTopologyNode) -> String {

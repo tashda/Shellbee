@@ -53,5 +53,5 @@ struct DeviceLogsView: View {
         DeviceLogsView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

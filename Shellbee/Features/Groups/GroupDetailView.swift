@@ -208,5 +208,5 @@ struct GroupDetailView: View {
         GroupDetailView(bridgeID: UUID(), group: .previewWithMembers)
             .environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }
