@@ -37,18 +37,6 @@ enum GlobalSearchScope: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    var tint: Color {
-        switch self {
-        case .all: .accentColor
-        case .devices: .orange
-        case .groups: .green
-        case .bridges: .teal
-        case .activity: .purple
-        case .logs: .indigo
-        case .docs: .brown
-        }
-    }
-
     /// Every scope except `.all`, in the order sections appear.
     static let categories: [GlobalSearchScope] = allCases.filter { $0 != .all }
 }
