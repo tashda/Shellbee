@@ -3,7 +3,7 @@ import SwiftUI
 struct HomeBridgeCard: View {
     let entries: [HomeBridgeCardEntry]
     let onRestart: (UUID) -> Void
-    var onSelectBridge: ((UUID) -> Void)? = nil
+    var onOpenBridge: ((UUID) -> Void)? = nil
 
     /// Latest Z2M version from GitHub Releases. Polled at most every 5 min,
     /// shared by every bridge row so we don't fan out the same network call.
@@ -15,7 +15,12 @@ struct HomeBridgeCard: View {
             if entries.count >= 2 {
                 multiBridgeCard
             } else {
-                HomeBridgeCardSingle(entry: entries.first, latestVersion: latestVersion, onRestart: onRestart)
+                HomeBridgeCardSingle(
+                    entry: entries.first,
+                    latestVersion: latestVersion,
+                    onRestart: onRestart,
+                    onOpen: onOpenBridge
+                )
             }
         }
         .task(id: entries.compactMap(\.version).joined(separator: ",")) {
@@ -33,7 +38,7 @@ struct HomeBridgeCard: View {
                             entry: entry,
                             latestVersion: latestVersion,
                             onRestart: { onRestart(entry.id) },
-                            onSelect: onSelectBridge.map { handler in { handler(entry.id) } }
+                            onSelect: onOpenBridge.map { handler in { handler(entry.id) } }
                         )
                         if entry.id != entries.last?.id {
                             Divider()
@@ -60,6 +65,7 @@ private struct HomeBridgeCardSingle: View {
     let entry: HomeBridgeCardEntry?
     let latestVersion: String?
     let onRestart: (UUID) -> Void
+    let onOpen: ((UUID) -> Void)?
 
     private var headerTitle: String {
         entry?.name.isEmpty == false ? entry!.name : "Zigbee2MQTT"
@@ -97,6 +103,13 @@ private struct HomeBridgeCardSingle: View {
                 }
             }
         }
+        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .gesture(TapGesture().onEnded(openEntry), including: .gesture)
+    }
+
+    private func openEntry() {
+        guard let id = entry?.id else { return }
+        onOpen?(id)
     }
 
     private var header: some View {

@@ -203,6 +203,7 @@
 				Features/Groups/GroupsWorkspaceState.swift,
 				Features/Groups/RemoveGroupSheet.swift,
 				Features/Groups/RenameGroupSheet.swift,
+				Features/Home/BridgeInfoSheet.swift,
 				Features/Home/HomeAddCardsSection.swift,
 				Features/Home/HomeBackgroundGradient.swift,
 				Features/Home/HomeBridgeCard.swift,
