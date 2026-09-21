@@ -49,10 +49,8 @@ final class ConnectionSessionController {
      // AppGeneralView via @AppStorage). Defaults: 3 reconnect attempts, both
      // live activities on.
     static let maxReconnectAttemptsKey = "connectionMaxReconnectAttempts"
-    static let connectionLiveActivityEnabledKey = "connectionLiveActivityEnabled"
     static let permitJoinLiveActivityEnabledKey = "permitJoinLiveActivityEnabled"
     static let touchlinkLiveActivityEnabledKey = "touchlinkLiveActivityEnabled"
-    static let bridgeDiscoveryLiveActivityEnabledKey = "bridgeDiscoveryLiveActivityEnabled"
     static let otaLiveActivityEnabledKey = "otaLiveActivityEnabled"
     static let otaScheduledLiveActivityEnabledKey = "otaScheduledLiveActivityEnabled"
     static let defaultMaxReconnectAttempts: Int = 3
@@ -65,9 +63,6 @@ final class ConnectionSessionController {
         return stored > 0 ? stored : defaultMaxReconnectAttempts
     }
 
-    static var connectionLiveActivityEnabled: Bool {
-        UserDefaults.standard.object(forKey: connectionLiveActivityEnabledKey) as? Bool ?? true
-    }
 
     init(store: AppStore, history: ConnectionHistory, bridgeID: UUID = UUID()) {
         self.store = store
@@ -208,12 +203,6 @@ final class ConnectionSessionController {
         sessionTask = nil
         store.isConnected = false
         connectionState = .idle
-        // Cancel only this bridge's Live Activity — other connected bridges'
-        // activities stay alive in multi-bridge mode.
-        if let config = connectionConfig {
-            ConnectionLiveActivityCoordinator.shared.cancel(bridge: config)
-        }
-
         return Task { [client] in
             await client.disconnect()
         }
@@ -307,23 +296,10 @@ final class ConnectionSessionController {
     private func reconnect(config: ConnectionConfig, reason: String) async -> AsyncStream<Z2MSocketEvent>? {
         var attempt = 1
         var delay = Self.baseReconnectDelay
-        let coordinator = ConnectionLiveActivityCoordinator.shared
         let maxAttempts = Self.configuredMaxReconnectAttempts
-        let liveActivityEnabled = Self.connectionLiveActivityEnabled
-
-        if liveActivityEnabled {
-            coordinator.show(bridge: config, phase: .reconnecting, attempt: 1, maxAttempts: maxAttempts)
-        }
-
-        // Capture for use in catch / finish — `config` is what we care about,
-        // unchanged across reconnect attempts.
-        let activityBridge = config
 
         while !Task.isCancelled {
             if attempt > maxAttempts {
-                if liveActivityEnabled {
-                    coordinator.finish(bridge: activityBridge, .failed, displayFor: 3)
-                }
                 await handleFailure(reason.isEmpty ? "Connection lost" : reason)
                 return nil
             }
@@ -335,18 +311,12 @@ final class ConnectionSessionController {
 
             do {
                 let events = try await establishConnection(config: config)
-                if liveActivityEnabled {
-                    coordinator.finish(bridge: activityBridge, .connected, displayFor: 2.5)
-                }
                 return events
             } catch is CancellationError {
                 return nil
             } catch {
                 attempt += 1
                 delay = min(delay * 2, Self.maxReconnectDelay)
-                if liveActivityEnabled {
-                    coordinator.update(bridge: activityBridge, phase: .reconnecting, attempt: attempt, maxAttempts: maxAttempts)
-                }
             }
         }
 

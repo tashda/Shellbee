@@ -83,14 +83,8 @@ final class ConnectionViewModel {
         discoveryTask = Task { @MainActor [weak self] in
             guard let self else { return }
             environment.discovery.start()
-            BridgeDiscoveryLiveActivityCoordinator.shared.start(
-                duration: DesignTokens.Duration.discoveryScanWindow
-            )
             let deadline = Date.now.addingTimeInterval(DesignTokens.Duration.discoveryScanWindow)
             while environment.discovery.isScanning && Date.now < deadline {
-                BridgeDiscoveryLiveActivityCoordinator.shared.update(
-                    foundCount: discoveredEndpoints.count
-                )
                 do {
                     try await Task.sleep(for: .milliseconds(400))
                 } catch {
@@ -101,7 +95,6 @@ final class ConnectionViewModel {
                 environment.discovery.stop()
             }
             guard !Task.isCancelled else { return }
-            BridgeDiscoveryLiveActivityCoordinator.shared.finish(foundCount: discoveredEndpoints.count)
             discoveryTask = nil
         }
     }
@@ -110,7 +103,6 @@ final class ConnectionViewModel {
         discoveryTask?.cancel()
         discoveryTask = nil
         environment.discovery.stop()
-        BridgeDiscoveryLiveActivityCoordinator.shared.cancel()
     }
 
     func deleteConnection(_ config: ConnectionConfig) {

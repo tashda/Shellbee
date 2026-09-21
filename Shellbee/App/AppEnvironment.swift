@@ -156,9 +156,6 @@ final class AppEnvironment {
             session.store.syncPermitJoinLiveActivity()
             session.store.refreshOTAActivity()
         }
-        if !ConnectionSessionController.connectionLiveActivityEnabled {
-            ConnectionLiveActivityCoordinator.shared.clearAll()
-        }
         if !PermitJoinLiveActivityCoordinator.isEnabled {
             PermitJoinLiveActivityCoordinator.shared.clearAll()
         }
@@ -167,9 +164,6 @@ final class AppEnvironment {
         }
         if !BridgeOperationLiveActivityCoordinator.isEnabled {
             BridgeOperationLiveActivityCoordinator.shared.clearAll()
-        }
-        if !BridgeDiscoveryLiveActivityCoordinator.isEnabled {
-            BridgeDiscoveryLiveActivityCoordinator.shared.clearAll()
         }
     }
 
@@ -277,16 +271,6 @@ final class AppEnvironment {
     /// current — Z2M won't republish those until reconnect, which can take
     /// several seconds and makes the user doubt the restart actually fired.
     func restartBridge(_ bridgeID: UUID) {
-        if let config = registry.session(for: bridgeID)?.config,
-           ConnectionSessionController.connectionLiveActivityEnabled {
-            ConnectionLiveActivityCoordinator.shared.show(
-                bridge: config,
-                phase: .restarting,
-                attempt: 0,
-                maxAttempts: 0,
-                message: "Restarting"
-            )
-        }
         if let store = registry.session(for: bridgeID)?.store {
             store.bridgeHealth = nil
             store.bridgeOnline = false
@@ -334,11 +318,9 @@ final class AppEnvironment {
         guard !hasStarted else { return }
         hasStarted = true
 
-        ConnectionLiveActivityCoordinator.shared.clearAll()
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
         PermitJoinLiveActivityCoordinator.shared.clearAll()
         BridgeOperationLiveActivityCoordinator.shared.clearAll()
-        BridgeDiscoveryLiveActivityCoordinator.shared.clearAll()
         Task { await RetiredLiveActivities.endAll() }
         #if DEBUG
         if ProcessInfo.processInfo.environment["SHELLBEE_LIVE_ACTIVITY_PREVIEW"] == "permitJoin" {
