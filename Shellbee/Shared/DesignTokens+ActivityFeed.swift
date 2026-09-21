@@ -9,10 +9,14 @@ extension DesignTokens {
         /// carry their own padding, so this sits above the 46% used by the
         /// older log rows.
         static let glyphRatio: CGFloat = 0.5
-        static let pip: CGFloat = 18
+        /// Pip diameter as a share of the thumbnail, so it scales from the
+        /// 40pt feed card down to the 30pt tab bar artwork.
+        static let pipRatio: CGFloat = 0.45
         static let pipGlyphRatio: CGFloat = 0.5
         static let pipBorder: CGFloat = 2
-        static let pipOffset: CGFloat = 3
+        static let pipOffsetRatio: CGFloat = 0.075
+        /// Artwork slot in the tab bar accessory, like the Music mini player.
+        static let accessoryArtwork: CGFloat = 30
         static let cardCornerRadius: CGFloat = 22
         static let cardHorizontalPadding: CGFloat = 14
         static let cardVerticalPadding: CGFloat = 12
@@ -34,5 +38,14 @@ extension DesignTokens {
         static let grabberMinimumTop: CGFloat = 6
         /// Keeps cards readable on iPad and in wide windows.
         static let maxContentWidth: CGFloat = 640
+    }
+
+    /// The raw log in the Activity Center: minute cards of compact rows.
+    nonisolated enum RawLog {
+        static let levelMark: CGFloat = 20
+        static let levelGlyphRatio: CGFloat = 0.55
+        static let quietDot: CGFloat = 6
+        static let rowVerticalPadding: CGFloat = 10
+        static let tagCornerRadius: CGFloat = 5
     }
 }

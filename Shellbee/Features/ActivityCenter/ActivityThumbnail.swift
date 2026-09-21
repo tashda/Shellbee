@@ -8,6 +8,9 @@ struct ActivityThumbnail: View {
     let entry: LogEntry
     let store: AppStore?
     var size: CGFloat = DesignTokens.ActivityFeed.thumbnail
+    /// Ring around the pip that separates it from the artwork; matches
+    /// whatever the thumbnail sits on.
+    var pipBorder: Color = Color(.secondarySystemGroupedBackground)
 
     private var outcome: LogRowIconography.Outcome? {
         LogRowIconography.outcome(for: entry)
@@ -71,13 +74,15 @@ struct ActivityThumbnail: View {
 
     private func pip(_ outcome: LogRowIconography.Outcome) -> some View {
         let tokens = DesignTokens.ActivityFeed.self
+        let pipSize = size * tokens.pipRatio
+        let offset = size * tokens.pipOffsetRatio
         return Image(systemName: outcome.systemImage)
-            .font(.system(size: tokens.pip * tokens.pipGlyphRatio, weight: .bold))
+            .font(.system(size: pipSize * tokens.pipGlyphRatio, weight: .bold))
             .foregroundStyle(.white)
-            .frame(width: tokens.pip, height: tokens.pip)
+            .frame(width: pipSize, height: pipSize)
             .background(outcome.tint, in: Circle())
             .padding(tokens.pipBorder)
-            .background(Color(.secondarySystemGroupedBackground), in: Circle())
-            .offset(x: tokens.pipOffset, y: tokens.pipOffset)
+            .background(pipBorder, in: Circle())
+            .offset(x: offset, y: offset)
     }
 }
