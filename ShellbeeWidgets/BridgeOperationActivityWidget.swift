@@ -5,187 +5,81 @@ import WidgetKit
 struct BridgeOperationActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: BridgeOperationActivityAttributes.self) { context in
-            BridgeOperationLockScreenView(context: context)
-                .activityBackgroundTint(nil)
-                .activitySystemActionForegroundColor(.primary)
+            LiveActivityLockScreen(layout: .bridgeOperation(context))
         } dynamicIsland: { context in
-            DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    LiveActivityStatusMark(
-                        symbol: context.attributes.operation.symbol(for: context.state.phase),
-                        color: context.state.phase.accentColor
-                    )
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    BridgeOperationMetric(context: context)
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    LiveActivityTitleBlock(
-                        title: context.attributes.operation.title,
-                        subtitle: context.state.detail,
-                        titleFont: .subheadline.weight(.semibold)
-                    )
-                }
-                DynamicIslandExpandedRegion(.bottom) {
-                    LiveActivityBridgeContext(name: context.attributes.bridgeDisplayName)
-                }
-            } compactLeading: {
-                LiveActivityStatusMark(
-                    symbol: context.attributes.operation.symbol(for: context.state.phase),
-                    color: context.state.phase.accentColor,
-                    size: DesignTokens.Size.liveActivityCompactSymbol
-                )
-            } compactTrailing: {
-                if context.attributes.operation == .touchlinkScan, context.state.phase == .active {
-                    LiveActivityMetric(
-                        value: "\(context.state.foundCount)",
-                        color: context.state.phase.accentColor,
-                        compact: true
-                    )
-                } else if context.state.phase == .active {
-                    ProgressView()
-                        .controlSize(.mini)
-                }
-            } minimal: {
-                LiveActivityStatusMark(
-                    symbol: context.attributes.operation.symbol(for: context.state.phase),
-                    color: context.state.phase.accentColor,
-                    size: DesignTokens.Size.liveActivityMinimalSymbol
-                )
-            }
+            .blueprint(.bridgeOperation(context))
         }
     }
 }
 
-private struct BridgeOperationLockScreenView: View {
-    let context: ActivityViewContext<BridgeOperationActivityAttributes>
+private extension LiveActivityLayout {
+    static func bridgeOperation(_ context: ActivityViewContext<BridgeOperationActivityAttributes>) -> Self {
+        let state = context.state
+        let operation = context.attributes.operation
+        let window = state.startedAt...max(state.startedAt, state.endsAt)
 
-    var body: some View {
-        LiveActivityLockScreenContent {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                LiveActivityStatusMark(
-                    symbol: context.attributes.operation.symbol(for: context.state.phase),
-                    color: context.state.phase.accentColor,
-                    size: DesignTokens.Size.liveActivityLockSymbol
-                )
-
-                LiveActivityTitleBlock(
-                    title: context.attributes.operation.title,
-                    subtitle: lockScreenDetail
-                )
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
-                BridgeOperationMetric(context: context)
-                    .layoutPriority(1)
-            }
-        }
-    }
-
-    private var lockScreenDetail: String {
-        if context.attributes.bridgeDisplayName.isEmpty {
-            return context.state.detail
-        }
-        return "\(context.state.detail) · \(context.attributes.bridgeDisplayName)"
-    }
-}
-
-private struct BridgeOperationMetric: View {
-    let context: ActivityViewContext<BridgeOperationActivityAttributes>
-
-    var body: some View {
-        if context.attributes.operation == .touchlinkScan, context.state.phase == .active {
-            LiveActivityMetric(
-                value: "\(context.state.foundCount)",
-                label: "found",
-                color: context.state.phase.accentColor
+        switch state.phase {
+        case .active:
+            return Self(
+                symbol: operation.symbol,
+                tint: operation.tint,
+                title: operation.title,
+                subtitle: operation == .touchlinkScan ? foundText(state.foundCount) : (context.attributes.deviceName ?? state.detail),
+                value: .countdown(window),
+                gauge: .countdown(window)
             )
-        } else if context.state.phase == .active {
-            ProgressView()
-                .controlSize(.small)
+        case .completed:
+            return Self(
+                symbol: operation.symbol,
+                tint: LiveActivityPalette.success,
+                title: operation.title,
+                subtitle: state.detail,
+                value: .symbol("checkmark.circle.fill")
+            )
+        case .failed:
+            return Self(
+                symbol: operation.symbol,
+                tint: LiveActivityPalette.failure,
+                title: operation.title,
+                subtitle: state.detail,
+                value: .symbol("xmark.circle.fill")
+            )
         }
+    }
+
+    static func foundText(_ count: Int) -> String {
+        count == 1 ? "1 device found" : "\(count) devices found"
     }
 }
 
 private extension BridgeOperationActivityAttributes.Operation {
     var title: String {
         switch self {
-        case .touchlinkScan: return "Scanning for devices"
+        case .touchlinkScan: return "Touchlink scan"
         case .touchlinkIdentify: return "Identifying device"
         }
     }
 
-    func symbol(for phase: BridgeOperationActivityAttributes.ContentState.Phase) -> String {
-        switch phase {
-        case .active:
-            switch self {
-            case .touchlinkScan: return "dot.radiowaves.left.and.right"
-            case .touchlinkIdentify: return "flashlight.on.fill"
-            }
-        case .completed: return "checkmark.circle.fill"
-        case .failed: return "xmark.circle.fill"
-        }
-    }
-}
-
-private extension BridgeOperationActivityAttributes.ContentState.Phase {
-    var accentColor: Color {
+    var symbol: String {
         switch self {
-        case .active: return .primary
-        case .completed: return .green
-        case .failed: return .red
+        case .touchlinkScan: return "dot.radiowaves.left.and.right"
+        case .touchlinkIdentify: return "flashlight.on.fill"
         }
     }
 
+    var tint: Color {
+        switch self {
+        case .touchlinkScan: return LiveActivityPalette.scan
+        case .touchlinkIdentify: return .yellow
+        }
+    }
 }
 
-#Preview("Touchlink scan", as: .content, using: bridgeOperationScanPreviewAttributes) {
+private let scanAttributes = BridgeOperationActivityAttributes(identifier: "touchlinkScan-preview", operation: .touchlinkScan, bridgeDisplayName: "Main")
+
+#Preview("Touchlink scan", as: .content, using: scanAttributes) {
     BridgeOperationActivityWidget()
 } contentStates: {
-    BridgeOperationActivityAttributes.ContentState(
-        phase: .active,
-        detail: "Looking for nearby devices",
-        foundCount: 3,
-        startedAt: .now,
-        endsAt: .now.addingTimeInterval(30)
-    )
-    BridgeOperationActivityAttributes.ContentState(
-        phase: .completed,
-        detail: "3 devices found",
-        foundCount: 3,
-        startedAt: .now,
-        endsAt: .now
-    )
+    BridgeOperationActivityAttributes.ContentState(phase: .active, detail: "", foundCount: 3, startedAt: .now, endsAt: .now.addingTimeInterval(30))
+    BridgeOperationActivityAttributes.ContentState(phase: .completed, detail: "3 devices found", foundCount: 3, startedAt: .now, endsAt: .now)
 }
-
-#Preview("Touchlink identify", as: .dynamicIsland(.expanded), using: bridgeOperationIdentifyPreviewAttributes) {
-    BridgeOperationActivityWidget()
-} contentStates: {
-    BridgeOperationActivityAttributes.ContentState(
-        phase: .active,
-        detail: "Living Room Light",
-        foundCount: 0,
-        startedAt: .now,
-        endsAt: .now.addingTimeInterval(20)
-    )
-    BridgeOperationActivityAttributes.ContentState(
-        phase: .completed,
-        detail: "Identify complete",
-        foundCount: 0,
-        startedAt: .now,
-        endsAt: .now
-    )
-}
-
-private let bridgeOperationScanPreviewAttributes = BridgeOperationActivityAttributes(
-    identifier: "touchlinkScan-preview",
-    operation: .touchlinkScan,
-    bridgeDisplayName: "Main"
-)
-
-private let bridgeOperationIdentifyPreviewAttributes = BridgeOperationActivityAttributes(
-    identifier: "touchlinkIdentify-preview",
-    operation: .touchlinkIdentify,
-    bridgeDisplayName: "Main",
-    deviceName: "Living Room Light"
-)

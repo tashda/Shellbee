@@ -5,119 +5,37 @@ import WidgetKit
 struct ConnectionActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ConnectionActivityAttributes.self) { context in
-            ConnectionLockScreenView(context: context)
-                .activityBackgroundTint(nil)
-                .activitySystemActionForegroundColor(.primary)
+            LiveActivityLockScreen(layout: .connection(context))
         } dynamicIsland: { context in
-            DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    LiveActivityStatusMark(
-                        symbol: context.state.phase.symbol,
-                        color: context.state.phase.accentColor
-                    )
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    ConnectionExpandedMetric(state: context.state)
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    LiveActivityTitleBlock(
-                        title: context.attributes.bridgeDisplayName,
-                        subtitle: context.state.displayLabel,
-                        titleFont: .subheadline.weight(.semibold)
-                    )
-                }
-            } compactLeading: {
-                LiveActivityStatusMark(
-                    symbol: context.state.phase.symbol,
-                    color: context.state.phase.accentColor,
-                    size: DesignTokens.Size.liveActivityCompactSymbol
-                )
-            } compactTrailing: {
-                ConnectionCompactMetric(state: context.state)
-            } minimal: {
-                LiveActivityStatusMark(
-                    symbol: context.state.phase.symbol,
-                    color: context.state.phase.accentColor,
-                    size: DesignTokens.Size.liveActivityMinimalSymbol
-                )
-            }
+            .blueprint(.connection(context))
         }
     }
 }
 
-private struct ConnectionLockScreenView: View {
-    let context: ActivityViewContext<ConnectionActivityAttributes>
+private extension LiveActivityLayout {
+    static func connection(_ context: ActivityViewContext<ConnectionActivityAttributes>) -> Self {
+        let state = context.state
+        let phase = state.phase
+        let attempt = state.maxAttempts > 0 ? "\(state.attempt)/\(state.maxAttempts)" : "\(state.attempt)"
+        let showsAttempt = phase == .reconnecting && state.attempt > 0
 
-    var body: some View {
-        LiveActivityLockScreenContent {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                LiveActivityStatusMark(
-                    symbol: context.state.phase.symbol,
-                    color: context.state.phase.accentColor,
-                    size: DesignTokens.Size.liveActivityLockSymbol
-                )
-
-                LiveActivityTitleBlock(
-                    title: context.attributes.bridgeDisplayName,
-                    subtitle: context.state.displayLabel
-                )
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-            }
-        }
-    }
-}
-
-private struct ConnectionExpandedMetric: View {
-    let state: ConnectionActivityAttributes.ContentState
-
-    var body: some View {
-        switch state.phase {
-        case .reconnecting:
-            LiveActivityMetric(
-                value: state.attemptText,
-                label: "attempt",
-                color: state.phase.accentColor
-            )
-        case .connected:
-            LiveActivityStatusMark(symbol: "checkmark", color: state.phase.accentColor)
-        case .failed:
-            LiveActivityStatusMark(symbol: "xmark", color: state.phase.accentColor)
-        default:
-            ProgressView()
-                .controlSize(.small)
-        }
-    }
-}
-
-private struct ConnectionCompactMetric: View {
-    let state: ConnectionActivityAttributes.ContentState
-
-    var body: some View {
-        switch state.phase {
-        case .reconnecting:
-            LiveActivityMetric(
-                value: state.attemptText,
-                color: state.phase.accentColor,
-                compact: true
-            )
-        case .connecting:
-            ProgressView()
-                .controlSize(.mini)
-        default:
-            EmptyView()
-        }
+        return Self(
+            symbol: phase.symbol,
+            tint: phase.tint,
+            title: context.attributes.bridgeDisplayName,
+            subtitle: state.message.isEmpty ? phase.label : state.message,
+            value: showsAttempt ? .text(attempt) : .symbol(phase.valueSymbol)
+        )
     }
 }
 
 private extension ConnectionActivityAttributes.ContentState.Phase {
-    var accentColor: Color {
+    var tint: Color {
         switch self {
-        case .connecting, .reconnecting: return .orange
-        case .restarting: return .orange
-        case .connected: return .green
-        case .failed: return .red
-        case .cancelled: return .secondary
+        case .connecting, .reconnecting, .restarting: return LiveActivityPalette.working
+        case .connected: return LiveActivityPalette.success
+        case .failed: return LiveActivityPalette.failure
+        case .cancelled: return LiveActivityPalette.neutral
         }
     }
 
@@ -134,29 +52,21 @@ private extension ConnectionActivityAttributes.ContentState.Phase {
 
     var symbol: String {
         switch self {
+        case .connecting, .reconnecting, .connected: return "wifi"
+        case .restarting: return "arrow.clockwise"
+        case .failed: return "wifi.exclamationmark"
+        case .cancelled: return "wifi.slash"
+        }
+    }
+
+    var valueSymbol: String {
+        switch self {
         case .connected: return "checkmark.circle.fill"
         case .failed: return "xmark.circle.fill"
         case .cancelled: return "minus.circle.fill"
-        case .connecting, .reconnecting: return "wifi"
-        case .restarting: return "arrow.clockwise"
+        case .connecting, .reconnecting, .restarting: return "ellipsis"
         }
     }
-}
-
-private extension ConnectionActivityAttributes.ContentState {
-    var attemptText: String {
-        maxAttempts > 0 ? "\(attempt)/\(maxAttempts)" : "\(attempt)"
-    }
-
-    var displayLabel: String {
-        message.isEmpty ? phase.label : message
-    }
-}
-
-private extension ConnectionActivityAttributes.ContentState {
-    static let reconnecting2of5 = Self(phase: .reconnecting, attempt: 2, maxAttempts: 5, message: "")
-    static let connected = Self(phase: .connected, attempt: 0, maxAttempts: 0, message: "")
-    static let failed = Self(phase: .failed, attempt: 0, maxAttempts: 0, message: "")
 }
 
 private let previewAttributes = ConnectionActivityAttributes(serverHost: "homelab.local", bridgeDisplayName: "Main")
@@ -164,31 +74,13 @@ private let previewAttributes = ConnectionActivityAttributes(serverHost: "homela
 #Preview("Lock Screen", as: .content, using: previewAttributes) {
     ConnectionActivityWidget()
 } contentStates: {
-    ConnectionActivityAttributes.ContentState.reconnecting2of5
-    ConnectionActivityAttributes.ContentState.connected
-    ConnectionActivityAttributes.ContentState.failed
+    ConnectionActivityAttributes.ContentState(phase: .reconnecting, attempt: 2, maxAttempts: 5, message: "")
+    ConnectionActivityAttributes.ContentState(phase: .connected, attempt: 0, maxAttempts: 0, message: "")
+    ConnectionActivityAttributes.ContentState(phase: .failed, attempt: 0, maxAttempts: 0, message: "")
 }
 
 #Preview("Compact", as: .dynamicIsland(.compact), using: previewAttributes) {
     ConnectionActivityWidget()
 } contentStates: {
-    ConnectionActivityAttributes.ContentState.reconnecting2of5
-    ConnectionActivityAttributes.ContentState.connected
-    ConnectionActivityAttributes.ContentState.failed
-}
-
-#Preview("Expanded", as: .dynamicIsland(.expanded), using: previewAttributes) {
-    ConnectionActivityWidget()
-} contentStates: {
-    ConnectionActivityAttributes.ContentState.reconnecting2of5
-    ConnectionActivityAttributes.ContentState.connected
-    ConnectionActivityAttributes.ContentState.failed
-}
-
-#Preview("Minimal", as: .dynamicIsland(.minimal), using: previewAttributes) {
-    ConnectionActivityWidget()
-} contentStates: {
-    ConnectionActivityAttributes.ContentState.reconnecting2of5
-    ConnectionActivityAttributes.ContentState.connected
-    ConnectionActivityAttributes.ContentState.failed
+    ConnectionActivityAttributes.ContentState(phase: .reconnecting, attempt: 2, maxAttempts: 5, message: "")
 }

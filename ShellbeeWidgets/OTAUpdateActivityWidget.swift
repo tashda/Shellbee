@@ -5,139 +5,52 @@ import WidgetKit
 struct OTAUpdateActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: OTAUpdateActivityAttributes.self) { context in
-            OTALockScreenView(context: context)
-                .activityBackgroundTint(nil)
-                .activitySystemActionForegroundColor(.primary)
+            LiveActivityLockScreen(layout: .otaUpdate(context))
         } dynamicIsland: { context in
-            DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    LiveActivityStatusMark(
-                        symbol: context.state.phase.symbol,
-                        color: context.state.phase.dynamicAccentColor
-                    )
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    if let progress = context.state.progress, context.state.phase == .active {
-                        LiveActivityMetric(
-                            value: "\(progress)%",
-                            color: context.state.phase.dynamicAccentColor
-                        )
-                    } else if context.state.phase == .completed {
-                        LiveActivityStatusMark(symbol: "checkmark", color: context.state.phase.dynamicAccentColor)
-                    } else if context.state.phase == .failed {
-                        LiveActivityStatusMark(symbol: "xmark", color: context.state.phase.dynamicAccentColor)
-                    }
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    LiveActivityTitleBlock(
-                        title: context.state.headline,
-                        subtitle: context.state.detail,
-                        titleFont: .subheadline.weight(.semibold)
-                    )
-                }
-                DynamicIslandExpandedRegion(.bottom) {
-                    VStack(spacing: DesignTokens.Spacing.xs) {
-                        LiveActivityBridgeContext(name: context.attributes.bridgeDisplayName)
-                    if let progress = context.state.progress, context.state.phase == .active {
-                        LiveActivityProgress(progress: progress, tint: context.state.phase.dynamicAccentColor)
-                    }
-                    }
-                    .padding(.horizontal, DesignTokens.Spacing.sm)
-                    .padding(.bottom, DesignTokens.Spacing.sm)
-                }
-            } compactLeading: {
-                LiveActivityStatusMark(
-                    symbol: context.state.phase.symbol,
-                    color: context.state.phase.dynamicAccentColor,
-                    size: DesignTokens.Size.liveActivityCompactSymbol
-                )
-            } compactTrailing: {
-                if let progress = context.state.progress, context.state.phase == .active {
-                    LiveActivityMetric(
-                        value: "\(progress)%",
-                        color: context.state.phase.dynamicAccentColor,
-                        compact: true
-                    )
-                } else if context.state.phase == .active {
-                    ProgressView()
-                        .controlSize(.mini)
-                }
-            } minimal: {
-                LiveActivityStatusMark(
-                    symbol: context.state.phase.symbol,
-                    color: context.state.phase.dynamicAccentColor,
-                    size: DesignTokens.Size.liveActivityMinimalSymbol
-                )
-            }
+            .blueprint(.otaUpdate(context))
         }
     }
 }
 
-private struct OTALockScreenView: View {
-    let context: ActivityViewContext<OTAUpdateActivityAttributes>
+private extension LiveActivityLayout {
+    static func otaUpdate(_ context: ActivityViewContext<OTAUpdateActivityAttributes>) -> Self {
+        let state = context.state
+        let symbol = "arrow.down.circle"
 
-    var body: some View {
-        LiveActivityLockScreenContent {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                LiveActivityStatusMark(
-                    symbol: context.state.phase.symbol,
-                    color: context.state.phase.accentColor,
-                    size: DesignTokens.Size.liveActivityLockSymbol
-                )
-
-                LiveActivityTitleBlock(
-                    title: context.state.headline,
-                    subtitle: lockScreenDetail
-                )
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
-                if let progress = context.state.progress, context.state.phase == .active {
-                    LiveActivityMetric(
-                        value: "\(progress)%",
-                        color: context.state.phase.accentColor
-                    )
-                    .layoutPriority(1)
-                }
-            }
-
-            if let progress = context.state.progress, context.state.phase == .active {
-                LiveActivityProgress(progress: progress, tint: context.state.phase.accentColor)
-            }
+        switch state.phase {
+        case .active:
+            let single = state.activeCount <= 1 ? state.items.first : nil
+            return Self(
+                symbol: symbol,
+                tint: LiveActivityPalette.update,
+                title: single?.name ?? "\(state.activeCount) updates",
+                subtitle: single.map(singleSubtitle) ?? state.detail,
+                value: state.progress.map { .text("\($0)%") } ?? .symbol("ellipsis"),
+                gauge: state.progress.map { .progress(Double($0) / 100) } ?? .none
+            )
+        case .completed:
+            return Self(
+                symbol: symbol,
+                tint: LiveActivityPalette.success,
+                title: state.headline,
+                subtitle: state.detail,
+                value: .symbol("checkmark.circle.fill")
+            )
+        case .failed:
+            return Self(
+                symbol: symbol,
+                tint: LiveActivityPalette.failure,
+                title: state.headline,
+                subtitle: state.detail,
+                value: .symbol("xmark.circle.fill")
+            )
         }
     }
 
-    private var lockScreenDetail: String {
-        if context.attributes.bridgeDisplayName.isEmpty {
-            return context.state.detail
-        }
-        return "\(context.state.detail) · \(context.attributes.bridgeDisplayName)"
-    }
-}
-
-private extension OTAUpdateActivityAttributes.ContentState.Phase {
-    var symbol: String {
-        switch self {
-        case .active: return "arrow.triangle.2.circlepath"
-        case .completed: return "checkmark.circle.fill"
-        case .failed: return "xmark.circle.fill"
-        }
-    }
-
-    var accentColor: Color {
-        switch self {
-        case .active: return .primary
-        case .completed: return .green
-        case .failed: return .red
-        }
-    }
-
-    var dynamicAccentColor: Color {
-        switch self {
-        case .active: return .white
-        case .completed: return .green
-        case .failed: return .red
-        }
+    static func singleSubtitle(_ item: OTAUpdateActivityAttributes.ContentState.Item) -> String {
+        guard let remaining = item.remaining, remaining > 0 else { return "Updating firmware" }
+        let text = Duration.seconds(remaining).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 1))
+        return "About \(text) left"
     }
 }
 
@@ -196,14 +109,6 @@ private let previewOTAAttributes = OTAUpdateActivityAttributes(identifier: "ota-
     OTAUpdateActivityAttributes.ContentState.fiveDevices
     OTAUpdateActivityAttributes.ContentState.completed
     OTAUpdateActivityAttributes.ContentState.failed
-}
-
-#Preview("Compact", as: .dynamicIsland(.compact), using: previewOTAAttributes) {
-    OTAUpdateActivityWidget()
-} contentStates: {
-    OTAUpdateActivityAttributes.ContentState.singleDevice
-    OTAUpdateActivityAttributes.ContentState.fiveDevices
-    OTAUpdateActivityAttributes.ContentState.completed
 }
 
 #Preview("Expanded", as: .dynamicIsland(.expanded), using: previewOTAAttributes) {
