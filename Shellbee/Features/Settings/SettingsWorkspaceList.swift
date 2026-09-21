@@ -50,7 +50,7 @@ struct SettingsWorkspaceList: View {
         Section("Application") {
             routeRow(.appGeneral, title: "General", systemImage: "gearshape.fill", color: .gray)
             routeRow(.liveActivities, title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
-            routeRow(.notifications, title: "Notifications", systemImage: "bell.badge.fill", color: .red)
+            routeRow(.notifications, title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
             routeRow(.deviceLibrary, title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
             routeRow(.about, title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             if developerModeEnabled {

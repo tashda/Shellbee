@@ -167,8 +167,6 @@ struct SettingsView: View {
             }
         } header: {
             Text("Tools")
-        } footer: {
-            Text("Logs from every connected bridge are merged in one place.")
         }
 
         applicationSection
@@ -406,7 +404,7 @@ struct SettingsView: View {
                 settingsLabel(title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
             }
             NavigationLink { AppNotificationSettingsView() } label: {
-                settingsLabel(title: "Notifications", systemImage: "bell.badge.fill", color: .red)
+                settingsLabel(title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
             }
             NavigationLink {
                 settingsDetailDestination {
