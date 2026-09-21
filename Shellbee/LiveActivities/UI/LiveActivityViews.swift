@@ -1,51 +1,5 @@
-import ActivityKit
 import SwiftUI
 import WidgetKit
-
-// Every Shellbee Live Activity follows one blueprint: a tinted glyph, a title
-// and subtitle, and one large live value, on a glass gradient card. Each
-// widget only declares a `LiveActivityLayout`; the views below render it for
-// the Lock Screen and every Dynamic Island presentation.
-
-/// The single live value an activity is about.
-enum LiveActivityValue {
-    case countdown(ClosedRange<Date>)
-    case text(String)
-    case symbol(String)
-}
-
-/// What the minimal island shows: a ring when there's measurable progress.
-enum LiveActivityGauge {
-    case none
-    case progress(Double)
-    case countdown(ClosedRange<Date>)
-}
-
-enum LiveActivityPalette {
-    static let pairing = Color(red: 0.35, green: 0.91, blue: 0.70)
-    static let update = Color(red: 0.40, green: 0.70, blue: 1.00)
-    static let scan = Color(red: 0.62, green: 0.56, blue: 1.00)
-    static let working = Color.orange
-    static let success = Color.green
-    static let failure = Color.red
-    static let neutral = Color.white
-}
-
-struct LiveActivityLayout {
-    /// The activity's fixed identity icon, shown on the left of the compact
-    /// island. It never changes with state: status belongs to `value`, on the
-    /// right, so the two sides can never show the same icon.
-    let symbol: String
-    let tint: Color
-    /// Optional context above the title, such as which bridge this is about.
-    var eyebrow: String? = nil
-    let title: String
-    var subtitle: String? = nil
-    /// Tints the subtitle when it reports a problem; otherwise it's muted.
-    var subtitleTint: Color? = nil
-    let value: LiveActivityValue
-    var gauge: LiveActivityGauge = .none
-}
 
 // MARK: - Lock Screen
 
@@ -54,7 +8,7 @@ struct LiveActivityLockScreen: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
-            LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityBadge)
+            LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityBadge, pulses: layout.isBusy)
 
             LiveActivityTitle(layout: layout, titleFont: .headline, subtitleFont: .subheadline)
 
@@ -85,33 +39,89 @@ private struct LiveActivityGlassGradient: View {
     }
 }
 
-// MARK: - Dynamic Island
+// MARK: - Dynamic Island regions
 
-extension DynamicIsland {
-    static func blueprint(_ layout: LiveActivityLayout) -> DynamicIsland {
-        DynamicIsland {
-            DynamicIslandExpandedRegion(.leading) {
-                LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityIslandBadge)
-                    .padding(.leading, DesignTokens.Spacing.xs)
-            }
-            DynamicIslandExpandedRegion(.trailing) {
-                LiveActivityValueView(value: layout.value, tint: layout.tint, font: .title2.weight(.semibold))
-                    .padding(.trailing, DesignTokens.Spacing.xs)
-                    .frame(maxHeight: .infinity)
-            }
-            DynamicIslandExpandedRegion(.bottom) {
-                LiveActivityTitle(layout: layout, titleFont: .subheadline.weight(.semibold), subtitleFont: .caption)
-                    .padding(.horizontal, DesignTokens.Spacing.xs)
-                    .padding(.top, DesignTokens.Spacing.xs)
-            }
-        } compactLeading: {
-            LiveActivityGlyph(symbol: layout.symbol, tint: layout.tint)
-        } compactTrailing: {
-            LiveActivityValueView(value: layout.value, tint: layout.tint, font: .subheadline.weight(.semibold))
-        } minimal: {
-            LiveActivityMinimal(layout: layout)
+// Each region of the island is its own view so the widget's `DynamicIsland`
+// and the in-app gallery compose exactly the same content.
+
+struct LiveActivityIslandLeading: View {
+    let layout: LiveActivityLayout
+
+    var body: some View {
+        LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityIslandBadge, pulses: layout.isBusy)
+            .padding(.leading, DesignTokens.Spacing.xs)
+            .frame(maxHeight: .infinity)
+    }
+}
+
+struct LiveActivityIslandTrailing: View {
+    let layout: LiveActivityLayout
+
+    var body: some View {
+        LiveActivityValueView(value: layout.value, tint: layout.tint, font: DesignTokens.Typography.liveActivityValue)
+            .padding(.trailing, DesignTokens.Spacing.xs)
+            .frame(maxHeight: .infinity)
+    }
+}
+
+struct LiveActivityIslandBottom: View {
+    let layout: LiveActivityLayout
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            LiveActivityTitle(layout: layout, titleFont: .headline, subtitleFont: .subheadline)
+            LiveActivityProgressLine(gauge: layout.gauge, tint: layout.tint)
         }
-        .keylineTint(layout.tint)
+        .padding(.horizontal, DesignTokens.Spacing.xs)
+        .padding(.top, DesignTokens.Spacing.sm)
+    }
+}
+
+struct LiveActivityCompactLeading: View {
+    let layout: LiveActivityLayout
+
+    var body: some View {
+        LiveActivityGlyph(symbol: layout.symbol, tint: layout.tint, pulses: layout.isBusy)
+    }
+}
+
+struct LiveActivityCompactTrailing: View {
+    let layout: LiveActivityLayout
+
+    var body: some View {
+        LiveActivityValueView(
+            value: layout.compactValue ?? layout.value,
+            tint: layout.compactTint ?? layout.tint,
+            font: .subheadline.weight(.semibold),
+            textColor: layout.compactTint ?? .white
+        )
+        .contentTransition(.numericText())
+    }
+}
+
+/// A thin line that drains with the activity's countdown or fills with its
+/// progress. Nothing is drawn when there is nothing to measure.
+struct LiveActivityProgressLine: View {
+    let gauge: LiveActivityGauge
+    let tint: Color
+
+    var body: some View {
+        switch gauge {
+        case .none:
+            EmptyView()
+        case .progress(let fraction):
+            ProgressView(value: min(max(fraction, 0), 1))
+                .progressViewStyle(.linear)
+                .tint(tint)
+        case .countdown(let range):
+            ProgressView(timerInterval: range, countsDown: true) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            }
+            .progressViewStyle(.linear)
+            .tint(tint)
+        }
     }
 }
 
@@ -120,7 +130,7 @@ extension DynamicIsland {
 /// Every line stays on one line and shrinks to fit instead of truncating.
 /// Wrapping is not an option: the system caps the card's height, and extra
 /// lines push the content off-centre.
-private struct LiveActivityTitle: View {
+struct LiveActivityTitle: View {
     let layout: LiveActivityLayout
     let titleFont: Font
     let subtitleFont: Font
@@ -134,11 +144,11 @@ private struct LiveActivityTitle: View {
             }
             line(layout.title)
                 .font(titleFont)
-                .foregroundStyle(.white)
+                .foregroundStyle(layout.titleTint ?? .white)
             if let subtitle = layout.subtitle, !subtitle.isEmpty {
                 line(subtitle)
                     .font(subtitleFont)
-                    .foregroundStyle(layout.subtitleTint ?? .white.opacity(0.65))
+                    .foregroundStyle(.white.opacity(0.65))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -151,34 +161,38 @@ private struct LiveActivityTitle: View {
     }
 }
 
-private struct LiveActivityBadge: View {
+struct LiveActivityBadge: View {
     let symbol: String
     let tint: Color
     let size: CGFloat
+    var pulses = false
 
     var body: some View {
         Image(liveActivitySymbol: symbol)
             .font(.system(size: size * 0.44, weight: .semibold))
             .foregroundStyle(tint)
+            .symbolEffect(.pulse, options: .repeating, isActive: pulses)
             .frame(width: size, height: size)
             .background(tint.opacity(0.2), in: Circle())
             .accessibilityHidden(true)
     }
 }
 
-private struct LiveActivityGlyph: View {
+struct LiveActivityGlyph: View {
     let symbol: String
     let tint: Color
+    var pulses = false
 
     var body: some View {
         Image(liveActivitySymbol: symbol)
             .font(.system(size: DesignTokens.Size.liveActivityCompactSymbol, weight: .semibold))
             .foregroundStyle(tint)
+            .symbolEffect(.pulse, options: .repeating, isActive: pulses)
             .accessibilityHidden(true)
     }
 }
 
-private struct LiveActivityMinimal: View {
+struct LiveActivityMinimal: View {
     let layout: LiveActivityLayout
 
     var body: some View {
@@ -207,10 +221,11 @@ private struct LiveActivityMinimal: View {
 /// `Text(timerInterval:)` reserves room for the widest possible timer and
 /// stretches the Dynamic Island, so countdowns are drawn over a hidden
 /// placeholder of the right width instead.
-private struct LiveActivityValueView: View {
+struct LiveActivityValueView: View {
     let value: LiveActivityValue
     let tint: Color
     let font: Font
+    var textColor: Color = .white
 
     var body: some View {
         switch value {
@@ -218,7 +233,7 @@ private struct LiveActivityValueView: View {
             Text(text)
                 .font(font)
                 .monospacedDigit()
-                .foregroundStyle(.white)
+                .foregroundStyle(textColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         case .symbol(let name):
@@ -249,7 +264,7 @@ private struct LiveActivityValueView: View {
     }
 }
 
-private extension Image {
+extension Image {
     /// Activity symbols may be SF Symbols or the app's own symbol sets, which
     /// the widget catalog carries under the same `shellbee.` prefix.
     init(liveActivitySymbol name: String) {

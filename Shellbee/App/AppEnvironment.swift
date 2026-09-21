@@ -330,6 +330,12 @@ final class AppEnvironment {
         PermitJoinLiveActivityCoordinator.shared.clearAll()
         BridgeOperationLiveActivityCoordinator.shared.clearAll()
         BridgeDiscoveryLiveActivityCoordinator.shared.clearAll()
+        Task { await RetiredLiveActivities.endAll() }
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["SHELLBEE_LIVE_ACTIVITY_PREVIEW"] == "permitJoin" {
+            PermitJoinActivityPreview.run()
+        }
+        #endif
         LiveActivityBackgroundGrace.install { [weak self] in
             self?.registry.orderedSessions.forEach { $0.store.forgetUnfollowableInterviews() }
         }
