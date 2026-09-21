@@ -45,9 +45,8 @@ final class ConnectionSessionController {
     private var sessionTask: Task<Void, Never>?
     private var pathObserverTask: Task<Void, Never>?
 
-    // User-configurable preference keys read via UserDefaults (mirrored in
-     // AppGeneralView via @AppStorage). Defaults: 3 reconnect attempts, both
-     // live activities on.
+    // User-configurable preference keys read via UserDefaults. Defaults: 3
+    // reconnect attempts, both live activities on.
     static let maxReconnectAttemptsKey = "connectionMaxReconnectAttempts"
     static let permitJoinLiveActivityEnabledKey = "permitJoinLiveActivityEnabled"
     static let touchlinkLiveActivityEnabledKey = "touchlinkLiveActivityEnabled"
