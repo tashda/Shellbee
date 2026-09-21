@@ -397,31 +397,19 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var applicationSections: some View {
-        Section("Display") {
+        Section("Application") {
+            NavigationLink { AppGeneralView() } label: {
+                settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
+            }
             NavigationLink { AppAppearanceSettingsView() } label: {
                 settingsLabel(title: "Appearance", systemImage: "paintbrush.fill", color: .blue)
             }
-            NavigationLink { HomeCardsSettingsView() } label: {
-                settingsLabel(title: "Home Cards", systemImage: "rectangle.grid.2x2.fill", color: .purple)
-            }
-        }
-
-        Section("Activity") {
             NavigationLink { AppNotificationSettingsView() } label: {
                 settingsLabel(title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
             }
             NavigationLink { AppLiveActivitiesView() } label: {
                 settingsLabel(title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
             }
-        }
-
-        Section("Application") {
-            NavigationLink { AppGeneralView() } label: {
-                settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
-            }
-        }
-
-        Section("Support") {
             NavigationLink {
                 settingsDetailDestination {
                     AboutView()

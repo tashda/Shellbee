@@ -16,7 +16,6 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
     case touchlink(UUID)
     case backup(UUID)
     case appearance
-    case homeCards
     case appGeneral
     case activityCenter
     case liveActivities
@@ -34,7 +33,7 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
              .mqtt(let id), .adapter(let id), .logOutput(let id), .homeAssistant(let id),
              .availability(let id), .ota(let id), .health(let id), .network(let id),
              .deviceFiltering(let id), .touchlink(let id), .backup(let id): id
-        case .appearance, .homeCards, .appGeneral, .activityCenter, .liveActivities,
+        case .appearance, .appGeneral, .activityCenter, .liveActivities,
              .deviceLibrary, .about, .developer: nil
         }
     }
@@ -65,7 +64,6 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
         case .touchlink: "touchlink"
         case .backup: "backup"
         case .appearance: "appearance"
-        case .homeCards: "home-cards"
         case .appGeneral: "app-general"
         case .activityCenter: "activity-center"
         case .liveActivities: "live-activities"

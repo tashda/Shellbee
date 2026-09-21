@@ -6,6 +6,12 @@ struct AppAppearanceSettingsView: View {
 
     var body: some View {
         Form {
+            Section("Home") {
+                NavigationLink { HomeCardsSettingsView() } label: {
+                    Label("Home Cards", systemImage: "rectangle.grid.2x2.fill")
+                }
+            }
+
             Section {
                 Picker("Theme", selection: $appearanceMode) {
                     Text("System").tag(AppearanceMode.system)
