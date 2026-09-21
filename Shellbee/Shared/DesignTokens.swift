@@ -458,6 +458,7 @@ nonisolated enum DesignTokens {
         // MARK: Misc one-offs
         static let sliderEndLabel: Font = .system(size: 9, weight: .medium)
         static let permitJoinCountdown: Font = .system(size: 64, weight: .thin)
+        static let permitJoinActiveCountdown: Font = .system(size: 48, weight: .bold, design: .rounded)
         static let permitJoinSymbol: Font = .system(size: 48)
         // Banner level glyph — shared by InAppNotificationBanner and
         // FastTrackBanner (#36.D resolved 2026-04-29: unified on 15pt).
