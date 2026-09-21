@@ -335,8 +335,10 @@ struct InAppNotificationOverlay: View {
     }
 
     private func openActivity() {
-        autoDismissTask?.cancel()
-        sceneNavigation.selectedTab = .logs
+        // Opening the Activity Center acknowledges this transient surface.
+        // Its underlying log entry remains available in the expanded view.
+        dismissStack()
+        sceneNavigation.isActivityCenterPresented = true
     }
 
     // MARK: - Fast-track lane

@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The persistent Activity surface attached to the iPhone tab bar. New
-/// notifications temporarily take visual precedence; otherwise it offers a
-/// lightweight route into the Activity destination.
+/// The persistent, player-like Activity Center attached to the iPhone tab
+/// bar. New notifications temporarily take visual precedence; both expand
+/// into the same native Activity Center sheet.
 @available(iOS 26.0, *)
 struct ActivityTabBarAccessory: View {
     @Environment(AppEnvironment.self) private var environment
@@ -49,7 +49,7 @@ struct ActivityTabBarAccessory: View {
     }
 
     private func openActivity() {
-        sceneNavigation.selectedTab = .logs
+        sceneNavigation.isActivityCenterPresented = true
     }
 }
 
