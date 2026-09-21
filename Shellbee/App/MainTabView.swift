@@ -28,11 +28,7 @@ struct MainTabView: View {
 
     var body: some View {
         tabContent
-        .overlay(alignment: .bottom) {
-            InAppNotificationOverlay()
-                .safeAreaPadding(.bottom)
-                .padding(.bottom, DesignTokens.Size.mainTabBarInset)
-        }
+        .modifier(MainTabNotificationPresentation())
         .sheet(item: Binding(
             get: { sceneNavigation.pendingLogSheet },
             set: { sceneNavigation.pendingLogSheet = $0 }
@@ -154,6 +150,30 @@ struct MainTabView: View {
         )
     }
 
+}
+
+/// Uses the system-owned accessory host on iOS 26 and later, so notification
+/// presentation follows the tab bar's Liquid Glass geometry and animations.
+/// Earlier releases retain the established floating presentation.
+private struct MainTabNotificationPresentation: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                // Keep the bar expanded for now. The current notification
+                // interaction includes expansion, paging, and actions; those
+                // need a distinct compact design before they can move inline.
+                .tabBarMinimizeBehavior(.never)
+                .tabViewBottomAccessory {
+                    InAppNotificationOverlay(presentation: .tabBarAccessory)
+                }
+        } else {
+            content.overlay(alignment: .bottom) {
+                InAppNotificationOverlay()
+                    .safeAreaPadding(.bottom)
+                    .padding(.bottom, DesignTokens.Size.mainTabBarInset)
+            }
+        }
+    }
 }
 
 /// Shows the search tab as the separate search button at the end of the tab

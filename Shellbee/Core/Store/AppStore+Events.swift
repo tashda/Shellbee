@@ -22,10 +22,14 @@ extension AppStore {
                     network: info.network,
                     logLevel: info.logLevel,
                     permitJoin: true,
-                    // Keep the known window, but never let an unknown one
-                    // (from a message without a deadline) mask the real one.
+                    // A reported `permit_join_end` is absolute and always
+                    // wins (re-opening while open extends the window). An
+                    // estimate from a duration keeps the known deadline.
                     permitJoinTimeout: previous.permitJoinTimeout ?? info.permitJoinTimeout,
-                    permitJoinEnd: previous.permitJoinEnd ?? info.permitJoinEnd,
+                    permitJoinEnd: info.permitJoinEndReported
+                        ? info.permitJoinEnd
+                        : previous.permitJoinEnd ?? info.permitJoinEnd,
+                    permitJoinEndReported: info.permitJoinEndReported || previous.permitJoinEndReported,
                     permitJoinTarget: previous.permitJoinTarget ?? info.permitJoinTarget,
                     restartRequired: info.restartRequired,
                     config: info.config
@@ -141,6 +145,7 @@ extension AppStore {
                     recordFirstSeen(ieee: ieee, overwrite: true)
                     if bridgeInfo?.permitJoin == true {
                         permitJoinJoinedCount += 1
+                        permitJoinInterviewFailure = nil
                         syncPermitJoinLiveActivity()
                     }
                 case "device_leave":
@@ -186,18 +191,7 @@ extension AppStore {
                         }
                     }
 
-                    Task { @MainActor in
-                        switch status {
-                        case "started":
-                            InterviewLiveActivityCoordinator.shared.start(deviceName: name, ieeeAddress: ieee)
-                        case "successful":
-                            InterviewLiveActivityCoordinator.shared.finish(deviceName: name, ieeeAddress: ieee, success: true)
-                        case "failed":
-                            InterviewLiveActivityCoordinator.shared.finish(deviceName: name, ieeeAddress: ieee, success: false)
-                        default:
-                            break
-                        }
-                    }
+                    if let status { trackPermitJoinInterview(name: name, status: status) }
                 default:
                     break
                 }

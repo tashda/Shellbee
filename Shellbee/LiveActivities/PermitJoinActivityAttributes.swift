@@ -10,6 +10,12 @@ nonisolated struct PermitJoinActivityAttributes: ActivityAttributes, Sendable {
         let startedAt: Date
         let endsAt: Date
         let targetName: String?
+        /// Devices whose interview is running, oldest first. Interviews happen
+        /// inside a pairing window, so they're shown here rather than as a
+        /// separate card stacked under this one.
+        var interviewing: [String] = []
+        /// The most recent failed interview, until the next join or interview.
+        var interviewFailure: String? = nil
     }
 
     let identifier: String

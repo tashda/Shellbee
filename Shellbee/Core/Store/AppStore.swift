@@ -73,6 +73,10 @@ final class AppStore {
     /// Last permit-join state seen by `syncPermitJoinLiveActivity`, used to
     /// detect a new pairing window however it was opened.
     var permitJoinWasOpen = false
+    /// Interviews running in the current pairing window, oldest first.
+    var permitJoinInterviewing: [String] = []
+    /// Last failed interview in the current window, cleared by the next event.
+    var permitJoinInterviewFailure: String?
     /// Friendly names of devices currently running an Identify (Zigbee
     /// Identify cluster). The action is fire-and-forget, so the row clears
     /// itself on a short timer rather than waiting for a response.
@@ -142,6 +146,8 @@ final class AppStore {
         touchlinkResetInProgress = false
         permitJoinJoinedCount = 0
         permitJoinWasOpen = false
+        permitJoinInterviewing = []
+        permitJoinInterviewFailure = nil
         identifyInProgress = []
         networkMapIsRefreshing = false
         networkMapRefreshPhase = .idle

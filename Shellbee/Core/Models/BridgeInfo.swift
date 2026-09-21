@@ -9,6 +9,10 @@ struct BridgeInfo: Codable, Sendable, Equatable {
     let permitJoin: Bool
     let permitJoinTimeout: Int?
     let permitJoinEnd: Int?
+    /// Whether `permitJoinEnd` is the bridge's own absolute deadline
+    /// (`permit_join_end`, Z2M 2.x) rather than one estimated here from a
+    /// duration. A reported deadline is authoritative; an estimate is not.
+    let permitJoinEndReported: Bool
     /// Friendly name of the router (or coordinator) the current permit-join
     /// session is scoped to. `nil` when the network is open via all devices.
     /// Z2M doesn't include this in `bridge/info` — we capture it from the
@@ -23,6 +27,7 @@ struct BridgeInfo: Codable, Sendable, Equatable {
         case logLevel = "log_level"
         case permitJoin = "permit_join"
         case permitJoinTimeout = "permit_join_timeout"
+        case permitJoinEnd = "permit_join_end"
         case restartRequired = "restart_required"
     }
     
@@ -39,16 +44,22 @@ struct BridgeInfo: Codable, Sendable, Equatable {
         restartRequired = try container.decode(Bool.self, forKey: .restartRequired)
         config = try container.decodeIfPresent(BridgeConfig.self, forKey: .config)
         
-        // Calculate permitJoinEnd if timeout is present
-        if let timeout = permitJoinTimeout {
+        // Z2M 2.x reports the absolute deadline. Older bridges only give a
+        // duration, from which the deadline can only be estimated.
+        if let end = try container.decodeIfPresent(Int.self, forKey: .permitJoinEnd) {
+            permitJoinEnd = end
+            permitJoinEndReported = true
+        } else if let timeout = permitJoinTimeout {
             permitJoinEnd = Int(Date().timeIntervalSince1970 * 1000) + (timeout * 1000)
+            permitJoinEndReported = false
         } else {
             permitJoinEnd = nil
+            permitJoinEndReported = false
         }
     }
     
     // Also need an explicit memberwise init for Previews and AppStore updates
-    init(version: String, commit: String?, coordinator: CoordinatorInfo, network: NetworkInfo?, logLevel: String, permitJoin: Bool, permitJoinTimeout: Int?, permitJoinEnd: Int?, permitJoinTarget: String? = nil, restartRequired: Bool, config: BridgeConfig?) {
+    init(version: String, commit: String?, coordinator: CoordinatorInfo, network: NetworkInfo?, logLevel: String, permitJoin: Bool, permitJoinTimeout: Int?, permitJoinEnd: Int?, permitJoinEndReported: Bool = false, permitJoinTarget: String? = nil, restartRequired: Bool, config: BridgeConfig?) {
         self.version = version
         self.commit = commit
         self.coordinator = coordinator
@@ -57,6 +68,7 @@ struct BridgeInfo: Codable, Sendable, Equatable {
         self.permitJoin = permitJoin
         self.permitJoinTimeout = permitJoinTimeout
         self.permitJoinEnd = permitJoinEnd
+        self.permitJoinEndReported = permitJoinEndReported
         self.permitJoinTarget = permitJoinTarget
         self.restartRequired = restartRequired
         self.config = config
@@ -72,6 +84,7 @@ struct BridgeInfo: Codable, Sendable, Equatable {
             permitJoin: permitJoin,
             permitJoinTimeout: permitJoinTimeout,
             permitJoinEnd: permitJoinEnd,
+            permitJoinEndReported: permitJoinEndReported,
             permitJoinTarget: permitJoinTarget,
             restartRequired: restartRequired ?? self.restartRequired,
             config: config ?? self.config

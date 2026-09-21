@@ -54,10 +54,9 @@ def _is_client_command(topic: str) -> bool:
     )
 
 
-def _is_one_shot(full_topic: str) -> bool:
-    return any(part in full_topic for part in (
-        "/bridge/event", "/bridge/response/", "/bridge/logging",
-    ))
+def _is_one_shot(topic: str) -> bool:
+    """`topic` is relative to BASE_TOPIC, e.g. `bridge/event`."""
+    return topic in ("bridge/event", "bridge/logging") or topic.startswith("bridge/response/")
 
 
 def _make_envelope(full_topic: str, payload_bytes: bytes) -> str | None:

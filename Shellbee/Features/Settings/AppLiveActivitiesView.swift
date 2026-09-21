@@ -6,7 +6,6 @@ struct AppLiveActivitiesView: View {
     @AppStorage(ConnectionSessionController.permitJoinLiveActivityEnabledKey) private var permitJoinLiveActivityEnabled: Bool = true
     @AppStorage(ConnectionSessionController.touchlinkLiveActivityEnabledKey) private var touchlinkLiveActivityEnabled: Bool = true
     @AppStorage(ConnectionSessionController.bridgeDiscoveryLiveActivityEnabledKey) private var bridgeDiscoveryLiveActivityEnabled: Bool = true
-    @AppStorage(ConnectionSessionController.interviewLiveActivityEnabledKey) private var interviewLiveActivityEnabled: Bool = true
     @AppStorage(ConnectionSessionController.otaLiveActivityEnabledKey) private var otaLiveActivityEnabled: Bool = true
     @AppStorage(ConnectionSessionController.otaScheduledLiveActivityEnabledKey) private var otaScheduledLiveActivityEnabled: Bool = false
 
@@ -17,7 +16,6 @@ struct AppLiveActivitiesView: View {
                 Toggle("Permit Join", isOn: $permitJoinLiveActivityEnabled)
                 Toggle("Touchlink", isOn: $touchlinkLiveActivityEnabled)
                 Toggle("Bridge Discovery", isOn: $bridgeDiscoveryLiveActivityEnabled)
-                Toggle("Device Interviews", isOn: $interviewLiveActivityEnabled)
                 Toggle("OTA Updates", isOn: $otaLiveActivityEnabled)
                 Toggle("Scheduled OTAs", isOn: $otaScheduledLiveActivityEnabled)
                     .disabled(!otaLiveActivityEnabled)
@@ -37,9 +35,6 @@ struct AppLiveActivitiesView: View {
             environment.refreshLiveActivityPreferences()
         }
         .onChange(of: bridgeDiscoveryLiveActivityEnabled) { _, _ in
-            environment.refreshLiveActivityPreferences()
-        }
-        .onChange(of: interviewLiveActivityEnabled) { _, _ in
             environment.refreshLiveActivityPreferences()
         }
         .onChange(of: otaLiveActivityEnabled) { _, _ in

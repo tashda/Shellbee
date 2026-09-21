@@ -156,9 +156,6 @@ final class AppEnvironment {
         if !OTAUpdateLiveActivityCoordinator.isEnabled {
             OTAUpdateLiveActivityCoordinator.shared.clearAll()
         }
-        if !InterviewLiveActivityCoordinator.isEnabled {
-            InterviewLiveActivityCoordinator.shared.clearAll()
-        }
         if !BridgeOperationLiveActivityCoordinator.isEnabled {
             BridgeOperationLiveActivityCoordinator.shared.clearAll()
         }
@@ -330,11 +327,12 @@ final class AppEnvironment {
 
         ConnectionLiveActivityCoordinator.shared.clearAll()
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
-        InterviewLiveActivityCoordinator.shared.clearAll()
         PermitJoinLiveActivityCoordinator.shared.clearAll()
         BridgeOperationLiveActivityCoordinator.shared.clearAll()
         BridgeDiscoveryLiveActivityCoordinator.shared.clearAll()
-        LiveActivityBackgroundGrace.install()
+        LiveActivityBackgroundGrace.install { [weak self] in
+            self?.registry.orderedSessions.forEach { $0.store.forgetUnfollowableInterviews() }
+        }
         await Task.yield()
 
         let env = ProcessInfo.processInfo.environment

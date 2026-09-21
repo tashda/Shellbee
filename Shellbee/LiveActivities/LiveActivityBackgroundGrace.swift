@@ -14,8 +14,12 @@ enum LiveActivityBackgroundGrace {
     private static var task: UIBackgroundTaskIdentifier = .invalid
     private static var watcher: Task<Void, Never>?
     private static var observers: [NSObjectProtocol] = []
+    /// Runs just before the grace time runs out, so cards can drop anything
+    /// they won't be able to keep current once the app is suspended.
+    private static var willSuspend: @MainActor () -> Void = {}
 
-    static func install() {
+    static func install(willSuspend: @escaping @MainActor () -> Void) {
+        self.willSuspend = willSuspend
         guard observers.isEmpty else { return }
         let center = NotificationCenter.default
         observers = [
@@ -36,6 +40,12 @@ enum LiveActivityBackgroundGrace {
         // Give the time back as soon as nothing is left to keep current.
         watcher = Task { @MainActor in
             while !Task.isCancelled, hasActivities {
+                if UIApplication.shared.backgroundTimeRemaining < DesignTokens.Duration.liveActivityGraceWrapUp {
+                    willSuspend()
+                    // Give the final card update time to reach the system.
+                    try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivityGracePoll))
+                    break
+                }
                 try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivityGracePoll))
             }
             end()
@@ -53,7 +63,6 @@ enum LiveActivityBackgroundGrace {
     private static var hasActivities: Bool {
         isShowing(PermitJoinActivityAttributes.self)
             || isShowing(OTAUpdateActivityAttributes.self)
-            || isShowing(InterviewActivityAttributes.self)
             || isShowing(BridgeOperationActivityAttributes.self)
     }
 

@@ -17,6 +17,9 @@ final class PermitJoinLiveActivityCoordinator {
     private var tracked: [String: PermitJoinActivityAttributes] = [:]
     private var states: [String: PermitJoinActivityAttributes.ContentState] = [:]
     private var expiryTasks: [String: Task<Void, Never>] = [:]
+    /// Card updates run one after another. Separate tasks can finish out of
+    /// order, letting an older state land after a newer one.
+    private var lastDelivery: Task<Void, Never>?
 
     private init() {}
 
@@ -30,7 +33,9 @@ final class PermitJoinLiveActivityCoordinator {
         isOpen: Bool,
         endMilliseconds: Int?,
         targetName: String?,
-        joinedCount: Int
+        joinedCount: Int,
+        interviewing: [String] = [],
+        interviewFailure: String? = nil
     ) {
         guard Self.isEnabled else {
             clear(bridgeID: bridgeID)
@@ -66,7 +71,9 @@ final class PermitJoinLiveActivityCoordinator {
             // expand on Home Screen.
             startedAt: previous?.startedAt ?? .now,
             endsAt: endsAt,
-            targetName: targetName
+            targetName: targetName,
+            interviewing: interviewing,
+            interviewFailure: interviewFailure
         )
         // A new window (different deadline) is presented fresh: the previous
         // card may already have been ended or swiped away, and an update
@@ -84,7 +91,9 @@ final class PermitJoinLiveActivityCoordinator {
             self.clear(bridgeID: bridgeID)
         }
 
-        Task { [attributes] in
+        let previousDelivery = lastDelivery
+        lastDelivery = Task { [attributes, controller] in
+            await previousDelivery?.value
             if alreadyVisible {
                 await controller.update(
                     attributes: attributes,
@@ -120,7 +129,9 @@ final class PermitJoinLiveActivityCoordinator {
             endsAt: .now,
             targetName: nil
         )
-        Task {
+        let previousDelivery = lastDelivery
+        lastDelivery = Task { [controller] in
+            await previousDelivery?.value
             await controller.cancel(attributes: attributes, with: state)
         }
     }
