@@ -24,9 +24,6 @@ final class LogsViewModel {
     /// rows breathe; the toggle in the filter menu lets diagnostic users
     /// opt back in.
     var showLinkQualityChanges = false
-    /// Category chosen in the Activity feed's category bar. Kept out of
-    /// `hasActiveFilter` because the bar itself shows the selection.
-    var scope: ActivityScope = .all
 
     var hasActiveFilter: Bool {
         selectedLevel != nil || selectedCategory != nil || selectedNamespace != nil
@@ -131,6 +128,5 @@ final class LogsViewModel {
         entryIDFilter = nil
         bridgeFilter = nil
         searchText = ""
-        scope = .all
     }
 }

@@ -13,8 +13,6 @@ struct ActivityFeedView: View {
         let sections = feedSections()
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DesignTokens.ActivityFeed.cardSpacing) {
-                ActivityCategoryBar(selection: $viewModel.scope)
-                    .padding(.bottom, DesignTokens.Spacing.sm)
                 ForEach(sections) { section in
                     if sections.count > 1 {
                         sectionHeader(section.kind)
@@ -116,16 +114,11 @@ struct ActivityFeedView: View {
                 )
             } else if !viewModel.searchText.isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
-            } else if viewModel.scope == .all {
+            } else {
                 ContentUnavailableView(
                     "No Matching Activity",
                     systemImage: "line.3.horizontal.decrease.circle",
                     description: Text("Try changing your filters.")
-                )
-            } else {
-                ContentUnavailableView(
-                    "No \(viewModel.scope.title) Activity",
-                    systemImage: viewModel.scope.systemImage
                 )
             }
         }
@@ -139,7 +132,6 @@ struct ActivityFeedView: View {
         }
         let entries = sessions.flatMap { session in
             viewModel.filteredEntries(store: session.store)
-                .filter(viewModel.scope.matches)
                 .map { BridgeBoundLogEntry(bridgeID: session.bridgeID, bridgeName: session.displayName, entry: $0) }
         }
         .sorted { $0.entry.timestamp > $1.entry.timestamp }

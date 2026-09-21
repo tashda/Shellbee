@@ -6,8 +6,28 @@ struct ActivityCenterSheet: View {
     let transitionNamespace: Namespace.ID?
     let workspace: LogsWorkspaceState
 
+    @Environment(\.dismiss) private var dismiss
+    @State private var topSafeArea: CGFloat = 0
+
     var body: some View {
         activityContent
+            .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topSafeArea = $0 }
+            .overlay(alignment: .top) { grabber }
+    }
+
+    /// Sheets show a grabber when they can be dragged away; this full-screen
+    /// presentation can too, so it gets the same cue just above the toolbar.
+    private var grabber: some View {
+        let tokens = DesignTokens.ActivityFeed.self
+        return Capsule()
+            .fill(.tertiary)
+            .frame(width: tokens.grabberWidth, height: tokens.grabberHeight)
+            .padding(.top, max(topSafeArea - tokens.grabberHeight - tokens.grabberGap, tokens.grabberMinimumTop))
+            .ignoresSafeArea(edges: .top)
+            .accessibilityElement()
+            .accessibilityLabel("Close Activity")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { dismiss() }
     }
 
     @ViewBuilder
