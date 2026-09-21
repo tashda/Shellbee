@@ -20,6 +20,64 @@ enum LogRowIconography {
         case symbol(name: String, tint: Color)
     }
 
+    /// How loudly a symbol avatar speaks. Device and group thumbnails are
+    /// always drawn as-is; emphasis only applies to symbols.
+    enum Emphasis {
+        /// Neutral glyph, no fill: background noise such as signal drift.
+        case quiet
+        /// Tinted glyph on a soft tinted circle: ordinary events.
+        case standard
+        /// White glyph on a solid tint: failures that need a look.
+        case loud
+    }
+
+    /// What happened, drawn as a small pip on the avatar so severity never
+    /// relies on colour alone.
+    enum Outcome {
+        case success
+        case warning
+        case failure
+
+        var systemImage: String {
+            switch self {
+            case .success: "checkmark"
+            case .warning: "exclamationmark"
+            case .failure: "xmark"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .success: .green
+            case .warning: .orange
+            case .failure: .red
+            }
+        }
+    }
+
+    static func outcome(for entry: LogEntry) -> Outcome? {
+        switch entry.level {
+        case .error: return .failure
+        case .warning: return .warning
+        case .info, .debug: break
+        }
+        if let isSuccess = entry.bridgeTopicDisplay?.isSuccess {
+            return isSuccess ? .success : .failure
+        }
+        if entry.category == .interview {
+            let message = entry.message.lowercased()
+            if message.contains("fail") { return .failure }
+            if message.contains("success") { return .success }
+        }
+        return nil
+    }
+
+    static func emphasis(for entry: LogEntry) -> Emphasis {
+        if outcome(for: entry) == .failure { return .loud }
+        if isLinkQualityOnly(entry) || entry.level == .debug { return .quiet }
+        return .standard
+    }
+
     /// Pick the right visual for `entry` against `store`'s device/group
     /// registry. `store` is optional for previews and contexts where the
     /// scope isn't available — symbol fallback wins in that case.
@@ -74,7 +132,9 @@ enum LogRowIconography {
 
     // MARK: - Private
 
-    private static func resolveSubject(for entry: LogEntry, in store: AppStore) -> Visual? {
+    /// The device or group an entry is about, when `store` knows it by
+    /// name. Used for the row thumbnail and to stack Activity by subject.
+    static func subjectName(for entry: LogEntry, in store: AppStore) -> String? {
         let candidate: String?
         if let ctx = entry.context, !ctx.devices.isEmpty {
             candidate = ctx.devices.first?.friendlyName
@@ -85,7 +145,13 @@ enum LogRowIconography {
         } else {
             candidate = nil
         }
-        guard let name = candidate else { return nil }
+        guard let name = candidate,
+              store.device(named: name) != nil || store.group(named: name) != nil else { return nil }
+        return name
+    }
+
+    private static func resolveSubject(for entry: LogEntry, in store: AppStore) -> Visual? {
+        guard let name = subjectName(for: entry, in: store) else { return nil }
         if let device = store.device(named: name) {
             return .deviceThumbnail(device)
         }
@@ -125,7 +191,7 @@ enum LogRowIconography {
             // — surfaces failures in the row itself instead of buried in
             // the detail view.
             let isFailure = entry.bridgeTopicDisplay?.isSuccess == false
-            return .symbol(name: "gearshape.fill",
+            return .symbol(name: bridgeActivityGlyph(for: entry),
                            tint: isFailure ? .red : .indigo)
         case .stateChange:
             // State change with no device subject — rare, but render
@@ -142,6 +208,33 @@ enum LogRowIconography {
             case .debug:
                 return .symbol(name: "ladybug.fill", tint: .gray)
             }
+        }
+    }
+
+    /// One glyph per kind of bridge request, so a feed of health checks,
+    /// backups and OTA checks no longer reads as a wall of identical gears.
+    private static func bridgeActivityGlyph(for entry: LogEntry) -> String {
+        guard case .mqttPublish(_, let rawTopic, _) = entry.parsedMessageKind,
+              let range = rawTopic.range(of: "bridge/") else { return "gearshape.fill" }
+        let topic = rawTopic[range.lowerBound...]
+            .replacingOccurrences(of: "bridge/response/", with: "")
+        switch topic {
+        case "bridge/health", "health_check": return "stethoscope"
+        case "info": return "info.circle.fill"
+        case "options", "device/options", "group/options": return "slider.horizontal.3"
+        case "backup": return "externaldrive.fill"
+        case "restart": return "arrow.clockwise"
+        case "networkmap": return "point.3.connected.trianglepath.dotted"
+        case "device/rename", "group/rename": return "pencil"
+        case "device/remove", "group/remove": return "trash.fill"
+        case "device/configure", "device/configure_reporting": return "gearshape.2.fill"
+        case "device/bind", "device/unbind": return "link"
+        case "device/ota_update/check": return "arrow.triangle.2.circlepath"
+        case "group/add", "group/members/add", "group/members/remove": return "rectangle.3.group.fill"
+        default:
+            if topic.hasPrefix("device/ota_update") { return "arrow.down.circle.fill" }
+            if topic.hasPrefix("touchlink") { return "dot.radiowaves.forward" }
+            return "gearshape.fill"
         }
     }
 

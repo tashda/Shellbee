@@ -31,7 +31,7 @@ enum LogLevel: String, CaseIterable, Sendable, Hashable, ChipRepresentable {
     var color: Color {
         switch self {
         case .error: .red
-        case .warning: .yellow
+        case .warning: .orange
         case .info: .blue
         case .debug: .gray
         }
