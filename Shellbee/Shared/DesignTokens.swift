@@ -22,6 +22,7 @@ nonisolated enum DesignTokens {
         static let noteBar: CGFloat = 1.5
         static let liveActivityGalleryIsland: CGFloat = 44
         static let liveActivityStageCard: CGFloat = 24
+        static let liveActivityStageScreen: CGFloat = 62
         static let liveActivityStageIcon: CGFloat = 14
     }
 
@@ -64,6 +65,12 @@ nonisolated enum DesignTokens {
         static let liveActivityStageIslandTop: CGFloat = 11
         static let liveActivityStageIcon: CGFloat = 62
         static let liveActivityStageIconsTop: CGFloat = 80
+        static let liveActivityStageScreenWidth: CGFloat = 402
+        static let liveActivityStageScreenHeight: CGFloat = 874
+        static let liveActivityStageBezel: CGFloat = 10
+        static let liveActivityStageStatusBarGap: CGFloat = 140
+        static let liveActivityStageDeviceTop: CGFloat = 16
+        static let liveActivityStageDeviceBottom: CGFloat = 72
         static let liveActivityStageLockDateTop: CGFloat = 24
         static let liveActivityStageLockCardBottom: CGFloat = 120
         static let liveActivityStageControl: CGFloat = 32
