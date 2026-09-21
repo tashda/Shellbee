@@ -55,6 +55,13 @@ nonisolated enum DesignTokens {
         static let toolbarSymbol: CGFloat = 18
         static let liveActivityBadge: CGFloat = 44
         static let liveActivityIslandBadge: CGFloat = 40
+        static let liveActivityBadgeGlyphScale: CGFloat = 0.72
+        static let liveActivityRing: CGFloat = 52
+        static let liveActivityRingLine: CGFloat = 4
+        static let liveActivityTrackIcon: CGFloat = 26
+        static let liveActivityScoreboardIcon: CGFloat = 36
+        static let liveActivityChunkyBar: CGFloat = 10
+        static let liveActivityChunkyBarScale: CGFloat = 3
         static let liveActivityCompactSymbol: CGFloat = 14
         static let liveActivityMinimalSymbol: CGFloat = 10
         // Developer gallery stand-ins for the system's activity surfaces.
@@ -488,6 +495,7 @@ nonisolated enum DesignTokens {
         static let permitJoinActiveCountdown: Font = .system(size: 48, weight: .bold, design: .rounded)
         static let permitJoinSymbol: Font = .system(size: 48)
         static let liveActivityValue: Font = .system(size: 34, weight: .semibold, design: .rounded)
+        static let liveActivityHeroValue: Font = .system(size: 48, weight: .bold, design: .rounded)
         static let liveActivityStageClock: Font = .system(size: 96, weight: .semibold, design: .rounded)
         // Banner level glyph — shared by InAppNotificationBanner and
         // FastTrackBanner (#36.D resolved 2026-04-29: unified on 15pt).

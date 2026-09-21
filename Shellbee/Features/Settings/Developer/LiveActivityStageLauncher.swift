@@ -22,10 +22,18 @@ enum LiveActivityStageLauncher {
             guard let scene = UIApplication.shared.connectedScenes.first(where: { $0 is UIWindowScene }) as? UIWindowScene else { return }
             let window = UIWindow(windowScene: scene)
             window.windowLevel = .alert
-            window.rootViewController = UIHostingController(rootView: LiveActivityStageView(kind: kind) {
-                LiveActivityStageLauncher.window?.isHidden = true
-                LiveActivityStageLauncher.window = nil
-            })
+            let env = ProcessInfo.processInfo.environment
+            let stage = LiveActivityStageView(
+                kind: kind,
+                onClose: {
+                    LiveActivityStageLauncher.window?.isHidden = true
+                    LiveActivityStageLauncher.window = nil
+                },
+                sampleIndex: env["SHELLBEE_LIVE_ACTIVITY_STAGE_STATE"].flatMap(Int.init) ?? 0,
+                surface: env["SHELLBEE_LIVE_ACTIVITY_STAGE_SURFACE"].flatMap(LiveActivityStageView.Surface.init) ?? .compact,
+                style: env["SHELLBEE_LIVE_ACTIVITY_STAGE_STYLE"].flatMap(LiveActivityStyle.init) ?? .permitJoinDefault
+            )
+            window.rootViewController = UIHostingController(rootView: stage)
             window.makeKeyAndVisible()
             self.window = window
         }

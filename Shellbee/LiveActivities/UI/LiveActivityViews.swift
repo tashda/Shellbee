@@ -7,16 +7,7 @@ struct LiveActivityLockScreen: View {
     let layout: LiveActivityLayout
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityBadge, pulses: layout.isBusy)
-
-            LiveActivityTitle(layout: layout, titleFont: .headline, subtitleFont: .subheadline)
-
-            Spacer(minLength: DesignTokens.Spacing.sm)
-
-            LiveActivityValueView(value: layout.value, tint: layout.tint, font: DesignTokens.Typography.liveActivityValue)
-                .layoutPriority(1)
-        }
+        LiveActivityStyledLockContent(layout: layout)
         .padding(.horizontal, DesignTokens.Spacing.xl)
         .padding(.vertical, DesignTokens.Spacing.lg)
         .foregroundStyle(.white)
@@ -54,7 +45,7 @@ struct LiveActivityIslandLeading: View {
     let layout: LiveActivityLayout
 
     var body: some View {
-        LiveActivityBadge(symbol: layout.symbol, tint: layout.tint, size: DesignTokens.Size.liveActivityIslandBadge, pulses: layout.isBusy)
+        LiveActivityStyledIslandLeading(layout: layout)
             .padding(.leading, DesignTokens.Spacing.xs)
             .frame(maxHeight: .infinity)
     }
@@ -64,7 +55,7 @@ struct LiveActivityIslandTrailing: View {
     let layout: LiveActivityLayout
 
     var body: some View {
-        LiveActivityValueView(value: layout.value, tint: layout.tint, font: DesignTokens.Typography.liveActivityValue)
+        LiveActivityStyledIslandTrailing(layout: layout)
             .padding(.trailing, DesignTokens.Spacing.xs)
             .frame(maxHeight: .infinity)
     }
@@ -74,10 +65,7 @@ struct LiveActivityIslandBottom: View {
     let layout: LiveActivityLayout
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            LiveActivityTitle(layout: layout, titleFont: .headline, subtitleFont: .subheadline)
-            LiveActivityProgressLine(gauge: layout.gauge, tint: layout.tint)
-        }
+        LiveActivityStyledIslandBottom(layout: layout)
         .padding(.horizontal, DesignTokens.Spacing.xs)
         .padding(.top, DesignTokens.Spacing.sm)
     }
@@ -168,6 +156,8 @@ struct LiveActivityTitle: View {
     }
 }
 
+/// The activity's icon on its own, the way Apple's activities show theirs:
+/// no backing shape, just the tinted glyph filling most of its frame.
 struct LiveActivityBadge: View {
     let symbol: String
     let tint: Color
@@ -176,11 +166,10 @@ struct LiveActivityBadge: View {
 
     var body: some View {
         Image(liveActivitySymbol: symbol)
-            .font(.system(size: size * 0.44, weight: .semibold))
+            .font(.system(size: size * DesignTokens.Size.liveActivityBadgeGlyphScale, weight: .semibold))
             .foregroundStyle(tint)
             .symbolEffect(.pulse, options: .repeating, isActive: pulses)
             .frame(width: size, height: size)
-            .background(tint.opacity(0.2), in: Circle())
             .accessibilityHidden(true)
     }
 }
@@ -256,6 +245,7 @@ struct LiveActivityValueView: View {
                     Text(timerInterval: range, countsDown: true, showsHours: range.duration >= 3600)
                         .font(font)
                         .monospacedDigit()
+                        .contentTransition(.numericText(countsDown: true))
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.trailing)
                         .lineLimit(1)
