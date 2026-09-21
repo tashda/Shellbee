@@ -66,3 +66,24 @@ extension View {
         self.symbolEffect(.bounce)
     }
 }
+
+/// Separates adjacent trailing toolbar items into their own glass capsules.
+/// Without it, iOS 26+ fuses every trailing item into a single pill.
+struct TrailingToolbarGroupSpacer: ToolbarContent {
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+        }
+    }
+}
+
+/// Pins the minimized `.searchable` button to the trailing edge as its own
+/// capsule, after the screen's other toolbar groups.
+struct TrailingSearchToolbarItem: ToolbarContent {
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
+        }
+    }
+}

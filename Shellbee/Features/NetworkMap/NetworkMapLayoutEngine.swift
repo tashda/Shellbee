@@ -26,7 +26,8 @@ struct NetworkMapLayout: Equatable, Sendable {
 /// Lays the mesh as a compact, deterministic routing graph. The routing tree
 /// comes from Z2M's explicit parent/child relationships whenever available;
 /// only then do we fall back to radio quality. A bounded force pass keeps
-/// related devices together without turning a busy network into a wheel.
+/// related devices together without turning a busy network into a wheel, and
+/// a final footprint pass guarantees no two bubbles or labels overlap.
 nonisolated enum NetworkMapLayoutEngine {
     static func layout(
         topology: NetworkTopology,
@@ -55,7 +56,6 @@ nonisolated enum NetworkMapLayoutEngine {
         let positioning = forceDirectedPositions(
             nodes: nodes,
             tree: tree,
-            links: links,
             width: width,
             minimumHeight: minimumHeight
         )
@@ -236,7 +236,6 @@ nonisolated enum NetworkMapLayoutEngine {
     private static func forceDirectedPositions(
         nodes: [NetworkTopologyNode],
         tree: SpanningTree,
-        links: [NetworkTopologyLink],
         width: CGFloat,
         minimumHeight: CGFloat
     ) -> (positions: [String: CGPoint], contentSize: CGSize) {
@@ -245,7 +244,6 @@ nonisolated enum NetworkMapLayoutEngine {
         let coordinatorIndex = ordered.firstIndex(where: { $0.role == .coordinator }) ?? 0
         let count = max(ordered.count, 1)
         let preferredDistance = DesignTokens.Size.networkMapPreferredLinkDistance
-        let minimumSeparation = DesignTokens.Size.networkMapNodeSeparation
         let initialSpread = sqrt(CGFloat(count)) * preferredDistance
 
         // Seed a stable, organic cloud rather than a circle or a grid. The
@@ -264,15 +262,6 @@ nonisolated enum NetworkMapLayoutEngine {
             guard let parentIndex = nodeIndex[parent], let childIndex = nodeIndex[child] else { return nil }
             return (parentIndex, childIndex)
         }
-        let primaryPairIDs = Set(primaryPairs.map { pairKey($0.0, $0.1) })
-        let secondaryPairs = links.compactMap { link -> (Int, Int)? in
-            guard let source = nodeIndex[link.sourceIEEEAddress],
-                  let target = nodeIndex[link.targetIEEEAddress],
-                  source != target,
-                  !primaryPairIDs.contains(pairKey(source, target))
-            else { return nil }
-            return (source, target)
-        }
 
         let iterationCount = count > 260
             ? DesignTokens.Size.networkMapLargeLayoutIterations
@@ -281,9 +270,9 @@ nonisolated enum NetworkMapLayoutEngine {
             var forces = Array(repeating: CGVector.zero, count: ordered.count)
             let cooling = 1 - CGFloat(iteration) / CGFloat(iterationCount + 1)
 
-            // Repulsion and a collision floor keep device bubbles distinct.
-            // This is intentionally calculated only during background layout,
-            // never while the user pans or zooms the map.
+            // Repulsion spreads clusters out; exact non-overlap is enforced
+            // afterwards by the footprint pass. This runs only during
+            // background layout, never while the user pans or zooms the map.
             if count > 1 {
                 for left in 0..<(count - 1) {
                     for right in (left + 1)..<count {
@@ -298,10 +287,7 @@ nonisolated enum NetworkMapLayoutEngine {
                         let distance = sqrt(squaredDistance)
                         let unitX = dx / distance
                         let unitY = dy / distance
-                        let strength = DesignTokens.Size.networkMapRepulsion / squaredDistance
-                        let collision = max(0, minimumSeparation - distance)
-                            * DesignTokens.Size.networkMapCollisionStrength
-                        let force = strength + collision
+                        let force = DesignTokens.Size.networkMapRepulsion / squaredDistance
                         forces[left].dx -= unitX * force
                         forces[left].dy -= unitY * force
                         forces[right].dx += unitX * force
@@ -314,15 +300,6 @@ nonisolated enum NetworkMapLayoutEngine {
                 pairs: primaryPairs,
                 preferredDistance: preferredDistance,
                 strength: DesignTokens.Size.networkMapPrimarySpringStrength,
-                positions: positions,
-                forces: &forces
-            )
-            // Heard-neighbor links guide a cluster together gently, but never
-            // overpower the real parent path or recreate the old spaghetti.
-            applySprings(
-                pairs: secondaryPairs,
-                preferredDistance: preferredDistance * 1.2,
-                strength: DesignTokens.Size.networkMapSecondarySpringStrength,
                 positions: positions,
                 forces: &forces
             )
@@ -348,7 +325,10 @@ nonisolated enum NetworkMapLayoutEngine {
             velocities[coordinatorIndex] = .zero
         }
 
-        let rawPositions = Dictionary(uniqueKeysWithValues: ordered.indices.map { (ordered[$0].id, positions[$0]) })
+        // Heard-neighbor links deliberately don't pull on the layout: they
+        // are noisy, change between scans, and collapse the map into a knot.
+        let resolved = separateFootprints(positions: positions, nodes: ordered, pinnedIndex: coordinatorIndex)
+        let rawPositions = Dictionary(uniqueKeysWithValues: ordered.indices.map { (ordered[$0].id, resolved[$0]) })
         let bounds = rawPositions.values.reduce(into: CGRect.null) { result, point in
             result = result.union(CGRect(origin: point, size: .zero))
         }
@@ -360,6 +340,41 @@ nonisolated enum NetworkMapLayoutEngine {
             positions: rawPositions.mapValues { CGPoint(x: $0.x + offset.x, y: $0.y + offset.y) },
             contentSize: CGSize(width: contentWidth, height: contentHeight)
         )
+    }
+
+    /// Treats each node as the box its bubble and name label occupy and
+    /// pushes boxes apart until none overlap. Positions stay bubble centres.
+    private static func separateFootprints(
+        positions: [CGPoint],
+        nodes: [NetworkTopologyNode],
+        pinnedIndex: Int
+    ) -> [CGPoint] {
+        let gap = DesignTokens.Size.networkMapFootprintGap
+        let labelExtent = DesignTokens.Size.networkMapNodeLabelSpacing + DesignTokens.Size.networkMapNodeLabelHeight
+        var footprints = zip(positions, nodes).map { position, node in
+            let size = nodeSize(for: node.role)
+            return NetworkMapCollisionResolver.Footprint(
+                center: CGPoint(x: position.x, y: position.y + labelExtent / 2),
+                halfSize: CGSize(
+                    width: (max(size, DesignTokens.Size.networkMapNodeLabelWidth) + gap) / 2,
+                    height: (size + labelExtent + gap) / 2
+                )
+            )
+        }
+        NetworkMapCollisionResolver.resolve(
+            &footprints,
+            pinnedIndex: pinnedIndex,
+            maximumPasses: DesignTokens.Size.networkMapCollisionPasses
+        )
+        return footprints.map { CGPoint(x: $0.center.x, y: $0.center.y - labelExtent / 2) }
+    }
+
+    static func nodeSize(for role: NetworkTopologyNode.Role) -> CGFloat {
+        switch role {
+        case .coordinator: DesignTokens.Size.networkMapCoordinatorNode
+        case .router: DesignTokens.Size.networkMapRouterNode
+        case .endDevice, .unknown: DesignTokens.Size.networkMapEndDeviceNode
+        }
     }
 
     private static func applySprings(
@@ -381,10 +396,6 @@ nonisolated enum NetworkMapLayoutEngine {
             forces[target].dx -= unitX * force
             forces[target].dy -= unitY * force
         }
-    }
-
-    private static func pairKey(_ first: Int, _ second: Int) -> String {
-        first < second ? "\(first):\(second)" : "\(second):\(first)"
     }
 
     private static func deterministicUnit(for identifier: String) -> CGFloat {

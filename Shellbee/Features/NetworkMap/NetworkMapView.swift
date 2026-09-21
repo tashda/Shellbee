@@ -199,10 +199,6 @@ struct NetworkMapView: View {
                 refreshToolbarItem
             }
         }
-        // Keep the navigation bar translucent over the moving map. The
-        // explicit material is important here because this screen is not a
-        // ScrollView, so the system cannot infer a scroll-edge backdrop.
-        .toolbarBackground(.thinMaterial, for: .navigationBar)
         .configuredTopScrollEdgeEffect()
     }
 

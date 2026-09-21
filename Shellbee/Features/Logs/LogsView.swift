@@ -69,9 +69,6 @@ struct LogsView: View {
             .minimizeSearchToolbarIfAvailable()
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    OpenInNewWindowButton(destination: .activity)
-                }
                 ToolbarItem(placement: .principal) {
                     Picker("Mode", selection: $workspace.mode) {
                         ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -79,16 +76,20 @@ struct LogsView: View {
                     .pickerStyle(.segmented)
                     .fixedSize()
                 }
-                if !AdaptiveLayout.isPad {
-                    if workspace.mode == .activity {
-                        ToolbarItemGroup(placement: .topBarTrailing) {
+                if AdaptiveLayout.isPad {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        OpenInNewWindowButton(destination: .activity)
+                    }
+                    TrailingToolbarGroupSpacer()
+                } else {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if workspace.mode == .activity {
                             LogFilterMenu(viewModel: workspace.activity)
-                        }
-                    } else {
-                        ToolbarItemGroup(placement: .topBarTrailing) {
+                        } else {
                             BridgeLevelFilterMenu(viewModel: workspace.bridge)
                         }
                     }
+                    TrailingToolbarGroupSpacer()
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button(role: .destructive) {
@@ -103,6 +104,7 @@ struct LogsView: View {
                         Image(systemName: "trash")
                     }
                 }
+                TrailingSearchToolbarItem()
             }
             .onChange(of: searchFocusRequest) { _, request in
                 guard request.section == .logs else { return }
