@@ -56,17 +56,13 @@ struct MainSplitView: View {
         GeometryReader { geo in
             responsiveShell(for: geo.size)
         }
-        .overlay(alignment: .bottom) {
-            InAppNotificationOverlay()
-                .safeAreaPadding(.bottom)
-        }
         .sheet(item: Binding(
             get: { sceneNavigation.pendingLogSheet },
             set: { sceneNavigation.pendingLogSheet = $0 }
         )) { request in
             LogSheetHost(request: request)
         }
-        .modifier(ActivityCenterSheetPresentation())
+        .modifier(ActivityCenterSheetPresentation(transitionNamespace: nil))
         .sheet(isPresented: $isCommandPalettePresented) {
             CommandPaletteView()
                 .environment(environment)

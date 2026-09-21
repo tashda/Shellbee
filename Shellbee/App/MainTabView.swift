@@ -6,6 +6,7 @@ struct MainTabView: View {
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var tabSelection: AppTab = .home
     @State private var isCommandPalettePresented = false
+    @Namespace private var activityCenterTransition
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
     /// connected bridge has pending config that needs a restart. Single-
@@ -29,14 +30,14 @@ struct MainTabView: View {
 
     var body: some View {
         tabContent
-        .modifier(MainTabNotificationPresentation())
+        .modifier(MainTabNotificationPresentation(transitionNamespace: activityCenterTransition))
         .sheet(item: Binding(
             get: { sceneNavigation.pendingLogSheet },
             set: { sceneNavigation.pendingLogSheet = $0 }
         )) { request in
             LogSheetHost(request: request)
         }
-        .modifier(ActivityCenterSheetPresentation())
+        .modifier(ActivityCenterSheetPresentation(transitionNamespace: activityCenterTransitionNamespace))
         .sheet(isPresented: $isCommandPalettePresented) {
             CommandPaletteView()
                 .environment(environment)
@@ -163,13 +164,20 @@ struct MainTabView: View {
         )
     }
 
+    private var activityCenterTransitionNamespace: Namespace.ID? {
+        guard #available(iOS 26.0, *) else { return nil }
+        return activityCenterTransition
+    }
+
 }
 
 /// Uses the system-owned accessory host on iOS 26 and later, so notification
 /// presentation follows the tab bar's Liquid Glass geometry and animations.
-/// Earlier releases retain the established floating presentation.
+/// Earlier releases keep Activity available from Logs without adding a custom
+/// floating notification surface.
 private struct MainTabNotificationPresentation: ViewModifier {
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
+    let transitionNamespace: Namespace.ID
 
     func body(content: Content) -> some View {
         if !isActivityCenterEnabled {
@@ -178,14 +186,10 @@ private struct MainTabNotificationPresentation: ViewModifier {
             content
                 .tabBarMinimizeBehavior(.onScrollDown)
                 .tabViewBottomAccessory {
-                    ActivityTabBarAccessory()
+                    ActivityTabBarAccessory(transitionNamespace: transitionNamespace)
                 }
         } else {
-            content.overlay(alignment: .bottom) {
-                InAppNotificationOverlay()
-                    .safeAreaPadding(.bottom)
-                    .padding(.bottom, DesignTokens.Size.mainTabBarInset)
-            }
+            content
         }
     }
 }

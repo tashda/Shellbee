@@ -78,7 +78,7 @@ struct AppNotificationSettingsView: View {
                 if isActivityCenterEnabled {
                     Text(activityAccessoryDisplayMode.wrappedValue.detail)
                 } else {
-                    Text("Shellbee will not show in-app notifications. Activity and errors remain available in Logs.")
+                    Text("The Activity Center is hidden. Activity and errors remain available in Logs.")
                 }
             }
 
@@ -100,11 +100,6 @@ struct AppNotificationSettingsView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: isActivityCenterEnabled) { _, isEnabled in
-            if !isEnabled {
-                environment.clearAllInAppNotifications()
-            }
-        }
     }
 
     @ViewBuilder

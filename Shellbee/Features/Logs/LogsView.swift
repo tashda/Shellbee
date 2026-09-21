@@ -72,6 +72,7 @@ struct LogsView: View {
                             ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
                         .pickerStyle(.menu)
+                        .tint(.primary)
                     }
                 }
                 if AdaptiveLayout.isPad {
