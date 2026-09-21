@@ -28,8 +28,9 @@ struct LiveActivityLockScreen: View {
 }
 
 /// A near-opaque dark card: graphite at the top-left, deep indigo through the
-/// middle, near-black at the bottom-right, finished with a hairline light
-/// edge. Opaque enough that the wallpaper never changes how the card reads.
+/// middle, near-black at the bottom-right. Opaque enough that the wallpaper
+/// never changes how the card reads. The system draws the card's shape and
+/// edge itself, so none is added here.
 private struct LiveActivityGlassGradient: View {
     var body: some View {
         LinearGradient(
@@ -40,17 +41,6 @@ private struct LiveActivityGlassGradient: View {
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
-        )
-        .overlay(
-            ContainerRelativeShape()
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [.white.opacity(0.28), .white.opacity(0.06)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: DesignTokens.Size.liveActivityCardEdge
-                )
         )
     }
 }

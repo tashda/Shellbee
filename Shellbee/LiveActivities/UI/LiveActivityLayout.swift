@@ -33,6 +33,8 @@ enum LiveActivityPalette {
     static let cardGraphite = Color(red: 0.25, green: 0.25, blue: 0.29)
     static let cardIndigo = Color(red: 0.17, green: 0.17, blue: 0.33)
     static let cardNight = Color(red: 0.04, green: 0.04, blue: 0.08)
+    /// Neutral surround for the Developer stage's miniature phone.
+    static let stageBackdrop = Color(white: 0.11)
 }
 
 struct LiveActivityLayout {
