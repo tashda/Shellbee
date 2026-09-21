@@ -10,10 +10,24 @@ struct LiveActivityStageView: View {
     var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var anchor = Date.now
-    @State var sampleIndex = 0
-    @State var surface = Surface.compact
-    @State var style = LiveActivityStyle.permitJoinDefault
+    @State private var sampleIndex: Int
+    @State private var surface: Surface
+    @State private var style: LiveActivityStyle
     @State private var wallpaper = LiveActivityStageWallpaper.sand
+
+    init(
+        kind: LiveActivityGalleryKind,
+        onClose: (() -> Void)? = nil,
+        sampleIndex: Int = 0,
+        surface: Surface = .compact,
+        style: LiveActivityStyle? = nil
+    ) {
+        self.kind = kind
+        self.onClose = onClose
+        _sampleIndex = State(initialValue: sampleIndex)
+        _surface = State(initialValue: surface)
+        _style = State(initialValue: style ?? kind.defaultStyle)
+    }
 
     enum Surface: String, CaseIterable, Identifiable {
         // Raw values double as picker titles and debug launch arguments.
@@ -54,6 +68,7 @@ struct LiveActivityStageView: View {
             StageControls(
                 samples: samples,
                 sampleIndex: $sampleIndex,
+                styles: kind.styles,
                 style: $style,
                 surface: $surface,
                 wallpaper: $wallpaper,
@@ -234,6 +249,7 @@ private struct StageLockScreen: View {
 private struct StageControls: View {
     let samples: [LiveActivityGallerySample]
     @Binding var sampleIndex: Int
+    let styles: [LiveActivityStyle]
     @Binding var style: LiveActivityStyle
     @Binding var surface: LiveActivityStageView.Surface
     @Binding var wallpaper: LiveActivityStageWallpaper
@@ -254,7 +270,7 @@ private struct StageControls: View {
             }
 
             Picker("Style", selection: $style) {
-                ForEach(LiveActivityStyle.allCases) { style in
+                ForEach(styles) { style in
                     Text(style.name).tag(style)
                 }
             }

@@ -5,18 +5,47 @@ import SwiftUI
 /// uses, so what's shown here is what the system renders.
 enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
     case permitJoin
+    case otaUpdate
+    case touchlinkScan
+    case touchlinkIdentify
 
     var id: String { rawValue }
 
     var name: String {
         switch self {
         case .permitJoin: return "Permit Join"
+        case .otaUpdate: return "OTA Update"
+        case .touchlinkScan: return "Touchlink Scan"
+        case .touchlinkIdentify: return "Touchlink Identify"
         }
     }
 
     var symbol: ShellbeeSymbol {
         switch self {
         case .permitJoin: return .permitJoin
+        case .otaUpdate: return .system("arrow.down.circle")
+        case .touchlinkScan: return .system("dot.radiowaves.left.and.right")
+        case .touchlinkIdentify: return .system("lightbulb.max")
+        }
+    }
+
+    /// The style the widget currently ships with.
+    var defaultStyle: LiveActivityStyle {
+        switch self {
+        case .permitJoin: return .permitJoinDefault
+        case .otaUpdate: return .otaUpdateDefault
+        case .touchlinkScan: return .touchlinkScanDefault
+        case .touchlinkIdentify: return .touchlinkIdentifyDefault
+        }
+    }
+
+    /// The designs worth comparing for this activity.
+    var styles: [LiveActivityStyle] {
+        switch self {
+        case .permitJoin: return [.classic, .track, .hero, .ring, .scoreboard]
+        case .otaUpdate: return [.hero, .queue, .track, .ring, .spotlight, .scoreboard, .classic]
+        case .touchlinkScan: return [.ring, .spotlight, .scoreboard, .hero, .track, .classic]
+        case .touchlinkIdentify: return [.spotlight, .ring, .hero, .track, .classic]
         }
     }
 
@@ -24,6 +53,9 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
     func samples(anchor: Date) -> [LiveActivityGallerySample] {
         switch self {
         case .permitJoin: return PermitJoinGallerySamples.all(anchor: anchor)
+        case .otaUpdate: return OTAUpdateGallerySamples.all(anchor: anchor)
+        case .touchlinkScan: return TouchlinkGallerySamples.scan(anchor: anchor)
+        case .touchlinkIdentify: return TouchlinkGallerySamples.identify(anchor: anchor)
         }
     }
 }
