@@ -23,6 +23,7 @@ struct NetworkMapCanvasView: View {
     @State private var quickLookNode: NetworkMapLayout.Node?
     @State private var laidOutTopology: NetworkTopology?
     @State private var viewportSize: CGSize = .zero
+    @State private var indexedRevision: Int?
 
     private var store: AppStore { environment.scope(for: bridgeID).store }
 
@@ -39,7 +40,7 @@ struct NetworkMapCanvasView: View {
                         index: renderIndex,
                         filters: filters,
                         onQuickLook: { quickLookNode = $0 },
-                        actionsProvider: actions(for:)
+                        actionsProvider: actions(for:index:)
                     )
                 } else {
                     ProgressView("Preparing Network Map")
@@ -63,18 +64,29 @@ struct NetworkMapCanvasView: View {
             zoomController.showInitialCamera()
             layout = computed
             renderIndex = NetworkMapRenderIndex.build(layout: computed, store: store)
+            indexedRevision = store.networkMapRenderRevision
             laidOutTopology = topology
             onMapRendered()
         }
-        .onChange(of: store.networkMapRenderRevision) { _, _ in
-            guard let layout else { return }
-            renderIndex = NetworkMapRenderIndex.build(layout: layout, store: store)
-            if laidOutTopology == topology {
-                onMapRendered()
-            }
-        }
+        .task(id: bridgeID) { await refreshRenderIndexPeriodically() }
         .sheet(item: $quickLookNode) { node in
             quickLookSheet(for: node)
+        }
+    }
+
+    /// Folds store changes into the map at most once per interval. The
+    /// store's revision bumps on every device message, so reacting to each
+    /// bump would rebuild the index many times a second on a busy mesh; a
+    /// throttle (not a debounce, which a steady stream would starve) keeps
+    /// status fresh without competing with pan and zoom for the main thread.
+    private func refreshRenderIndexPeriodically() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(DesignTokens.Duration.networkMapStatusRefresh))
+            guard let layout, store.networkMapRenderRevision != indexedRevision else { continue }
+            indexedRevision = store.networkMapRenderRevision
+            let next = NetworkMapRenderIndex.build(layout: layout, store: store)
+            if next != renderIndex { renderIndex = next }
+            if laidOutTopology == topology { onMapRendered() }
         }
     }
 
@@ -116,20 +128,22 @@ struct NetworkMapCanvasView: View {
         }) else { return nil }
         let parentID = edge.link.sourceIEEEAddress == node.id ? edge.link.targetIEEEAddress : edge.link.sourceIEEEAddress
         guard let parent = nodesByID[parentID] else { return nil }
-        let quality = store.devices.first(where: { $0.ieeeAddress == edge.link.sourceIEEEAddress })
-            .map { store.state(for: $0.friendlyName).linkQuality ?? edge.link.linkQuality }
-            ?? edge.link.linkQuality
-        return .init(parentName: parent.topology.friendlyName, linkQuality: quality)
+        return .init(parentName: parent.topology.friendlyName, linkQuality: edge.link.linkQuality)
     }
 
-    private func actions(for bound: BridgeBoundDevice) -> DevicePresentationActions {
+    /// Built from the render index, never from the live store: the world
+    /// layer calls this while rendering, and reading store state there would
+    /// subscribe the whole map to every device message. The store is only
+    /// touched inside the closures, when a menu item is actually chosen.
+    private func actions(for bound: BridgeBoundDevice, index: NetworkMapRenderIndex) -> DevicePresentationActions {
         let device = bound.device
-        let state = store.state(for: device.friendlyName)
+        let nodeID = device.ieeeAddress
+        let hasUpdate = index.updateAvailableByNode[nodeID] ?? false
         return DevicePresentationActions(
-            state: state,
-            isAvailable: store.isAvailable(device.friendlyName),
-            otaStatus: store.otaStatus(for: device.friendlyName),
-            isIdentifying: store.identifyInProgress.contains(device.friendlyName),
+            state: [:],
+            isAvailable: index.isOnline(nodeID),
+            otaStatus: index.otaStatusByNode[nodeID],
+            isIdentifying: index.identifyingDeviceNames.contains(device.friendlyName),
             select: { selection?.wrappedValue = DeviceRoute(bridgeID: bridgeID, device: device) },
             rename: { onRename(bound) },
             remove: { onRemove(bound) },
@@ -137,10 +151,10 @@ struct NetworkMapCanvasView: View {
             interview: { onPendingAlert(.interview(device), bridgeID) },
             identify: { environment.scope(for: bridgeID).identifyDevice(device.friendlyName) },
             checkUpdate: { deviceViewModel.checkDeviceUpdate(device, environment: environment, bridgeID: bridgeID) },
-            update: state.hasUpdateAvailable
+            update: hasUpdate
                 ? { deviceViewModel.updateDevice(device, environment: environment, bridgeID: bridgeID) }
                 : nil,
-            schedule: state.hasUpdateAvailable
+            schedule: hasUpdate
                 ? { deviceViewModel.scheduleDeviceUpdate(device, environment: environment, bridgeID: bridgeID) }
                 : nil,
             unschedule: { deviceViewModel.unscheduleDeviceUpdate(device, environment: environment, bridgeID: bridgeID) }
@@ -160,7 +174,7 @@ private struct NetworkMapViewport: View {
     let index: NetworkMapRenderIndex
     let filters: Set<NetworkMapFilter>
     let onQuickLook: (NetworkMapLayout.Node) -> Void
-    let actionsProvider: (BridgeBoundDevice) -> DevicePresentationActions
+    let actionsProvider: (BridgeBoundDevice, NetworkMapRenderIndex) -> DevicePresentationActions
 
     /// Z2M's raw mesh includes every heard neighbor, not just the routing
     /// tree — drawing all of it at once is the "orange spaghetti" that makes

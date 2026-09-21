@@ -8,7 +8,7 @@ struct DeviceImageView: View {
     var size: CGFloat = 44
     var showsAvailabilityIndicator = true
 
-    @State private var bundledImageData: Data?
+    @State private var bundledImage: UIImage?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -30,16 +30,18 @@ struct DeviceImageView: View {
         .frame(width: size, height: size)
         .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: isAvailable)
         .task(id: device.ieeeAddress) {
-            bundledImageData = nil
-            if let key = device.imageKey {
-                bundledImageData = await BundledImageStore.shared.imageData(for: key)
+            bundledImage = nil
+            // Decode once here rather than in `body`, which re-runs on every
+            // state change and would otherwise re-decode the PNG each time.
+            if let key = device.imageKey, let data = await BundledImageStore.shared.imageData(for: key) {
+                bundledImage = UIImage(data: data)
             }
         }
     }
 
     @ViewBuilder
     private var deviceImage: some View {
-        if let data = bundledImageData, let uiImage = UIImage(data: data) {
+        if let uiImage = bundledImage {
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)

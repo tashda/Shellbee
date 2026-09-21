@@ -365,6 +365,7 @@ nonisolated enum DesignTokens {
 
     nonisolated enum Duration {
         static let standardAnimation: Double = 0.3
+        static let networkMapStatusRefresh: Double = 1
         static let hubAnimation: Double = 0.36
         static let liveActivitySuccess: Double = 3
         static let liveActivityFailure: Double = 8
