@@ -6,7 +6,6 @@ struct PermitJoinActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PermitJoinActivityAttributes.self) { context in
             PermitJoinLockScreenView(context: context)
-                .activityBackgroundTint(PermitJoinActivityPalette.background)
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -26,9 +25,12 @@ struct PermitJoinActivityWidget: Widget {
                         .padding(.top, DesignTokens.Spacing.xs)
                 }
             } compactLeading: {
-                PermitJoinActivityMark(size: DesignTokens.Size.liveActivityCompactSymbol)
+                EmptyView()
             } compactTrailing: {
-                PermitJoinTimer(context: context, compact: true)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    PermitJoinActivityMark(size: DesignTokens.Size.liveActivityCompactSymbol)
+                    PermitJoinTimer(context: context, compact: true)
+                }
             } minimal: {
                 PermitJoinActivityMark(size: DesignTokens.Size.liveActivityMinimalSymbol)
             }
@@ -61,6 +63,9 @@ private struct PermitJoinLockScreenView: View {
                 }
                 PermitJoinProgress(context: context)
             }
+        }
+        .containerBackground(for: .widget) {
+            PermitJoinActivityBackground()
         }
     }
 
@@ -106,8 +111,29 @@ private struct PermitJoinTimer: View {
 }
 
 private enum PermitJoinActivityPalette {
-    static let background = Color(red: 0.05, green: 0.10, blue: 0.13)
     static let accent = Color(red: 0.35, green: 0.91, blue: 0.70)
+}
+
+private struct PermitJoinActivityBackground: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.025, green: 0.06, blue: 0.09),
+                    Color(red: 0.04, green: 0.12, blue: 0.16),
+                    Color(red: 0.06, green: 0.10, blue: 0.20)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [PermitJoinActivityPalette.accent.opacity(0.24), .clear],
+                center: .topLeading,
+                startRadius: 0,
+                endRadius: 260
+            )
+        }
+    }
 }
 
 #Preview("Pairing", as: .dynamicIsland(.expanded), using: permitJoinPreviewAttributes) {
