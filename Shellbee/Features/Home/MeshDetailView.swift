@@ -2,7 +2,6 @@ import SwiftUI
 
 struct MeshDetailView: View {
     let snapshot: HomeSnapshot
-    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -49,9 +48,7 @@ struct MeshDetailView: View {
                 if let lqi = snapshot.averageLinkQuality {
                     CopyableRow(label: "Average LQI", value: "\(lqi)")
                 }
-                // Network Map is iPad-only and hidden behind Developer Mode
-                // for now — see MainTabView, which only surfaces its tab there.
-                if AdaptiveLayout.isPad && developerModeEnabled {
+                if AdaptiveLayout.isPad {
                     NavigationLink {
                         NetworkMapView()
                     } label: {

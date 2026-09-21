@@ -7,7 +7,6 @@ struct CommandPaletteView: View {
     @State private var query = ""
     @State private var pendingConfirmation: CommandPaletteItem?
     @State private var isSearchPresented = true
-    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
 
     private var model: CommandPaletteModel {
         CommandPaletteModel(
@@ -21,7 +20,7 @@ struct CommandPaletteView: View {
             },
             devices: environment.allDevices.filter { $0.device.type != .coordinator },
             groups: environment.allGroups,
-            includesNetworkMap: AdaptiveLayout.isPad && developerModeEnabled
+            includesNetworkMap: AdaptiveLayout.isPad
         )
     }
 

@@ -6,8 +6,8 @@ private struct ConfiguredTopScrollEdgeEffectModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if softTopEdgeEnabled {
-            if #available(iOS 26.0, *) {
+        if #available(iOS 27.0, *) {
+            if softTopEdgeEnabled {
                 content.scrollEdgeEffectStyle(.soft, for: .top)
             } else {
                 content
@@ -19,8 +19,8 @@ private struct ConfiguredTopScrollEdgeEffectModifier: ViewModifier {
 }
 
 extension View {
-    /// Applies the developer-selected top scroll-edge treatment everywhere
-    /// Shellbee explicitly styles a navigation surface.
+    /// Applies the developer-selected top scroll-edge treatment on iOS 27+.
+    /// Earlier releases keep their native system edge treatment.
     func configuredTopScrollEdgeEffect() -> some View {
         modifier(ConfiguredTopScrollEdgeEffectModifier())
     }

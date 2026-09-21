@@ -4,6 +4,7 @@ struct LogsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var workspace: LogsWorkspaceState
     @State private var autoOpenedEntry: LogRoute?
+    @State private var showingClearConfirmation = false
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
     private let onDone: (() -> Void)?
@@ -62,12 +63,14 @@ struct LogsView: View {
             }
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("Mode", selection: $workspace.mode) {
-                        ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                if !AdaptiveLayout.isPad {
+                    ToolbarItem(placement: .principal) {
+                        Picker("Mode", selection: $workspace.mode) {
+                            ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .fixedSize()
                     }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
                 }
                 if AdaptiveLayout.isPad {
                     ToolbarItemGroup(placement: .topBarTrailing) {
@@ -92,17 +95,23 @@ struct LogsView: View {
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button(role: .destructive) {
-                        // Phase 1 multi-bridge: always clear across every
-                        // connected session — the activity tab merges by
-                        // default, and per-bridge clearing belongs in a
-                        // future per-bridge logs picker.
-                        for session in environment.registry.orderedSessions {
-                            session.store.clearLogs()
-                        }
+                        showingClearConfirmation = true
                     } label: {
                         Image(systemName: "trash")
                     }
                 }
+            }
+            .alert("Clear Activity?", isPresented: $showingClearConfirmation) {
+                Button("Clear", role: .destructive) {
+                    // Activity is merged across connected bridges, so clear
+                    // every session rather than silently leaving entries.
+                    for session in environment.registry.orderedSessions {
+                        session.store.clearLogs()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently clears the activity and raw log entries for every connected bridge.")
             }
         }
     }
