@@ -295,6 +295,7 @@
 				Features/Settings/BridgeConnectToggle.swift,
 				Features/Settings/BridgeSettingsView.swift,
 				Features/Settings/ConnectionCardActions.swift,
+				Features/Settings/Developer/ActivityIconGalleryView.swift,
 				Features/Settings/Developer/DeveloperSettings.swift,
 				Features/Settings/Developer/DeveloperSettingsView.swift,
 				Features/Settings/Developer/LiveActivityGalleryMoreSamples.swift,
