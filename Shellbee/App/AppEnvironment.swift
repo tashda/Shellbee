@@ -335,6 +335,7 @@ final class AppEnvironment {
         if ProcessInfo.processInfo.environment["SHELLBEE_LIVE_ACTIVITY_PREVIEW"] == "permitJoin" {
             PermitJoinActivityPreview.run()
         }
+        LiveActivityStageLauncher.openIfRequested()
         #endif
         LiveActivityBackgroundGrace.install { [weak self] in
             self?.registry.orderedSessions.forEach { $0.store.forgetUnfollowableInterviews() }
