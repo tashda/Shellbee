@@ -110,9 +110,10 @@ private struct ActivityAccessorySummary: View {
 
             Spacer(minLength: DesignTokens.Spacing.sm)
 
-            Image(systemName: "chevron.up")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+            if let event {
+                ActivityAccessoryTrailing(entry: event.entry, isInline: isInline)
+                    .layoutPriority(1)
+            }
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
@@ -124,21 +125,45 @@ private struct ActivityAccessorySummary: View {
     private var title: String {
         switch mode {
         case .latestActivity:
-            latestActivity?.entry.summaryTitle ?? "Activity"
+            cardContent(latestActivity)?.title ?? "Activity"
         case .summary:
             recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
         case .notificationsOnly:
-            latestAttention?.entry.summaryTitle
+            cardContent(latestAttention)?.title
                 ?? (recentAttentionCount == 0 ? "Notifications" : "\(recentAttentionCount) notifications")
         }
     }
 
-    private var subtitle: String? {
+    /// The event the accessory is showing, if its mode shows one.
+    private var event: BridgeBoundLogEntry? {
         switch mode {
-        case .latestActivity: latestActivity?.entry.summarySubtitle
-        case .summary: "View Activity"
-        case .notificationsOnly: latestAttention?.entry.summarySubtitle ?? "No new notifications"
+        case .latestActivity: latestActivity
+        case .notificationsOnly: latestAttention
+        case .summary: nil
         }
+    }
+
+    private var subtitle: String? {
+        if let event, let change = ActivityAccessoryChange(entry: event.entry) {
+            return change.subtitle
+        }
+        return switch mode {
+        case .latestActivity: cardContent(latestActivity)?.message
+        case .summary: "View Activity"
+        case .notificationsOnly: cardContent(latestAttention)?.message ?? "No new notifications"
+        }
+    }
+
+    /// Same wording as the event's card in the Activity feed: who it is
+    /// about, then what happened.
+    private func cardContent(_ item: BridgeBoundLogEntry?) -> ActivityCardContent? {
+        guard let item else { return nil }
+        let name = storeFor(item.bridgeID).flatMap { LogRowIconography.subjectName(for: item.entry, in: $0) }
+        return ActivityCardContent(
+            entry: item.entry,
+            subject: name.map(ActivityStack.Subject.named) ?? .bridge,
+            bridgeName: item.bridgeName
+        )
     }
 
     /// A player-style artwork slot. Event modes show the event's own
