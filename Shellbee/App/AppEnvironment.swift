@@ -138,6 +138,15 @@ final class AppEnvironment {
         }
     }
 
+    /// Removes all transient in-app event presentation. Log entries remain
+    /// untouched, so they are still available from Settings → Logs.
+    func clearAllInAppNotifications() {
+        for session in registry.orderedSessions {
+            session.store.pendingNotifications.removeAll()
+            session.store.fastTrackNotifications.removeAll()
+        }
+    }
+
     /// Reconcile already-running activities after a Live Activities setting
     /// changes. New work is guarded by the same preferences in each
     /// coordinator, while active pairing and OTA state can be refreshed

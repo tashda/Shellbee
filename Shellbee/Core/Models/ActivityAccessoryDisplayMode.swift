@@ -1,3 +1,14 @@
+import Foundation
+
+enum ActivityCenterSettings {
+    static let isEnabledStorageKey = "activityCenterEnabled"
+
+    static var isEnabled: Bool {
+        guard UserDefaults.standard.object(forKey: isEnabledStorageKey) != nil else { return true }
+        return UserDefaults.standard.bool(forKey: isEnabledStorageKey)
+    }
+}
+
 enum ActivityAccessoryDisplayMode: String, CaseIterable, Identifiable {
     case latestActivity
     case summary
@@ -17,9 +28,9 @@ enum ActivityAccessoryDisplayMode: String, CaseIterable, Identifiable {
 
     var detail: String {
         switch self {
-        case .latestActivity: "Show the newest event when the bar is idle."
+        case .latestActivity: "Show the newest event when Activity Center is idle."
         case .summary: "Show a compact count of recent events."
-        case .notificationsOnly: "Hide the bar unless Shellbee has a notification."
+        case .notificationsOnly: "Show notifications without recent Activity details."
         }
     }
 }

@@ -9,6 +9,7 @@ struct InAppNotificationOverlay: View {
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var isExpanded = false
     // Index into notification pages that the user is viewing while expanded.
     // When collapsed, always shows the newest (last). When expanded, this
@@ -106,6 +107,14 @@ struct InAppNotificationOverlay: View {
     }
 
     var body: some View {
+        if isActivityCenterEnabled {
+            notificationContent
+        } else {
+            EmptyView()
+        }
+    }
+
+    private var notificationContent: some View {
         ZStack(alignment: .bottom) {
             if let page = displayedPage {
                 InAppNotificationBanner(

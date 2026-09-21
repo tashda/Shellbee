@@ -71,8 +71,7 @@ struct LogsView: View {
                         Picker("Mode", selection: $workspace.mode) {
                             ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
-                        .pickerStyle(.segmented)
-                        .fixedSize()
+                        .pickerStyle(.menu)
                     }
                 }
                 if AdaptiveLayout.isPad {

@@ -39,6 +39,10 @@ extension AppStore {
     }
 
     func enqueueNotification(_ notification: InAppNotification) {
+        // Activity Center is the single in-app event presentation. Turning it
+        // off keeps the underlying log entry but prevents a later stale popup.
+        guard ActivityCenterSettings.isEnabled else { return }
+
         // Fast-track bypasses the filter — these are transient confirmations
         // (e.g. "Copied to Clipboard") driven by the user's own action.
         if notification.priority == .fastTrack {
