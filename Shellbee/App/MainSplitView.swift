@@ -35,7 +35,6 @@ struct MainSplitView: View {
     @State private var didApplyInitialDestination = false
     @State private var networkMapFilters: Set<NetworkMapFilter> = []
     @State private var networkMapBridgeID: UUID?
-    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
 
     init(initialDestination: ShellbeeWindowDestination = .home) {
         self.initialDestination = initialDestination
@@ -92,9 +91,6 @@ struct MainSplitView: View {
         }
         .onChange(of: logsWorkspace.mode) { _, _ in
             selectedLogsPaneRoute = nil
-        }
-        .onChange(of: developerModeEnabled) { _, enabled in
-            if !enabled, selection == .networkMap { selection = .home }
         }
         .onChange(of: environment.allGroups) { _, groups in
             groupsWorkspace.reconcile(groups: groups)
@@ -208,7 +204,7 @@ struct MainSplitView: View {
 
     private var sidebarTabs: [AppTab] {
         // Search sits last, below the sections it searches.
-        AppTab.allCases.filter { $0 != .networkMap || developerModeEnabled }
+        AppTab.allCases
     }
 
     private func sidebarRow(for tab: AppTab) -> some View {
@@ -428,9 +424,7 @@ struct MainSplitView: View {
     private func applyInitialDestinationIfPossible() {
         guard !didApplyInitialDestination else { return }
 
-        selection = initialDestination.rootSection == .networkMap && !developerModeEnabled
-            ? .home
-            : initialDestination.rootSection
+        selection = initialDestination.rootSection
         switch initialDestination {
         case .home, .section, .activity:
             break
@@ -455,7 +449,6 @@ struct MainSplitView: View {
                 selectedSettingsRoute = .bridgeOverview(bridgeID)
             }
         case .networkMap(let bridgeID):
-            guard developerModeEnabled else { return }
             if let bridgeID {
                 guard environment.registry.session(for: bridgeID) != nil else { return }
                 sceneNavigation.pendingNetworkMapBridgeID = bridgeID

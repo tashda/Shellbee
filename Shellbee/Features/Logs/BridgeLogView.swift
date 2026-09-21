@@ -255,8 +255,11 @@ struct BridgeLogDetailView: View {
                     Image(systemName: "plus.magnifyingglass")
                 }
                 .disabled(fontSize >= Self.maxFontSize)
+            }
 
-                if prettyMessage != nil {
+            if prettyMessage != nil {
+                TrailingToolbarGroupSpacer()
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         prettyPrint.toggle()
                     } label: {

@@ -64,23 +64,27 @@ struct ConnectionEditorView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            ToolbarItem(placement: .secondaryAction) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     runConnectionTest()
                 } label: {
                     if testState == .testing {
                         ProgressView()
                     } else {
-                        Text("Test")
+                        Image(systemName: "antenna.radiowaves.left.and.right")
                     }
                 }
+                .accessibilityLabel("Test Connection")
                 .disabled(!canTestConnection)
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button(actionLabel) {
+            TrailingToolbarGroupSpacer()
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     performAction()
+                } label: {
+                    Image(systemName: "checkmark")
                 }
-                .fontWeight(.semibold)
+                .accessibilityLabel(actionLabel)
                 .disabled(!isActionEnabled)
             }
         }

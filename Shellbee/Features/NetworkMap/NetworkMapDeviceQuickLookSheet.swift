@@ -64,6 +64,7 @@ struct NetworkMapDeviceQuickLookSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .networkMapQuickLookPresentationSizing()
     }
 
     private var modelText: String? {
@@ -81,5 +82,16 @@ struct NetworkMapDeviceQuickLookSheet: View {
         .font(.subheadline)
         .padding(.horizontal, DesignTokens.Spacing.md)
         .padding(.vertical, DesignTokens.Spacing.sm)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func networkMapQuickLookPresentationSizing() -> some View {
+        if AdaptiveLayout.isPad, #available(iOS 18.0, *) {
+            presentationSizing(.page)
+        } else {
+            self
+        }
     }
 }

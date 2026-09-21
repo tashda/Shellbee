@@ -24,12 +24,15 @@ struct ActivityWorkspaceFilters: View {
         }
 
         Section("View") {
-            Picker("Mode", selection: $workspace.mode) {
-                ForEach(LogsView.LogMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
+            ForEach(LogsView.LogMode.allCases, id: \.self) { mode in
+                filterButton(
+                    title: mode.rawValue,
+                    systemImage: mode == .activity ? "list.bullet.rectangle" : "terminal",
+                    isSelected: workspace.mode == mode
+                ) {
+                    workspace.mode = mode
                 }
             }
-            .pickerStyle(.segmented)
         }
 
         if connectedBridges.count >= 2 {
