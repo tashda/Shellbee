@@ -412,3 +412,48 @@ final class ActivityCenterEnabledSettingsUITests: ShellbeeUITestCase {
         )
     }
 }
+
+final class ActivityInstrumentGalleryUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += [
+            "-activityCenterEnabled", "NO",
+            "-developerModeEnabled", "YES"
+        ]
+    }
+
+    override func setUp() {
+        super.setUp()
+        waitForMainTab()
+        app.tapSettingsTab()
+    }
+
+    func testGalleryOpensAndSwitchesCoverage() {
+        let developerRow = app.buttons["Developer"].firstMatch
+        reveal(developerRow)
+        developerRow.tapWhenReady()
+
+        let galleryRow = app.buttons["Activity Instruments"].firstMatch
+        galleryRow.tapWhenReady()
+
+        XCTAssertTrue(
+            app.navigationBars["Activity Instruments"].waitForExistence(timeout: 5),
+            "Activity instrument gallery did not open"
+        )
+        XCTAssertTrue(app.staticTexts["Visible Samples"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Light"].firstMatch.exists)
+
+        let bridgeScope = app.segmentedControls.buttons["Bridge"].firstMatch
+        bridgeScope.tapWhenReady()
+        XCTAssertTrue(
+            app.staticTexts["Health Check"].waitForExistence(timeout: 3),
+            "Bridge coverage should include health-check activity"
+        )
+    }
+
+    private func reveal(_ element: XCUIElement) {
+        for _ in 0..<4 {
+            if element.exists { return }
+            app.swipeUp()
+        }
+    }
+}
