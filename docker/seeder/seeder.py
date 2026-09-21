@@ -1114,4 +1114,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # control.py does `import seeder`; without this alias it would load a
+    # second, never-started copy of this module whose `_client` stays None.
+    import sys
+    sys.modules.setdefault("seeder", sys.modules[__name__])
     main()
