@@ -62,7 +62,11 @@ enum LogRowIconography {
         case .info, .debug: break
         }
         if let isSuccess = entry.bridgeTopicDisplay?.isSuccess {
-            return isSuccess ? .success : .failure
+            // A tick on every routine health check would drown out the
+            // ones that mean something, so success is only marked for
+            // requests whose outcome the user is waiting on.
+            if !isSuccess { return .failure }
+            return reportsSuccess(entry) ? .success : nil
         }
         if entry.category == .interview {
             let message = entry.message.lowercased()
@@ -70,6 +74,12 @@ enum LogRowIconography {
             if message.contains("success") { return .success }
         }
         return nil
+    }
+
+    private static func reportsSuccess(_ entry: LogEntry) -> Bool {
+        guard case .mqttPublish(_, let topic, _) = entry.parsedMessageKind else { return false }
+        return ["ota_update/update", "device/interview", "device/configure", "device/bind", "backup"]
+            .contains { topic.hasSuffix($0) }
     }
 
     static func emphasis(for entry: LogEntry) -> Emphasis {

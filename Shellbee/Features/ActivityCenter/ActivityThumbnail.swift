@@ -66,6 +66,7 @@ struct ActivityThumbnail: View {
     /// A loud symbol already says "failed", and a general message's glyph
     /// is its severity symbol; a pip on top of either would repeat it.
     private func showsPip(for visual: LogRowIconography.Visual) -> Bool {
+        guard size >= DesignTokens.ActivityFeed.pipMinimumThumbnail else { return false }
         if case .symbol = visual {
             return LogRowIconography.emphasis(for: entry) != .loud && entry.category != .general
         }
