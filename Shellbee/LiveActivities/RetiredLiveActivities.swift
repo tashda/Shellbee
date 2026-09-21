@@ -12,10 +12,26 @@ enum RetiredLiveActivities {
         for activity in Activity<InterviewActivityAttributes>.activities {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
+        for activity in Activity<ConnectionActivityAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+        for activity in Activity<BridgeDiscoveryActivityAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
     }
 }
 
 /// Retired in 2.0: interviews are shown on the permit join card.
 nonisolated struct InterviewActivityAttributes: ActivityAttributes, Sendable {
+    nonisolated struct ContentState: Codable, Hashable, Sendable {}
+}
+
+/// Retired in 2.0: reconnects are shown in the app's own banner.
+nonisolated struct ConnectionActivityAttributes: ActivityAttributes, Sendable {
+    nonisolated struct ContentState: Codable, Hashable, Sendable {}
+}
+
+/// Retired in 2.0: discovery only runs while the app is on screen.
+nonisolated struct BridgeDiscoveryActivityAttributes: ActivityAttributes, Sendable {
     nonisolated struct ContentState: Codable, Hashable, Sendable {}
 }
