@@ -389,6 +389,7 @@ nonisolated enum DesignTokens {
         static let liveActivityPairedMoment: Double = 4
         static let liveActivityPreviewWindow: Double = 120
         static let liveActivityPreviewLinger: Double = 5
+        static let liveActivityGalleryWindow: Double = 240
         static let statusPulse: Double = 1.8
         static let otaBadgeSpin: Double = 1.1
         static let pressedState: Double = 0.16
