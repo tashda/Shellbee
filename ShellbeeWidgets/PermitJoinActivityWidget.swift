@@ -21,7 +21,7 @@ private extension LiveActivityLayout {
         // app next runs and ends it.
         if context.isStale || state.endsAt <= .now {
             return Self(
-                symbol: "dot.radiowaves.up.forward",
+                symbol: "shellbee.permitjoin",
                 tint: LiveActivityPalette.neutral,
                 eyebrow: context.attributes.bridgeDisplayName,
                 title: "Network is closed",
@@ -31,7 +31,7 @@ private extension LiveActivityLayout {
         }
         let window = state.startedAt...max(state.startedAt, state.endsAt)
         return Self(
-            symbol: "dot.radiowaves.up.forward",
+            symbol: "shellbee.permitjoin",
             tint: LiveActivityPalette.pairing,
             eyebrow: context.attributes.bridgeDisplayName,
             title: "Network is open",

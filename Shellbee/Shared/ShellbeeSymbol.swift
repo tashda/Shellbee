@@ -28,6 +28,10 @@ struct ShellbeeSymbol: Hashable, Sendable {
 
     static let customPrefix = "shellbee."
 
+    /// Permit Join everywhere it appears: the Home toolbar, the pairing
+    /// sheets, and the Live Activity (which carries its own copy of the set).
+    static let permitJoin = custom("permitjoin")
+
     var image: Image {
         isCustom ? Image(name) : Image(systemName: name)
     }
