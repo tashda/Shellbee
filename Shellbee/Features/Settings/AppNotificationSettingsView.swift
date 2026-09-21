@@ -2,14 +2,20 @@ import SwiftUI
 
 struct AppNotificationSettingsView: View {
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
+    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
 
     var body: some View {
         Form {
             Section {
                 Toggle("Show Activity Center", isOn: $isActivityCenterEnabled)
-                NavigationLink { ActivityCenterPresentationSettingsView() } label: {
-                    Label("Presentation", systemImage: "rectangle.bottomthird.inset.filled")
+                Picker("Show", selection: $displayModeRaw) {
+                    ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
+                        Text(mode.title).tag(mode.rawValue)
+                    }
                 }
+                ActivityCenterPresentationPreview(mode: displayMode)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
                 NavigationLink { ActivityNotificationSettingsView() } label: {
                     Label("Notifications", systemImage: "bell.badge.fill")
                 }
@@ -18,31 +24,6 @@ struct AppNotificationSettingsView: View {
         .navigationTitle("Activity Center")
         .navigationBarTitleDisplayMode(.inline)
     }
-}
-
-private struct ActivityCenterPresentationSettingsView: View {
-    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
-
-    var body: some View {
-        Form {
-            Section {
-                Picker("Show", selection: $displayModeRaw) {
-                    ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
-                        Text(mode.title).tag(mode.rawValue)
-                    }
-                }
-            }
-
-            Section("Preview") {
-                ActivityCenterPresentationPreview(mode: displayMode)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
-        }
-        .navigationTitle("Presentation")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
     private var displayMode: ActivityAccessoryDisplayMode {
         ActivityAccessoryDisplayMode(rawValue: displayModeRaw) ?? .summary
     }

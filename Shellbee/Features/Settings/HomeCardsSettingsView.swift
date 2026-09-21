@@ -10,6 +10,15 @@ struct HomeCardsSettingsView: View {
 
     var body: some View {
         Form {
+            Section("Preview") {
+                HomeCardsPreview(
+                    recentEventsCount: recentEventsCount,
+                    displayModes: displayModes
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
+
             Section {
                 Picker("Recent Events", selection: $recentEventsCount) {
                     ForEach(HomeSettings.recentEventsOptions, id: \.self) { count in
@@ -30,14 +39,6 @@ struct HomeCardsSettingsView: View {
                 Text("Card Layout")
             }
 
-            Section("Preview") {
-                HomeCardsPreview(
-                    recentEventsCount: recentEventsCount,
-                    displayModes: displayModes
-                )
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            }
         }
         .navigationTitle("Home Cards")
         .navigationBarTitleDisplayMode(.inline)

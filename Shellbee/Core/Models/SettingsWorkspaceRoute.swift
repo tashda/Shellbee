@@ -15,9 +15,14 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
     case deviceFiltering(UUID)
     case touchlink(UUID)
     case backup(UUID)
-    case appGeneral
+    case appearance
+    case homeCards
+    case appDevices
+    case appConnection
+    case activityCenter
     case liveActivities
-    case notifications
+    case diagnostics
+    case advanced
     case deviceLibrary
     case about
     case developer
@@ -32,7 +37,8 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
              .mqtt(let id), .adapter(let id), .logOutput(let id), .homeAssistant(let id),
              .availability(let id), .ota(let id), .health(let id), .network(let id),
              .deviceFiltering(let id), .touchlink(let id), .backup(let id): id
-        case .appGeneral, .liveActivities, .notifications, .deviceLibrary, .about, .developer: nil
+        case .appearance, .homeCards, .appDevices, .appConnection, .activityCenter,
+             .liveActivities, .diagnostics, .advanced, .deviceLibrary, .about, .developer: nil
         }
     }
 
@@ -61,9 +67,14 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
         case .deviceFiltering: "device-filtering"
         case .touchlink: "touchlink"
         case .backup: "backup"
-        case .appGeneral: "app-general"
+        case .appearance: "appearance"
+        case .homeCards: "home-cards"
+        case .appDevices: "app-devices"
+        case .appConnection: "app-connection"
+        case .activityCenter: "activity-center"
         case .liveActivities: "live-activities"
-        case .notifications: "notifications"
+        case .diagnostics: "diagnostics"
+        case .advanced: "advanced"
         case .deviceLibrary: "device-library"
         case .about: "about"
         case .developer: "developer"

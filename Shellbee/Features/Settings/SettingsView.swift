@@ -169,7 +169,7 @@ struct SettingsView: View {
             Text("Tools")
         }
 
-        applicationSection
+        applicationSections
 
         if developerModeEnabled {
             developerSection
@@ -242,7 +242,7 @@ struct SettingsView: View {
             networkSection(bridgeID: id)
             toolsSection(bridgeID: id)
         }
-        applicationSection
+        applicationSections
 
         if developerModeEnabled {
             developerSection
@@ -395,16 +395,41 @@ struct SettingsView: View {
 
     // MARK: - App-global sections (shared between layouts)
 
-    private var applicationSection: some View {
-        Section {
-            NavigationLink { AppGeneralView() } label: {
-                settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
+    @ViewBuilder
+    private var applicationSections: some View {
+        Section("Display") {
+            NavigationLink { AppAppearanceSettingsView() } label: {
+                settingsLabel(title: "Appearance", systemImage: "paintbrush.fill", color: .blue)
+            }
+            NavigationLink { HomeCardsSettingsView() } label: {
+                settingsLabel(title: "Home Cards", systemImage: "rectangle.grid.2x2.fill", color: .purple)
+            }
+        }
+
+        Section("Activity") {
+            NavigationLink { AppNotificationSettingsView() } label: {
+                settingsLabel(title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
             }
             NavigationLink { AppLiveActivitiesView() } label: {
                 settingsLabel(title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
             }
-            NavigationLink { AppNotificationSettingsView() } label: {
-                settingsLabel(title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
+        }
+
+        Section("Behavior") {
+            NavigationLink { AppDeviceListSettingsView() } label: {
+                settingsLabel(title: "Devices", systemImage: "sensor.tag.radiowaves.forward.fill", color: .orange)
+            }
+            NavigationLink { AppConnectionSettingsView() } label: {
+                settingsLabel(title: "Connection", systemImage: "antenna.radiowaves.left.and.right", color: .green)
+            }
+        }
+
+        Section("Support") {
+            NavigationLink { AppDiagnosticsSettingsView() } label: {
+                settingsLabel(title: "Diagnostics", systemImage: "stethoscope", color: .teal)
+            }
+            NavigationLink { AppAdvancedSettingsView() } label: {
+                settingsLabel(title: "Advanced", systemImage: "gearshape.2.fill", color: .gray)
             }
             NavigationLink {
                 settingsDetailDestination {
@@ -413,8 +438,6 @@ struct SettingsView: View {
             } label: {
                 settingsLabel(title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             }
-        } header: {
-            Text("Application")
         }
     }
 
