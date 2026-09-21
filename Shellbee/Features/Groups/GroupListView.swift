@@ -5,16 +5,13 @@ struct GroupListView: View {
     /// `DeviceListView` for the matching pattern.
     var embedInNavigationStack: Bool = true
     private let selection: Binding<GroupRoute?>?
-    let searchFocusRequest: AppSearchFocusRequest
 
     init(
         embedInNavigationStack: Bool = true,
-        selection: Binding<GroupRoute?>? = nil,
-        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest()
+        selection: Binding<GroupRoute?>? = nil
     ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
-        self.searchFocusRequest = searchFocusRequest
     }
 
     @Environment(AppEnvironment.self) private var environment
@@ -23,7 +20,6 @@ struct GroupListView: View {
     @State private var groupToRename: BridgeBoundGroup?
     @State private var groupToRemove: BridgeBoundGroup?
     @State private var showAddGroup = false
-    @State private var isSearchPresented = false
     @State private var autoOpenedGroupRoute: GroupRoute?
     @State private var dropAddition: PendingGroupAddition?
     @State private var dropFeedback: DropFeedback?
@@ -162,9 +158,6 @@ struct GroupListView: View {
         .navigationDestination(item: $autoOpenedGroupRoute) { route in
             GroupDetailView(bridgeID: route.bridgeID, group: route.group)
         }
-        .searchable(text: $viewModel.searchText, isPresented: $isSearchPresented, prompt: "Search")
-        .avoidHidingSearchToolbarContentIfAvailable()
-        .minimizeSearchToolbarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if isMergedMode {
@@ -181,7 +174,6 @@ struct GroupListView: View {
                 }
                 .accessibilityLabel("Add Group")
             }
-            TrailingSearchToolbarItem()
         }
         .refreshable {
             if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
@@ -199,10 +191,6 @@ struct GroupListView: View {
             } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
                 ContentUnavailableView.search(text: viewModel.searchText)
             }
-        }
-        .onChange(of: searchFocusRequest) { _, request in
-            guard request.section == .groups else { return }
-            isSearchPresented = true
         }
         .onAppear { consumePendingGroupNavigation() }
         .onChange(of: sceneNavigation.pendingGroupNavigation) { _, route in

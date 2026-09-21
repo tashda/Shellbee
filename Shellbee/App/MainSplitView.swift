@@ -28,7 +28,6 @@ struct MainSplitView: View {
     @State private var selectedLogsPaneRoute: LogsPaneRoute?
     @State private var selectedSettingsRoute: SettingsWorkspaceRoute?
     @State private var selectedNetworkDeviceRoute: DeviceRoute?
-    @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
     @State private var deviceListViewModel = DeviceListViewModel()
     @State private var logsWorkspace = LogsWorkspaceState()
@@ -50,7 +49,7 @@ struct MainSplitView: View {
         guard wideIPadLayout else { return false }
         switch selection ?? .home {
         case .devices, .groups, .logs, .settings: return true
-        case .home, .networkMap: return false
+        case .home, .networkMap, .search: return false
         }
     }
 
@@ -206,7 +205,10 @@ struct MainSplitView: View {
     }
 
     private var sidebarTabs: [AppTab] {
-        AppTab.allCases.filter { $0 != .networkMap || developerModeEnabled }
+        // Search leads the sidebar, as in the system apps.
+        [.search] + AppTab.allCases.filter { tab in
+            tab != .search && (tab != .networkMap || developerModeEnabled)
+        }
     }
 
     private func sidebarRow(for tab: AppTab) -> some View {
@@ -228,12 +230,12 @@ struct MainSplitView: View {
     private func twoColumnDetail(usesWideHomeLayout: Bool) -> some View {
         switch selection ?? .home {
         case .home:     HomeView(usesWideLayout: usesWideHomeLayout)
+        case .search:   GlobalSearchView()
         case .devices:
             NavigationStack {
                 DeviceListView(
                     embedInNavigationStack: false,
                     selection: $selectedDeviceRoute,
-                    searchFocusRequest: searchFocusRequest,
                     viewModel: deviceListViewModel
                 )
                 .navigationDestination(item: $selectedDeviceRoute) { route in
@@ -244,8 +246,7 @@ struct MainSplitView: View {
             NavigationStack {
                 GroupListView(
                     embedInNavigationStack: false,
-                    selection: groupSelection,
-                    searchFocusRequest: searchFocusRequest
+                    selection: groupSelection
                 )
                 .navigationDestination(item: groupSelection) { route in
                     GroupDetailView(bridgeID: route.bridgeID, group: route.group)
@@ -258,7 +259,6 @@ struct MainSplitView: View {
             NavigationStack {
                 LogsView(
                     selection: $selectedLogsPaneRoute,
-                    searchFocusRequest: searchFocusRequest,
                     workspace: logsWorkspace
                 )
                 .navigationDestination(item: $selectedLogsPaneRoute) { route in
@@ -294,19 +294,16 @@ struct MainSplitView: View {
             DeviceListView(
                 embedInNavigationStack: false,
                 selection: $selectedDeviceRoute,
-                searchFocusRequest: searchFocusRequest,
                 viewModel: deviceListViewModel
             )
         case .groups:
             GroupListView(
                 embedInNavigationStack: false,
-                selection: groupSelection,
-                searchFocusRequest: searchFocusRequest
+                selection: groupSelection
             )
         case .logs:
             LogsView(
                 selection: $selectedLogsPaneRoute,
-                searchFocusRequest: searchFocusRequest,
                 workspace: logsWorkspace
             )
         case .networkMap:
@@ -318,7 +315,7 @@ struct MainSplitView: View {
             )
         case .settings:
             SettingsWorkspaceList(selection: $selectedSettingsRoute)
-        case .home:
+        case .home, .search:
             EmptyView()
         }
     }
@@ -394,7 +391,7 @@ struct MainSplitView: View {
                     description: Text("Pick a node from the map to view its device details.")
                 )
             }
-        case .home:
+        case .home, .search:
             EmptyView()
         }
     }
@@ -402,7 +399,7 @@ struct MainSplitView: View {
     private var keyboardActions: AppKeyboardActions {
         AppKeyboardActions(
             focusSearch: {
-                searchFocusRequest.request(for: selection ?? .home)
+                selection = .search
             },
             selectSection: { section in
                 selection = section

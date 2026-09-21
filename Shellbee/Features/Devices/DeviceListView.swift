@@ -9,17 +9,14 @@ struct DeviceListView: View {
     /// the trailing column instead of pushing onto an inner stack.
     var embedInNavigationStack: Bool = true
     private let selection: Binding<DeviceRoute?>?
-    let searchFocusRequest: AppSearchFocusRequest
 
     init(
         embedInNavigationStack: Bool = true,
         selection: Binding<DeviceRoute?>? = nil,
-        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest(),
         viewModel: DeviceListViewModel? = nil
     ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
-        self.searchFocusRequest = searchFocusRequest
         _viewModel = State(initialValue: viewModel ?? DeviceListViewModel())
     }
 
@@ -32,7 +29,6 @@ struct DeviceListView: View {
     @State private var pendingDeviceAlert: PendingDeviceAlert?
     @State private var pendingAlertBridgeID: UUID?
     @State private var showPairingWizard = false
-    @State private var isSearchPresented = false
 
     private var isGrouped: Bool {
         viewModel.groupByCategory
@@ -127,9 +123,6 @@ struct DeviceListView: View {
         .navigationTitle("Devices")
         .navigationBarTitleDisplayMode(.large)
         .modifier(DeviceListNavigationDestination(isEnabled: embedInNavigationStack))
-        .searchable(text: $viewModel.searchText, isPresented: $isSearchPresented, prompt: "Search")
-        .avoidHidingSearchToolbarContentIfAvailable()
-        .minimizeSearchToolbarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if !AdaptiveLayout.isPad, let toolbarID = toolbarBridgeID {
@@ -152,7 +145,6 @@ struct DeviceListView: View {
                 }
                 .accessibilityLabel("Add Device")
             }
-            TrailingSearchToolbarItem()
         }
         .refreshable {
             if let id = toolbarBridgeID {
@@ -189,10 +181,6 @@ struct DeviceListView: View {
             guard let route = newRoute else { return }
             sceneNavigation.pendingDeviceNavigation = nil
             pushDeviceResettingPath(route)
-        }
-        .onChange(of: searchFocusRequest) { _, request in
-            guard request.section == .devices else { return }
-            isSearchPresented = true
         }
         .onChange(of: viewModel.filterState) { _, _ in
             reconcileSelectionWithFilters()

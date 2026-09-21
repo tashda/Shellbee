@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AppTab: String, Codable, Hashable, CaseIterable {
-    case home, devices, groups, logs, networkMap, settings
+    case home, devices, groups, logs, networkMap, settings, search
 
     static let keyboardSections: [AppTab] = [
         .home, .devices, .groups, .logs, .networkMap, .settings
@@ -15,6 +15,7 @@ enum AppTab: String, Codable, Hashable, CaseIterable {
         case .logs: "Activity"
         case .networkMap: "Network Map"
         case .settings: "Settings"
+        case .search: "Search"
         }
     }
 
@@ -26,25 +27,8 @@ enum AppTab: String, Codable, Hashable, CaseIterable {
         case .logs: "list.bullet.rectangle"
         case .networkMap: "point.3.connected.trianglepath.dotted"
         case .settings: "gearshape.fill"
+        case .search: "magnifyingglass"
         }
-    }
-
-    var supportsSearch: Bool {
-        switch self {
-        case .devices, .groups, .logs: true
-        case .home, .networkMap, .settings: false
-        }
-    }
-}
-
-struct AppSearchFocusRequest: Equatable {
-    var sequence = 0
-    var section: AppTab?
-
-    mutating func request(for section: AppTab) {
-        guard section.supportsSearch else { return }
-        sequence += 1
-        self.section = section
     }
 }
 
