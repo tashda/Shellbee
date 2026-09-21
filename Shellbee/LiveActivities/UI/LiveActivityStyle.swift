@@ -14,6 +14,10 @@ enum LiveActivityStyle: String, CaseIterable, Identifiable {
     case ring
     /// Three columns: bridge, countdown, joined count.
     case scoreboard
+    /// One line per item with its own bar, like a download list.
+    case queue
+    /// One big centred value under the icon, like a stopwatch.
+    case spotlight
 
     var id: String { rawValue }
 
@@ -24,6 +28,8 @@ enum LiveActivityStyle: String, CaseIterable, Identifiable {
         case .hero: return "Hero timer"
         case .ring: return "Ring"
         case .scoreboard: return "Scoreboard"
+        case .queue: return "Queue"
+        case .spotlight: return "Spotlight"
         }
     }
 }
