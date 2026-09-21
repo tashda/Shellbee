@@ -61,7 +61,6 @@ struct LogsView: View {
             .navigationTitle("Logs")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: searchBinding, isPresented: $isSearchPresented, prompt: searchPrompt)
-            .avoidHidingSearchToolbarContentIfAvailable()
             .onAppear { applyInitialFilter(autoOpenSingle: true) }
             .navigationDestination(item: $autoOpenedEntry) { route in
                 LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
