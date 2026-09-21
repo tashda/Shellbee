@@ -16,8 +16,7 @@ extension AppStore {
         permitJoinWasOpen = isOpen
         PermitJoinLiveActivityCoordinator.shared.sync(
             bridgeID: activeBridgeID,
-            // Only name the bridge when there's more than one to tell apart.
-            bridgeDisplayName: ConnectionHistory.savedBridgeCount > 1 ? activeBridgeName : "",
+            bridgeDisplayName: LiveActivityBridgeLabel.name(activeBridgeName),
             isOpen: isOpen,
             endMilliseconds: info?.permitJoinEnd,
             targetName: info?.permitJoinTarget,

@@ -22,9 +22,11 @@ extension AppStore {
                     network: info.network,
                     logLevel: info.logLevel,
                     permitJoin: true,
-                    permitJoinTimeout: previous.permitJoinTimeout,
-                    permitJoinEnd: previous.permitJoinEnd,
-                    permitJoinTarget: previous.permitJoinTarget,
+                    // Keep the known window, but never let an unknown one
+                    // (from a message without a deadline) mask the real one.
+                    permitJoinTimeout: previous.permitJoinTimeout ?? info.permitJoinTimeout,
+                    permitJoinEnd: previous.permitJoinEnd ?? info.permitJoinEnd,
+                    permitJoinTarget: previous.permitJoinTarget ?? info.permitJoinTarget,
                     restartRequired: info.restartRequired,
                     config: info.config
                 )
@@ -266,7 +268,9 @@ extension AppStore {
                     message: message, deviceName: nil
                 ))
             }
-            if let info = bridgeInfo {
+            // "Still open" without a remaining time carries nothing new, and
+            // applying it would wipe the known deadline and the countdown.
+            if let info = bridgeInfo, !(enabled && info.permitJoin && remaining == nil) {
                 if enabled, info.permitJoin != enabled {
                     permitJoinJoinedCount = 0
                 }

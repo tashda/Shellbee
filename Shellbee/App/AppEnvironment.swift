@@ -334,6 +334,7 @@ final class AppEnvironment {
         PermitJoinLiveActivityCoordinator.shared.clearAll()
         BridgeOperationLiveActivityCoordinator.shared.clearAll()
         BridgeDiscoveryLiveActivityCoordinator.shared.clearAll()
+        LiveActivityBackgroundGrace.install()
         await Task.yield()
 
         let env = ProcessInfo.processInfo.environment

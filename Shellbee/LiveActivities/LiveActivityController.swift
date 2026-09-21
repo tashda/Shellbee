@@ -94,6 +94,7 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         endTask?.cancel()
 
         await Self.updateMatchingActivities(for: trackedAttributes, state: state, matches: matches)
+        let ids = Self.matchingIDs(for: trackedAttributes, matches: matches)
 
         endTask = Task {
             let visibleDuration = max(duration, DesignTokens.Duration.liveActivityMinimumVisible)
@@ -102,6 +103,7 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
             await Self.endMatchingActivities(
                 for: trackedAttributes,
                 state: state,
+                only: ids,
                 matches: matches
             )
         }
@@ -110,11 +112,12 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
     /// Multi-activity variant of `finish` — targets `attributes` directly.
     func finish(attributes: Attributes, state: Attributes.ContentState, displayFor duration: Double) async {
         await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
+        let ids = Self.matchingIDs(for: attributes, matches: matches)
 
         Task {
             let visibleDuration = max(duration, DesignTokens.Duration.liveActivityMinimumVisible)
             try? await Task.sleep(for: .seconds(visibleDuration))
-            await Self.endMatchingActivities(for: attributes, state: state, matches: matches)
+            await Self.endMatchingActivities(for: attributes, state: state, only: ids, matches: matches)
         }
     }
 
@@ -122,6 +125,7 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         guard let trackedAttributes else { return }
         endTask?.cancel()
 
+        let ids = Self.matchingIDs(for: trackedAttributes, matches: matches)
         endTask = Task {
             await Self.updateMatchingActivities(for: trackedAttributes, state: state, matches: matches)
 
@@ -129,6 +133,7 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
             await Self.endMatchingActivities(
                 for: trackedAttributes,
                 state: state,
+                only: ids,
                 matches: matches
             )
         }
@@ -136,10 +141,11 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
 
     /// Multi-activity variant of `cancel` — targets `attributes` directly.
     func cancel(attributes: Attributes, with state: Attributes.ContentState) async {
+        let ids = Self.matchingIDs(for: attributes, matches: matches)
         Task {
             await Self.updateMatchingActivities(for: attributes, state: state, matches: matches)
             try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivityCancel))
-            await Self.endMatchingActivities(for: attributes, state: state, matches: matches)
+            await Self.endMatchingActivities(for: attributes, state: state, only: ids, matches: matches)
         }
     }
 
@@ -160,12 +166,25 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         }
     }
 
+    /// Delayed ends snapshot which activities they're ending up front. A
+    /// matching activity requested during the delay belongs to new work (a
+    /// fresh pairing window, say) and must survive the old one's end.
+    nonisolated private static func matchingIDs(
+        for attributes: Attributes,
+        matches: @Sendable (Attributes, Attributes) -> Bool
+    ) -> Set<String> {
+        Set(Activity<Attributes>.activities.filter { matches($0.attributes, attributes) }.map(\.id))
+    }
+
     nonisolated private static func endMatchingActivities(
         for attributes: Attributes,
         state: Attributes.ContentState?,
+        only ids: Set<String>? = nil,
         matches: @Sendable (Attributes, Attributes) -> Bool
     ) async {
-        let activities = Activity<Attributes>.activities.filter { matches($0.attributes, attributes) }
+        let activities = Activity<Attributes>.activities.filter {
+            matches($0.attributes, attributes) && (ids?.contains($0.id) ?? true)
+        }
         for activity in activities {
             if let state {
                 await activity.end(

@@ -36,28 +36,42 @@ final class PermitJoinLiveActivityCoordinator {
             clear(bridgeID: bridgeID)
             return
         }
-        guard isOpen,
-              let endMilliseconds,
-              endMilliseconds > 0,
-              Date(timeIntervalSince1970: Double(endMilliseconds) / 1_000) > .now
-        else {
+        guard isOpen else {
             clear(bridgeID: bridgeID)
             return
         }
-        let endsAt = Date(timeIntervalSince1970: Double(endMilliseconds) / 1_000)
+        // Some messages report an open window without its deadline. That
+        // says nothing new, so leave the card alone rather than clearing it.
+        guard let endMilliseconds, endMilliseconds > 0 else { return }
+        guard Date(timeIntervalSince1970: Double(endMilliseconds) / 1_000) > .now else {
+            clear(bridgeID: bridgeID)
+            return
+        }
+        let reportedEnd = Date(timeIntervalSince1970: Double(endMilliseconds) / 1_000)
 
         let attributes = makeAttributes(bridgeID: bridgeID, bridgeDisplayName: bridgeDisplayName)
         let key = attributes.identifier
+        // The app derives the deadline from "now + remaining" on each event,
+        // so the same window drifts by a moment between syncs. Only a real
+        // jump in the deadline counts as a new window.
+        let previous = states[key].flatMap {
+            abs($0.endsAt.timeIntervalSince(reportedEnd)) < DesignTokens.Duration.liveActivityWindowTolerance ? $0 : nil
+        }
+        let endsAt = previous?.endsAt ?? reportedEnd
         let state = PermitJoinActivityAttributes.ContentState(
             joinedCount: max(0, joinedCount),
-            // Keep the original start time across bridge-state syncs. A new
-            // value here turns an otherwise identical update into a visual
-            // change, making Dynamic Island repeatedly expand on Home Screen.
-            startedAt: states[key]?.startedAt ?? .now,
+            // Keep the original start time across bridge-state syncs of the
+            // same window. A new value here turns an otherwise identical
+            // update into a visual change, making Dynamic Island repeatedly
+            // expand on Home Screen.
+            startedAt: previous?.startedAt ?? .now,
             endsAt: endsAt,
             targetName: targetName
         )
-        let alreadyVisible = tracked[key] != nil
+        // A new window (different deadline) is presented fresh: the previous
+        // card may already have been ended or swiped away, and an update
+        // alone would never bring it back.
+        let alreadyVisible = tracked[key] != nil && previous != nil
         tracked[key] = attributes
         guard states[key] != state || !alreadyVisible else { return }
         states[key] = state
