@@ -415,22 +415,13 @@ struct SettingsView: View {
             }
         }
 
-        Section("Behavior") {
-            NavigationLink { AppDeviceListSettingsView() } label: {
-                settingsLabel(title: "Devices", systemImage: "sensor.tag.radiowaves.forward.fill", color: .orange)
-            }
-            NavigationLink { AppConnectionSettingsView() } label: {
-                settingsLabel(title: "Connection", systemImage: "antenna.radiowaves.left.and.right", color: .green)
+        Section("Application") {
+            NavigationLink { AppGeneralView() } label: {
+                settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
             }
         }
 
         Section("Support") {
-            NavigationLink { AppDiagnosticsSettingsView() } label: {
-                settingsLabel(title: "Diagnostics", systemImage: "stethoscope", color: .teal)
-            }
-            NavigationLink { AppAdvancedSettingsView() } label: {
-                settingsLabel(title: "Advanced", systemImage: "gearshape.2.fill", color: .gray)
-            }
             NavigationLink {
                 settingsDetailDestination {
                     AboutView()
