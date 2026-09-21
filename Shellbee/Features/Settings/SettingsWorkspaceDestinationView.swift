@@ -21,7 +21,6 @@ struct SettingsWorkspaceDestinationView: View {
         case .touchlink(let id): TouchlinkView(bridgeID: id)
         case .backup(let id): BackupView(bridgeID: id)
         case .appearance: AppAppearanceSettingsView()
-        case .homeCards: HomeCardsSettingsView()
         case .appGeneral: AppGeneralView()
         case .activityCenter: AppNotificationSettingsView()
         case .liveActivities: AppLiveActivitiesView()

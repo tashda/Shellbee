@@ -48,20 +48,15 @@ struct SettingsWorkspaceList: View {
 
     private var applicationSection: some View {
         SwiftUI.Group {
-            Section("Display") {
-                routeRow(.appearance, title: "Appearance", systemImage: "paintbrush.fill", color: .blue)
-                routeRow(.homeCards, title: "Home Cards", systemImage: "rectangle.grid.2x2.fill", color: .purple)
-            }
-            Section("Activity") {
-                routeRow(.activityCenter, title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
-                routeRow(.liveActivities, title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
-            }
             Section("Application") {
                 routeRow(.appGeneral, title: "General", systemImage: "gearshape.fill", color: .gray)
-            }
-            Section("Support") {
-                routeRow(.deviceLibrary, title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+                routeRow(.appearance, title: "Appearance", systemImage: "paintbrush.fill", color: .blue)
+                routeRow(.activityCenter, title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
+                routeRow(.liveActivities, title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
                 routeRow(.about, title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
+            }
+            Section("Tools") {
+                routeRow(.deviceLibrary, title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
                 if developerModeEnabled {
                     routeRow(.developer, title: "Developer", systemImage: "hammer.fill", color: .purple)
                 }
