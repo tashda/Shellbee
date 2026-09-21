@@ -665,6 +665,8 @@ def _req_permit_join(client, payload):
     with _lock:
         _bridge_info["permit_join"] = value
         _bridge_info["permit_join_timeout"] = int(time_s) if (value and time_s) else None
+        # Z2M 2.x reports the window as an absolute epoch-ms deadline.
+        _bridge_info["permit_join_end"] = int((time.time() + float(time_s)) * 1000) if (value and time_s) else None
         _bridge_info["config"]["permit_join"] = value
     _publish_info(client)
     _emit_event(client, "permit_join", {"permitted": value, "time": time_s, "device": payload.get("device")})
@@ -674,6 +676,7 @@ def _req_permit_join(client, payload):
             with _lock:
                 _bridge_info["permit_join"] = False
                 _bridge_info["permit_join_timeout"] = None
+                _bridge_info["permit_join_end"] = None
                 _bridge_info["config"]["permit_join"] = False
             _publish_info(client)
             _emit_event(client, "permit_join", {"permitted": False})

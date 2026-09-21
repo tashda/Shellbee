@@ -1,3 +1,4 @@
+import ActivityKit
 import Foundation
 
 /// Presents pairing only while Z2M reports a finite, still-open permit-join
@@ -90,12 +91,18 @@ final class PermitJoinLiveActivityCoordinator {
 
     func clear(bridgeID: UUID?) {
         let identifier = makeIdentifier(bridgeID: bridgeID)
-        guard let attributes = tracked.removeValue(forKey: identifier) else { return }
-        states.removeValue(forKey: identifier)
+        // An activity outlives the process that started it. After a relaunch
+        // nothing is tracked, but a stale pairing activity may still be on
+        // screen, so end any activity carrying this identifier.
+        let attributes = tracked.removeValue(forKey: identifier)
+            ?? Activity<PermitJoinActivityAttributes>.activities
+                .first { $0.attributes.identifier == identifier }?.attributes
+        guard let attributes else { return }
+        let last = states.removeValue(forKey: identifier)
         expiryTasks.removeValue(forKey: identifier)?.cancel()
         let state = PermitJoinActivityAttributes.ContentState(
-            joinedCount: 0,
-            startedAt: .now,
+            joinedCount: last?.joinedCount ?? 0,
+            startedAt: last?.startedAt ?? .now,
             endsAt: .now,
             targetName: nil
         )
