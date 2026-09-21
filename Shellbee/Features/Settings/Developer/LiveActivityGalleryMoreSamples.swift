@@ -76,7 +76,7 @@ enum TouchlinkGallerySamples {
             sample("Searching", State(phase: .active, detail: "", foundCount: 0, startedAt: anchor, endsAt: end)),
             sample("Found devices", State(phase: .active, detail: "", foundCount: 3, startedAt: anchor, endsAt: end)),
             sample("Complete", State(phase: .completed, detail: "3 devices found", foundCount: 3, startedAt: anchor, endsAt: anchor)),
-            sample("Ended while suspended", State(phase: .active, detail: "", foundCount: 0, startedAt: anchor.addingTimeInterval(-30), endsAt: anchor.addingTimeInterval(-1))),
+            sample("Missed result", State(phase: .active, detail: "", foundCount: 0, startedAt: anchor.addingTimeInterval(-30), endsAt: anchor.addingTimeInterval(-1))),
             sample("Failed", State(phase: .failed, detail: "Coordinator doesn't support Touchlink", foundCount: 0, startedAt: anchor, endsAt: anchor))
         ]
     }
@@ -90,7 +90,7 @@ enum TouchlinkGallerySamples {
         return [
             sample("Blinking", State(phase: .active, detail: "Living Room Light", foundCount: 0, startedAt: anchor, endsAt: end)),
             sample("Complete", State(phase: .completed, detail: "Living Room Light", foundCount: 0, startedAt: anchor, endsAt: anchor)),
-            sample("Ended while suspended", State(phase: .active, detail: "Living Room Light", foundCount: 0, startedAt: anchor.addingTimeInterval(-20), endsAt: anchor.addingTimeInterval(-1))),
+            sample("Missed result", State(phase: .active, detail: "Living Room Light", foundCount: 0, startedAt: anchor.addingTimeInterval(-20), endsAt: anchor.addingTimeInterval(-1))),
             sample("Failed", State(phase: .failed, detail: "No response", foundCount: 0, startedAt: anchor, endsAt: anchor))
         ]
     }
