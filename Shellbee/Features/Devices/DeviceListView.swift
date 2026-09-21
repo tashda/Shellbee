@@ -124,15 +124,20 @@ struct DeviceListView: View {
         .navigationBarTitleDisplayMode(.large)
         .modifier(DeviceListNavigationDestination(isEnabled: embedInNavigationStack))
         .toolbar {
+            // Device-only actions sit in their own leading group so the
+            // Filter/Sort and Add groups line up with the Groups tab.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if !AdaptiveLayout.isPad, let toolbarID = toolbarBridgeID {
-                    DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
-                }
                 if let toolbarID = toolbarBridgeID {
                     DeviceFirmwareMenu(bridgeID: toolbarID)
                 }
                 if horizontalSizeClass == .regular {
                     presentationModeMenu
+                }
+            }
+            TrailingToolbarGroupSpacer()
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if !AdaptiveLayout.isPad, let toolbarID = toolbarBridgeID {
+                    DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
                 }
                 sortMenu
             }
