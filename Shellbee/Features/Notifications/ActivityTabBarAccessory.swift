@@ -41,28 +41,30 @@ struct ActivityTabBarAccessory: View {
     var body: some View {
         SwiftUI.Group {
             if let transitionNamespace {
-                accessoryButton
+                accessorySurface
                     .matchedTransitionSource(id: "activity-center", in: transitionNamespace)
             } else {
-                accessoryButton
+                accessorySurface
             }
         }
     }
 
-    private var accessoryButton: some View {
-        Button(action: openActivity) {
-            ActivityAccessorySummary(
-                mode: displayMode,
-                latestActivity: latestActivity,
-                latestAttention: latestAttention,
-                recentActivityCount: recentActivityCount,
-                recentAttentionCount: recentAttentionCount,
-                isInline: isInline
-            )
-        }
-        .buttonStyle(.plain)
+    /// Keep the matched source on the actual mini-player surface. A Button
+    /// adds a separate control transaction before the cover starts, which
+    /// makes the opening zoom noticeably less continuous than the return.
+    private var accessorySurface: some View {
+        ActivityAccessorySummary(
+            mode: displayMode,
+            latestActivity: latestActivity,
+            latestAttention: latestAttention,
+            recentActivityCount: recentActivityCount,
+            recentAttentionCount: recentAttentionCount,
+            isInline: isInline
+        )
         .contentShape(Rectangle())
+        .onTapGesture(perform: openActivity)
         .simultaneousGesture(openActivityGesture, including: .all)
+        .accessibilityAddTraits(.isButton)
     }
 
     private func openActivity() {

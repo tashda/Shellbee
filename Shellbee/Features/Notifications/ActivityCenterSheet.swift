@@ -4,6 +4,7 @@ import SwiftUI
 /// destination of the tab accessory's system zoom transition.
 struct ActivityCenterSheet: View {
     let transitionNamespace: Namespace.ID?
+    let workspace: LogsWorkspaceState
 
     var body: some View {
         activityContent
@@ -12,7 +13,7 @@ struct ActivityCenterSheet: View {
     @ViewBuilder
     private var activityContent: some View {
         let content = NavigationStack {
-            LogsView(navigationTitle: "")
+            LogsView(navigationTitle: "", workspace: workspace)
         }
         .configuredTopScrollEdgeEffect()
 
@@ -32,6 +33,7 @@ struct ActivityCenterSheetPresentation: ViewModifier {
     @Environment(\.sceneNavigation) private var sceneNavigation
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isEnabled = true
     let transitionNamespace: Namespace.ID?
+    let workspace: LogsWorkspaceState
 
     func body(content: Content) -> some View {
         if isEnabled {
@@ -39,7 +41,10 @@ struct ActivityCenterSheetPresentation: ViewModifier {
                 get: { sceneNavigation.isActivityCenterPresented },
                 set: { sceneNavigation.isActivityCenterPresented = $0 }
             )) {
-                ActivityCenterSheet(transitionNamespace: transitionNamespace)
+                ActivityCenterSheet(
+                    transitionNamespace: transitionNamespace,
+                    workspace: workspace
+                )
             }
         } else {
             content

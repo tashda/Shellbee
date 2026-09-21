@@ -31,6 +31,7 @@ struct MainSplitView: View {
     @State private var isCommandPalettePresented = false
     @State private var deviceListViewModel = DeviceListViewModel()
     @State private var logsWorkspace = LogsWorkspaceState()
+    @State private var activityWorkspace = LogsWorkspaceState()
     @State private var groupsWorkspace = GroupsWorkspaceState()
     @State private var didApplyInitialDestination = false
     @State private var networkMapFilters: Set<NetworkMapFilter> = []
@@ -62,7 +63,10 @@ struct MainSplitView: View {
         )) { request in
             LogSheetHost(request: request)
         }
-        .modifier(ActivityCenterSheetPresentation(transitionNamespace: nil))
+        .modifier(ActivityCenterSheetPresentation(
+            transitionNamespace: nil,
+            workspace: activityWorkspace
+        ))
         .sheet(isPresented: $isCommandPalettePresented) {
             CommandPaletteView()
                 .environment(environment)
