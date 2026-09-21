@@ -31,7 +31,10 @@ struct MainTabView: View {
 
     var body: some View {
         tabContent
-        .modifier(MainTabNotificationPresentation(transitionNamespace: activityCenterTransition))
+        .modifier(MainTabNotificationPresentation(
+            transitionNamespace: activityCenterTransition,
+            showsSignalChanges: activityWorkspace.activity.showLinkQualityChanges
+        ))
         .sheet(item: Binding(
             get: { sceneNavigation.pendingLogSheet },
             set: { sceneNavigation.pendingLogSheet = $0 }
@@ -182,6 +185,7 @@ struct MainTabView: View {
 private struct MainTabNotificationPresentation: ViewModifier {
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     let transitionNamespace: Namespace.ID
+    let showsSignalChanges: Bool
 
     func body(content: Content) -> some View {
         if !isActivityCenterEnabled {
@@ -190,7 +194,10 @@ private struct MainTabNotificationPresentation: ViewModifier {
             content
                 .tabBarMinimizeBehavior(.onScrollDown)
                 .tabViewBottomAccessory {
-                    ActivityTabBarAccessory(transitionNamespace: transitionNamespace)
+                    ActivityTabBarAccessory(
+                        transitionNamespace: transitionNamespace,
+                        showsSignalChanges: showsSignalChanges
+                    )
                 }
         } else {
             content
