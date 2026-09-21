@@ -9,7 +9,7 @@ struct HomeGroupsCard: View {
         Button(action: onTap) {
             HomeCardContainer {
                 HStack(alignment: .center) {
-                    HomeCardTitle(symbol: "rectangle.3.group.fill", title: cardTitle, tint: .green)
+                    HomeCardTitle(symbol: .custom("groups"), title: cardTitle, tint: .green)
                     Spacer()
                     Text("\(count)")
                         .font(.title3.weight(.semibold))

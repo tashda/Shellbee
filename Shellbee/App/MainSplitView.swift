@@ -332,7 +332,7 @@ struct MainSplitView: View {
             } else {
                 ContentUnavailableView(
                     "Select a Device",
-                    systemImage: "sensor.tag.radiowaves.forward.fill",
+                    image: "shellbee.devices",
                     description: Text("Pick a device from the list to view its details.")
                 )
             }
@@ -348,7 +348,7 @@ struct MainSplitView: View {
             } else {
                 ContentUnavailableView(
                     "Select a Group",
-                    systemImage: "rectangle.3.group.fill",
+                    image: "shellbee.groups",
                     description: Text("Pick a group from the list to view its controls, members, and scenes.")
                 )
             }
@@ -361,7 +361,7 @@ struct MainSplitView: View {
             } else {
                 ContentUnavailableView(
                     "Select a Log",
-                    systemImage: "list.bullet.rectangle",
+                    image: "shellbee.activity",
                     description: Text("Pick a log entry from the list to view its details.")
                 )
             }
@@ -374,7 +374,7 @@ struct MainSplitView: View {
             } else {
                 ContentUnavailableView(
                     "Select a Setting",
-                    systemImage: "gearshape.fill",
+                    image: "shellbee.settings",
                     description: Text("Pick a setting from the list to view its options.")
                 )
             }
@@ -387,7 +387,7 @@ struct MainSplitView: View {
             } else {
                 ContentUnavailableView(
                     "Select a Device",
-                    systemImage: "sensor.tag.radiowaves.forward.fill",
+                    image: "shellbee.devices",
                     description: Text("Pick a node from the map to view its device details.")
                 )
             }

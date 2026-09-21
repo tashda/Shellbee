@@ -68,31 +68,43 @@ struct MainTabView: View {
                 } label: {
                     Label(AppTab.home.title, symbol: AppTab.home.symbol)
                 }
-                Tab("Devices", systemImage: "sensor.tag.radiowaves.forward.fill", value: AppTab.devices) {
+                Tab(value: AppTab.devices) {
                     DeviceListView()
+                } label: {
+                    Label(AppTab.devices.title, symbol: AppTab.devices.symbol)
                 }
-                Tab("Groups", systemImage: "square.on.square.fill", value: AppTab.groups) {
+                Tab(value: AppTab.groups) {
                     GroupListView()
+                } label: {
+                    Label(AppTab.groups.title, symbol: AppTab.groups.symbol)
                 }
                 if AdaptiveLayout.isPad {
-                    Tab("Activity", systemImage: "list.bullet.rectangle", value: AppTab.logs) {
+                    Tab(value: AppTab.logs) {
                         NavigationStack {
                             LogsView()
                         }
                         .configuredTopScrollEdgeEffect()
+                    } label: {
+                        Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
                     }
                     if developerModeEnabled {
-                        Tab("Network Map", systemImage: AppTab.networkMap.systemImage, value: AppTab.networkMap) {
+                        Tab(value: AppTab.networkMap) {
                             NetworkMapView()
+                        } label: {
+                            Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol)
                         }
                     }
                 }
-                Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
+                Tab(value: AppTab.settings) {
                     SettingsView()
+                } label: {
+                    Label(AppTab.settings.title, symbol: AppTab.settings.symbol)
                 }
                 .badge(anyBridgeNeedsRestart ? Text("!") : nil)
-                Tab(AppTab.search.title, systemImage: AppTab.search.systemImage, value: AppTab.search, role: .search) {
+                Tab(value: AppTab.search, role: .search) {
                     GlobalSearchView()
+                } label: {
+                    Label(AppTab.search.title, symbol: AppTab.search.symbol)
                 }
             }
             .modifier(SearchTabActivation())
@@ -102,30 +114,30 @@ struct MainTabView: View {
                     .tabItem { Label(AppTab.home.title, symbol: AppTab.home.symbol) }
                     .tag(AppTab.home)
                 DeviceListView()
-                    .tabItem { Label("Devices", systemImage: "sensor.tag.radiowaves.forward.fill") }
+                    .tabItem { Label(AppTab.devices.title, symbol: AppTab.devices.symbol) }
                     .tag(AppTab.devices)
                 GroupListView()
-                    .tabItem { Label("Groups", systemImage: "square.on.square.fill") }
+                    .tabItem { Label(AppTab.groups.title, symbol: AppTab.groups.symbol) }
                     .tag(AppTab.groups)
                 if AdaptiveLayout.isPad {
                     NavigationStack {
                         LogsView()
                     }
                     .configuredTopScrollEdgeEffect()
-                    .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
+                    .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }
                     .tag(AppTab.logs)
                     if developerModeEnabled {
                         NetworkMapView()
-                            .tabItem { Label("Network Map", systemImage: AppTab.networkMap.systemImage) }
+                            .tabItem { Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol) }
                             .tag(AppTab.networkMap)
                     }
                 }
                 SettingsView()
-                    .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                    .tabItem { Label(AppTab.settings.title, symbol: AppTab.settings.symbol) }
                     .tag(AppTab.settings)
                     .badge(anyBridgeNeedsRestart ? Text("!") : nil)
                 GlobalSearchView()
-                    .tabItem { Label(AppTab.search.title, systemImage: AppTab.search.systemImage) }
+                    .tabItem { Label(AppTab.search.title, symbol: AppTab.search.symbol) }
                     .tag(AppTab.search)
             }
         }

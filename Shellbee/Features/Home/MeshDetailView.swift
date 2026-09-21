@@ -55,7 +55,7 @@ struct MeshDetailView: View {
                     NavigationLink {
                         NetworkMapView()
                     } label: {
-                        Label("Network Map", systemImage: "point.3.connected.trianglepath.dotted")
+                        Label("Network Map", symbol: .custom("mesh"))
                     }
                 }
             }

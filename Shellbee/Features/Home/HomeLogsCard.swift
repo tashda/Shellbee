@@ -11,7 +11,7 @@ struct HomeLogsCard: View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 HStack(alignment: .center) {
-                    HomeCardTitle(symbol: "list.bullet.rectangle.fill", title: cardTitle, tint: .blue)
+                    HomeCardTitle(symbol: .custom("activity"), title: cardTitle, tint: .blue)
                     Spacer()
                     Button("Show All", action: onOpenAll)
                         .font(.subheadline.weight(.medium))
