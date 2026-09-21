@@ -286,6 +286,7 @@
 				Features/Settings/AppConnectionSettingsView.swift,
 				Features/Settings/AppDeviceListSettingsView.swift,
 				Features/Settings/AppDiagnosticsSettingsView.swift,
+				Features/Settings/AppGeneralView.swift,
 				Features/Settings/AppLiveActivitiesView.swift,
 				Features/Settings/AppNotificationSettingsView.swift,
 				Features/Settings/AvailabilitySettingsView.swift,

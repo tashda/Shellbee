@@ -12,8 +12,6 @@ struct AppConnectionSettingsView: View {
                     unit: "attempts",
                     range: ConnectionSessionController.maxReconnectAttemptsRange
                 )
-            } footer: {
-                Text("How many times Shellbee retries before giving up. Opening the app always tries again.")
             }
         }
         .navigationTitle("Connection")
