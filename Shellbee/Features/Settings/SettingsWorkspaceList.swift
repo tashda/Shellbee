@@ -47,14 +47,27 @@ struct SettingsWorkspaceList: View {
     }
 
     private var applicationSection: some View {
-        Section("Application") {
-            routeRow(.appGeneral, title: "General", systemImage: "gearshape.fill", color: .gray)
-            routeRow(.liveActivities, title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
-            routeRow(.notifications, title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
-            routeRow(.deviceLibrary, title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
-            routeRow(.about, title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
-            if developerModeEnabled {
-                routeRow(.developer, title: "Developer", systemImage: "hammer.fill", color: .purple)
+        SwiftUI.Group {
+            Section("Display") {
+                routeRow(.appearance, title: "Appearance", systemImage: "paintbrush.fill", color: .blue)
+                routeRow(.homeCards, title: "Home Cards", systemImage: "rectangle.grid.2x2.fill", color: .purple)
+            }
+            Section("Activity") {
+                routeRow(.activityCenter, title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
+                routeRow(.liveActivities, title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
+            }
+            Section("Behavior") {
+                routeRow(.appDevices, title: "Devices", systemImage: "sensor.tag.radiowaves.forward.fill", color: .orange)
+                routeRow(.appConnection, title: "Connection", systemImage: "antenna.radiowaves.left.and.right", color: .green)
+            }
+            Section("Support") {
+                routeRow(.diagnostics, title: "Diagnostics", systemImage: "stethoscope", color: .teal)
+                routeRow(.advanced, title: "Advanced", systemImage: "gearshape.2.fill", color: .gray)
+                routeRow(.deviceLibrary, title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+                routeRow(.about, title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
+                if developerModeEnabled {
+                    routeRow(.developer, title: "Developer", systemImage: "hammer.fill", color: .purple)
+                }
             }
         }
     }
