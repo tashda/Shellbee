@@ -501,13 +501,31 @@ def _req_ota_update(client, payload):
     name = device["friendly_name"]
     transaction = payload.get("transaction")
     versions = _device_version_map(device)
+    # The test center can slow a run down (so there's time to lock the
+    # phone and watch the Live Activity) or make it fail part-way.
+    tick_s = float(payload.get("_tick_ms", OTA_TICK_MS)) / 1000.0
+    fail_at = payload.get("_fail_at")
 
     def run():
         _emit_log(client, "info", f"Updating '{name}' to latest firmware")
         progress = 0
         while progress < 100:
             progress = min(100, progress + OTA_STEP)
-            remaining_s = max(0, (100 - progress) * OTA_TICK_MS // 1000)
+            if fail_at is not None and progress >= int(fail_at):
+                with _lock:
+                    _states.setdefault(name, {})["update"] = {
+                        "installed_version": versions["installed_version"],
+                        "latest_version": versions["latest_version"],
+                        "state": "available",
+                    }
+                _publish_state(client, name)
+                failure = {"data": {"id": ident}, "status": "error",
+                           "error": f"Update of '{name}' failed (Device didn't respond to OTA request)"}
+                if transaction is not None:
+                    failure["transaction"] = transaction
+                _pub(client, f"{Z2M_TOPIC}/bridge/response/device/ota_update/update", failure, retain=False)
+                return
+            remaining_s = max(0, int((100 - progress) / OTA_STEP * tick_s))
             with _lock:
                 _states.setdefault(name, {})["update"] = {
                     "installed_version": versions["installed_version"],
@@ -517,7 +535,7 @@ def _req_ota_update(client, payload):
                     "remaining": remaining_s,
                 }
             _publish_state(client, name)
-            time.sleep(OTA_TICK_MS / 1000.0)
+            time.sleep(tick_s)
         with _lock:
             _states.setdefault(name, {})["update"] = {
                 "installed_version": versions["latest_version"],
@@ -856,14 +874,47 @@ def _req_networkmap(client, payload):
     raise _DeferResponse()
 
 
+# How touchlink requests behave; the test center's `touchlink` scenario
+# changes it. Real z2m scans for roughly half a minute before answering.
+touchlink_config: dict[str, Any] = {
+    "found": 2,
+    "scan_ms": 12_000,
+    "identify_ms": 3_000,
+    "fail": False,
+}
+
+
+def _deferred_touchlink(client, subpath: str, payload: Any, delay_ms: int, data: Any) -> None:
+    transaction = payload.get("transaction") if isinstance(payload, dict) else None
+
+    def run():
+        time.sleep(delay_ms / 1000.0)
+        if touchlink_config["fail"]:
+            envelope: dict[str, Any] = {"data": {}, "status": "error",
+                                        "error": "Touchlink failed: no response from coordinator"}
+        else:
+            envelope = {"data": data, "status": "ok"}
+        if transaction is not None:
+            envelope["transaction"] = transaction
+        _pub(client, f"{Z2M_TOPIC}/bridge/response/{subpath}", envelope, retain=False)
+
+    threading.Thread(target=run, daemon=True).start()
+    raise _DeferResponse()
+
+
 @_register("touchlink/scan")
 def _req_touchlink_scan(client, payload):
-    return {"found": []}
+    found = [
+        {"ieee_address": "0x0017880100%06x" % (0xa1b2c3 + i), "channel": [11, 15, 20, 25][i % 4]}
+        for i in range(max(0, int(touchlink_config["found"])))
+    ]
+    _deferred_touchlink(client, "touchlink/scan", payload, int(touchlink_config["scan_ms"]), {"found": found})
 
 
 @_register("touchlink/identify")
 def _req_touchlink_identify(client, payload):
-    return payload
+    data = {k: v for k, v in (payload or {}).items() if k != "transaction"}
+    _deferred_touchlink(client, "touchlink/identify", payload, int(touchlink_config["identify_ms"]), data)
 
 
 @_register("touchlink/factory_reset")

@@ -96,8 +96,32 @@
   <h2>OTA update</h2>
   <p class="desc">Marks firmware <code>available</code>, then drives the progress bar 0 → 100% before publishing the success envelope.</p>
   <label>Device</label><select id="ota-name"></select>
-  <button onclick="postScenario('ota/run', { name: v('ota-name') })">Run full OTA</button>
+  <div class="row">
+    <div><label>Duration (s, blank = ~4s)</label><input id="ota-duration" type="number" placeholder="4"></div>
+    <div><label>Fail at % (blank = succeed)</label><input id="ota-fail" type="number" placeholder=""></div>
+  </div>
+  <button onclick="postScenario('ota/run', {
+    name: v('ota-name'),
+    duration_s: v('ota-duration') ? +v('ota-duration') : null,
+    fail_at: v('ota-fail') ? +v('ota-fail') : null
+  })">Run full OTA</button>
   <button class="secondary" onclick="postScenario('ota/check', { name: v('ota-name') })">Check only</button>
+</section>
+
+<section>
+  <h2>Touchlink</h2>
+  <p class="desc">Sets how the mock answers the next <code>touchlink/scan</code> and <code>touchlink/identify</code>. Then start a scan or identify from the app (Settings → bridge → Touchlink) and watch its Live Activity.</p>
+  <div class="row3">
+    <div><label>Devices found</label><input id="tl-found" type="number" value="2"></div>
+    <div><label>Scan (ms)</label><input id="tl-scan" type="number" value="12000"></div>
+    <div><label>Identify (ms)</label><input id="tl-identify" type="number" value="3000"></div>
+  </div>
+  <label>Outcome</label>
+  <select id="tl-fail"><option value="false">succeed</option><option value="true">fail</option></select>
+  <button onclick="postScenario('touchlink', {
+    found: +v('tl-found'), scan_ms: +v('tl-scan'), identify_ms: +v('tl-identify'),
+    fail: v('tl-fail') === 'true'
+  })">Apply</button>
 </section>
 
 <section>
