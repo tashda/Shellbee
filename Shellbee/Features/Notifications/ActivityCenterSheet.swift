@@ -16,13 +16,14 @@ struct ActivityCenterSheet: View {
     }
 
     /// Sheets show a grabber when they can be dragged away; this full-screen
-    /// presentation can too, so it gets the same cue just above the toolbar.
+    /// presentation can too. It sits at the top of the toolbar row, clear of
+    /// the Dynamic Island and between the leading and trailing buttons.
     private var grabber: some View {
         let tokens = DesignTokens.ActivityFeed.self
         return Capsule()
             .fill(.tertiary)
             .frame(width: tokens.grabberWidth, height: tokens.grabberHeight)
-            .padding(.top, max(topSafeArea - tokens.grabberHeight - tokens.grabberGap, tokens.grabberMinimumTop))
+            .padding(.top, topSafeArea + tokens.grabberTopInset)
             .ignoresSafeArea(edges: .top)
             .accessibilityElement()
             .accessibilityLabel("Close Activity")
