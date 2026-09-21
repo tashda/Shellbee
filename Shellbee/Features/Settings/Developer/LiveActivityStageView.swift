@@ -28,7 +28,11 @@ struct LiveActivityStageView: View {
             wallpaper.view.ignoresSafeArea()
             switch surface {
             case .compact, .expanded:
-                StageHomeScreen(layout: sample.layout, isExpanded: surface == .expanded)
+                StageDevice(wallpaper: wallpaper, showsStatusBar: surface == .compact) {
+                    StageHomeScreen(layout: sample.layout, isExpanded: surface == .expanded)
+                }
+                .padding(.top, StageMetrics.deviceTop)
+                .padding(.bottom, StageMetrics.deviceBottom)
             case .lock:
                 StageLockScreen(layout: sample.layout)
             }
@@ -43,8 +47,6 @@ struct LiveActivityStageView: View {
             )
         }
         .environment(\.colorScheme, .dark)
-        // The system hides the status bar while the island is expanded.
-        .statusBarHidden(surface == .expanded)
         .task {
             // Countdowns would otherwise run out while the stage stays open.
             while !Task.isCancelled {
@@ -71,12 +73,67 @@ private struct StageHomeScreen: View {
                 .animation(.spring(duration: 0.45, bounce: 0.25), value: isExpanded)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .ignoresSafeArea(edges: .top)
     }
 }
 
-/// Drawn over the hardware Dynamic Island: same top inset, same height, so
-/// on a device the camera sits inside it exactly as with a real activity.
+/// A miniature phone for the Home Screen surfaces. The real Dynamic Island
+/// would sit on top of anything drawn in its place, so the mock screen is
+/// laid out at full iPhone size, with its own status bar and island, then
+/// scaled down to fit below it. Proportions stay true to the device.
+@available(iOS 26.0, *)
+private struct StageDevice<Screen: View>: View {
+    let wallpaper: LiveActivityStageWallpaper
+    /// iOS hides the status bar while the island is expanded.
+    let showsStatusBar: Bool
+    @ViewBuilder let screen: () -> Screen
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = StageMetrics.screenSize
+            let scale = min(proxy.size.width / size.width, proxy.size.height / size.height)
+            ZStack(alignment: .top) {
+                wallpaper.view
+                screen()
+                if showsStatusBar {
+                    StageStatusBar()
+                }
+            }
+            .frame(width: size.width, height: size.height)
+            .clipShape(RoundedRectangle(cornerRadius: StageMetrics.screenRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: StageMetrics.screenRadius, style: .continuous)
+                    .strokeBorder(.black, lineWidth: StageMetrics.bezel)
+            )
+            .scaleEffect(scale)
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+    }
+}
+
+/// Time on the left of the island, connectivity on the right, as on iPhone.
+@available(iOS 26.0, *)
+private struct StageStatusBar: View {
+    var body: some View {
+        HStack {
+            TimelineView(.everyMinute) { context in
+                Text(context.date, format: .dateTime.hour().minute())
+            }
+            .frame(maxWidth: .infinity)
+            Color.clear.frame(width: StageMetrics.statusBarGap)
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                Image(systemName: "wifi")
+                Image(systemName: "battery.100percent")
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .font(.body.weight(.semibold))
+        .foregroundStyle(.white)
+        .frame(height: StageMetrics.islandHeight)
+        .padding(.top, StageMetrics.islandTop)
+    }
+}
+
+/// The island at the mock screen's top, where the hardware island sits.
 @available(iOS 26.0, *)
 private struct StageIsland: View {
     let layout: LiveActivityLayout
@@ -215,6 +272,12 @@ private struct StageControls: View {
 @available(iOS 26.0, *)
 private enum StageMetrics {
     static let islandTop = DesignTokens.Size.liveActivityStageIslandTop
+    static let screenSize = CGSize(width: DesignTokens.Size.liveActivityStageScreenWidth, height: DesignTokens.Size.liveActivityStageScreenHeight)
+    static let screenRadius = DesignTokens.CornerRadius.liveActivityStageScreen
+    static let bezel = DesignTokens.Size.liveActivityStageBezel
+    static let statusBarGap = DesignTokens.Size.liveActivityStageStatusBarGap
+    static let deviceTop = DesignTokens.Size.liveActivityStageDeviceTop
+    static let deviceBottom = DesignTokens.Size.liveActivityStageDeviceBottom
     static let islandHeight = DesignTokens.Size.liveActivityGalleryIslandHeight
     static let camera = DesignTokens.Size.liveActivityGalleryCamera
     static let expandedWidth = DesignTokens.Size.liveActivityGalleryWidth
