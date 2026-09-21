@@ -97,3 +97,21 @@ struct LiveActivityProgress: View {
             .accessibilityValue("\(progress) percent")
     }
 }
+
+/// Secondary bridge context belongs below the primary operation in an
+/// expanded Dynamic Island. Keeping it out of the center region preserves
+/// room for the operation name and its trailing timer or metric.
+struct LiveActivityBridgeContext: View {
+    let name: String
+
+    var body: some View {
+        if !name.isEmpty {
+            Text(name)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}

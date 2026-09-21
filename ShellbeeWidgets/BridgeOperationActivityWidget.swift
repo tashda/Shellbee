@@ -23,9 +23,11 @@ struct BridgeOperationActivityWidget: Widget {
                     LiveActivityTitleBlock(
                         title: context.attributes.operation.title,
                         subtitle: context.state.detail,
-                        tertiary: context.attributes.bridgeDisplayName.isEmpty ? nil : context.attributes.bridgeDisplayName,
                         titleFont: .subheadline.weight(.semibold)
                     )
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    LiveActivityBridgeContext(name: context.attributes.bridgeDisplayName)
                 }
             } compactLeading: {
                 LiveActivityStatusMark(
@@ -75,6 +77,7 @@ private struct BridgeOperationLockScreenView: View {
                 Spacer(minLength: DesignTokens.Spacing.sm)
 
                 BridgeOperationMetric(context: context)
+                    .layoutPriority(1)
             }
         }
     }
