@@ -60,10 +60,11 @@ struct ActivityThumbnail: View {
         }
     }
 
-    /// A loud symbol already says "failed"; a pip on top would repeat it.
+    /// A loud symbol already says "failed", and a general message's glyph
+    /// is its severity symbol; a pip on top of either would repeat it.
     private func showsPip(for visual: LogRowIconography.Visual) -> Bool {
         if case .symbol = visual {
-            return LogRowIconography.emphasis(for: entry) != .loud
+            return LogRowIconography.emphasis(for: entry) != .loud && entry.category != .general
         }
         return true
     }
