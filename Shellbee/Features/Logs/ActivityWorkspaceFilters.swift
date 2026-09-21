@@ -18,7 +18,7 @@ struct ActivityWorkspaceFilters: View {
                         workspace.bridge.clearAllFilters()
                     }
                 } label: {
-                    Label("Clear filter", systemImage: "xmark.circle")
+                    Label("Clear Filters", systemImage: FilterMenuSymbol.clear)
                 }
             }
         }
@@ -42,7 +42,7 @@ struct ActivityWorkspaceFilters: View {
             categorySection
             namespaceSection
             deviceSection
-            Section("Signal") {
+            Section("Display") {
                 Toggle("Show Signal Changes", isOn: $workspace.activity.showLinkQualityChanges)
             }
         }
@@ -53,13 +53,13 @@ struct ActivityWorkspaceFilters: View {
         Section("Bridge") {
             filterButton(
                 title: "All Bridges",
-                systemImage: "antenna.radiowaves.left.and.right",
+                systemImage: FilterMenuSymbol.all,
                 isSelected: activeBridgeFilter == nil
             ) { setBridgeFilter(nil) }
             ForEach(connectedBridges, id: \.bridgeID) { bridge in
                 filterButton(
                     title: bridge.displayName,
-                    systemImage: "antenna.radiowaves.left.and.right",
+                    systemImage: FilterMenuSymbol.bridge,
                     isSelected: activeBridgeFilter == bridge.bridgeID
                 ) { setBridgeFilter(bridge.bridgeID) }
             }
@@ -67,10 +67,10 @@ struct ActivityWorkspaceFilters: View {
     }
 
     private var levelSection: some View {
-        Section("Severity") {
+        Section("Level") {
             filterButton(
                 title: "All Levels",
-                systemImage: "square.grid.2x2",
+                systemImage: FilterMenuSymbol.all,
                 isSelected: activeLevel == nil
             ) { setLevel(nil) }
             ForEach(LogLevel.allCases, id: \.self) { level in
@@ -87,7 +87,7 @@ struct ActivityWorkspaceFilters: View {
         Section("Category") {
             filterButton(
                 title: "All Categories",
-                systemImage: "square.grid.2x2",
+                systemImage: FilterMenuSymbol.all,
                 isSelected: workspace.activity.selectedCategory == nil
             ) { workspace.activity.selectedCategory = nil }
             ForEach(LogCategory.allCases, id: \.self) { category in
@@ -107,7 +107,7 @@ struct ActivityWorkspaceFilters: View {
             Section("Namespace") {
                 filterButton(
                     title: "All Namespaces",
-                    systemImage: "text.magnifyingglass",
+                    systemImage: FilterMenuSymbol.all,
                     isSelected: workspace.activity.selectedNamespace == nil
                 ) { workspace.activity.selectedNamespace = nil }
                 ForEach(namespaces, id: \.self) { namespace in
@@ -128,7 +128,7 @@ struct ActivityWorkspaceFilters: View {
             Section("Device") {
                 filterButton(
                     title: "All Devices",
-                    systemImage: "cpu",
+                    systemImage: FilterMenuSymbol.all,
                     isSelected: workspace.activity.selectedDevices.isEmpty
                 ) { workspace.activity.selectedDevices.removeAll() }
                 ForEach(devices, id: \.self) { device in

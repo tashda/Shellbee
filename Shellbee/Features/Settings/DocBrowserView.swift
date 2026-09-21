@@ -57,6 +57,9 @@ struct DocBrowserView: View {
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if filters.isActive {
+                    ClearFiltersToolbarButton { filters = DocBrowserFilters() }
+                }
                 DocBrowserFilterMenu(
                     filters: $filters,
                     showManufacturerSheet: $showManufacturerSheet
@@ -155,7 +158,7 @@ private struct DocBrowserFilterMenu: View {
         Menu {
             Menu {
                 Picker("Device Type", selection: $filters.deviceType) {
-                    Label("All Types", systemImage: "square.grid.2x2")
+                    Label("All Types", systemImage: FilterMenuSymbol.all)
                         .tag(DocDeviceType?.none)
                     ForEach(DocDeviceType.allCases) { type in
                         Label(type.rawValue, systemImage: type.systemImage)
@@ -164,49 +167,43 @@ private struct DocBrowserFilterMenu: View {
                 }
                 .pickerStyle(.inline)
             } label: {
-                if let type = filters.deviceType {
-                    Label("Type: \(type.rawValue)", systemImage: type.systemImage)
-                } else {
-                    Label("Type", systemImage: "tag")
-                }
+                FilterSubmenuLabel(
+                    name: "Type",
+                    systemImage: "tag",
+                    value: filters.deviceType?.rawValue,
+                    valueSystemImage: filters.deviceType?.systemImage
+                )
             }
 
             Menu {
                 Picker("Power Source", selection: powerBinding) {
-                    Label("Any Power Source", systemImage: "bolt.circle").tag(PowerFilter.any)
+                    Label("All Power Sources", systemImage: FilterMenuSymbol.all).tag(PowerFilter.any)
                     Label("Battery", systemImage: "battery.100").tag(PowerFilter.battery)
                     Label("Mains / USB", systemImage: "powerplug.fill").tag(PowerFilter.mains)
                 }
                 .pickerStyle(.inline)
             } label: {
                 switch currentPower {
-                case .battery: Label("Power: Battery", systemImage: "battery.100")
-                case .mains:   Label("Power: Mains / USB", systemImage: "powerplug.fill")
-                case .any:     Label("Power Source", systemImage: "bolt.circle")
+                case .battery:
+                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: "Battery", valueSystemImage: "battery.100")
+                case .mains:
+                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: "Mains / USB", valueSystemImage: "powerplug.fill")
+                case .any:
+                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle")
                 }
             }
 
             Button {
                 showManufacturerSheet = true
             } label: {
-                if let vendor = filters.vendor {
-                    Label(vendor, systemImage: "building.2.fill")
-                } else {
-                    Label("Manufacturer", systemImage: "building.2")
-                }
+                FilterSubmenuLabel(name: "Manufacturer", systemImage: "building.2", value: filters.vendor)
             }
 
-            if filters.isActive {
-                Divider()
-                Button(role: .destructive) {
-                    filters = DocBrowserFilters()
-                } label: {
-                    Label("Clear Filters", systemImage: "xmark.circle")
-                }
+            ClearFiltersMenuItem(isActive: filters.isActive) {
+                filters = DocBrowserFilters()
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(filters.isActive ? .fill : .none)
+            FilterMenuLabel(isActive: filters.isActive)
         }
     }
 

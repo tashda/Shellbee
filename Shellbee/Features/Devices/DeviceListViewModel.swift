@@ -62,7 +62,7 @@ enum DeviceStatusFilter: String, CaseIterable, Hashable {
 
     var systemImage: String {
         switch self {
-        case .all:              return "circle.grid.2x2"
+        case .all:              return FilterMenuSymbol.all
         case .online:           return "wifi"
         case .offline:          return "wifi.slash"
         case .availabilityOff:  return "minus.circle"

@@ -28,7 +28,7 @@ struct DeviceWorkspaceFilters: View {
                 Button {
                     viewModel.clearFilters()
                 } label: {
-                    Label("Clear filter", systemImage: "xmark.circle")
+                    Label("Clear Filters", systemImage: FilterMenuSymbol.clear)
                 }
             }
         }
@@ -37,14 +37,14 @@ struct DeviceWorkspaceFilters: View {
             Section("Bridge") {
                 filterButton(
                     title: "All Bridges",
-                    systemImage: "antenna.radiowaves.left.and.right",
+                    systemImage: FilterMenuSymbol.all,
                     isSelected: viewModel.bridgeFilter == nil
                 ) { viewModel.bridgeFilter = nil }
                 ForEach(connectedBridges, id: \.bridgeID) { bridge in
                     if viewModel.bridgeFilter == bridge.bridgeID || hasDevices(on: bridge) {
                         filterButton(
                             title: bridge.displayName,
-                            systemImage: "antenna.radiowaves.left.and.right",
+                            systemImage: FilterMenuSymbol.bridge,
                             isSelected: viewModel.bridgeFilter == bridge.bridgeID
                         ) { viewModel.bridgeFilter = bridge.bridgeID }
                     }
@@ -52,11 +52,11 @@ struct DeviceWorkspaceFilters: View {
             }
         }
 
-        Section("Availability & Updates") {
+        Section("Status") {
             ForEach(DeviceStatusFilter.allCases, id: \.self) { status in
                 if status == .all || viewModel.statusFilter == status || hasDevices(for: status) {
                     filterButton(
-                        title: status.rawValue,
+                        title: status == .all ? "All Statuses" : status.rawValue,
                         systemImage: status.systemImage,
                         isSelected: viewModel.statusFilter == status
                     ) { viewModel.statusFilter = status }
@@ -64,10 +64,10 @@ struct DeviceWorkspaceFilters: View {
             }
         }
 
-        Section("Device Type") {
+        Section("Type") {
             filterButton(
                 title: "All Types",
-                systemImage: "square.grid.2x2",
+                systemImage: FilterMenuSymbol.all,
                 isSelected: viewModel.categoryFilter == nil
             ) { viewModel.categoryFilter = nil }
             ForEach(Device.Category.allCases, id: \.self) { category in
@@ -85,7 +85,7 @@ struct DeviceWorkspaceFilters: View {
             Section("Manufacturer") {
                 filterButton(
                     title: "All Manufacturers",
-                    systemImage: "building.2",
+                    systemImage: FilterMenuSymbol.all,
                     isSelected: viewModel.vendorFilter == nil
                 ) { viewModel.vendorFilter = nil }
                 ForEach(availableVendors, id: \.self) { vendor in
@@ -103,7 +103,7 @@ struct DeviceWorkspaceFilters: View {
         Section("Network Role") {
             filterButton(
                 title: "All Roles",
-                systemImage: "point.3.connected.trianglepath.dotted",
+                systemImage: FilterMenuSymbol.all,
                 isSelected: viewModel.typeFilter == nil
             ) { viewModel.typeFilter = nil }
             if viewModel.typeFilter == .router || hasDevices(for: .router) {
@@ -122,7 +122,7 @@ struct DeviceWorkspaceFilters: View {
             }
         }
 
-        Section("Recency") {
+        Section("Display") {
             Toggle("Show Recently Added", isOn: $viewModel.showRecents)
         }
     }

@@ -35,7 +35,7 @@ struct DeviceFilterMenuSnapshot {
         let statuses = DeviceStatusFilter.allCases.compactMap { filter -> StatusItem? in
             let count = viewModel.statusCount(for: filter, store: store)
             guard filter == .all || filter == viewModel.statusFilter || count > 0 else { return nil }
-            let title = filter == .all ? "All (\(count))" : "\(filter.rawValue) (\(count))"
+            let title = filter == .all ? "All Statuses (\(count))" : "\(filter.rawValue) (\(count))"
             return StatusItem(filter: filter, title: title, systemImage: filter.systemImage)
         }
 
