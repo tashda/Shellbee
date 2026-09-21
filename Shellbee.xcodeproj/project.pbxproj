@@ -265,6 +265,7 @@
 				Features/Settings/Backup/BackupPayload.swift,
 				Features/Settings/Backup/BackupView.swift,
 				Features/Settings/Backup/RestoreGuideSheet.swift,
+				Features/Settings/BridgeConnectToggle.swift,
 				Features/Settings/BridgeSettingsView.swift,
 				Features/Settings/ConnectionCardActions.swift,
 				Features/Settings/Developer/DeveloperSettings.swift,

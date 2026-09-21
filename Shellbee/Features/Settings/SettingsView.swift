@@ -519,13 +519,6 @@ private struct BridgeSettingsRow: View {
         environment.registry.session(for: config.id)
     }
 
-    private var isConnected: Bool { session?.isConnected ?? false }
-    private var isConnecting: Bool {
-        switch session?.connectionState {
-        case .connecting, .reconnecting: true
-        default: false
-        }
-    }
     private var isAutoConnect: Bool { environment.history.isAutoConnect(config) }
     private var restartRequired: Bool { session?.store.bridgeInfo?.restartRequired == true }
 
@@ -550,7 +543,7 @@ private struct BridgeSettingsRow: View {
                         .accessibilityLabel("Restart required")
                 }
                 Spacer()
-                connectToggle
+                BridgeConnectToggle(config: config)
             }
         }
         .contextMenu {
@@ -571,22 +564,6 @@ private struct BridgeSettingsRow: View {
             }
             .tint(.blue)
         }
-    }
-
-    private var connectToggle: some View {
-        let isOn = Binding(
-            get: { isConnected || isConnecting },
-            set: { newValue in
-                if newValue {
-                    environment.connect(config: config)
-                } else {
-                    Task { await environment.disconnect(bridgeID: config.id) }
-                }
-            }
-        )
-        return Toggle("", isOn: isOn)
-            .labelsHidden()
-            .accessibilityLabel(isConnected ? "Disconnect \(config.displayName)" : "Connect \(config.displayName)")
     }
 
     private var stateLabel: String {
