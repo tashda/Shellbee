@@ -4,7 +4,6 @@ struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var tabSelection: AppTab = .home
-    @State private var searchFocusRequest = AppSearchFocusRequest()
     @State private var isCommandPalettePresented = false
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
 
@@ -68,15 +67,15 @@ struct MainTabView: View {
                     HomeView()
                 }
                 Tab("Devices", systemImage: "sensor.tag.radiowaves.forward.fill", value: AppTab.devices) {
-                    DeviceListView(searchFocusRequest: searchFocusRequest)
+                    DeviceListView()
                 }
                 Tab("Groups", systemImage: "square.on.square.fill", value: AppTab.groups) {
-                    GroupListView(searchFocusRequest: searchFocusRequest)
+                    GroupListView()
                 }
                 if AdaptiveLayout.isPad {
                     Tab("Activity", systemImage: "list.bullet.rectangle", value: AppTab.logs) {
                         NavigationStack {
-                            LogsView(searchFocusRequest: searchFocusRequest)
+                            LogsView()
                         }
                         .configuredTopScrollEdgeEffect()
                     }
@@ -90,21 +89,24 @@ struct MainTabView: View {
                     SettingsView()
                 }
                 .badge(anyBridgeNeedsRestart ? Text("!") : nil)
+                Tab(AppTab.search.title, systemImage: AppTab.search.systemImage, value: AppTab.search, role: .search) {
+                    GlobalSearchView()
+                }
             }
         } else {
             TabView(selection: $tabSelection) {
                 HomeView()
                     .tabItem { Label("Home", systemImage: "house.fill") }
                     .tag(AppTab.home)
-                DeviceListView(searchFocusRequest: searchFocusRequest)
+                DeviceListView()
                     .tabItem { Label("Devices", systemImage: "sensor.tag.radiowaves.forward.fill") }
                     .tag(AppTab.devices)
-                GroupListView(searchFocusRequest: searchFocusRequest)
+                GroupListView()
                     .tabItem { Label("Groups", systemImage: "square.on.square.fill") }
                     .tag(AppTab.groups)
                 if AdaptiveLayout.isPad {
                     NavigationStack {
-                        LogsView(searchFocusRequest: searchFocusRequest)
+                        LogsView()
                     }
                     .configuredTopScrollEdgeEffect()
                     .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
@@ -119,6 +121,9 @@ struct MainTabView: View {
                     .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                     .tag(AppTab.settings)
                     .badge(anyBridgeNeedsRestart ? Text("!") : nil)
+                GlobalSearchView()
+                    .tabItem { Label(AppTab.search.title, systemImage: AppTab.search.systemImage) }
+                    .tag(AppTab.search)
             }
         }
     }
@@ -126,7 +131,7 @@ struct MainTabView: View {
     private var keyboardActions: AppKeyboardActions {
         AppKeyboardActions(
             focusSearch: {
-                searchFocusRequest.request(for: tabSelection)
+                tabSelection = .search
             },
             selectSection: { section in
                 if section == .networkMap {

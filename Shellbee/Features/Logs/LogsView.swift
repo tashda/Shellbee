@@ -4,26 +4,22 @@ struct LogsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var workspace: LogsWorkspaceState
     @State private var autoOpenedEntry: LogRoute?
-    @State private var isSearchPresented = false
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
     private let onDone: (() -> Void)?
     private let selection: Binding<LogsPaneRoute?>?
-    let searchFocusRequest: AppSearchFocusRequest
 
     init(
         initialEntryFilter: Set<UUID>? = nil,
         notificationSheetStyle: Bool = false,
         onDone: (() -> Void)? = nil,
         selection: Binding<LogsPaneRoute?>? = nil,
-        searchFocusRequest: AppSearchFocusRequest = AppSearchFocusRequest(),
         workspace: LogsWorkspaceState? = nil
     ) {
         self.initialEntryFilter = initialEntryFilter
         self.notificationSheetStyle = notificationSheetStyle
         self.onDone = onDone
         self.selection = selection
-        self.searchFocusRequest = searchFocusRequest
         _workspace = State(initialValue: workspace ?? LogsWorkspaceState())
     }
 
@@ -60,12 +56,10 @@ struct LogsView: View {
             modeContent
             .navigationTitle("Logs")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: searchBinding, isPresented: $isSearchPresented, prompt: searchPrompt)
             .onAppear { applyInitialFilter(autoOpenSingle: true) }
             .navigationDestination(item: $autoOpenedEntry) { route in
                 LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
             }
-            .minimizeSearchToolbarIfAvailable()
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -103,11 +97,6 @@ struct LogsView: View {
                         Image(systemName: "trash")
                     }
                 }
-                TrailingSearchToolbarItem()
-            }
-            .onChange(of: searchFocusRequest) { _, request in
-                guard request.section == .logs else { return }
-                isSearchPresented = true
             }
         }
     }
@@ -134,23 +123,6 @@ struct LogsView: View {
             .scrollIndicators(.hidden)
             .scrollPosition(id: position)
         }
-    }
-
-    private var searchBinding: Binding<String> {
-        Binding(
-            get: { workspace.mode == .activity ? workspace.activity.searchText : workspace.bridge.searchText },
-            set: {
-                if workspace.mode == .activity {
-                    workspace.activity.searchText = $0
-                } else {
-                    workspace.bridge.searchText = $0
-                }
-            }
-        )
-    }
-
-    private var searchPrompt: String {
-        workspace.mode == .activity ? "Search logs" : "Search messages"
     }
 
     private func applyInitialFilter(autoOpenSingle: Bool) {

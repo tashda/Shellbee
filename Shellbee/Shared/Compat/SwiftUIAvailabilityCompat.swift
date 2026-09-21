@@ -76,14 +76,3 @@ struct TrailingToolbarGroupSpacer: ToolbarContent {
         }
     }
 }
-
-/// Pins the minimized `.searchable` button to the trailing edge as its own
-/// capsule, after the screen's other toolbar groups.
-struct TrailingSearchToolbarItem: ToolbarContent {
-    var body: some ToolbarContent {
-        if #available(iOS 26.0, *) {
-            ToolbarSpacer(.fixed, placement: .topBarTrailing)
-            DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
-        }
-    }
-}
