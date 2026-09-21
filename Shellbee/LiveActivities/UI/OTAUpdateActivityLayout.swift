@@ -101,5 +101,5 @@ extension LiveActivityLayout {
 
 extension LiveActivityStyle {
     /// The style the OTA widget renders with.
-    static let otaUpdateDefault: LiveActivityStyle = .hero
+    static let otaUpdateDefault: LiveActivityStyle = .queue
 }

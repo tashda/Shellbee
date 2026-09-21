@@ -2,7 +2,9 @@ import SwiftUI
 import WidgetKit
 
 /// The Queue style: a header with the overall value, then one line per item
-/// with its own small bar, like a download list.
+/// with its own small bar, like a download list. With a single item there's
+/// no list to show, so it falls back to that item's status and the wide
+/// timer-driven bar, which keeps moving while the app is suspended.
 struct LiveActivityQueueContent: View {
     let layout: LiveActivityLayout
     var showsHeader = true
@@ -22,7 +24,17 @@ struct LiveActivityQueueContent: View {
                     LiveActivityValueView(value: layout.value, tint: layout.tint, font: .title2.weight(.semibold))
                 }
             }
-            ForEach(layout.rows.prefix(DesignTokens.Count.liveActivityQueueRows)) { row in
+            if layout.rows.count <= 1 {
+                if showsHeader, let subtitle = layout.subtitle {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                }
+                LiveActivityChunkyBar(gauge: layout.gauge, tint: layout.tint)
+            }
+            ForEach(layout.rows.count > 1 ? Array(layout.rows.prefix(DesignTokens.Count.liveActivityQueueRows)) : []) { row in
                 QueueRow(row: row, tint: layout.tint)
             }
             if layout.rows.count > DesignTokens.Count.liveActivityQueueRows {
