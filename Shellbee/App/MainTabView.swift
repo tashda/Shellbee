@@ -5,7 +5,6 @@ struct MainTabView: View {
     @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var tabSelection: AppTab = .home
     @State private var isCommandPalettePresented = false
-    @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled = false
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
     /// connected bridge has pending config that needs a restart. Single-
@@ -53,9 +52,6 @@ struct MainTabView: View {
         .onChange(of: sceneNavigation.selectedTab) { _, newValue in
             tabSelection = newValue
         }
-        .onChange(of: developerModeEnabled) { _, enabled in
-            if !enabled, tabSelection == .networkMap { tabSelection = .home }
-        }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
 
@@ -87,12 +83,10 @@ struct MainTabView: View {
                     } label: {
                         Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
                     }
-                    if developerModeEnabled {
-                        Tab(value: AppTab.networkMap) {
-                            NetworkMapView()
-                        } label: {
-                            Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol)
-                        }
+                    Tab(value: AppTab.networkMap) {
+                        NetworkMapView()
+                    } label: {
+                        Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol)
                     }
                 }
                 Tab(value: AppTab.settings) {
@@ -126,11 +120,9 @@ struct MainTabView: View {
                     .configuredTopScrollEdgeEffect()
                     .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }
                     .tag(AppTab.logs)
-                    if developerModeEnabled {
-                        NetworkMapView()
-                            .tabItem { Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol) }
-                            .tag(AppTab.networkMap)
-                    }
+                    NetworkMapView()
+                        .tabItem { Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol) }
+                        .tag(AppTab.networkMap)
                 }
                 SettingsView()
                     .tabItem { Label(AppTab.settings.title, symbol: AppTab.settings.symbol) }
@@ -150,7 +142,7 @@ struct MainTabView: View {
             },
             selectSection: { section in
                 if section == .networkMap {
-                    guard AdaptiveLayout.isPad, developerModeEnabled else { return }
+                    guard AdaptiveLayout.isPad else { return }
                 } else if section == .logs {
                     guard AdaptiveLayout.isPad else { return }
                 }
