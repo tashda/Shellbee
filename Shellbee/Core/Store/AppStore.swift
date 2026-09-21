@@ -83,13 +83,6 @@ final class AppStore {
     /// Identify cluster). The action is fire-and-forget, so the row clears
     /// itself on a short timer rather than waiting for a response.
     var identifyInProgress: Set<String> = []
-    var pendingNotifications: [InAppNotification] = []
-    var fastTrackNotifications: [InAppNotification] = []
-    // Bumped whenever a new (non-coalesced) normal notification is enqueued.
-    // The overlay observes this to fire the arrival haptic exactly once per
-    // new banner, independent of coalescing bumps.
-    var notificationArrivalID: UUID = UUID()
-
     // Set by AppEnvironment to route OTA check/update responses into the
     // bulk queue so it can advance to the next device.
     var otaResponseForwarding: ((_ friendlyName: String, _ success: Bool, _ kind: OTABulkOperationQueue.Kind) -> Void)?
@@ -99,8 +92,8 @@ final class AppStore {
     // Tuple: (zipBase64, errorMessage) — exactly one is non-nil.
     var backupResponseHandler: ((_ zipBase64: String?, _ error: String?) -> Void)?
 
-    // Set by AppEnvironment to filter out notifications the user disabled
-    // in Settings → App → Notifications. Returns true to allow.
+    // Set by AppEnvironment to decide which Activity entries should be
+    // highlighted in Notifications Only. Returns true to highlight.
     var notificationFilter: ((InAppNotification) -> Bool)?
 
     // Transient per-device check results rendered briefly in the row after
@@ -114,8 +107,6 @@ final class AppStore {
     }
 
     static let logLimit = 1000
-    static let coalesceWindow: TimeInterval = AppConfig.UX.notificationCoalesceWindow
-
     init(networkMapCache: NetworkMapCache = .shared) {
         self.networkMapCache = networkMapCache
         loadFirstSeen()
@@ -138,8 +129,6 @@ final class AppStore {
         otaUpdates = [:]
         logEntries = []
         operationErrors = []
-        pendingNotifications = []
-        fastTrackNotifications = []
         deviceCheckResults = [:]
         pendingRemovals = []
         touchlinkDevices = []

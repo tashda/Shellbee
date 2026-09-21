@@ -1,14 +1,14 @@
 import SwiftUI
 
 /// The persistent, player-like Activity Center attached to the iPhone tab
-/// bar. New notifications temporarily take visual precedence; both expand
-/// into the same native Activity Center sheet.
+/// bar. It reads the same structured Activity history shown in its sheet.
 @available(iOS 26.0, *)
 struct ActivityTabBarAccessory: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
+    let transitionNamespace: Namespace.ID?
 
     private var displayMode: ActivityAccessoryDisplayMode {
         ActivityAccessoryDisplayMode(rawValue: displayModeRaw) ?? .summary
@@ -22,28 +22,45 @@ struct ActivityTabBarAccessory: View {
         environment.allLogEntries.first
     }
 
+    private var latestAttention: BridgeBoundLogEntry? {
+        environment.allLogEntries.first { $0.entry.isActivityAttention }
+    }
+
     private var recentActivityCount: Int {
         let cutoff = Date.now.addingTimeInterval(-15 * 60)
         return environment.allLogEntries.count { $0.entry.timestamp >= cutoff }
     }
 
-    var body: some View {
-        ZStack {
-            Button(action: openActivity) {
-                ActivityAccessorySummary(
-                    mode: displayMode,
-                    latestActivity: latestActivity,
-                    recentActivityCount: recentActivityCount,
-                    isInline: isInline
-                )
-            }
-            .buttonStyle(.plain)
+    private var recentAttentionCount: Int {
+        let cutoff = Date.now.addingTimeInterval(-15 * 60)
+        return environment.allLogEntries.count {
+            $0.entry.isActivityAttention && $0.entry.timestamp >= cutoff
+        }
+    }
 
-            InAppNotificationOverlay(
-                presentation: .tabBarAccessory,
-                isInlineActivityAccessory: isInline
+    var body: some View {
+        SwiftUI.Group {
+            if let transitionNamespace {
+                accessoryButton
+                    .matchedTransitionSource(id: "activity-center", in: transitionNamespace)
+            } else {
+                accessoryButton
+            }
+        }
+    }
+
+    private var accessoryButton: some View {
+        Button(action: openActivity) {
+            ActivityAccessorySummary(
+                mode: displayMode,
+                latestActivity: latestActivity,
+                latestAttention: latestAttention,
+                recentActivityCount: recentActivityCount,
+                recentAttentionCount: recentAttentionCount,
+                isInline: isInline
             )
         }
+        .buttonStyle(.plain)
         .contentShape(Rectangle())
         .simultaneousGesture(openActivityGesture, including: .all)
     }
@@ -67,7 +84,9 @@ struct ActivityTabBarAccessory: View {
 private struct ActivityAccessorySummary: View {
     let mode: ActivityAccessoryDisplayMode
     let latestActivity: BridgeBoundLogEntry?
+    let latestAttention: BridgeBoundLogEntry?
     let recentActivityCount: Int
+    let recentAttentionCount: Int
     let isInline: Bool
 
     var body: some View {
@@ -108,7 +127,8 @@ private struct ActivityAccessorySummary: View {
         case .summary:
             recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
         case .notificationsOnly:
-            "Notifications"
+            latestAttention?.entry.summaryTitle
+                ?? (recentAttentionCount == 0 ? "Notifications" : "\(recentAttentionCount) notifications")
         }
     }
 
@@ -116,18 +136,21 @@ private struct ActivityAccessorySummary: View {
         switch mode {
         case .latestActivity: latestActivity?.entry.summarySubtitle
         case .summary: "View Activity"
-        case .notificationsOnly: "No new notifications"
+        case .notificationsOnly: latestAttention?.entry.summarySubtitle ?? "No new notifications"
         }
     }
 
     private var symbolName: String {
         if mode == .notificationsOnly {
-            return "bell"
+            return latestAttention?.entry.level.systemImage ?? "bell"
         }
         return latestActivity?.entry.level.systemImage ?? "list.bullet.rectangle"
     }
 
     private var symbolColor: Color {
-        mode == .notificationsOnly ? .secondary : latestActivity?.entry.level.color ?? .secondary
+        if mode == .notificationsOnly {
+            return latestAttention?.entry.level.color ?? .secondary
+        }
+        return latestActivity?.entry.level.color ?? .secondary
     }
 }

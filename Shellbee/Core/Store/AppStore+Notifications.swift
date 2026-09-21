@@ -1,16 +1,6 @@
 import Foundation
 
 extension AppStore {
-    func popNotification() -> InAppNotification? {
-        guard !pendingNotifications.isEmpty else { return nil }
-        return pendingNotifications.removeFirst()
-    }
-
-    func popFastTrackNotification() -> InAppNotification? {
-        guard !fastTrackNotifications.isEmpty else { return nil }
-        return fastTrackNotifications.removeFirst()
-    }
-
     func enqueueOTABulkSummary(_ summary: OTABulkOperationQueue.CompletionSummary) {
         let noun = summary.kind == .check ? "Checked" : "Updated"
         let level: LogLevel = summary.failed > 0 ? .warning : .info
@@ -39,33 +29,39 @@ extension AppStore {
     }
 
     func enqueueNotification(_ notification: InAppNotification) {
-        // Activity Center is the single in-app event presentation. Turning it
-        // off keeps the underlying log entry but prevents a later stale popup.
-        guard ActivityCenterSettings.isEnabled else { return }
+        // Notifications are Activity records now, not a second transient UI
+        // queue. Preferences decide whether an event is highlighted in
+        // Notifications Only; they never discard the underlying Activity.
+        let shouldHighlight = notificationFilter?(notification) ?? true
 
-        // Fast-track bypasses the filter — these are transient confirmations
-        // (e.g. "Copied to Clipboard") driven by the user's own action.
-        if notification.priority == .fastTrack {
-            fastTrackNotifications.append(notification)
-            return
+        var markedExistingEntry = false
+        for id in notification.logEntryIDs {
+            guard let index = logEntries.firstIndex(where: { $0.id == id }) else { continue }
+            if shouldHighlight {
+                logEntries[index].isActivityAttention = true
+            }
+            logEntries[index].activityTitle = notification.title
+            logEntries[index].activitySubtitle = notification.subtitle
+            markedExistingEntry = true
         }
 
-        if let filter = notificationFilter, !filter(notification) { return }
+        guard !markedExistingEntry else { return }
 
-        let now = Date()
-
-        if let idx = pendingNotifications.lastIndex(where: { $0.coalesceKey == notification.coalesceKey }),
-           now.timeIntervalSince(pendingNotifications[idx].lastUpdated) <= Self.coalesceWindow {
-            pendingNotifications[idx].count += notification.count
-            pendingNotifications[idx].logEntryIDs.append(contentsOf: notification.logEntryIDs)
-            pendingNotifications[idx].occurrences.append(contentsOf: notification.occurrences)
-            if let sub = notification.subtitle { pendingNotifications[idx].subtitle = sub }
-            pendingNotifications[idx].lastUpdated = now
-            return
-        }
-
-        pendingNotifications.append(notification)
-        notificationArrivalID = UUID()
+        let message = [notification.title, notification.subtitle]
+            .compactMap { $0 }
+            .joined(separator: " — ")
+        insertLogEntry(LogEntry(
+            id: UUID(),
+            timestamp: .now,
+            level: notification.level,
+            category: .general,
+            namespace: nil,
+            message: message,
+            deviceName: notification.deviceName,
+            isActivityAttention: shouldHighlight,
+            activityTitle: notification.title,
+            activitySubtitle: notification.subtitle
+        ))
     }
 
     func notification(

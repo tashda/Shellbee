@@ -55,6 +55,14 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     let message: String
     let deviceName: String?
     let context: LogContext?
+    /// Marks an entry that was previously surfaced as an in-app notification.
+    /// Activity Center uses this for Notifications Only without maintaining a
+    /// second, disposable event history.
+    var isActivityAttention: Bool
+    /// Structured copy for application-originated Activity entries and for
+    /// Z2M log lines promoted into a user-facing Activity event.
+    var activityTitle: String?
+    var activitySubtitle: String?
     /// Set by the view model when consecutive same-device same-kind entries
     /// are coalesced into one displayed row ("Signal drifted ×5"). Always 1
     /// on the canonical entries stored in `AppStore.logEntries`; the view
@@ -64,11 +72,16 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     init(
         id: UUID, timestamp: Date, level: LogLevel, category: LogCategory,
         namespace: String?, message: String, deviceName: String?, context: LogContext? = nil,
+        isActivityAttention: Bool = false,
+        activityTitle: String? = nil,
+        activitySubtitle: String? = nil,
         coalescedCount: Int = 1
     ) {
         self.id = id; self.timestamp = timestamp; self.level = level
         self.category = category; self.namespace = namespace
         self.message = message; self.deviceName = deviceName; self.context = context
+        self.isActivityAttention = isActivityAttention
+        self.activityTitle = activityTitle; self.activitySubtitle = activitySubtitle
         self.coalescedCount = coalescedCount
     }
 
@@ -155,6 +168,7 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     }
 
     var summaryTitle: String {
+        if let activityTitle { return activityTitle }
         // Recognized bridge topics get a friendly title up front so rows
         // read as "Bridge health check" instead of the raw MQTT topic.
         if let display = bridgeTopicDisplay { return display.title }
@@ -166,6 +180,7 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     }
 
     var summarySubtitle: String {
+        if let activitySubtitle { return activitySubtitle }
         if let display = bridgeTopicDisplay {
             return display.subtitle ?? ""
         }
