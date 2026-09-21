@@ -14,6 +14,7 @@ final class PermitJoinLiveActivityCoordinator {
     }
 
     private var tracked: [String: PermitJoinActivityAttributes] = [:]
+    private var states: [String: PermitJoinActivityAttributes.ContentState] = [:]
     private var expiryTasks: [String: Task<Void, Never>] = [:]
 
     private init() {}
@@ -45,15 +46,20 @@ final class PermitJoinLiveActivityCoordinator {
         let endsAt = Date(timeIntervalSince1970: Double(endMilliseconds) / 1_000)
 
         let attributes = makeAttributes(bridgeID: bridgeID, bridgeDisplayName: bridgeDisplayName)
+        let key = attributes.identifier
         let state = PermitJoinActivityAttributes.ContentState(
             joinedCount: max(0, joinedCount),
-            startedAt: .now,
+            // Keep the original start time across bridge-state syncs. A new
+            // value here turns an otherwise identical update into a visual
+            // change, making Dynamic Island repeatedly expand on Home Screen.
+            startedAt: states[key]?.startedAt ?? .now,
             endsAt: endsAt,
             targetName: targetName
         )
-        let key = attributes.identifier
         let alreadyVisible = tracked[key] != nil
         tracked[key] = attributes
+        guard states[key] != state || !alreadyVisible else { return }
+        states[key] = state
         expiryTasks[key]?.cancel()
         expiryTasks[key] = Task { @MainActor [weak self] in
             let seconds = max(0, endsAt.timeIntervalSinceNow)
@@ -85,6 +91,7 @@ final class PermitJoinLiveActivityCoordinator {
     func clear(bridgeID: UUID?) {
         let identifier = makeIdentifier(bridgeID: bridgeID)
         guard let attributes = tracked.removeValue(forKey: identifier) else { return }
+        states.removeValue(forKey: identifier)
         expiryTasks.removeValue(forKey: identifier)?.cancel()
         let state = PermitJoinActivityAttributes.ContentState(
             joinedCount: 0,
@@ -99,6 +106,7 @@ final class PermitJoinLiveActivityCoordinator {
 
     func clearAll() {
         tracked.removeAll()
+        states.removeAll()
         expiryTasks.values.forEach { $0.cancel() }
         expiryTasks.removeAll()
         Task {
