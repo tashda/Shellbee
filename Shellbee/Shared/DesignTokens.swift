@@ -175,6 +175,11 @@ nonisolated enum DesignTokens {
         static let networkMapRefreshActiveDot: CGFloat = 9
         static let networkMapRefreshPassiveDot: CGFloat = 6
         static let networkMapRefreshOrbitRadius: CGFloat = 49
+        static let networkMapScanCardWidth: CGFloat = 440
+        static let networkMapScanCardWideWidth: CGFloat = 520
+        static let networkMapScanStepDot: CGFloat = 18
+        static let networkMapScanConnector: CGFloat = 2
+        static let networkMapScanBarHeight: CGFloat = 8
         // Offsets (pixel-pushing for badge alignment over a parent shape)
         static let logRowBadgeOffset: CGFloat = 3
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4
@@ -488,6 +493,7 @@ nonisolated enum DesignTokens {
         static let networkMapSecondaryEdge: Double = 0.28
         static let networkMapFadedEdge: Double = 0.08
         static let networkMapBubbleTint: Double = 0.16
+        static let networkMapScanTileFill: Double = 0.1
         static let networkMapBubbleStatusTint: Double = 0.28
         static let networkMapBubbleShadow: Double = 0.12
         static let overlay: Double = 0.3

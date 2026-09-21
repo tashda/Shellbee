@@ -10,7 +10,6 @@ struct NetworkMapCanvasView: View {
     let onRename: (BridgeBoundDevice) -> Void
     let onRemove: (BridgeBoundDevice) -> Void
     let onPendingAlert: (PendingDeviceAlert, UUID) -> Void
-    let onMapRendered: () -> Void
     /// Owned by `NetworkMapView` and shared down so its toolbar's Zoom
     /// In/Out/Fit buttons can drive the same pan/zoom state this view's
     /// gestures do.
@@ -21,7 +20,6 @@ struct NetworkMapCanvasView: View {
     @State private var layout: NetworkMapLayout?
     @State private var renderIndex: NetworkMapRenderIndex?
     @State private var quickLookNode: NetworkMapLayout.Node?
-    @State private var laidOutTopology: NetworkTopology?
     @State private var viewport = Viewport(size: .zero, topInset: 0)
     @State private var indexedRevision: Int?
 
@@ -83,8 +81,6 @@ struct NetworkMapCanvasView: View {
             layout = computed
             renderIndex = NetworkMapRenderIndex.build(layout: computed, store: store)
             indexedRevision = store.networkMapRenderRevision
-            laidOutTopology = topology
-            onMapRendered()
         }
         .task(id: bridgeID) { await refreshRenderIndexPeriodically() }
         .sheet(item: $quickLookNode) { node in
@@ -104,7 +100,6 @@ struct NetworkMapCanvasView: View {
             indexedRevision = store.networkMapRenderRevision
             let next = NetworkMapRenderIndex.build(layout: layout, store: store)
             if next != renderIndex { renderIndex = next }
-            if laidOutTopology == topology { onMapRendered() }
         }
     }
 

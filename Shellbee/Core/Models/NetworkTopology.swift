@@ -29,12 +29,16 @@ struct NetworkTopologyNode: Codable, Sendable, Equatable, Identifiable {
     let role: Role
     let manufacturerName: String?
     let modelID: String?
+    /// What Z2M could not read from this device during the scan (e.g.
+    /// `["lqi"]`). Present, possibly empty, only for devices Z2M queried —
+    /// the coordinator and routers — and absent for end devices.
+    var failed: [String]? = nil
 
     nonisolated var id: String { ieeeAddress }
 
     enum CodingKeys: String, CodingKey {
         case ieeeAddress = "ieeeAddr"
-        case friendlyName, networkAddress, manufacturerName, modelID
+        case friendlyName, networkAddress, manufacturerName, modelID, failed
         case role = "type"
     }
 }

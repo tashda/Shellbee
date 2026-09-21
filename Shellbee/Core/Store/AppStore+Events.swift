@@ -66,6 +66,10 @@ extension AppStore {
         case .groups(let list):
             groups = list
         case .logMessage(let msg):
+            if networkMapIsRefreshing, var scan = networkMapScan,
+               scan.ingest(logMessage: msg.message, at: .now) {
+                networkMapScan = scan
+            }
             let level = LogLevel(raw: msg.level) ?? .info
             insertRawLogEntry(LogEntry(
                 id: msg.id, timestamp: .now, level: level,
@@ -313,7 +317,6 @@ extension AppStore {
                 networkMapRefreshPhase = .failed(
                     message: response.error ?? "The coordinator could not return a network map."
                 )
-                settleNetworkMapRefreshPhase()
                 let error = Z2MOperationError(
                     id: UUID(),
                     topic: Z2MTopics.bridgeResponseNetworkMap,
@@ -327,7 +330,8 @@ extension AppStore {
             networkMapRefreshPhase = .building(deviceCount: topology.nodes.count)
             networkTopology = topology
             networkMapLastUpdated = updatedAt
-            networkMapRefreshPhase = .completed(deviceCount: topology.nodes.count)
+            let summary = NetworkMapScanSummary(topology: topology, progress: networkMapScan, finishedAt: updatedAt)
+            networkMapRefreshPhase = .completed(summary)
             networkMapRenderRevision &+= 1
             if let activeBridgeID {
                 networkMapCache.save(
@@ -336,16 +340,21 @@ extension AppStore {
                 )
             }
             if wasRefreshing {
+                let failures = summary.failedDeviceNames.count
                 enqueueNotification(InAppNotification(
-                    level: .info,
+                    level: failures > 0 ? .warning : .info,
                     title: "Network Map Updated",
-                    subtitle: "\(topology.nodes.count) devices reported"
+                    subtitle: failures > 0
+                        ? "\(summary.deviceCount) devices · \(failures) did not respond"
+                        : "\(summary.deviceCount) devices"
                 ))
             }
-            // Keep the refresh presentation available until the canvas
-            // confirms it has rendered the new topology. This fallback also
-            // clears the state if the map is not currently on screen.
-            settleNetworkMapRefreshPhase(after: .seconds(6))
+            // A clean scan's summary shows briefly, then gets out of the way.
+            // One with failures stays until dismissed, so the list of
+            // routers that did not answer can actually be read.
+            if summary.failedDeviceNames.isEmpty {
+                settleNetworkMapRefreshPhase(after: .seconds(3))
+            }
 
         case .touchlinkScanResult(let devices):
             touchlinkDevices = devices
