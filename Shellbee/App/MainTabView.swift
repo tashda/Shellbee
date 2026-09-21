@@ -63,8 +63,10 @@ struct MainTabView: View {
     private var tabContent: some View {
         if #available(iOS 18.0, *) {
             TabView(selection: $tabSelection) {
-                Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+                Tab(value: AppTab.home) {
                     HomeView()
+                } label: {
+                    Label(AppTab.home.title, symbol: AppTab.home.symbol)
                 }
                 Tab("Devices", systemImage: "sensor.tag.radiowaves.forward.fill", value: AppTab.devices) {
                     DeviceListView()
@@ -93,10 +95,11 @@ struct MainTabView: View {
                     GlobalSearchView()
                 }
             }
+            .modifier(SearchTabActivation())
         } else {
             TabView(selection: $tabSelection) {
                 HomeView()
-                    .tabItem { Label("Home", systemImage: "house.fill") }
+                    .tabItem { Label(AppTab.home.title, symbol: AppTab.home.symbol) }
                     .tag(AppTab.home)
                 DeviceListView()
                     .tabItem { Label("Devices", systemImage: "sensor.tag.radiowaves.forward.fill") }
@@ -147,6 +150,18 @@ struct MainTabView: View {
         )
     }
 
+}
+
+/// Shows the search tab as the separate search button at the end of the tab
+/// bar and focuses the field as soon as it is selected, as in the system apps.
+private struct SearchTabActivation: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabViewSearchActivation(.searchTabSelection)
+        } else {
+            content
+        }
+    }
 }
 
 #Preview { MainTabView().environment(AppEnvironment()) }

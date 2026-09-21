@@ -212,7 +212,7 @@ struct MainSplitView: View {
     }
 
     private func sidebarRow(for tab: AppTab) -> some View {
-        Label(tab.title, systemImage: tab.systemImage)
+        Label(tab.title, symbol: tab.symbol)
             .badge(tab == .settings && anyBridgeNeedsRestart ? Text("!") : nil)
     }
 
