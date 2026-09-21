@@ -6,20 +6,80 @@ import SwiftUI
 /// content/viewport sizes those buttons need to compute a fit). Living in
 /// the parent means the toolbar buttons work without threading gesture
 /// state back up through closures.
+///
+/// Screen position of a map point is `point * scale + offset`.
 @Observable
 final class NetworkMapZoomController {
-    var scale: CGFloat = 1
-    var settledScale: CGFloat = 1
-    var offset: CGSize = .zero
-    var settledOffset: CGSize = .zero
+    private(set) var scale: CGFloat = 1
+    private(set) var offset: CGSize = .zero
 
-    private var contentSize: CGSize = .zero
-    private var viewportSize: CGSize = .zero
+    @ObservationIgnored private var settledScale: CGFloat = 1
+    @ObservationIgnored private var settledOffset: CGSize = .zero
+    @ObservationIgnored private var contentSize: CGSize = .zero
+    @ObservationIgnored private var viewportSize: CGSize = .zero
+    @ObservationIgnored private var isMagnifying = false
+    @ObservationIgnored private var needsInitialCamera = false
+    /// Drag translation already consumed by a pinch, so a finger left down
+    /// after pinching continues panning from where the map is, not jumping.
+    @ObservationIgnored private var panBaseline: CGSize?
 
     func updateBounds(contentSize: CGSize, viewportSize: CGSize) {
         self.contentSize = contentSize
         self.viewportSize = viewportSize
+        if needsInitialCamera { showInitialCamera() }
     }
+
+    // MARK: - Gestures
+
+    func pan(translation: CGSize) {
+        guard !isMagnifying else {
+            panBaseline = nil
+            return
+        }
+        let baseline = panBaseline ?? translation
+        if panBaseline == nil { panBaseline = translation }
+        offset = CGSize(
+            width: settledOffset.width + translation.width - baseline.width,
+            height: settledOffset.height + translation.height - baseline.height
+        )
+    }
+
+    /// Finishes a pan with a short glide in the flick direction, then keeps
+    /// at least part of the map on screen.
+    func endPan(translation: CGSize, predictedEndTranslation: CGSize) {
+        panBaseline = nil
+        guard !isMagnifying else { return }
+        let glide = CGSize(
+            width: (predictedEndTranslation.width - translation.width) * 0.5,
+            height: (predictedEndTranslation.height - translation.height) * 0.5
+        )
+        let target = clamped(CGSize(width: offset.width + glide.width, height: offset.height + glide.height), scale: scale)
+        withAnimation(.smooth(duration: 0.45)) { offset = target }
+        settledOffset = target
+    }
+
+    /// Zooms around the point where the pinch started, so the content under
+    /// the fingers stays under the fingers.
+    func magnify(by magnification: CGFloat, anchor: CGPoint) {
+        isMagnifying = true
+        let next = clampedScale(settledScale * magnification)
+        let ratio = next / settledScale
+        scale = next
+        offset = CGSize(
+            width: anchor.x - (anchor.x - settledOffset.width) * ratio,
+            height: anchor.y - (anchor.y - settledOffset.height) * ratio
+        )
+    }
+
+    func endMagnify() {
+        isMagnifying = false
+        settledScale = scale
+        let target = clamped(offset, scale: scale)
+        withAnimation(.smooth) { offset = target }
+        settledOffset = target
+    }
+
+    // MARK: - Toolbar
 
     func zoomIn() {
         zoom(by: DesignTokens.Size.networkMapZoomStep)
@@ -29,47 +89,84 @@ final class NetworkMapZoomController {
         zoom(by: 1 / DesignTokens.Size.networkMapZoomStep)
     }
 
-    private func zoom(by factor: CGFloat) {
-        let previousScale = settledScale
-        let next = min(
-            max(settledScale * factor, DesignTokens.Size.networkMapMinimumScale),
-            DesignTokens.Size.networkMapMaximumScale
-        )
-        scale = next
-        settledScale = next
-        guard previousScale > 0, viewportSize != .zero else { return }
-        let ratio = next / previousScale
-        let center = CGSize(width: viewportSize.width / 2, height: viewportSize.height / 2)
-        offset = CGSize(
-            width: (offset.width - center.width) * ratio + center.width,
-            height: (offset.height - center.height) * ratio + center.height
-        )
-        settledOffset = offset
-    }
-
     /// Fits the complete graph in the viewport. Labels intentionally hide at
     /// low zoom, so the graph can remain fully visible without sacrificing the
     /// map's spatial overview.
     func fit() {
-        guard contentSize.width > 0, contentSize.height > 0, viewportSize.width > 0, viewportSize.height > 0 else { return }
-        let nextScale = min(
-            viewportSize.width / contentSize.width,
-            viewportSize.height / contentSize.height,
-            1
-        )
-        scale = nextScale
-        settledScale = scale
-        offset = CGSize(
-            width: (viewportSize.width - contentSize.width * scale) / 2,
-            height: (viewportSize.height - contentSize.height * scale) / 2
-        )
-        settledOffset = offset
+        guard let fitScale else { return }
+        setCamera(scale: fitScale, centeredOn: CGPoint(x: contentSize.width / 2, y: contentSize.height / 2), animated: true)
     }
 
-    func reset() {
-        scale = 1
-        settledScale = 1
-        offset = .zero
-        settledOffset = .zero
+    /// The camera a freshly loaded map opens with: the whole graph when it
+    /// fits at a readable size, otherwise a readable zoom on its centre so
+    /// device names are legible straight away.
+    func showInitialCamera() {
+        guard let fitScale else {
+            // The viewport hasn't been measured yet; apply once it has.
+            needsInitialCamera = true
+            return
+        }
+        needsInitialCamera = false
+        setCamera(
+            scale: max(fitScale, DesignTokens.Size.networkMapInitialScale),
+            centeredOn: CGPoint(x: contentSize.width / 2, y: contentSize.height / 2),
+            animated: false
+        )
+    }
+
+    // MARK: - Helpers
+
+    private var fitScale: CGFloat? {
+        guard contentSize.width > 0, contentSize.height > 0, viewportSize.width > 0, viewportSize.height > 0 else { return nil }
+        return clampedScale(min(viewportSize.width / contentSize.width, viewportSize.height / contentSize.height, 1))
+    }
+
+    private func zoom(by factor: CGFloat) {
+        guard viewportSize != .zero else { return }
+        let center = CGPoint(
+            x: (viewportSize.width / 2 - offset.width) / scale,
+            y: (viewportSize.height / 2 - offset.height) / scale
+        )
+        setCamera(scale: clampedScale(scale * factor), centeredOn: center, animated: true)
+    }
+
+    private func setCamera(scale nextScale: CGFloat, centeredOn point: CGPoint, animated: Bool) {
+        let nextOffset = clamped(
+            CGSize(
+                width: viewportSize.width / 2 - point.x * nextScale,
+                height: viewportSize.height / 2 - point.y * nextScale
+            ),
+            scale: nextScale
+        )
+        let apply = {
+            self.scale = nextScale
+            self.offset = nextOffset
+        }
+        if animated {
+            withAnimation(.smooth, apply)
+        } else {
+            apply()
+        }
+        settledScale = nextScale
+        settledOffset = nextOffset
+    }
+
+    private func clampedScale(_ value: CGFloat) -> CGFloat {
+        min(max(value, DesignTokens.Size.networkMapMinimumScale), DesignTokens.Size.networkMapMaximumScale)
+    }
+
+    /// Keeps the map from being flung off screen: the content's edge may
+    /// travel at most to the middle of the viewport.
+    private func clamped(_ proposed: CGSize, scale: CGFloat) -> CGSize {
+        guard viewportSize != .zero, contentSize != .zero else { return proposed }
+        func clamp(_ value: CGFloat, viewport: CGFloat, content: CGFloat) -> CGFloat {
+            let lower = viewport / 2 - content * scale
+            let upper = viewport / 2
+            return min(max(value, lower), upper)
+        }
+        return CGSize(
+            width: clamp(proposed.width, viewport: viewportSize.width, content: contentSize.width),
+            height: clamp(proposed.height, viewport: viewportSize.height, content: contentSize.height)
+        )
     }
 }

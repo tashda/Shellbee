@@ -143,6 +143,7 @@ struct DeviceListView: View {
                 }
                 sortMenu
             }
+            TrailingToolbarGroupSpacer()
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showPairingWizard = true
@@ -151,6 +152,7 @@ struct DeviceListView: View {
                 }
                 .accessibilityLabel("Add Device")
             }
+            TrailingSearchToolbarItem()
         }
         .refreshable {
             if let id = toolbarBridgeID {

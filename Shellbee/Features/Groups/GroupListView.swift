@@ -172,6 +172,7 @@ struct GroupListView: View {
                 }
                 sortMenu
             }
+            TrailingToolbarGroupSpacer()
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     showAddGroup = true
@@ -180,6 +181,7 @@ struct GroupListView: View {
                 }
                 .accessibilityLabel("Add Group")
             }
+            TrailingSearchToolbarItem()
         }
         .refreshable {
             if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
