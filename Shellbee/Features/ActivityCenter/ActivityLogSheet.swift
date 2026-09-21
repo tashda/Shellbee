@@ -16,6 +16,9 @@ struct ActivityLogSheet: View {
                     GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                 }
         }
+        // Sheets are their own presentation, so the app-wide scroll-edge
+        // setting has to be applied here again.
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

@@ -65,7 +65,9 @@ struct LogsView: View {
             modeContent
             .modifier(ActivityFeedSearch(
                 isEnabled: usesActivityFeed,
-                text: $workspace.activity.searchText
+                text: workspace.mode == .activity
+                    ? $workspace.activity.searchText
+                    : $workspace.bridge.searchText
             ))
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -130,6 +132,23 @@ struct LogsView: View {
 
     @ViewBuilder
     private var modeContent: some View {
+        if usesActivityFeed {
+            // No pager here: the navigation bar has to track the visible
+            // list for its scroll-edge effect, and the title menu already
+            // switches between Activity and Log.
+            switch workspace.mode {
+            case .activity:
+                ActivityFeedView(viewModel: workspace.activity)
+            case .log:
+                BridgeLogView(viewModel: workspace.bridge, selection: selection)
+            }
+        } else {
+            pagedModeContent
+        }
+    }
+
+    @ViewBuilder
+    private var pagedModeContent: some View {
         let position = Binding<LogMode?>(
             get: { workspace.mode },
             set: { if let new = $0, new != workspace.mode { workspace.mode = new } }
@@ -137,7 +156,7 @@ struct LogsView: View {
         GeometryReader { geo in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
-                    activityPage
+                    ActivityLogContent(viewModel: workspace.activity, selection: selection)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.activity)
                     BridgeLogView(viewModel: workspace.bridge, selection: selection)
@@ -149,15 +168,6 @@ struct LogsView: View {
             .scrollTargetBehavior(.paging)
             .scrollIndicators(.hidden)
             .scrollPosition(id: position)
-        }
-    }
-
-    @ViewBuilder
-    private var activityPage: some View {
-        if usesActivityFeed {
-            ActivityFeedView(viewModel: workspace.activity)
-        } else {
-            ActivityLogContent(viewModel: workspace.activity, selection: selection)
         }
     }
 
@@ -346,8 +356,8 @@ private struct ActivityLogContent: View {
 
 // MARK: - Activity feed search
 
-/// Search for the Activity Center feed. The plain log list keeps its
-/// existing filters and has no search field.
+/// Search for the Activity Center, bound to whichever mode is showing.
+/// Other hosts of LogsView keep their existing filters and no search field.
 private struct ActivityFeedSearch: ViewModifier {
     let isEnabled: Bool
     @Binding var text: String
