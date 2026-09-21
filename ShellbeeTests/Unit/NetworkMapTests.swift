@@ -123,6 +123,43 @@ final class NetworkMapTests: XCTestCase {
         XCTAssertGreaterThan(layout.contentSize.height, 1_000)
     }
 
+    func testDenseMeshKeepsEveryBubbleAndLabelApart() {
+        // Mirrors a real 150-device home: a handful of routers each carrying
+        // a crowd of children, which is where names used to pile up.
+        let coordinator = node(id: "coordinator", name: "Coordinator", role: .coordinator)
+        let routers = (0..<30).map { node(id: "router-\($0)", name: "kitchen_ceiling_lamp_\($0)", role: .router) }
+        let endDevices = (0..<120).map { node(id: "end-\($0)", name: "bathroom_window_sensor_\($0)", role: .endDevice) }
+        var links = routers.map {
+            NetworkTopologyLink(sourceIEEEAddress: $0.id, targetIEEEAddress: coordinator.id, linkQuality: 120, relationship: 1)
+        }
+        links += endDevices.enumerated().map { index, device in
+            NetworkTopologyLink(
+                sourceIEEEAddress: device.id,
+                targetIEEEAddress: index % 3 == 0 ? coordinator.id : routers[index % routers.count].id,
+                linkQuality: 90,
+                relationship: 1
+            )
+        }
+        let topology = NetworkTopology(nodes: [coordinator] + routers + endDevices, links: links)
+
+        let layout = NetworkMapLayoutEngine.layout(topology: topology, width: 0, minimumHeight: 0)
+
+        let labelExtent = DesignTokens.Size.networkMapNodeLabelSpacing + DesignTokens.Size.networkMapNodeLabelHeight
+        let footprints = layout.nodes.map { node -> CGRect in
+            let size = NetworkMapLayoutEngine.nodeSize(for: node.topology.role)
+            let width = max(size, DesignTokens.Size.networkMapNodeLabelWidth)
+            return CGRect(x: node.position.x - width / 2, y: node.position.y - size / 2, width: width, height: size + labelExtent)
+        }
+        for first in footprints.indices {
+            for second in footprints.indices where second > first {
+                XCTAssertFalse(
+                    footprints[first].intersects(footprints[second]),
+                    "\(layout.nodes[first].id) overlaps \(layout.nodes[second].id)"
+                )
+            }
+        }
+    }
+
     func testFiltersComposeRoleAndHealthFacets() {
         let router = node(id: "router", name: "Router", role: .router)
         XCTAssertTrue(NetworkMapFilter.matches(

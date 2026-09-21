@@ -246,14 +246,24 @@ nonisolated enum NetworkMapLayoutEngine {
         let preferredDistance = DesignTokens.Size.networkMapPreferredLinkDistance
         let initialSpread = sqrt(CGFloat(count)) * preferredDistance
 
-        // Seed a stable, organic cloud rather than a circle or a grid. The
-        // simulation starts from the same point each refresh, so node movement
-        // represents a topology change rather than visual jitter.
+        // Seed every routing subtree in its own direction from its parent so
+        // related devices start (and therefore stay) together, then let the
+        // force pass relax it into an organic shape. Seeds are deterministic,
+        // so node movement between refreshes means a topology change rather
+        // than visual jitter.
+        let seeded = subtreeSeeds(
+            root: ordered[coordinatorIndex].id,
+            tree: tree,
+            ordered: ordered,
+            spacing: preferredDistance
+        )
         var positions = ordered.enumerated().map { index, node -> CGPoint in
             guard index != coordinatorIndex else { return .zero }
+            if let seed = seeded[node.id] { return seed }
+            // Devices without a known route sit on an outer ring.
             let seed = deterministicUnit(for: node.id)
             let angle = CGFloat(index) * 2.399_963_23 + seed * 0.7
-            let radius = sqrt(CGFloat(index + 1)) / sqrt(CGFloat(count)) * initialSpread
+            let radius = initialSpread * (1 + seed * 0.3)
             return CGPoint(x: cos(angle) * radius, y: sin(angle) * radius)
         }
         var velocities = Array(repeating: CGVector.zero, count: ordered.count)
@@ -340,6 +350,50 @@ nonisolated enum NetworkMapLayoutEngine {
             positions: rawPositions.mapValues { CGPoint(x: $0.x + offset.x, y: $0.y + offset.y) },
             contentSize: CGSize(width: contentWidth, height: contentHeight)
         )
+    }
+
+    /// Gives each subtree an angular wedge sized by how many devices it
+    /// carries, and places each node in the middle of its wedge one link
+    /// further out than its parent.
+    private static func subtreeSeeds(
+        root: String,
+        tree: SpanningTree,
+        ordered: [NetworkTopologyNode],
+        spacing: CGFloat
+    ) -> [String: CGPoint] {
+        let rank = Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1.id, $0) })
+        var children: [String: [String]] = [:]
+        for (child, parent) in tree.parentByID {
+            children[parent, default: []].append(child)
+        }
+        for key in children.keys {
+            children[key]?.sort { (rank[$0] ?? 0) < (rank[$1] ?? 0) }
+        }
+
+        var subtreeSize: [String: Int] = [:]
+        func size(of id: String) -> Int {
+            if let cached = subtreeSize[id] { return cached }
+            let total = 1 + (children[id] ?? []).reduce(0) { $0 + size(of: $1) }
+            subtreeSize[id] = total
+            return total
+        }
+
+        var seeds: [String: CGPoint] = [root: .zero]
+        var stack: [(id: String, start: CGFloat, span: CGFloat, depth: Int)] = [(root, 0, 2 * .pi, 0)]
+        while let (id, start, span, depth) = stack.popLast() {
+            let kids = children[id] ?? []
+            let total = CGFloat(kids.reduce(0) { $0 + size(of: $1) })
+            var cursor = start
+            for kid in kids {
+                let share = span * CGFloat(size(of: kid)) / max(total, 1)
+                let angle = cursor + share / 2
+                let radius = CGFloat(depth + 1) * spacing * (0.9 + deterministicUnit(for: kid) * 0.25)
+                seeds[kid] = CGPoint(x: cos(angle) * radius, y: sin(angle) * radius)
+                stack.append((kid, cursor, share, depth + 1))
+                cursor += share
+            }
+        }
+        return seeds
     }
 
     /// Treats each node as the box its bubble and name label occupy and
