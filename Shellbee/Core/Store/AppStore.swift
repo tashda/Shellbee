@@ -77,6 +77,8 @@ final class AppStore {
     var permitJoinInterviewing: [String] = []
     /// Last failed interview in the current window, cleared by the next event.
     var permitJoinInterviewFailure: String?
+    /// A device that finished pairing moments ago; cleared after a beat.
+    var permitJoinRecentlyPaired: String?
     /// Friendly names of devices currently running an Identify (Zigbee
     /// Identify cluster). The action is fire-and-forget, so the row clears
     /// itself on a short timer rather than waiting for a response.
@@ -148,6 +150,7 @@ final class AppStore {
         permitJoinWasOpen = false
         permitJoinInterviewing = []
         permitJoinInterviewFailure = nil
+        permitJoinRecentlyPaired = nil
         identifyInProgress = []
         networkMapIsRefreshing = false
         networkMapRefreshPhase = .idle

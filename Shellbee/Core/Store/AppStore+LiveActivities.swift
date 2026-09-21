@@ -24,7 +24,8 @@ extension AppStore {
             targetName: info?.permitJoinTarget,
             joinedCount: permitJoinJoinedCount,
             interviewing: permitJoinInterviewing,
-            interviewFailure: permitJoinInterviewFailure
+            interviewFailure: permitJoinInterviewFailure,
+            recentlyPaired: permitJoinRecentlyPaired
         )
     }
 
@@ -32,8 +33,9 @@ extension AppStore {
     /// while suspended would otherwise read "Interviewing" forever, so the
     /// card falls back to the joined count, which stays true.
     func forgetUnfollowableInterviews() {
-        guard !permitJoinInterviewing.isEmpty else { return }
+        guard !permitJoinInterviewing.isEmpty || permitJoinRecentlyPaired != nil else { return }
         permitJoinInterviewing = []
+        permitJoinRecentlyPaired = nil
         syncPermitJoinLiveActivity()
     }
 
@@ -48,6 +50,7 @@ extension AppStore {
             permitJoinInterviewFailure = nil
         case "successful":
             permitJoinInterviewing.removeAll { $0 == name }
+            celebratePairing(name)
         case "failed":
             permitJoinInterviewing.removeAll { $0 == name }
             permitJoinInterviewFailure = name
@@ -55,5 +58,17 @@ extension AppStore {
             return
         }
         syncPermitJoinLiveActivity()
+    }
+
+    /// Shows "Paired" and a "+1" on the card for a moment, then settles back
+    /// to the running count.
+    private func celebratePairing(_ name: String) {
+        permitJoinRecentlyPaired = name
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(DesignTokens.Duration.liveActivityPairedMoment))
+            guard let self, self.permitJoinRecentlyPaired == name else { return }
+            self.permitJoinRecentlyPaired = nil
+            self.syncPermitJoinLiveActivity()
+        }
     }
 }

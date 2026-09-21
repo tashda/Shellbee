@@ -35,7 +35,8 @@ final class PermitJoinLiveActivityCoordinator {
         targetName: String?,
         joinedCount: Int,
         interviewing: [String] = [],
-        interviewFailure: String? = nil
+        interviewFailure: String? = nil,
+        recentlyPaired: String? = nil
     ) {
         guard Self.isEnabled else {
             clear(bridgeID: bridgeID)
@@ -73,7 +74,8 @@ final class PermitJoinLiveActivityCoordinator {
             endsAt: endsAt,
             targetName: targetName,
             interviewing: interviewing,
-            interviewFailure: interviewFailure
+            interviewFailure: interviewFailure,
+            recentlyPaired: recentlyPaired
         )
         // A new window (different deadline) is presented fresh: the previous
         // card may already have been ended or swiped away, and an update
@@ -91,6 +93,7 @@ final class PermitJoinLiveActivityCoordinator {
             self.clear(bridgeID: bridgeID)
         }
 
+        let alert = Self.alert(from: previous, to: state)
         let previousDelivery = lastDelivery
         lastDelivery = Task { [attributes, controller] in
             await previousDelivery?.value
@@ -99,7 +102,8 @@ final class PermitJoinLiveActivityCoordinator {
                     attributes: attributes,
                     state: state,
                     staleDate: endsAt,
-                    relevanceScore: 65
+                    relevanceScore: 65,
+                    alert: alert
                 )
             } else {
                 await controller.present(
@@ -144,6 +148,22 @@ final class PermitJoinLiveActivityCoordinator {
         Task {
             await LiveActivityController<PermitJoinActivityAttributes>.endAllActivities()
         }
+    }
+
+    /// A device finishing its interview is the moment worth interrupting
+    /// for: the alert briefly expands the Dynamic Island (and lights the Lock
+    /// Screen) to show it.
+    private static func alert(
+        from previous: PermitJoinActivityAttributes.ContentState?,
+        to state: PermitJoinActivityAttributes.ContentState
+    ) -> AlertConfiguration? {
+        if let paired = state.recentlyPaired, paired != previous?.recentlyPaired {
+            return AlertConfiguration(title: "Paired", body: "\(paired)", sound: .default)
+        }
+        if let failed = state.interviewFailure, failed != previous?.interviewFailure {
+            return AlertConfiguration(title: "Interview failed", body: "\(failed)", sound: .default)
+        }
+        return nil
     }
 
     private func makeAttributes(bridgeID: UUID?, bridgeDisplayName: String) -> PermitJoinActivityAttributes {

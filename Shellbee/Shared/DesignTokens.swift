@@ -20,6 +20,7 @@ nonisolated enum DesignTokens {
         static let summaryRowSymbolBackground: CGFloat = 10
         static let xl: CGFloat = 28
         static let noteBar: CGFloat = 1.5
+        static let liveActivityGalleryIsland: CGFloat = 44
     }
 
     nonisolated enum Size {
@@ -53,6 +54,10 @@ nonisolated enum DesignTokens {
         static let liveActivityIslandBadge: CGFloat = 40
         static let liveActivityCompactSymbol: CGFloat = 14
         static let liveActivityMinimalSymbol: CGFloat = 10
+        // Developer gallery stand-ins for the system's activity surfaces.
+        static let liveActivityGalleryWidth: CGFloat = 371
+        static let liveActivityGalleryIslandHeight: CGFloat = 37
+        static let liveActivityGalleryCamera: CGFloat = 126
         static let filterChipChevron: CGFloat = 8
         static let levelIndicatorWidth: CGFloat = 4
         static let levelIndicatorHeight: CGFloat = 20
@@ -381,6 +386,9 @@ nonisolated enum DesignTokens {
         static let liveActivityGracePoll: Double = 1
         static let liveActivityGraceWrapUp: Double = 12
         static let liveActivityWindowTolerance: Double = 5
+        static let liveActivityPairedMoment: Double = 4
+        static let liveActivityPreviewWindow: Double = 120
+        static let liveActivityPreviewLinger: Double = 5
         static let statusPulse: Double = 1.8
         static let otaBadgeSpin: Double = 1.1
         static let pressedState: Double = 0.16

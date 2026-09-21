@@ -16,6 +16,8 @@ nonisolated struct PermitJoinActivityAttributes: ActivityAttributes, Sendable {
         var interviewing: [String] = []
         /// The most recent failed interview, until the next join or interview.
         var interviewFailure: String? = nil
+        /// A device that finished pairing moments ago, shown briefly.
+        var recentlyPaired: String? = nil
     }
 
     let identifier: String

@@ -78,13 +78,15 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         attributes: Attributes,
         state: Attributes.ContentState,
         staleDate: Date? = nil,
-        relevanceScore: Double = 0
+        relevanceScore: Double = 0,
+        alert: AlertConfiguration? = nil
     ) async {
         await Self.updateMatchingActivities(
             for: attributes,
             state: state,
             staleDate: staleDate,
             relevanceScore: relevanceScore,
+            alert: alert,
             matches: matches
         )
     }
@@ -154,15 +156,15 @@ where Attributes.ContentState: Codable & Hashable & Sendable {
         state: Attributes.ContentState,
         staleDate: Date? = nil,
         relevanceScore: Double = 0,
+        alert: AlertConfiguration? = nil,
         matches: @Sendable (Attributes, Attributes) -> Bool
     ) async {
         let activities = Activity<Attributes>.activities.filter { matches($0.attributes, attributes) }
         for activity in activities {
-            await activity.update(ActivityContent(
-                state: state,
-                staleDate: staleDate,
-                relevanceScore: relevanceScore
-            ))
+            await activity.update(
+                ActivityContent(state: state, staleDate: staleDate, relevanceScore: relevanceScore),
+                alertConfiguration: alert
+            )
         }
     }
 
