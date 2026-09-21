@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// Leading visual for an Activity card. Devices and groups show their real
-/// product image; other events show a symbol at one of three emphasis
-/// tiers. An outcome pip in the corner says whether the event succeeded,
-/// so severity never relies on colour alone.
+/// product image; other events show a bare symbol, coloured by how much
+/// it matters. Device images carry an outcome pip in the corner, so
+/// severity never relies on colour alone.
 struct ActivityThumbnail: View {
     let entry: LogEntry
     let store: AppStore?
@@ -11,21 +11,27 @@ struct ActivityThumbnail: View {
     /// Ring around the pip that separates it from the artwork; matches
     /// whatever the thumbnail sits on.
     var pipBorder: Color = Color(.secondarySystemGroupedBackground)
-
-    private var outcome: LogRowIconography.Outcome? {
-        LogRowIconography.outcome(for: entry)
-    }
+    /// Show the device image even for signal and battery reports, for
+    /// places where the value is shown separately.
+    var prefersSubjectImage = false
 
     var body: some View {
-        let visual = LogRowIconography.visual(for: entry, store: store)
+        let visual = resolvedVisual
         avatar(for: visual)
             .frame(width: size, height: size)
             .overlay(alignment: .bottomTrailing) {
-                if let outcome, showsPip(for: visual) {
+                if let outcome = LogRowIconography.outcome(for: entry), showsPip(for: visual) {
                     pip(outcome)
                 }
             }
             .accessibilityHidden(true)
+    }
+
+    private var resolvedVisual: LogRowIconography.Visual {
+        if prefersSubjectImage, let subject = LogRowIconography.subjectVisual(for: entry, store: store) {
+            return subject
+        }
+        return LogRowIconography.visual(for: entry, store: store)
     }
 
     @ViewBuilder
@@ -36,40 +42,43 @@ struct ActivityThumbnail: View {
         case .groupThumbnail(_, let members):
             GroupIconView(memberDevices: Array(members.prefix(2)), size: size)
         case .symbol(let name, let tint):
-            symbol(name: name, tint: tint)
+            if LogRowIconography.isLinkQualityOnly(entry) {
+                signal
+            } else {
+                symbol(name: name, tint: tint)
+            }
         }
+    }
+
+    /// Signal reports fill the Wi-Fi bars to the new link quality.
+    private var signal: some View {
+        let lqi = entry.context?.stateChanges.first { $0.property == "linkquality" }?.to
+        return ActivityPropertyGlyph(property: "linkquality", value: lqi)
+            .font(.system(size: size * DesignTokens.ActivityFeed.bareGlyphRatio, weight: .semibold))
+            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder
     private func symbol(name: String, tint: Color) -> some View {
         let glyph = Image(systemName: name)
-            .font(.system(size: size * DesignTokens.ActivityFeed.glyphRatio, weight: .semibold))
+            .symbolRenderingMode(.hierarchical)
+            .font(.system(size: size * DesignTokens.ActivityFeed.bareGlyphRatio, weight: .semibold))
         switch LogRowIconography.emphasis(for: entry) {
         case .quiet:
-            glyph
-                .foregroundStyle(.secondary)
-                .frame(width: size, height: size)
-                .background(.fill.tertiary, in: Circle())
+            glyph.foregroundStyle(.secondary)
         case .standard:
-            glyph
-                .foregroundStyle(tint)
-                .frame(width: size, height: size)
-                .background(tint.opacity(DesignTokens.Opacity.softFill), in: Circle())
+            glyph.foregroundStyle(tint)
         case .loud:
-            glyph
-                .foregroundStyle(.white)
-                .frame(width: size, height: size)
-                .background(tint, in: Circle())
+            glyph.foregroundStyle(.red)
         }
     }
 
-    /// A loud symbol already says "failed", and a general message's glyph
-    /// is its severity symbol; a pip on top of either would repeat it.
+    /// Pips mark outcomes on device images. A bare symbol is already
+    /// coloured by its outcome, and below a minimum size a pip would cover
+    /// most of the artwork.
     private func showsPip(for visual: LogRowIconography.Visual) -> Bool {
         guard size >= DesignTokens.ActivityFeed.pipMinimumThumbnail else { return false }
-        if case .symbol = visual {
-            return LogRowIconography.emphasis(for: entry) != .loud && entry.category != .general
-        }
+        if case .symbol = visual { return false }
         return true
     }
 

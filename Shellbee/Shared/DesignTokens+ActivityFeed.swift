@@ -5,12 +5,13 @@ extension DesignTokens {
     /// stacks, their thumbnails and outcome pips.
     nonisolated enum ActivityFeed {
         static let thumbnail: CGFloat = 40
-        /// Glyph height as a share of the thumbnail circle. Our symbols
-        /// carry their own padding, so this sits above the 46% used by the
-        /// older log rows.
-        static let glyphRatio: CGFloat = 0.5
         /// Pip diameter as a share of the thumbnail, so it scales from the
         /// 40pt feed card down to the 30pt tab bar artwork.
+        /// Bare symbols fill this share of the thumbnail frame; with no
+        /// circle behind them they can be larger than the old glyphs.
+        static let bareGlyphRatio: CGFloat = 0.62
+        /// Z2M link quality runs 0–255.
+        static let maxLinkQuality: Double = 255
         static let pipRatio: CGFloat = 0.45
         /// Below this a pip covers too much of the artwork to help.
         static let pipMinimumThumbnail: CGFloat = 24
@@ -38,18 +39,12 @@ extension DesignTokens {
         /// The grabber that shows the Activity Center can be dragged down.
         static let grabberWidth: CGFloat = 36
         static let grabberHeight: CGFloat = 5
-        /// Distance below the top safe area, inside the toolbar row and
-        /// between its leading and trailing buttons.
-        static let grabberTopInset: CGFloat = 6
         /// Keeps cards readable on iPad and in wide windows.
         static let maxContentWidth: CGFloat = 640
     }
 
     /// The raw log in the Activity Center: minute cards of compact rows.
     nonisolated enum RawLog {
-        static let levelMark: CGFloat = 20
-        static let levelGlyphRatio: CGFloat = 0.55
-        static let quietDot: CGFloat = 6
         static let rowVerticalPadding: CGFloat = 10
         static let tagCornerRadius: CGFloat = 5
     }

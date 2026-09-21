@@ -160,6 +160,13 @@ enum LogRowIconography {
         return name
     }
 
+    /// The device or group thumbnail, ignoring the signal and battery
+    /// overrides in `visual(for:store:)`. For places that always want to
+    /// show who an event is about.
+    static func subjectVisual(for entry: LogEntry, store: AppStore?) -> Visual? {
+        store.flatMap { resolveSubject(for: entry, in: $0) }
+    }
+
     private static func resolveSubject(for entry: LogEntry, in store: AppStore) -> Visual? {
         guard let name = subjectName(for: entry, in: store) else { return nil }
         if let device = store.device(named: name) {
@@ -210,9 +217,9 @@ enum LogRowIconography {
         case .general:
             switch entry.level {
             case .error:
-                return .symbol(name: "exclamationmark.triangle.fill", tint: .red)
+                return .symbol(name: "xmark.octagon.fill", tint: .red)
             case .warning:
-                return .symbol(name: "exclamationmark.circle.fill", tint: .orange)
+                return .symbol(name: "exclamationmark.triangle.fill", tint: .orange)
             case .info:
                 return .symbol(name: "info.circle.fill", tint: .blue)
             case .debug:

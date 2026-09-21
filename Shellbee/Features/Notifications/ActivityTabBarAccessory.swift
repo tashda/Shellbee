@@ -9,6 +9,9 @@ struct ActivityTabBarAccessory: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
     let transitionNamespace: Namespace.ID?
+    /// Mirrors the Activity filter's Show Signal Changes, so the accessory
+    /// never surfaces events the Activity Center itself hides.
+    let showsSignalChanges: Bool
 
     private var displayMode: ActivityAccessoryDisplayMode {
         ActivityAccessoryDisplayMode(rawValue: displayModeRaw) ?? .summary
@@ -18,22 +21,27 @@ struct ActivityTabBarAccessory: View {
         placement == .inline
     }
 
+    private var visibleEntries: [BridgeBoundLogEntry] {
+        guard !showsSignalChanges else { return environment.allLogEntries }
+        return environment.allLogEntries.filter { !LogRowIconography.isLinkQualityOnly($0.entry) }
+    }
+
     private var latestActivity: BridgeBoundLogEntry? {
-        environment.allLogEntries.first
+        visibleEntries.first
     }
 
     private var latestAttention: BridgeBoundLogEntry? {
-        environment.allLogEntries.first { $0.entry.isActivityAttention }
+        visibleEntries.first { $0.entry.isActivityAttention }
     }
 
     private var recentActivityCount: Int {
         let cutoff = Date.now.addingTimeInterval(-15 * 60)
-        return environment.allLogEntries.count { $0.entry.timestamp >= cutoff }
+        return visibleEntries.count { $0.entry.timestamp >= cutoff }
     }
 
     private var recentAttentionCount: Int {
         let cutoff = Date.now.addingTimeInterval(-15 * 60)
-        return environment.allLogEntries.count {
+        return visibleEntries.count {
             $0.entry.isActivityAttention && $0.entry.timestamp >= cutoff
         }
     }
@@ -144,8 +152,9 @@ private struct ActivityAccessorySummary: View {
     }
 
     private var subtitle: String? {
-        if let event, let change = ActivityAccessoryChange(entry: event.entry) {
-            return change.subtitle
+        // The trailing value and its glyph already say what changed.
+        if let event, ActivityAccessoryChange(entry: event.entry) != nil {
+            return nil
         }
         return switch mode {
         case .latestActivity: cardContent(latestActivity)?.message
@@ -178,9 +187,9 @@ private struct ActivityAccessorySummary: View {
             eventArtwork(latestAttention, fallback: "bell.fill", size: size)
         case .summary:
             if recentAttentionCount > 0 {
-                symbolArtwork("exclamationmark", foreground: .white, background: Color.orange, size: size)
+                symbolArtwork("exclamationmark.triangle.fill", foreground: Color.orange, size: size)
             } else {
-                symbolArtwork("tray.full.fill", foreground: .secondary, background: .fill.tertiary, size: size)
+                symbolArtwork("tray.full.fill", foreground: .secondary, size: size)
             }
         }
     }
@@ -188,9 +197,15 @@ private struct ActivityAccessorySummary: View {
     @ViewBuilder
     private func eventArtwork(_ item: BridgeBoundLogEntry?, fallback: String, size: CGFloat) -> some View {
         if let item {
-            ActivityThumbnail(entry: item.entry, store: storeFor(item.bridgeID), size: size, pipBorder: .clear)
+            ActivityThumbnail(
+                entry: item.entry,
+                store: storeFor(item.bridgeID),
+                size: size,
+                pipBorder: .clear,
+                prefersSubjectImage: true
+            )
         } else {
-            symbolArtwork(fallback, foreground: .secondary, background: .fill.tertiary, size: size)
+            symbolArtwork(fallback, foreground: .secondary, size: size)
         }
     }
 
@@ -198,16 +213,11 @@ private struct ActivityAccessorySummary: View {
         environment.registry.session(for: bridgeID)?.store
     }
 
-    private func symbolArtwork(
-        _ name: String,
-        foreground: some ShapeStyle,
-        background: some ShapeStyle,
-        size: CGFloat
-    ) -> some View {
+    private func symbolArtwork(_ name: String, foreground: some ShapeStyle, size: CGFloat) -> some View {
         Image(systemName: name)
-            .font(.system(size: size * DesignTokens.ActivityFeed.glyphRatio, weight: .semibold))
+            .symbolRenderingMode(.hierarchical)
+            .font(.system(size: size * DesignTokens.ActivityFeed.bareGlyphRatio, weight: .semibold))
             .foregroundStyle(foreground)
             .frame(width: size, height: size)
-            .background(background, in: Circle())
     }
 }
