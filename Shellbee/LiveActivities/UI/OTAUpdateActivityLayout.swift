@@ -7,7 +7,7 @@ extension LiveActivityLayout {
         isStale: Bool,
         now: Date = .now
     ) -> Self {
-        let symbol = "arrow.down.circle.fill"
+        let symbol = "shellbee.firmware"
         let rows = state.items.map(row)
         let metric = LiveActivityMetric(value: "\(state.activeCount)", label: "Updating")
 
