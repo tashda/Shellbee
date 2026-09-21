@@ -58,9 +58,8 @@ private struct GrabberCapsule: View {
     }
 }
 
-/// Presents the same Activity Center on every app form factor. When it is
-/// disabled, neither a direct notification action nor stale scene state can
-/// surface an in-app event UI.
+/// Presents the iPhone Activity Center. When it is disabled, neither a direct
+/// notification action nor stale scene state can surface an in-app event UI.
 struct ActivityCenterSheetPresentation: ViewModifier {
     @Environment(\.sceneNavigation) private var sceneNavigation
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isEnabled = true
