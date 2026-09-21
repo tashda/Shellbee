@@ -69,31 +69,27 @@ struct PermitJoinSheet: View {
 
     private var activeRow: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            HStack(spacing: DesignTokens.Spacing.md) {
+            VStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: "dot.radiowaves.up.forward")
-                    .foregroundStyle(.white)
-                    .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                    .background(.green, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
+                    .font(DesignTokens.Typography.permitJoinSymbol)
+                    .foregroundStyle(.green)
                     .symbolEffect(.pulse)
-
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                    if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
-                        Text("Network is open via \(target)")
-                            .foregroundStyle(.primary)
-                    } else {
-                        Text("Network is open")
-                            .foregroundStyle(.primary)
-                    }
-                    if let remaining = remainingSeconds(at: ctx.date) {
-                        Text(String(format: "%d:%02d remaining", remaining / 60, remaining % 60))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .contentTransition(.numericText(countsDown: true))
-                    }
+                    .accessibilityHidden(true)
+                Text("Network is open")
+                    .font(.headline)
+                if let remaining = remainingSeconds(at: ctx.date) {
+                    Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
+                        .font(DesignTokens.Typography.permitJoinCountdown.monospacedDigit())
+                        .contentTransition(.numericText(countsDown: true))
                 }
-                Spacer()
+                if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
+                    Text("Via \(target)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, DesignTokens.Spacing.lg)
         }
     }
 
