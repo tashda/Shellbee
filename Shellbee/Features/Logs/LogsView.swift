@@ -7,6 +7,9 @@ struct LogsView: View {
     @State private var showingClearConfirmation = false
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
+    /// Activity Center shows Activity as notification-style stacks instead
+    /// of the plain log list used everywhere else.
+    private let usesActivityFeed: Bool
     private let navigationTitle: String
     private let onDone: (() -> Void)?
     private let selection: Binding<LogsPaneRoute?>?
@@ -14,6 +17,7 @@ struct LogsView: View {
     init(
         initialEntryFilter: Set<UUID>? = nil,
         notificationSheetStyle: Bool = false,
+        usesActivityFeed: Bool = false,
         navigationTitle: String = "Logs",
         onDone: (() -> Void)? = nil,
         selection: Binding<LogsPaneRoute?>? = nil,
@@ -21,6 +25,7 @@ struct LogsView: View {
     ) {
         self.initialEntryFilter = initialEntryFilter
         self.notificationSheetStyle = notificationSheetStyle
+        self.usesActivityFeed = usesActivityFeed
         self.navigationTitle = navigationTitle
         self.onDone = onDone
         self.selection = selection
@@ -58,6 +63,10 @@ struct LogsView: View {
                 }
         } else {
             modeContent
+            .modifier(ActivityFeedSearch(
+                isEnabled: usesActivityFeed,
+                text: $workspace.activity.searchText
+            ))
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { applyInitialFilter(autoOpenSingle: true) }
@@ -128,7 +137,7 @@ struct LogsView: View {
         GeometryReader { geo in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
-                    ActivityLogContent(viewModel: workspace.activity, selection: selection)
+                    activityPage
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.activity)
                     BridgeLogView(viewModel: workspace.bridge, selection: selection)
@@ -140,6 +149,15 @@ struct LogsView: View {
             .scrollTargetBehavior(.paging)
             .scrollIndicators(.hidden)
             .scrollPosition(id: position)
+        }
+    }
+
+    @ViewBuilder
+    private var activityPage: some View {
+        if usesActivityFeed {
+            ActivityFeedView(viewModel: workspace.activity)
+        } else {
+            ActivityLogContent(viewModel: workspace.activity, selection: selection)
         }
     }
 
@@ -322,6 +340,23 @@ private struct ActivityLogContent: View {
             List {
                 content()
             }
+        }
+    }
+}
+
+// MARK: - Activity feed search
+
+/// Search for the Activity Center feed. The plain log list keeps its
+/// existing filters and has no search field.
+private struct ActivityFeedSearch: ViewModifier {
+    let isEnabled: Bool
+    @Binding var text: String
+
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.searchable(text: $text, prompt: Text("Search"))
+        } else {
+            content
         }
     }
 }
