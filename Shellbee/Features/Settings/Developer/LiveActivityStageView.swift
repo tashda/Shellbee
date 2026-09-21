@@ -10,11 +10,13 @@ struct LiveActivityStageView: View {
     var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var anchor = Date.now
-    @State private var sampleIndex = 0
-    @State private var surface = Surface.compact
+    @State var sampleIndex = 0
+    @State var surface = Surface.compact
+    @State var style = LiveActivityStyle.permitJoinDefault
     @State private var wallpaper = LiveActivityStageWallpaper.sand
 
     enum Surface: String, CaseIterable, Identifiable {
+        // Raw values double as picker titles and debug launch arguments.
         case compact = "Compact"
         case expanded = "Expanded"
         case lock = "Lock"
@@ -24,6 +26,7 @@ struct LiveActivityStageView: View {
     var body: some View {
         let samples = kind.samples(anchor: anchor)
         let sample = samples[min(sampleIndex, samples.count - 1)]
+        let layout = sample.layout.styled(style)
         ZStack {
             // The wallpaper belongs to the screen being previewed: full-screen
             // for the Lock Screen, only inside the miniature phone otherwise.
@@ -35,7 +38,7 @@ struct LiveActivityStageView: View {
             switch surface {
             case .compact, .expanded:
                 StageDevice(wallpaper: wallpaper, showsStatusBar: surface == .compact) {
-                    StageHomeScreen(layout: sample.layout, isExpanded: surface == .expanded)
+                    StageHomeScreen(layout: layout, isExpanded: surface == .expanded)
                 }
                 .padding(.top, StageMetrics.deviceTop)
                 .padding(.bottom, StageMetrics.deviceBottom)
@@ -43,7 +46,7 @@ struct LiveActivityStageView: View {
                 // restarts effects like the pulse; switching states does too.
                 .id(sampleIndex)
             case .lock:
-                StageLockScreen(layout: sample.layout)
+                StageLockScreen(layout: layout)
                     .id(sampleIndex)
             }
         }
@@ -51,12 +54,14 @@ struct LiveActivityStageView: View {
             StageControls(
                 samples: samples,
                 sampleIndex: $sampleIndex,
+                style: $style,
                 surface: $surface,
                 wallpaper: $wallpaper,
                 onClose: { onClose?() ?? dismiss() }
             )
         }
         .environment(\.colorScheme, .dark)
+        .environment(\.isLiveActivityStagePreview, true)
         .preferredColorScheme(.dark)
         .task {
             // Countdowns would otherwise run out while the stage stays open.
@@ -229,6 +234,7 @@ private struct StageLockScreen: View {
 private struct StageControls: View {
     let samples: [LiveActivityGallerySample]
     @Binding var sampleIndex: Int
+    @Binding var style: LiveActivityStyle
     @Binding var surface: LiveActivityStageView.Surface
     @Binding var wallpaper: LiveActivityStageWallpaper
     let onClose: () -> Void
@@ -244,6 +250,12 @@ private struct StageControls: View {
             Picker("State", selection: $sampleIndex) {
                 ForEach(Array(samples.enumerated()), id: \.offset) { index, sample in
                     Text(sample.name).tag(index)
+                }
+            }
+
+            Picker("Style", selection: $style) {
+                ForEach(LiveActivityStyle.allCases) { style in
+                    Text(style.name).tag(style)
                 }
             }
 

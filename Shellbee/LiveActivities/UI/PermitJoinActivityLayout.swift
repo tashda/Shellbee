@@ -17,7 +17,9 @@ extension LiveActivityLayout {
                 eyebrow: attributes.bridgeDisplayName,
                 title: "Network is closed",
                 subtitle: joinedText(state.joinedCount, closed: true),
-                value: .symbol("checkmark.circle.fill")
+                value: .symbol("checkmark.circle.fill"),
+                metric: LiveActivityMetric(value: "\(state.joinedCount)", label: "Joined"),
+                style: .permitJoinDefault
             )
         }
         let window = state.startedAt...max(state.startedAt, state.endsAt)
@@ -33,7 +35,9 @@ extension LiveActivityLayout {
             gauge: .countdown(window),
             compactValue: state.recentlyPaired == nil ? nil : .text("+1"),
             compactTint: state.recentlyPaired == nil ? nil : LiveActivityPalette.success,
-            isBusy: !state.interviewing.isEmpty
+            isBusy: !state.interviewing.isEmpty,
+            metric: LiveActivityMetric(value: "\(state.joinedCount)", label: "Joined"),
+            style: .permitJoinDefault
         )
     }
 
@@ -62,4 +66,9 @@ extension LiveActivityLayout {
         default: return "\(count) devices joined"
         }
     }
+}
+
+extension LiveActivityStyle {
+    /// The style the Permit Join widget renders with.
+    static let permitJoinDefault: LiveActivityStyle = .classic
 }

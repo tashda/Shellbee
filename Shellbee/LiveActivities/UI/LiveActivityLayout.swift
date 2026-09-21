@@ -57,4 +57,13 @@ struct LiveActivityLayout {
     var compactTint: Color? = nil
     /// Work is in progress right now: the identity icon pulses.
     var isBusy = false
+    /// A supporting number some styles show, such as devices joined.
+    var metric: LiveActivityMetric? = nil
+    var style: LiveActivityStyle = .classic
+
+    /// When the activity's countdown ends, if it has one.
+    var endsAt: Date? {
+        if case .countdown(let range) = gauge { return range.upperBound }
+        return nil
+    }
 }
