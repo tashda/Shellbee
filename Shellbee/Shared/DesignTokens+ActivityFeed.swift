@@ -15,6 +15,9 @@ extension DesignTokens {
         static let pipGlyphRatio: CGFloat = 0.5
         static let pipBorder: CGFloat = 2
         static let pipOffsetRatio: CGFloat = 0.075
+        /// Sizes the developer icon gallery renders each icon at, from the
+        /// smallest inline use up to the feed card.
+        static let gallerySizes: [CGFloat] = [13, 15, 20, 30, 40]
         /// Artwork slot in the tab bar accessory, like the Music mini player.
         static let accessoryArtwork: CGFloat = 30
         static let cardCornerRadius: CGFloat = 22
@@ -33,9 +36,9 @@ extension DesignTokens {
         /// The grabber that shows the Activity Center can be dragged down.
         static let grabberWidth: CGFloat = 36
         static let grabberHeight: CGFloat = 5
-        /// Distance from the grabber's bottom edge to the top safe area.
-        static let grabberGap: CGFloat = 6
-        static let grabberMinimumTop: CGFloat = 6
+        /// Distance below the top safe area, inside the toolbar row and
+        /// between its leading and trailing buttons.
+        static let grabberTopInset: CGFloat = 6
         /// Keeps cards readable on iPad and in wide windows.
         static let maxContentWidth: CGFloat = 640
     }

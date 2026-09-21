@@ -28,6 +28,9 @@ struct DeveloperSettingsView: View {
                 NavigationLink("Live Activity Gallery") {
                     LiveActivityGalleryView()
                 }
+                NavigationLink("Activity Icons") {
+                    ActivityIconGalleryView()
+                }
                 Button("Preview Permit Join Activity") {
                     PermitJoinActivityPreview.run()
                 }
