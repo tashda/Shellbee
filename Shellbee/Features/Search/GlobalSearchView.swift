@@ -80,7 +80,7 @@ struct GlobalSearchView: View {
     }
 
     private func sectionHeader(for category: GlobalSearchScope) -> some View {
-        Label(category.title, systemImage: category.systemImage)
+        Label(category.title, symbol: category.symbol)
     }
 
     @ViewBuilder
@@ -88,7 +88,7 @@ struct GlobalSearchView: View {
         if query.isEmpty {
             ContentUnavailableView(
                 "Search Shellbee",
-                systemImage: "magnifyingglass",
+                image: "shellbee.search",
                 description: Text("Find devices, groups, bridges, activity, log lines and Device Library entries.")
             )
         } else if results.isEmpty {
