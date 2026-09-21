@@ -23,8 +23,9 @@ private extension LiveActivityLayout {
             return Self(
                 symbol: "dot.radiowaves.up.forward",
                 tint: LiveActivityPalette.neutral,
+                eyebrow: context.attributes.bridgeDisplayName,
                 title: "Network is closed",
-                subtitle: subtitle(context, closed: true),
+                subtitle: joinedText(state.joinedCount, closed: true),
                 value: .symbol("checkmark.circle.fill")
             )
         }
@@ -32,19 +33,12 @@ private extension LiveActivityLayout {
         return Self(
             symbol: "dot.radiowaves.up.forward",
             tint: LiveActivityPalette.pairing,
+            eyebrow: context.attributes.bridgeDisplayName,
             title: "Network is open",
-            subtitle: subtitle(context),
+            subtitle: joinedText(state.joinedCount),
             value: .countdown(window),
             gauge: .countdown(window)
         )
-    }
-
-    /// The bridge name is only set when the user has several bridges, so a
-    /// single-bridge setup keeps the plain subtitle.
-    static func subtitle(_ context: ActivityViewContext<PermitJoinActivityAttributes>, closed: Bool = false) -> String {
-        let joined = joinedText(context.state.joinedCount, closed: closed)
-        let bridge = context.attributes.bridgeDisplayName
-        return bridge.isEmpty ? joined : "\(bridge) · \(joined)"
     }
 
     static func joinedText(_ count: Int, closed: Bool = false) -> String {

@@ -34,6 +34,8 @@ enum LiveActivityPalette {
 struct LiveActivityLayout {
     let symbol: String
     let tint: Color
+    /// Optional context above the title, such as which bridge this is about.
+    var eyebrow: String? = nil
     let title: String
     var subtitle: String? = nil
     let value: LiveActivityValue
@@ -110,6 +112,8 @@ extension DynamicIsland {
 
 // MARK: - Building blocks
 
+/// Text never truncates: each line may wrap once and then shrink slightly,
+/// so the card grows a little rather than hiding a word.
 private struct LiveActivityTitle: View {
     let layout: LiveActivityLayout
     let titleFont: Font
@@ -117,18 +121,28 @@ private struct LiveActivityTitle: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-            Text(layout.title)
+            if let eyebrow = layout.eyebrow, !eyebrow.isEmpty {
+                line(eyebrow)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+            line(layout.title)
                 .font(titleFont)
                 .foregroundStyle(.white)
             if let subtitle = layout.subtitle, !subtitle.isEmpty {
-                Text(subtitle)
+                line(subtitle)
                     .font(subtitleFont)
                     .foregroundStyle(.white.opacity(0.65))
             }
         }
-        .lineLimit(1)
-        .truncationMode(.tail)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func line(_ text: String) -> some View {
+        Text(text)
+            .lineLimit(2)
+            .minimumScaleFactor(0.8)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
