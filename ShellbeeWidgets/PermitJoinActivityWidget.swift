@@ -6,47 +6,31 @@ struct PermitJoinActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PermitJoinActivityAttributes.self) { context in
             PermitJoinLockScreenView(context: context)
-                .activityBackgroundTint(nil)
-                .activitySystemActionForegroundColor(.primary)
+                .activityBackgroundTint(PermitJoinActivityPalette.background)
+                .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    LiveActivityStatusMark(symbol: "person.badge.plus", color: .orange)
+                    PermitJoinActivityMark(size: DesignTokens.Size.liveActivityIslandSymbol)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     PermitJoinTimer(context: context, compact: false)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    LiveActivityTitleBlock(
-                        title: "Pairing devices",
-                        subtitle: context.state.targetName ?? "Open network",
-                        titleFont: .subheadline.weight(.semibold)
-                    )
+                    Text("Network is open")
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    if !context.attributes.bridgeDisplayName.isEmpty {
-                        Text(context.attributes.bridgeDisplayName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    PermitJoinProgress(context: context)
+                        .padding(.top, DesignTokens.Spacing.xs)
                 }
             } compactLeading: {
-                LiveActivityStatusMark(
-                    symbol: "person.badge.plus",
-                    color: .orange,
-                    size: DesignTokens.Size.liveActivityCompactSymbol
-                )
+                PermitJoinActivityMark(size: DesignTokens.Size.liveActivityCompactSymbol)
             } compactTrailing: {
                 PermitJoinTimer(context: context, compact: true)
             } minimal: {
-                LiveActivityStatusMark(
-                    symbol: "person.badge.plus",
-                    color: .orange,
-                    size: DesignTokens.Size.liveActivityMinimalSymbol
-                )
+                PermitJoinActivityMark(size: DesignTokens.Size.liveActivityMinimalSymbol)
             }
         }
     }
@@ -57,37 +41,53 @@ private struct PermitJoinLockScreenView: View {
 
     var body: some View {
         LiveActivityLockScreenContent {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                LiveActivityStatusMark(
-                    symbol: "person.badge.plus",
-                    color: .orange,
-                    size: DesignTokens.Size.liveActivityLockSymbol
-                )
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                    PermitJoinActivityMark(size: DesignTokens.Size.liveActivityLockSymbol)
 
-                LiveActivityTitleBlock(
-                    title: "Pairing devices",
-                    subtitle: lockScreenDetail,
-                    tertiary: joinedDetail
-                )
-                .layoutPriority(0)
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                        Text("Network is open")
+                            .font(.headline.weight(.semibold))
+                        Text(lockScreenDetail)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.72))
+                            .lineLimit(1)
+                    }
 
-                Spacer(minLength: DesignTokens.Spacing.sm)
+                    Spacer(minLength: DesignTokens.Spacing.sm)
 
-                VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xxs) {
                     PermitJoinTimer(context: context, compact: false)
+                        .layoutPriority(1)
                 }
-                .layoutPriority(1)
+                PermitJoinProgress(context: context)
             }
         }
     }
 
     private var lockScreenDetail: String {
-        context.state.targetName ?? "Network is open"
+        context.state.targetName ?? "Pairing devices"
     }
 
-    private var joinedDetail: String? {
-        guard context.state.joinedCount > 0 else { return nil }
-        return context.state.joinedCount == 1 ? "1 device joined" : "\(context.state.joinedCount) devices joined"
+}
+
+private struct PermitJoinActivityMark: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image(systemName: "dot.radiowaves.up.forward")
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(PermitJoinActivityPalette.accent)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct PermitJoinProgress: View {
+    let context: ActivityViewContext<PermitJoinActivityAttributes>
+
+    var body: some View {
+        ProgressView(timerInterval: context.state.startedAt...context.state.endsAt, countsDown: true)
+            .tint(PermitJoinActivityPalette.accent)
     }
 }
 
@@ -97,12 +97,17 @@ private struct PermitJoinTimer: View {
 
     var body: some View {
         Text(timerInterval: context.state.startedAt...context.state.endsAt, countsDown: true)
-            .font((compact ? Font.caption : Font.title3).weight(.semibold))
+            .font(compact ? .caption.weight(.semibold) : DesignTokens.Typography.liveActivityTimer)
             .monospacedDigit()
-            .foregroundStyle(.orange)
+            .foregroundStyle(.white)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
     }
+}
+
+private enum PermitJoinActivityPalette {
+    static let background = Color(red: 0.05, green: 0.10, blue: 0.13)
+    static let accent = Color(red: 0.35, green: 0.91, blue: 0.70)
 }
 
 #Preview("Pairing", as: .dynamicIsland(.expanded), using: permitJoinPreviewAttributes) {
