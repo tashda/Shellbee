@@ -23,11 +23,11 @@ struct NetworkMapRefreshProgressView: View {
             let elapsed = startedAt.map { max(0, context.date.timeIntervalSince($0)) } ?? 0
             let rotation = reduceMotion || !isWorking ? 0 : elapsed * 42
 
-            VStack(spacing: DesignTokens.Spacing.lg) {
+            VStack(spacing: DesignTokens.Spacing.md) {
                 networkActivityGraphic(rotation: rotation)
-                VStack(spacing: DesignTokens.Spacing.xs) {
+                VStack(spacing: DesignTokens.Spacing.xxs) {
                     Text(title)
-                        .font(.title3.weight(.semibold))
+                        .font(.headline)
                     Text(bridgeName)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -45,14 +45,8 @@ struct NetworkMapRefreshProgressView: View {
             .frame(maxWidth: fillsViewport
                    ? DesignTokens.Size.networkMapScanCardWideWidth
                    : DesignTokens.Size.networkMapScanCardWidth)
-            .padding(DesignTokens.Spacing.xxl)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
-            .glassEffectIfAvailable(in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous)
-                    .strokeBorder(.white.opacity(0.32), lineWidth: DesignTokens.Size.hairline)
-            }
-            .shadow(color: .black.opacity(0.12), radius: DesignTokens.Shadow.floatingRadius, y: DesignTokens.Shadow.floatingY)
+            .padding(DesignTokens.Spacing.xl)
+            .modifier(CardBackground())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(DesignTokens.Spacing.xl)
@@ -65,11 +59,8 @@ struct NetworkMapRefreshProgressView: View {
         case .idle:
             EmptyView()
         case .requesting, .building:
-            VStack(spacing: DesignTokens.Spacing.lg) {
-                NetworkMapScanStepsView(request: requestStep, scan: scanStep, build: buildStep)
-                if let scan {
-                    NetworkMapScanLiveView(scan: scan, now: now)
-                }
+            if let scan {
+                NetworkMapScanLiveView(scan: scan, now: now)
             }
         case .completed(let summary):
             NetworkMapScanSummaryView(summary: summary, onDismiss: onDismiss)
@@ -84,56 +75,20 @@ struct NetworkMapRefreshProgressView: View {
         }
     }
 
-    // MARK: - Steps
-
-    /// Z2M logs the start of its scan at info level; with a stricter log
-    /// level that line never arrives, so the scan is assumed to be running
-    /// as soon as the request is out.
-    private var scanHasStarted: Bool {
-        guard let scan else { return true }
-        return scan.scanStartedAt != nil || scan.visibility == .failuresOnly
-    }
-
-    private var requestStep: NetworkMapScanStepsView.StepState {
-        scanHasStarted ? .done : .active
-    }
-
-    private var scanStep: NetworkMapScanStepsView.StepState {
-        if case .building = phase { return .done }
-        if scan?.scanFinishedAt != nil { return .done }
-        return scanHasStarted ? .active : .pending
-    }
-
-    private var buildStep: NetworkMapScanStepsView.StepState {
-        if case .building = phase { return .active }
-        return scan?.scanFinishedAt != nil ? .active : .pending
-    }
-
     // MARK: - Copy
 
     private var title: String {
         switch phase {
         case .idle: "Network Map"
         case .requesting, .building: "Refreshing Network Map"
-        case .completed: "Network Map Ready"
+        case .completed: "Network Map Updated"
         case .failed: "Network Map Refresh Failed"
         }
     }
 
     private var detail: String? {
-        switch phase {
-        case .idle, .completed:
-            return nil
-        case .requesting:
-            if scan?.scanFinishedAt != nil { return "Scan finished, waiting for the results" }
-            return scanHasStarted
-                ? "Zigbee2MQTT is asking each router for its neighbors"
-                : "Waiting for Zigbee2MQTT to start the scan"
-        case .building:
-            return "Arranging devices and connections"
-        case .failed(let message):
-            return message
-        }
+        if case .failed(let message) = phase { return message }
+        return nil
     }
 
     private func networkActivityGraphic(rotation: Double) -> some View {
@@ -171,7 +126,7 @@ struct NetworkMapRefreshProgressView: View {
             }
 
             Image(systemName: centerSymbol)
-                .font(.system(size: 38, weight: .medium))
+                .font(.system(size: 30, weight: .medium))
                 .foregroundStyle(centerTint)
                 .symbolRenderingMode(.hierarchical)
                 .contentTransition(.symbolEffect(.replace))
@@ -197,6 +152,19 @@ struct NetworkMapRefreshProgressView: View {
         case .completed(let summary): summary.failedDeviceNames.isEmpty ? .green : .orange
         case .failed: .red
         case .idle, .requesting, .building: .accentColor
+        }
+    }
+}
+
+/// Liquid Glass where available, otherwise a single system material — no
+/// stacked strokes or shadows, so the card reads like system chrome.
+private struct CardBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous)
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            content.background(.regularMaterial, in: shape)
         }
     }
 }

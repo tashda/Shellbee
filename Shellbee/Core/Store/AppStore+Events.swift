@@ -66,9 +66,11 @@ extension AppStore {
         case .groups(let list):
             groups = list
         case .logMessage(let msg):
+            var isOwnScanProgress = false
             if networkMapIsRefreshing, var scan = networkMapScan,
                scan.ingest(logMessage: msg.message, at: .now) {
                 networkMapScan = scan
+                isOwnScanProgress = true
             }
             let level = LogLevel(raw: msg.level) ?? .info
             insertRawLogEntry(LogEntry(
@@ -103,7 +105,10 @@ extension AppStore {
                 entry.category = display.category
             }
             insertLogEntry(entry)
-            if let note = notification(for: ctx.action, level: level, deviceName: ctx.primaryDevice?.friendlyName, message: msg.message, id: msg.id) {
+            // Our own scan's per-router lines are already shown live on the
+            // refresh card; a banner for each failed router would repeat it.
+            if !isOwnScanProgress,
+               let note = notification(for: ctx.action, level: level, deviceName: ctx.primaryDevice?.friendlyName, message: msg.message, id: msg.id) {
                 enqueueNotification(note)
             }
         case .bridgeEvent(let event):
@@ -314,9 +319,11 @@ extension AppStore {
             let wasRefreshing = networkMapIsRefreshing
             networkMapIsRefreshing = false
             guard response.status == "ok", let topology = response.data?.value else {
-                networkMapRefreshPhase = .failed(
-                    message: response.error ?? "The coordinator could not return a network map."
-                )
+                if wasRefreshing {
+                    networkMapRefreshPhase = .failed(
+                        message: response.error ?? "The coordinator could not return a network map."
+                    )
+                }
                 let error = Z2MOperationError(
                     id: UUID(),
                     topic: Z2MTopics.bridgeResponseNetworkMap,
@@ -331,7 +338,10 @@ extension AppStore {
             networkTopology = topology
             networkMapLastUpdated = updatedAt
             let summary = NetworkMapScanSummary(topology: topology, progress: networkMapScan, finishedAt: updatedAt)
-            networkMapRefreshPhase = .completed(summary)
+            // Every connected client receives every networkmap response, so
+            // a scan someone else started (another app, the Z2M frontend)
+            // refreshes the map quietly; only our own gets the summary card.
+            networkMapRefreshPhase = wasRefreshing ? .completed(summary) : .idle
             networkMapRenderRevision &+= 1
             if let activeBridgeID {
                 networkMapCache.save(
@@ -352,7 +362,7 @@ extension AppStore {
             // A clean scan's summary shows briefly, then gets out of the way.
             // One with failures stays until dismissed, so the list of
             // routers that did not answer can actually be read.
-            if summary.failedDeviceNames.isEmpty {
+            if wasRefreshing, summary.failedDeviceNames.isEmpty {
                 settleNetworkMapRefreshPhase(after: .seconds(3))
             }
 

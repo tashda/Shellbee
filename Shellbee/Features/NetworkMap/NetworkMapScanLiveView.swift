@@ -8,158 +8,92 @@ struct NetworkMapScanLiveView: View {
     let scan: NetworkMapScanProgress
     let now: Date
 
+    @State private var showsLoggingHelp = false
+
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.lg) {
-            if scan.visibility == .everyDevice {
-                progressBar
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            if let fraction = scan.fractionComplete {
+                ProgressView(value: fraction)
+                    .tint(.accentColor)
             }
-            tiles
-            if !scan.recentEvents.isEmpty {
-                feed
-            }
-            timing
-            if scan.visibility != .everyDevice {
-                loggingNote
-            }
-        }
-        .animation(.smooth, value: scan)
-    }
 
-    // MARK: - Progress
-
-    private var progressBar: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            GeometryReader { proxy in
-                let total = max(scan.targetCount, 1)
-                let respondedWidth = proxy.size.width * CGFloat(scan.respondedCount) / CGFloat(total)
-                let failedWidth = proxy.size.width * CGFloat(scan.failedCount) / CGFloat(total)
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.secondary.opacity(0.16))
-                    HStack(spacing: 0) {
-                        Rectangle().fill(Color.green).frame(width: respondedWidth)
-                        Rectangle().fill(Color.red).frame(width: failedWidth)
-                    }
-                    .clipShape(Capsule())
-                }
-            }
-            .frame(height: DesignTokens.Size.networkMapScanBarHeight)
-            Text("\(scan.finishedCount) of \(scan.targetCount) routers scanned")
-                .font(.caption.weight(.medium))
+            Text(statusLine)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
                 .contentTransition(.numericText())
-        }
-        .accessibilityElement(children: .combine)
-    }
 
-    // MARK: - Tiles
-
-    @ViewBuilder
-    private var tiles: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            if scan.visibility == .everyDevice {
-                NetworkMapScanStatTile(
-                    value: "\(scan.respondedCount)",
-                    label: "Responded",
-                    systemImage: "checkmark.circle.fill",
-                    tint: .green
-                )
-            } else {
-                NetworkMapScanStatTile(
-                    value: "\(scan.targetCount)",
-                    label: "Routers to Scan",
-                    systemImage: "dot.radiowaves.left.and.right",
-                    tint: .accentColor
-                )
-            }
-            NetworkMapScanStatTile(
-                value: "\(scan.failedCount)",
-                label: "Failed",
-                systemImage: "xmark.circle.fill",
-                tint: scan.failedCount > 0 ? .red : .secondary
-            )
-            if scan.visibility == .everyDevice {
-                NetworkMapScanStatTile(
-                    value: "\(scan.waitingCount)",
-                    label: "Waiting",
-                    systemImage: "clock.fill",
-                    tint: .secondary
-                )
-            } else {
-                NetworkMapScanStatTile(
-                    value: Self.clock(now.timeIntervalSince(scan.requestedAt)),
-                    label: "Elapsed",
-                    systemImage: "clock.fill",
-                    tint: .secondary
-                )
-            }
-        }
-    }
-
-    // MARK: - Feed
-
-    private var feed: some View {
-        VStack(spacing: 0) {
-            ForEach(scan.recentEvents) { event in
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    Image(systemName: event.outcome == .responded ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundStyle(event.outcome == .responded ? .green : .red)
-                    Text(event.deviceName)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer(minLength: DesignTokens.Spacing.sm)
-                    Text(event.outcome == .responded ? "Responded" : "Failed")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            NetworkMapScanRows {
+                if scan.visibility == .everyDevice {
+                    NetworkMapScanRow(label: "Responded", value: "\(scan.respondedCount)")
+                } else {
+                    NetworkMapScanRow(label: "Routers", value: "\(scan.targetCount)")
                 }
-                .padding(.vertical, DesignTokens.Spacing.xs)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity),
-                    removal: .opacity
-                ))
+                NetworkMapScanRow(
+                    label: "Failed",
+                    value: "\(scan.failedCount)",
+                    valueColor: scan.failedCount > 0 ? .red : .secondary
+                )
+                if scan.visibility == .everyDevice {
+                    NetworkMapScanRow(label: "Waiting", value: "\(scan.waitingCount)")
+                }
+            }
+
+            if !scan.failedNames.isEmpty {
+                Text(scan.failedNames.joined(separator: ", "))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            if scan.visibility != .everyDevice {
+                loggingFootnote
             }
         }
-        .padding(.horizontal, DesignTokens.Spacing.md)
-        .padding(.vertical, DesignTokens.Spacing.sm)
-        .background(
-            Color.secondary.opacity(DesignTokens.Opacity.networkMapScanTileFill),
-            in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-    }
-
-    // MARK: - Timing
-
-    private var timing: some View {
-        HStack {
-            if scan.visibility == .everyDevice {
-                Label(Self.clock(now.timeIntervalSince(scan.requestedAt)), systemImage: "stopwatch")
-            }
-            Spacer()
-            if let remaining = scan.estimatedTimeRemaining(now: now) {
-                Text("About \(Self.approximate(remaining)) left")
-            } else if scan.visibility != .everyDevice {
-                // Z2M pauses a second per router, so this is a floor, not a guess.
-                Text("Takes at least \(Self.approximate(Double(scan.targetCount))) for \(scan.targetCount) routers")
-            }
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .monospacedDigit()
-    }
-
-    private var loggingNote: some View {
-        Label {
-            Text(scan.visibility == .failuresOnly
-                 ? "Zigbee2MQTT only reports failed routers at this log level. To follow every router, set Log level to Debug and turn on Log debug to MQTT and frontend."
-                 : "Zigbee2MQTT only reports failed routers while scanning. To follow every router, set Log level to Debug and turn on Log debug to MQTT and frontend.")
-        } icon: {
-            Image(systemName: "info.circle")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.smooth, value: scan)
+    }
+
+    private var statusLine: String {
+        let elapsed = Self.clock(now.timeIntervalSince(scan.requestedAt))
+        if scan.scanFinishedAt != nil {
+            return "Scan finished · \(elapsed)"
+        }
+        guard scan.scanStartedAt != nil || scan.visibility == .failuresOnly else {
+            return "Waiting for Zigbee2MQTT · \(elapsed)"
+        }
+        if scan.visibility == .everyDevice {
+            var line = "\(scan.finishedCount) of \(scan.targetCount) routers · \(elapsed)"
+            if let remaining = scan.estimatedTimeRemaining(now: now) {
+                line += " · about \(Self.approximate(remaining)) left"
+            }
+            return line
+        }
+        return "Scanning routers · \(elapsed)"
+    }
+
+    private var loggingFootnote: some View {
+        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
+            Text("Only failed routers are reported at this log level.")
+            Button {
+                showsLoggingHelp = true
+            } label: {
+                Image(systemName: "info.circle")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .accessibilityLabel("How to follow every router")
+            .popover(isPresented: $showsLoggingHelp) {
+                Text("To follow every router during a scan, set Log level to Debug and turn on Log debug to MQTT and frontend in the Zigbee2MQTT settings.")
+                    .font(.subheadline)
+                    .padding()
+                    .frame(idealWidth: DesignTokens.Size.networkMapScanCardWidth)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .presentationCompactAdaptation(.popover)
+            }
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
     }
 
     // MARK: - Formatting
