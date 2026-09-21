@@ -12,6 +12,8 @@ extension DesignTokens {
         /// Pip diameter as a share of the thumbnail, so it scales from the
         /// 40pt feed card down to the 30pt tab bar artwork.
         static let pipRatio: CGFloat = 0.45
+        /// Below this a pip covers too much of the artwork to help.
+        static let pipMinimumThumbnail: CGFloat = 24
         static let pipGlyphRatio: CGFloat = 0.5
         static let pipBorder: CGFloat = 2
         static let pipOffsetRatio: CGFloat = 0.075
