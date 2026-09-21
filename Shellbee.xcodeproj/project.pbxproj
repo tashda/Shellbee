@@ -249,7 +249,7 @@
 				Features/NetworkMap/NetworkMapRefreshProgressView.swift,
 				Features/NetworkMap/NetworkMapRenderIndex.swift,
 				Features/NetworkMap/NetworkMapScanLiveView.swift,
-				Features/NetworkMap/NetworkMapScanStatTile.swift,
+				Features/NetworkMap/NetworkMapScanRows.swift,
 				Features/NetworkMap/NetworkMapScanSummaryView.swift,
 				Features/NetworkMap/NetworkMapView.swift,
 				Features/NetworkMap/NetworkMapWorkspaceFilters.swift,

@@ -10,79 +10,48 @@ struct NetworkMapScanSummaryView: View {
     private static let listedFailureLimit = 8
 
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.lg) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                NetworkMapScanStatTile(
-                    value: "\(summary.deviceCount)",
-                    label: "Devices",
-                    systemImage: "sensor.tag.radiowaves.forward.fill",
-                    tint: .accentColor
-                )
-                NetworkMapScanStatTile(
-                    value: "\(summary.respondedCount)/\(summary.queriedCount)",
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            NetworkMapScanRows {
+                NetworkMapScanRow(label: "Devices", value: "\(summary.deviceCount)")
+                NetworkMapScanRow(
                     label: "Routers Responded",
-                    systemImage: "checkmark.circle.fill",
-                    tint: .green
+                    value: "\(summary.respondedCount) of \(summary.queriedCount)"
                 )
-                NetworkMapScanStatTile(
-                    value: "\(summary.failedDeviceNames.count)",
-                    label: "Failed",
-                    systemImage: "xmark.circle.fill",
-                    tint: summary.failedDeviceNames.isEmpty ? .secondary : .red
-                )
-            }
-
-            if !summary.failedDeviceNames.isEmpty {
-                failures
-            }
-
-            if let duration = summary.duration {
-                Text("Scanned in \(NetworkMapScanLiveView.clock(duration)) · \(summary.linkCount) links")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-
-            if !summary.failedDeviceNames.isEmpty {
-                Button("Done", action: onDismiss)
-                    .glassProminentButtonStyleIfAvailable()
-                    .controlSize(.large)
-            }
-        }
-    }
-
-    private var failures: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Text("Did Not Respond")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            ForEach(summary.failedDeviceNames.prefix(Self.listedFailureLimit), id: \.self) { name in
-                Label {
-                    Text(name)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                } icon: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.red)
+                if let duration = summary.duration {
+                    NetworkMapScanRow(label: "Scan Time", value: NetworkMapScanLiveView.clock(duration))
                 }
-                .font(.subheadline)
             }
-            let hidden = summary.failedDeviceNames.count - Self.listedFailureLimit
-            if hidden > 0 {
-                Text("and \(hidden) more")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
+            if !summary.failedDeviceNames.isEmpty {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                    Text("Did Not Respond")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .padding(.horizontal, DesignTokens.Spacing.md)
+                    NetworkMapScanRows {
+                        ForEach(summary.failedDeviceNames.prefix(Self.listedFailureLimit), id: \.self) { name in
+                            NetworkMapScanRow(label: name, value: "")
+                        }
+                        let hidden = summary.failedDeviceNames.count - Self.listedFailureLimit
+                        if hidden > 0 {
+                            NetworkMapScanRow(label: "Others", value: "\(hidden)")
+                        }
+                    }
+                    Text("Devices behind them still appear, as reported by routers that did respond.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, DesignTokens.Spacing.md)
+                }
+
+                Button(action: onDismiss) {
+                    Text("Done")
+                        .frame(maxWidth: .infinity)
+                }
+                .glassProminentButtonStyleIfAvailable()
+                .controlSize(.large)
             }
-            Text("Their neighbors are still on the map, as reported by the routers that did respond.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, DesignTokens.Spacing.xs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(DesignTokens.Spacing.md)
-        .background(
-            Color.red.opacity(DesignTokens.Opacity.networkMapScanTileFill),
-            in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
-        )
     }
 }
