@@ -7,18 +7,21 @@ struct LogsView: View {
     @State private var showingClearConfirmation = false
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
+    private let isTabRoot: Bool
     private let onDone: (() -> Void)?
     private let selection: Binding<LogsPaneRoute?>?
 
     init(
         initialEntryFilter: Set<UUID>? = nil,
         notificationSheetStyle: Bool = false,
+        isTabRoot: Bool = false,
         onDone: (() -> Void)? = nil,
         selection: Binding<LogsPaneRoute?>? = nil,
         workspace: LogsWorkspaceState? = nil
     ) {
         self.initialEntryFilter = initialEntryFilter
         self.notificationSheetStyle = notificationSheetStyle
+        self.isTabRoot = isTabRoot
         self.onDone = onDone
         self.selection = selection
         _workspace = State(initialValue: workspace ?? LogsWorkspaceState())
@@ -30,8 +33,8 @@ struct LogsView: View {
     }
 
     var body: some View {
-        // Intentionally NOT wrapped in its own NavigationStack. LogsView is
-        // never a tab root — every entry point already provides a stack:
+        // Intentionally NOT wrapped in its own NavigationStack. Each host
+        // provides the stack, including the iPhone Activity tab:
         //  - Settings → Logs and BridgeSettings → Logs push LogsView onto
         //    that tab's stack via NavigationLink.
         //  - LogSheetHost (Home → Recent Events, notification taps) wraps
@@ -61,7 +64,7 @@ struct LogsView: View {
             .navigationDestination(item: $autoOpenedEntry) { route in
                 LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
             }
-            .toolbar(.hidden, for: .tabBar)
+            .toolbar(isTabRoot ? .visible : .hidden, for: .tabBar)
             .toolbar {
                 if !AdaptiveLayout.isPad {
                     ToolbarItem(placement: .principal) {

@@ -255,6 +255,7 @@
 				Features/NetworkMap/NetworkMapWorkspaceFilters.swift,
 				Features/NetworkMap/NetworkMapWorldLayer.swift,
 				Features/NetworkMap/NetworkMapZoomController.swift,
+				Features/Notifications/ActivityTabBarAccessory.swift,
 				Features/Notifications/FastTrackBanner.swift,
 				Features/Notifications/InAppNotificationBanner.swift,
 				Features/Notifications/InAppNotificationOverlay.swift,

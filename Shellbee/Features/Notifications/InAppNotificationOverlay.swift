@@ -5,6 +5,7 @@ import UIKit
 
 struct InAppNotificationOverlay: View {
     let presentation: InAppNotificationPresentation
+    let isInlineActivityAccessory: Bool
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
@@ -29,8 +30,12 @@ struct InAppNotificationOverlay: View {
     private enum BannerTransitionReason { case arrival, expansion, carousel }
     @State private var transitionReason: BannerTransitionReason = .arrival
 
-    init(presentation: InAppNotificationPresentation = .floatingOverlay) {
+    init(
+        presentation: InAppNotificationPresentation = .floatingOverlay,
+        isInlineActivityAccessory: Bool = false
+    ) {
         self.presentation = presentation
+        self.isInlineActivityAccessory = isInlineActivityAccessory
     }
 
     private struct NotificationPage: Identifiable, Equatable {
@@ -107,6 +112,7 @@ struct InAppNotificationOverlay: View {
                     notification: page.bannerNotification,
                     isExpanded: $isExpanded,
                     presentation: presentation,
+                    isInlineActivityAccessory: isInlineActivityAccessory,
                     stackCount: pages.count,
                     stackPositionLabel: positionLabel,
                     bridgeBadge: shouldShowBridgeBadge ? page.bridgeName : nil,
@@ -114,6 +120,7 @@ struct InAppNotificationOverlay: View {
                     onGoToLog: { goToLog(for: page) },
                     onGoToDevice: { goToDevice(for: page) },
                     onCopyMessage: { copy(page.occurrence.subtitle ?? page.notification.title) },
+                    onOpenActivity: openActivity,
                     onSwipeNext: advanceCarousel,
                     onSwipePrevious: reverseCarousel
                 )
@@ -325,6 +332,11 @@ struct InAppNotificationOverlay: View {
                 InAppNotification(level: .info, title: "Copied to Clipboard", priority: .fastTrack)
             )
         }
+    }
+
+    private func openActivity() {
+        autoDismissTask?.cancel()
+        sceneNavigation.selectedTab = .logs
     }
 
     // MARK: - Fast-track lane

@@ -7,6 +7,7 @@ struct InAppNotificationBanner: View {
     let notification: InAppNotification
     @Binding var isExpanded: Bool
     var presentation: InAppNotificationPresentation = .floatingOverlay
+    var isInlineActivityAccessory = false
     var stackCount: Int = 1
     var stackPositionLabel: String? = nil
     /// Source bridge name. Shown as a small badge in the header when set —
@@ -17,6 +18,7 @@ struct InAppNotificationBanner: View {
     let onGoToLog: () -> Void
     let onGoToDevice: () -> Void
     let onCopyMessage: () -> Void
+    var onOpenActivity: () -> Void = {}
     var onSwipeNext: (() -> Void)? = nil
     var onSwipePrevious: (() -> Void)? = nil
 
@@ -25,7 +27,9 @@ struct InAppNotificationBanner: View {
     // expanded = carousel left/right. See dragGesture.
 
     var body: some View {
-        if presentation == .tabBarAccessory {
+        if presentation == .tabBarAccessory, isInlineActivityAccessory {
+            inlineActivityContent
+        } else if presentation == .tabBarAccessory {
             bannerContent
         } else {
             bannerContent
@@ -50,7 +54,7 @@ struct InAppNotificationBanner: View {
     private var bannerContent: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             header
-            if isExpanded { expandedBody }
+            if isExpanded, presentation != .tabBarAccessory { expandedBody }
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
@@ -136,12 +140,35 @@ struct InAppNotificationBanner: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if isExpanded {
+            if presentation == .tabBarAccessory {
+                onOpenActivity()
+            } else if isExpanded {
                 onCopyMessage()
             } else {
                 isExpanded = true
             }
         }
+    }
+
+    private var inlineActivityContent: some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: notification.level.systemImage)
+                .font(DesignTokens.Typography.notificationLevelIcon)
+                .foregroundStyle(notification.level.color)
+            Text(notification.title)
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+            if notification.count > 1 {
+                Text("× \(notification.count)")
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.Spacing.md)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpenActivity)
+        .highPriorityGesture(dragGesture, including: .all)
     }
 
     private var expandedBody: some View {
@@ -206,7 +233,9 @@ struct InAppNotificationBanner: View {
                 let verticalDominant = abs(dy) > abs(dx)
                 var committedSwipe = false
                 if verticalDominant {
-                    if !isExpanded, dy < -30 {
+                    if presentation == .tabBarAccessory, dy < -30 {
+                        onOpenActivity()
+                    } else if !isExpanded, dy < -30 {
                         isExpanded = true
                     } else if dy > 60 {
                         onDismiss()

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppNotificationSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
+    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var activityAccessoryDisplayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
 
     /// Connected bridges paired with their reported Z2M log level. Drives
     /// both the per-bridge rows in the About section and the visibility of
@@ -60,6 +61,18 @@ struct AppNotificationSettingsView: View {
         Form {
             aboutSection
 
+            Section {
+                Picker("Show", selection: activityAccessoryDisplayMode) {
+                    ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+            } header: {
+                Text("Activity Bar")
+            } footer: {
+                Text(activityAccessoryDisplayMode.wrappedValue.detail)
+            }
+
             ForEach(visibleSections, id: \.self) { section in
                 Section(section.title) {
                     ForEach(visibleCategories.filter { $0.section == section }, id: \.self) { category in
@@ -109,6 +122,13 @@ struct AppNotificationSettingsView: View {
             set: { newValue in
                 environment.notificationPreferences.setEnabled(category, enabled: newValue, bridgeLogLevel: bridgeLogLevel)
             }
+        )
+    }
+
+    private var activityAccessoryDisplayMode: Binding<ActivityAccessoryDisplayMode> {
+        Binding(
+            get: { ActivityAccessoryDisplayMode(rawValue: activityAccessoryDisplayModeRaw) ?? .summary },
+            set: { activityAccessoryDisplayModeRaw = $0.rawValue }
         )
     }
 }
