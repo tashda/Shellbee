@@ -13,7 +13,7 @@ struct ActivityCenterSheet: View {
     @ViewBuilder
     private var activityContent: some View {
         let content = NavigationStack {
-            LogsView(navigationTitle: "", workspace: workspace)
+            LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
         }
         .configuredTopScrollEdgeEffect()
 
