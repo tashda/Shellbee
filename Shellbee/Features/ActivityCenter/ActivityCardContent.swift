@@ -8,6 +8,8 @@ struct ActivityCardContent: Equatable {
     let detail: String?
 
     init(entry: LogEntry, subject: ActivityStack.Subject, bridgeName: String) {
+        let message: String
+        let detail: String?
         switch subject {
         case .named(let name):
             title = name
@@ -17,6 +19,19 @@ struct ActivityCardContent: Equatable {
             message = entry.summaryTitle
             detail = Self.nonEmpty(entry.summarySubtitle, excluding: [bridgeName, entry.summaryTitle])
         }
+        // A headline like "Error" or a log namespace says nothing; lead
+        // with the actual message instead.
+        if let detail, Self.isGeneric(message, for: entry) {
+            self.message = detail
+            self.detail = nil
+        } else {
+            self.message = message
+            self.detail = detail
+        }
+    }
+
+    private static func isGeneric(_ text: String, for entry: LogEntry) -> Bool {
+        text == entry.namespace || LogLevel.allCases.contains { $0.label == text }
     }
 
     private static func event(for entry: LogEntry, subjectName: String) -> (String, String?) {
