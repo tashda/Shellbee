@@ -48,7 +48,6 @@ struct DeviceCard: View {
         .accessibilityAction(named: "Copy Device Information") {
             UIPasteboard.general.string = transferPayload.plainText
         }
-        .iPadPointerEffect(.lift)
     }
 
     private var prominentHeader: some View {

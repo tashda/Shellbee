@@ -63,5 +63,5 @@ struct GroupRowView: View {
             )
         }
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

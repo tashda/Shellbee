@@ -28,7 +28,7 @@ struct PermitJoinActiveSheet: View {
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }

@@ -96,7 +96,6 @@ struct GroupMembersSection: View {
                     : Color.clear
             )
             .accessibilityValue(isSelected(route, selection: selection) ? "Selected" : "")
-            .iPadPointerEffect(.highlight)
         } else {
             NavigationLink(value: route) {
                 GroupMemberRow(

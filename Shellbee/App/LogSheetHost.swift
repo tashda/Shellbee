@@ -29,7 +29,7 @@ struct LogSheetHost: View {
                         GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                     }
             }
-            .forceSoftTopScrollEdgeEffect()
+            .configuredTopScrollEdgeEffect()
         } else {
             NavigationStack {
                 LogsView(
@@ -44,7 +44,7 @@ struct LogSheetHost: View {
                     GroupDetailView(bridgeID: route.bridgeID, group: route.group)
                 }
             }
-            .forceSoftTopScrollEdgeEffect()
+            .configuredTopScrollEdgeEffect()
         }
     }
 }

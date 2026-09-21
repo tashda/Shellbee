@@ -129,7 +129,7 @@ struct ServerDetailView: View {
             NavigationStack {
                 ConnectionEditorView(viewModel: vm, mode: .save)
             }
-            .forceSoftTopScrollEdgeEffect()
+            .configuredTopScrollEdgeEffect()
         }
         .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
             Button("Restart", role: .destructive) {
@@ -191,5 +191,5 @@ struct ServerDetailView: View {
     NavigationStack {
         ServerDetailView(bridgeID: UUID()).environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

@@ -14,9 +14,9 @@ import SwiftUI
 /// bar declares its four tabs explicitly and never iterates
 /// `AppTab.allCases`.
 ///
-/// The iPad shell keeps the split view's toolbar on the native soft scroll-edge
-/// treatment. The system-owned sidebar toggle remains a native control with
-/// its pointer interaction intact.
+/// The iPad shell uses the system-provided sidebar toggle. The optional soft
+/// top-edge treatment is applied separately so turning it off restores the
+/// untouched UIKit and SwiftUI rendering path.
 struct MainSplitView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
@@ -113,16 +113,10 @@ struct MainSplitView: View {
     @ViewBuilder
     private func responsiveShell(for size: CGSize) -> some View {
         let wideIPadLayout = AdaptiveLayout.usesWideIPadLayout(in: size)
-        let shellView = shell(
+        shell(
             usesThreeColumns: usesThreeColumns(wideIPadLayout: wideIPadLayout),
             usesWideHomeLayout: wideIPadLayout
         )
-
-        if #available(iOS 26.0, *) {
-            shellView.scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            shellView
-        }
     }
 
     @ViewBuilder
@@ -144,6 +138,9 @@ struct MainSplitView: View {
                 )
         } detail: {
             twoColumnDetail(usesWideHomeLayout: usesWideHomeLayout)
+                .toolbar {
+                    collapsedSidebarToggle(for: twoColumnVisibility)
+                }
         }
         .navigationSplitViewStyle(.balanced)
     }
@@ -176,6 +173,9 @@ struct MainSplitView: View {
                 .environment(\.isSelectableListContext, true)
         } detail: {
             threeColumnDetail
+                .toolbar {
+                    collapsedSidebarToggle(for: threeColumnVisibility)
+                }
         }
         .id(selection)
         .transaction(value: selection) { $0.animation = nil }
@@ -212,6 +212,13 @@ struct MainSplitView: View {
     private func sidebarRow(for tab: AppTab) -> some View {
         Label(tab.title, systemImage: tab.systemImage)
             .badge(tab == .settings && anyBridgeNeedsRestart ? Text("!") : nil)
+    }
+
+    @ToolbarContentBuilder
+    private func collapsedSidebarToggle(for visibility: NavigationSplitViewVisibility) -> some ToolbarContent {
+        if #available(iOS 26.0, *), visibility != .all {
+            DefaultToolbarItem(kind: .sidebarToggle, placement: .topBarLeading)
+        }
     }
 
     /// 2-column detail: each section is self-contained with its own

@@ -114,5 +114,5 @@ struct SerialSettingsView: View {
     NavigationStack {
         SerialSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

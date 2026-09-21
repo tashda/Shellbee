@@ -10,6 +10,9 @@ final class AppStore {
     var networkTopology: NetworkTopology?
     var networkMapLastUpdated: Date?
     var networkMapIsRefreshing = false
+    var networkMapRefreshPhase: NetworkMapRefreshPhase = .idle
+    var networkMapRefreshStartedAt: Date?
+    var networkMapRefreshTotalDevices = 0
     /// Lightweight invalidation for the map's derived render index. Keeping
     /// this separate from the topology avoids rebuilding the node/action
     /// layer during pan and zoom while still reflecting live health changes.
@@ -135,6 +138,10 @@ final class AppStore {
         touchlinkResetInProgress = false
         permitJoinJoinedCount = 0
         identifyInProgress = []
+        networkMapIsRefreshing = false
+        networkMapRefreshPhase = .idle
+        networkMapRefreshStartedAt = nil
+        networkMapRefreshTotalDevices = 0
         // `deviceFirstSeen` itself is rebuilt by `setActiveBridge` after the
         // next successful connect — so we clear the published mirror here so
         // the UI doesn't briefly show the prior bridge's "Recently Added"
@@ -177,6 +184,9 @@ final class AppStore {
             networkMapLastUpdated = nil
         }
         networkMapIsRefreshing = false
+        networkMapRefreshPhase = .idle
+        networkMapRefreshStartedAt = nil
+        networkMapRefreshTotalDevices = 0
         // Persist now (handles legacy migration too) — safe because
         // persistFirstSeen only writes activeBridgeID's slot.
         if pendingLegacyFirstSeen == nil && firstSeenByBridge[id]?.isEmpty == false {
@@ -189,6 +199,31 @@ final class AppStore {
     func clearActiveBridge() {
         activeBridgeID = nil
         activeBridgeName = ""
+    }
+
+    func beginNetworkMapRefresh() {
+        networkMapIsRefreshing = true
+        networkMapRefreshPhase = .requesting
+        networkMapRefreshStartedAt = .now
+        networkMapRefreshTotalDevices = devices.count
+    }
+
+    func settleNetworkMapRefreshPhase(after delay: Duration = .seconds(1.2)) {
+        let phase = networkMapRefreshPhase
+        Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard let self, self.networkMapRefreshPhase == phase else { return }
+            self.networkMapRefreshPhase = .idle
+            self.networkMapRefreshStartedAt = nil
+            self.networkMapRefreshTotalDevices = 0
+        }
+    }
+
+    func finishNetworkMapRefreshPresentation() {
+        guard case .completed = networkMapRefreshPhase else { return }
+        networkMapRefreshPhase = .idle
+        networkMapRefreshStartedAt = nil
+        networkMapRefreshTotalDevices = 0
     }
 
     // MARK: - First-seen persistence

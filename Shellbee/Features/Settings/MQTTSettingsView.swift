@@ -189,5 +189,5 @@ struct MQTTSettingsView: View {
     NavigationStack {
         MQTTSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

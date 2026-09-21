@@ -417,5 +417,5 @@ struct DeviceDetailView: View {
         DeviceDetailView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

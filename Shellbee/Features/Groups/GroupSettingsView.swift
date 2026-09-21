@@ -64,5 +64,5 @@ struct GroupSettingsView: View {
         GroupSettingsView(bridgeID: UUID(), group: .preview)
             .environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

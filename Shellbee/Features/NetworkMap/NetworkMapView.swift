@@ -123,27 +123,40 @@ struct NetworkMapView: View {
         VStack(spacing: 0) {
             if let session = selectedSession,
                session.store.networkTopology == nil,
-               session.store.networkMapIsRefreshing {
-                ProgressView("Loading Network Map")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+               session.store.networkMapRefreshPhase != .idle {
+                refreshProgress(for: session, fillsViewport: true)
             } else if let session = selectedSession,
                       let topology = session.store.networkTopology {
-                NetworkMapCanvasView(
-                    bridgeID: session.bridgeID,
-                    topology: topology,
-                    filters: filters,
-                    selection: routeBinding,
-                    deviceViewModel: deviceViewModel,
-                    onRename: { deviceToRename = $0 },
-                    onRemove: { deviceToRemove = $0 },
-                    onPendingAlert: { alert, _ in pendingDeviceAlert = alert },
-                    zoomController: zoomController
-                )
-                .id(session.bridgeID)
+                ZStack {
+                    NetworkMapCanvasView(
+                        bridgeID: session.bridgeID,
+                        topology: topology,
+                        filters: filters,
+                        selection: routeBinding,
+                        deviceViewModel: deviceViewModel,
+                        onRename: { deviceToRename = $0 },
+                        onRemove: { deviceToRemove = $0 },
+                        onPendingAlert: { alert, _ in pendingDeviceAlert = alert },
+                        onMapRendered: {
+                            session.store.finishNetworkMapRefreshPresentation()
+                        },
+                        zoomController: zoomController
+                    )
+                    .id(session.bridgeID)
+
+                    if session.store.networkMapRefreshPhase != .idle {
+                        Color.black.opacity(0.06)
+                            .ignoresSafeArea()
+                        refreshProgress(for: session, fillsViewport: false)
+                    }
+                }
                 .overlay(alignment: .bottomLeading) {
                     lastUpdatedLabel(session.store.networkMapLastUpdated)
                         .padding(DesignTokens.Spacing.md)
                 }
+            } else if let session = selectedSession,
+                      session.store.networkMapRefreshPhase != .idle {
+                refreshProgress(for: session, fillsViewport: true)
             } else {
                 ContentUnavailableView(
                     "No Network Map",
@@ -190,7 +203,7 @@ struct NetworkMapView: View {
         // explicit material is important here because this screen is not a
         // ScrollView, so the system cannot infer a scroll-edge backdrop.
         .toolbarBackground(.thinMaterial, for: .navigationBar)
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
     }
 
     @ViewBuilder
@@ -204,34 +217,22 @@ struct NetworkMapView: View {
                         Label {
                             Text(session.displayName)
                         } icon: {
-                            if session.store.networkMapIsRefreshing {
-                                ProgressView()
-                            } else if session.bridgeID == selectedBridgeID {
+                            if session.bridgeID == selectedBridgeID {
                                 Image(systemName: "checkmark.circle")
                             } else {
                                 Image(systemName: "point.3.connected.trianglepath.dotted")
                             }
                         }
                     }
-                    .disabled(session.store.networkMapIsRefreshing)
                 }
             } label: {
-                if connectedSessions.contains(where: { $0.store.networkMapIsRefreshing }) {
-                    ProgressView()
-                } else {
-                    Image(systemName: "arrow.clockwise")
-                }
+                refreshToolbarIcon
             }
             .accessibilityLabel("Refresh Network Map")
         } else {
             Button(action: { refresh() }) {
-                if selectedSession?.store.networkMapIsRefreshing == true {
-                    ProgressView()
-                } else {
-                    Image(systemName: "arrow.clockwise")
-                }
+                refreshToolbarIcon
             }
-            .disabled(selectedSession == nil || selectedSession?.store.networkMapIsRefreshing == true)
             .accessibilityLabel("Refresh Network Map")
         }
     }
@@ -245,9 +246,12 @@ struct NetworkMapView: View {
 
     private func refresh(bridgeID: UUID? = nil) {
         guard let bridgeID = bridgeID ?? selectedBridgeID,
-              let session = environment.registry.session(for: bridgeID)
+              let session = environment.registry.session(for: bridgeID),
+              !session.store.networkMapIsRefreshing
         else { return }
-        session.store.networkMapIsRefreshing = true
+        // Refresh state belongs to the bridge store, not this view. The
+        // request therefore continues if the user changes sidebar sections.
+        session.store.beginNetworkMapRefresh()
         environment.send(
             bridge: session.bridgeID,
             topic: Z2MTopics.Request.networkMap,
@@ -291,6 +295,21 @@ struct NetworkMapView: View {
             .padding(.horizontal, DesignTokens.Spacing.md)
             .padding(.vertical, DesignTokens.Spacing.sm)
             .background(.thinMaterial, in: Capsule())
+    }
+
+    private func refreshProgress(for session: BridgeSession, fillsViewport: Bool) -> some View {
+        NetworkMapRefreshProgressView(
+            bridgeName: session.displayName,
+            phase: session.store.networkMapRefreshPhase,
+            startedAt: session.store.networkMapRefreshStartedAt,
+            totalDevices: session.store.networkMapRefreshTotalDevices,
+            reportedDevices: 0,
+            fillsViewport: fillsViewport
+        )
+    }
+
+    private var refreshToolbarIcon: some View {
+        Image(systemName: "arrow.clockwise")
     }
 }
 

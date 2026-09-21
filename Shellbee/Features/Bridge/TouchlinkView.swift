@@ -39,7 +39,7 @@ struct TouchlinkView: View {
                         }
                     }
             }
-            .forceSoftTopScrollEdgeEffect()
+            .configuredTopScrollEdgeEffect()
         }
     }
 
@@ -157,6 +157,6 @@ struct TouchlinkView: View {
     NavigationStack {
         TouchlinkView(bridgeID: UUID())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
     .environment(AppEnvironment())
 }

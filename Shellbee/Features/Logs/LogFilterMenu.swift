@@ -189,6 +189,6 @@ struct LogFilterMenu: View {
                 }
             }
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
     .environment(AppEnvironment())
 }

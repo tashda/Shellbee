@@ -142,5 +142,5 @@ struct NetworkAccessSettingsView: View {
     NavigationStack {
         NetworkAccessSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

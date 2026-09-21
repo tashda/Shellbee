@@ -25,7 +25,7 @@ struct PermitJoinToolbarButton: View {
                 }
             }
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }
 
 #Preview("Active") {
@@ -37,5 +37,5 @@ struct PermitJoinToolbarButton: View {
                 }
             }
     }
-    .forceSoftTopScrollEdgeEffect()
+    .configuredTopScrollEdgeEffect()
 }

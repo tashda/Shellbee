@@ -93,7 +93,7 @@ struct AddReportingSheet: View {
                 }
             }
         }
-        .forceSoftTopScrollEdgeEffect()
+        .configuredTopScrollEdgeEffect()
     }
 }
 

@@ -50,7 +50,6 @@ struct LogRowView: View {
                 .layoutPriority(1)
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
-        .iPadPointerEffect(.highlight)
     }
 
     // MARK: - Title tint
