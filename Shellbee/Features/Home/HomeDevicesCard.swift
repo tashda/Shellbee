@@ -17,7 +17,7 @@ struct HomeDevicesCard: View {
     var body: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                HomeCardTitle(symbol: "sensor.tag.radiowaves.forward.fill", title: cardTitle, tint: .orange)
+                HomeCardTitle(symbol: .custom("devices"), title: cardTitle, tint: .orange)
                 statsRow
                 if hasAlerts {
                     HomeCardAlertList { alertRows }

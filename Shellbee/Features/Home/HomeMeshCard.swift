@@ -13,7 +13,7 @@ struct HomeMeshCard: View {
     var body: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                HomeCardTitle(symbol: "point.3.connected.trianglepath.dotted", title: cardTitle, tint: .indigo)
+                HomeCardTitle(symbol: .custom("mesh"), title: cardTitle, tint: .indigo)
                 statsRow
                 if hasAlerts {
                     HomeCardAlertList { alertRows }

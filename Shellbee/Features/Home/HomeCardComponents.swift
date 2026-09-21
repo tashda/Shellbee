@@ -16,13 +16,13 @@ struct HomeCardContainer<Content: View>: View {
 }
 
 struct HomeCardTitle: View {
-    let symbol: String
+    let symbol: ShellbeeSymbol
     let title: String
     let tint: Color
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: symbol)
+            symbol.image
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(tint)
             Text(title)

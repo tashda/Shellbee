@@ -34,11 +34,18 @@ enum AppTab: String, Codable, Hashable, CaseIterable {
     /// Navigation icon as it should actually be drawn. Tabs get a custom
     /// symbol from `Assets.xcassets/Custom Icons/Navigation` one at a time as
     /// they're designed and approved; everything else falls back to its
-    /// current SF Symbol until it has one.
+    /// current SF Symbol until it has one. `.networkMap` shares
+    /// `shellbee.mesh` with `HomeMeshCard` and `MeshDetailView` — all three
+    /// draw the same "connected nodes" concept today via the same SF Symbol.
     var symbol: ShellbeeSymbol {
         switch self {
         case .home: .custom("home")
-        default: .system(systemImage)
+        case .devices: .custom("devices")
+        case .groups: .custom("groups")
+        case .logs: .custom("activity")
+        case .networkMap: .custom("mesh")
+        case .settings: .custom("settings")
+        case .search: .custom("search")
         }
     }
 }

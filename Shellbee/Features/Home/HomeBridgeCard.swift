@@ -31,7 +31,7 @@ struct HomeBridgeCard: View {
     private var multiBridgeCard: some View {
         HomeCardContainer {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                HomeCardTitle(symbol: "antenna.radiowaves.left.and.right", title: "Bridges", tint: .teal)
+                HomeCardTitle(symbol: .custom("bridge"), title: "Bridges", tint: .teal)
                 VStack(spacing: 0) {
                     ForEach(entries) { entry in
                         HomeBridgeCardRow(
@@ -114,7 +114,7 @@ private struct HomeBridgeCardSingle: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-            HomeCardTitle(symbol: "antenna.radiowaves.left.and.right", title: headerTitle, tint: .teal)
+            HomeCardTitle(symbol: .custom("bridge"), title: headerTitle, tint: .teal)
                 .lineLimit(1)
             if entry?.isReconnecting == true {
                 HStack(spacing: DesignTokens.Spacing.xs) {
