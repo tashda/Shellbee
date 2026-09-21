@@ -83,11 +83,12 @@ nonisolated enum DesignTokens {
         static let liveActivityStageScreenHeight: CGFloat = 874
         static let liveActivityStageBezel: CGFloat = 10
         static let liveActivityStageStatusBarGap: CGFloat = 140
-        static let liveActivityStageDeviceTop: CGFloat = 16
-        static let liveActivityStageDeviceBottom: CGFloat = 72
+        static let liveActivityStageDeviceTop: CGFloat = 60
+        static let liveActivityStageDeviceBottom: CGFloat = 132
         static let liveActivityStageLockDateTop: CGFloat = 24
-        static let liveActivityStageLockCardBottom: CGFloat = 120
-        static let liveActivityStageControl: CGFloat = 32
+        static let liveActivityStageLockCardBottom: CGFloat = 150
+        static let liveActivityStageControl: CGFloat = 48
+        static let liveActivityStageSegment: CGFloat = 50
         static let filterChipChevron: CGFloat = 8
         static let levelIndicatorWidth: CGFloat = 4
         static let levelIndicatorHeight: CGFloat = 20

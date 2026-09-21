@@ -65,16 +65,19 @@ struct LiveActivityStageView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            StageControls(
+            LiveActivityStageControls(
                 samples: samples,
                 sampleIndex: $sampleIndex,
                 styles: kind.styles,
                 currentStyle: kind.defaultStyle,
                 style: $style,
                 surface: $surface,
-                wallpaper: $wallpaper,
-                onClose: { onClose?() ?? dismiss() }
+                wallpaper: $wallpaper
             )
+        }
+        .overlay(alignment: .topLeading) {
+            LiveActivityStageCloseButton { onClose?() ?? dismiss() }
+                .padding(.leading, DesignTokens.Spacing.lg)
         }
         .environment(\.colorScheme, .dark)
         .environment(\.isLiveActivityStagePreview, true)
@@ -247,72 +250,6 @@ private struct StageLockScreen: View {
 // MARK: - Controls
 
 @available(iOS 26.0, *)
-private struct StageControls: View {
-    let samples: [LiveActivityGallerySample]
-    @Binding var sampleIndex: Int
-    let styles: [LiveActivityStyle]
-    /// The style the widget ships with, labelled so it's never in doubt.
-    let currentStyle: LiveActivityStyle
-    @Binding var style: LiveActivityStyle
-    @Binding var surface: LiveActivityStageView.Surface
-    @Binding var wallpaper: LiveActivityStageWallpaper
-    let onClose: () -> Void
-
-    var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .frame(width: StageMetrics.control, height: StageMetrics.control)
-            }
-            .accessibilityLabel("Close")
-
-            Picker("State", selection: $sampleIndex) {
-                ForEach(Array(samples.enumerated()), id: \.offset) { index, sample in
-                    Text(sample.name).tag(index)
-                }
-            }
-
-            Picker("Style", selection: $style) {
-                ForEach(styles) { style in
-                    Text(style == currentStyle ? "\(style.name) · Current" : style.name).tag(style)
-                }
-            }
-
-            Picker("Surface", selection: $surface) {
-                ForEach(LiveActivityStageView.Surface.allCases) { surface in
-                    Text(surface.rawValue).tag(surface)
-                }
-            }
-
-            Menu {
-                ForEach(LiveActivityStageWallpaper.allCases) { option in
-                    Button {
-                        wallpaper = option
-                    } label: {
-                        if option == wallpaper {
-                            Label(option.name, systemImage: "checkmark")
-                        } else {
-                            Text(option.name)
-                        }
-                    }
-                }
-            } label: {
-                Image(systemName: "photo")
-                    .frame(width: StageMetrics.control, height: StageMetrics.control)
-            }
-            .accessibilityLabel("Wallpaper")
-        }
-        .pickerStyle(.menu)
-        .lineLimit(1)
-        .fixedSize()
-        .tint(.white)
-        .padding(DesignTokens.Spacing.xs)
-        .glassEffect(.regular, in: Capsule())
-        .padding(.bottom, DesignTokens.Spacing.sm)
-    }
-}
-
-@available(iOS 26.0, *)
 private enum StageMetrics {
     static let islandTop = DesignTokens.Size.liveActivityStageIslandTop
     static let screenSize = CGSize(width: DesignTokens.Size.liveActivityStageScreenWidth, height: DesignTokens.Size.liveActivityStageScreenHeight)
@@ -331,5 +268,4 @@ private enum StageMetrics {
     static let iconRadius = DesignTokens.CornerRadius.liveActivityStageIcon
     static let lockDateTop = DesignTokens.Size.liveActivityStageLockDateTop
     static let lockCardBottom = DesignTokens.Size.liveActivityStageLockCardBottom
-    static let control = DesignTokens.Size.liveActivityStageControl
 }

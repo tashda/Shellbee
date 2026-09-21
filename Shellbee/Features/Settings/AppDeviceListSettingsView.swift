@@ -11,8 +11,6 @@ struct AppDeviceListSettingsView: View {
                         Text(label(for: minutes)).tag(minutes)
                     }
                 }
-            } footer: {
-                Text("How long a freshly paired device stays in Recently Added. Turn off Show Recents in the Devices sort menu to hide that section.")
             }
         }
         .navigationTitle("Devices")
