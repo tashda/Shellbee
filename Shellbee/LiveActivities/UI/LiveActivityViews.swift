@@ -22,19 +22,35 @@ struct LiveActivityLockScreen: View {
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)
         .background(LiveActivityGlassGradient())
-        .activityBackgroundTint(Color.black.opacity(0.2))
+        .activityBackgroundTint(LiveActivityPalette.cardNight)
         .activitySystemActionForegroundColor(.white)
     }
 }
 
-/// Light-to-dark wash laid over the system's glass so the card reads as a
-/// lit pane of glass rather than a flat slab.
+/// A near-opaque dark card: graphite at the top-left, deep indigo through the
+/// middle, near-black at the bottom-right, finished with a hairline light
+/// edge. Opaque enough that the wallpaper never changes how the card reads.
 private struct LiveActivityGlassGradient: View {
     var body: some View {
         LinearGradient(
-            colors: [Color.white.opacity(0.16), Color.black.opacity(0.55)],
+            stops: [
+                .init(color: LiveActivityPalette.cardGraphite, location: 0),
+                .init(color: LiveActivityPalette.cardIndigo, location: 0.55),
+                .init(color: LiveActivityPalette.cardNight, location: 1)
+            ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
+        )
+        .overlay(
+            ContainerRelativeShape()
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [.white.opacity(0.28), .white.opacity(0.06)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: DesignTokens.Size.liveActivityCardEdge
+                )
         )
     }
 }
@@ -157,7 +173,8 @@ struct LiveActivityTitle: View {
     private func line(_ text: String) -> some View {
         Text(text)
             .lineLimit(1)
-            .minimumScaleFactor(0.6)
+            // Long device names may shrink this far before anything is cut.
+            .minimumScaleFactor(0.45)
     }
 }
 

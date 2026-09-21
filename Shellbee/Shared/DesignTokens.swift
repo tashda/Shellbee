@@ -57,6 +57,7 @@ nonisolated enum DesignTokens {
         static let liveActivityIslandBadge: CGFloat = 40
         static let liveActivityCompactSymbol: CGFloat = 14
         static let liveActivityMinimalSymbol: CGFloat = 10
+        static let liveActivityCardEdge: CGFloat = 1
         // Developer gallery stand-ins for the system's activity surfaces.
         static let liveActivityGalleryWidth: CGFloat = 371
         static let liveActivityGalleryIslandHeight: CGFloat = 37

@@ -29,6 +29,10 @@ enum LiveActivityPalette {
     static let success = Color.green
     static let failure = Color.red
     static let neutral = Color.white
+    // Card surface, after FotMob's graphite-to-indigo match card.
+    static let cardGraphite = Color(red: 0.25, green: 0.25, blue: 0.29)
+    static let cardIndigo = Color(red: 0.17, green: 0.17, blue: 0.33)
+    static let cardNight = Color(red: 0.04, green: 0.04, blue: 0.08)
 }
 
 struct LiveActivityLayout {
