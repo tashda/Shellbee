@@ -6,7 +6,7 @@ import SwiftUI
 /// then dismisses it on a fixed timer.
 struct FastTrackBanner: View {
     let notification: InAppNotification
-    let presentation: InAppNotificationPresentation
+    var presentation: InAppNotificationPresentation = .floatingOverlay
 
     var body: some View {
         content
