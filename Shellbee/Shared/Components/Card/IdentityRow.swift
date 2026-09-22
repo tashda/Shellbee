@@ -2,14 +2,16 @@ import SwiftUI
 
 /// Compact identity row, like an account or contact row in Settings: the
 /// image, the full name, a readable description and a chevron. A status
-/// only appears when it needs attention.
+/// only appears when it needs attention. Inside a `List` it draws no
+/// surface or chevron of its own, so the system row and `NavigationLink`
+/// provide them.
 struct IdentityRow<Artwork: View>: View {
     let name: String
     let subtitle: String
     var bridgeID: UUID? = nil
     var bridgeName: String? = nil
     var status: DeviceStatus? = nil
-    var showsChevron: Bool = true
+    var isListRow: Bool = false
     @ViewBuilder let artwork: () -> Artwork
 
     var body: some View {
@@ -44,13 +46,25 @@ struct IdentityRow<Artwork: View>: View {
                 .accessibilityElement(children: .combine)
             }
 
-            if showsChevron {
+            if !isListRow {
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
         }
-        .cardSurface(padding: DesignTokens.Spacing.md)
+        .modifier(IdentityRowSurface(isListRow: isListRow))
+    }
+}
+
+private struct IdentityRowSurface: ViewModifier {
+    let isListRow: Bool
+
+    func body(content: Content) -> some View {
+        if isListRow {
+            content.padding(.vertical, DesignTokens.Spacing.xxs)
+        } else {
+            content.cardSurface(padding: DesignTokens.Spacing.md)
+        }
     }
 }
 

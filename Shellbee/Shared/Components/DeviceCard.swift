@@ -81,7 +81,8 @@ struct DeviceCard: View {
             subtitle: device.cardSubtitle,
             bridgeID: bridgeID,
             bridgeName: bridgeName,
-            status: status
+            status: status,
+            isListRow: true
         ) {
             image(size: DesignTokens.Size.deviceRowImage)
         }

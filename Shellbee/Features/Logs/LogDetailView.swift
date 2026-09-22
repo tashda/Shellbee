@@ -36,39 +36,6 @@ struct LogDetailView: View {
         }
     }
 
-    private var payloadLinkQuality: Int? {
-        guard case .mqttPublish(_, _, let payload) = entry.parsedMessageKind else { return nil }
-        return payload.linkQuality
-    }
-
-    private static let stateMetadataKeys: Set<String> = [
-        "linkquality", "last_seen", "update", "update_available", "device", "elapsed"
-    ]
-
-    private var logTimeState: [String: JSONValue]? {
-        if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
-            return payload.isEmpty ? nil : payload
-        }
-        if entry.category == .stateChange {
-            // Prefer the full state captured at log time when available — the
-            // diff alone drops every unchanged field, which collapses the
-            // Light Card to a single property even when the payload had
-            // brightness/color_temp/color present. Fall back to the diff
-            // for older entries that don't carry a payload.
-            if let payload = entry.context?.payload, !payload.isEmpty {
-                return payload
-            }
-            if let changes = entry.context?.stateChanges {
-                var state: [String: JSONValue] = [:]
-                for change in changes where !Self.stateMetadataKeys.contains(change.property) {
-                    state[change.property] = change.to
-                }
-                return state.isEmpty ? nil : state
-            }
-        }
-        return nil
-    }
-
     private var resolvedGroup: Group? {
         let candidate: String?
         if let ctx = entry.context, !ctx.devices.isEmpty {
@@ -100,6 +67,14 @@ struct LogDetailView: View {
                 parsedBody
             } else {
                 jsonSection
+            }
+
+            if entry.category == .stateChange {
+                Section {
+                    Button(viewMode == .parsed ? "Show Raw Message" : "Show Changes") {
+                        viewMode = viewMode == .parsed ? .json : .parsed
+                    }
+                }
             }
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
@@ -170,68 +145,32 @@ struct LogDetailView: View {
         .accessibilityLabel("Format")
     }
 
-    @ViewBuilder
+    /// The group as one native row that opens Group detail.
     private func singleGroupSection(_ group: Group) -> some View {
         let members = scope.store.memberDevices(of: group)
-        let groupState = members.reduce(into: [String: JSONValue]()) { acc, d in
-            for (k, v) in scope.store.state(for: d.friendlyName) where acc[k] == nil {
-                acc[k] = v
-            }
-        }
-        Section {
-            // ZStack + closure-based NavigationLink overlay — same pattern
-            // as singleDeviceSection. Card's internal chevron is the only
-            // disclosure indicator; List doesn't auto-add its own.
-            ZStack {
+        return Section {
+            NavigationLink {
+                GroupDetailView(bridgeID: bridgeID, group: group)
+            } label: {
                 GroupCard(
                     group: group,
                     memberDevices: members,
-                    state: groupState,
+                    state: [:],
                     bridgeID: bridgeID,
                     bridgeName: environment.attributionBridgeName(for: bridgeID),
                     displayMode: .compact
                 )
-                NavigationLink {
-                    GroupDetailView(bridgeID: bridgeID, group: group)
-                } label: { EmptyView() }
-                .opacity(0)
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-        }
-        if let (member, snapshotState) = lightLikeMemberAndState(in: members) {
-            Section {
-                ExposeCardView(device: member, state: snapshotState, mode: .snapshot)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
             }
         }
     }
 
-    /// For a group log entry whose payload looks like a light state
-    /// (`state` plus at least one of brightness/color_temp/color), pick a
-    /// light member device to drive the snapshot Light Card. Returns nil
-    /// when the payload isn't light-shaped or no light member exists —
-    /// callers fall through to the generic field breakdown.
-    private func lightLikeMemberAndState(in members: [Device]) -> (Device, [String: JSONValue])? {
-        guard let payload = logTimeState else { return nil }
-        let lightKeys: Set<String> = ["brightness", "color_temp", "color", "color_xy", "color_hs"]
-        let hasLightShape = payload["state"] != nil && payload.keys.contains(where: { lightKeys.contains($0) })
-        guard hasLightShape else { return nil }
-        guard let member = members.first(where: { $0.category == .light }) else { return nil }
-        return (member, payload)
-    }
-
-    @ViewBuilder
+    /// The device as one native row that opens Device detail. Closure-based
+    /// push, so it doesn't mix with the value-based path that got us here.
     private func singleDeviceSection(_ device: Device) -> some View {
         Section {
-            // ZStack with a closure-based NavigationLink overlay: the card's
-            // internal chevron is the only disclosure indicator (the List
-            // doesn't auto-add its own because the row's primary content is
-            // the card, not the link). Closure-based push avoids the
-            // value-based path mixing that previously re-fired the row's
-            // own NavigationLink.
-            ZStack {
+            NavigationLink {
+                DeviceDetailView(bridgeID: bridgeID, device: device)
+            } label: {
                 DeviceCard(
                     device: device,
                     state: scope.store.state(for: device.friendlyName),
@@ -239,48 +178,10 @@ struct LogDetailView: View {
                     otaStatus: scope.store.otaStatus(for: device.friendlyName),
                     bridgeID: bridgeID,
                     bridgeName: environment.attributionBridgeName(for: bridgeID),
-                    lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                     displayMode: .compact
                 )
-                NavigationLink {
-                    DeviceDetailView(bridgeID: bridgeID, device: device)
-                } label: { EmptyView() }
-                .opacity(0)
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-        }
-        if let state = exposesScopedState(for: device) {
-            Section {
-                ExposeCardView(device: device, state: state, mode: .snapshot)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
             }
         }
-    }
-
-    /// Filter `logTimeState` to only the keys that are actual exposes of this
-    /// device. For bridge responses (payload `{data, error, status}`), nothing
-    /// matches and we return nil — so the device section just shows the hero
-    /// card. For real state publishes / state-change diffs, the payload keys
-    /// match exposes and we render the relevant control card with those values.
-    private func exposesScopedState(for device: Device) -> [String: JSONValue]? {
-        guard let state = logTimeState else { return nil }
-        // Use `flattened` (every node, parents + leaves) rather than
-        // `flattenedLeaves`. Z2M publishes nested features (notably the
-        // `color_xy` / `color_hs` parents whose `property` resolves to
-        // `"color"`) as a single object under the parent key — not as
-        // separate top-level `x` / `y` keys. Filtering by leaves alone
-        // dropped the entire color object, which is why the snapshot
-        // Light Card never rendered the color surface even when the
-        // payload carried a perfectly valid `color: {x, y}`.
-        let exposeProps: Set<String> = Set(
-            (device.definition?.exposes ?? []).flattened.compactMap {
-                $0.property ?? $0.name
-            }
-        )
-        let scoped = state.filter { exposeProps.contains($0.key) }
-        return scoped.isEmpty ? nil : scoped
     }
 
     /// Title for the navigation bar. The user tapped a row about a
@@ -288,6 +189,9 @@ struct LogDetailView: View {
     /// title (Mail puts the sender, Messages puts the contact). For
     /// non-device events we fall back to a quiet category label.
     private var navTitle: String {
+        if entry.category == .stateChange, let sentence = entry.activityChangeWordings.first?.sentence {
+            return sentence
+        }
         if let group = resolvedGroup { return group.friendlyName }
         if displayDevices.count == 1, let (_, device) = displayDevices.first {
             return device.friendlyName
@@ -363,15 +267,14 @@ struct LogDetailView: View {
         payload: [String: JSONValue]
     ) -> some View {
         if !changes.isEmpty {
-            // Diff rows live inside a single Section whose header carries
-            // the event noun. SwiftUI Lists don't support nested Sections,
-            // so this branch is mutually exclusive with the payload one.
-            Section {
-                ForEach(changes) { change in
-                    diffRow(for: change)
+            let rows = LogChangeRows.rows(for: changes, payload: entry.context?.payload)
+            Section("Changes") {
+                if rows.isEmpty {
+                    Text("Reported again with the same values")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(rows) { LogChangeRowView(row: $0) }
                 }
-            } header: {
-                eventHeader
             }
         } else if !payload.isEmpty && entry.category != .stateChange {
             // PayloadSectionsView produces its own Sections — render at
@@ -420,40 +323,6 @@ struct LogDetailView: View {
             } header: {
                 eventHeader
             }
-        }
-    }
-
-    /// Single uniform `key: prev → next` row used for every diff entry —
-    /// matches the bottom-row pattern the issue called out as the right
-    /// baseline. No special-case "IDLE card" or thermometer block: a value
-    /// without a `from` simply renders without the prev half, same shape.
-    @ViewBuilder
-    private func diffRow(for change: LogContext.StateChange) -> some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Text(change.displayLabel)
-                .font(DesignTokens.Typography.formRowLabel)
-            Spacer()
-            if let from = change.displayFrom {
-                Text(from)
-                    .font(DesignTokens.Typography.formRowValue)
-                    .foregroundStyle(.secondary)
-                Image(systemName: "arrow.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            Text(change.displayTo)
-                .font(DesignTokens.Typography.formRowValue.weight(.medium))
-                .foregroundStyle(diffColor(for: change))
-        }
-    }
-
-    private func diffColor(for change: LogContext.StateChange) -> Color {
-        switch change.to {
-        case .string(let s) where s == "ON": return .green
-        case .string(let s) where s == "OFF": return .red
-        case .bool(true): return .green
-        case .bool(false): return .red
-        default: return .primary
         }
     }
 

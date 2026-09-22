@@ -254,6 +254,7 @@
 				Features/Logs/ActivityWorkspaceFilters.swift,
 				Features/Logs/BridgeLogView.swift,
 				Features/Logs/BridgeLogViewModel.swift,
+				Features/Logs/LogChangeRows.swift,
 				Features/Logs/LogDetailDevicesSection.swift,
 				Features/Logs/LogDetailView.swift,
 				Features/Logs/LogDeviceFilterSheet.swift,
