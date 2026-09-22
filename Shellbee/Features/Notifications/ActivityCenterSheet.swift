@@ -4,41 +4,40 @@ import SwiftUI
 /// destination of the tab accessory's system zoom transition.
 struct ActivityCenterSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var pullDistance: CGFloat = 0
     let transitionNamespace: Namespace.ID?
     let workspace: LogsWorkspaceState
 
     var body: some View {
-        if #available(iOS 18.0, *), let transitionNamespace {
-            // The zoom transition's own pull-down closes it, so no grabber:
-            // a strip above the navigation bar can't share its scroll-edge
-            // blur and would show as a flat band over scrolled content.
-            navigation
-                .accessibilityAction(.escape) { dismiss() }
-                .navigationTransition(.zoom(sourceID: "activity-center", in: transitionNamespace))
-        } else {
-            // A plain full-screen cover can't be pulled down, so it keeps a
-            // grabber strip of its own above the toolbar.
-            VStack(spacing: 0) {
-                GrabberCapsule()
-                navigation
-            }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        }
-    }
-
-    private var navigation: some View {
-        NavigationStack {
+        let content = NavigationStack {
             LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
         }
         .configuredTopScrollEdgeEffect()
+        .offset(y: pullDistance)
+        .overlay(alignment: .top) {
+            TopPullHandle(pullDistance: $pullDistance)
+        }
+        .accessibilityAction(.escape) { dismiss() }
+
+        if #available(iOS 18.0, *), let transitionNamespace {
+            content
+                .navigationTransition(.zoom(sourceID: "activity-center", in: transitionNamespace))
+        } else {
+            content
+        }
     }
 }
 
-/// The full-screen Activity Center's pull-down affordance, fixed at the
-/// visual centre, for covers without a zoom transition. Dragging it down or
-/// tapping it closes the Activity Center.
-private struct GrabberCapsule: View {
+/// The pull-down affordance of the full-screen Activity Center.
+///
+/// The grabber sits in the middle of the navigation bar row, level with the
+/// toolbar capsules. It is an overlay rather than a principal toolbar item,
+/// so it stays at the exact centre when trailing items such as Clear
+/// Filters come and go. The page follows a pull on it and closes past a
+/// threshold, wherever the feed is scrolled; tapping it also closes.
+private struct TopPullHandle: View {
     @Environment(\.dismiss) private var dismiss
+    @Binding var pullDistance: CGFloat
 
     var body: some View {
         Capsule()
@@ -47,19 +46,33 @@ private struct GrabberCapsule: View {
                 width: DesignTokens.ActivityFeed.grabberWidth,
                 height: DesignTokens.ActivityFeed.grabberHeight
             )
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, DesignTokens.Spacing.sm)
+            .frame(
+                width: DesignTokens.ActivityFeed.grabberHitWidth,
+                height: DesignTokens.ActivityFeed.navigationBarHeight
+            )
             .contentShape(Rectangle())
             .onTapGesture { dismiss() }
-            .gesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onEnded { value in
-                if value.translation.height > DesignTokens.ActivityFeed.grabberDismissDistance {
-                    dismiss()
-                }
-            })
+            .gesture(pullGesture)
+            .offset(y: pullDistance)
             .accessibilityElement()
             .accessibilityLabel("Close Activity")
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { dismiss() }
+    }
+
+    private var pullGesture: some Gesture {
+        DragGesture(minimumDistance: DesignTokens.Spacing.xs, coordinateSpace: .global)
+            .onChanged { value in
+                pullDistance = max(0, value.translation.height)
+            }
+            .onEnded { value in
+                let projected = value.predictedEndTranslation.height
+                if max(value.translation.height, projected) > DesignTokens.ActivityFeed.grabberDismissDistance {
+                    dismiss()
+                } else {
+                    withAnimation(.smooth) { pullDistance = 0 }
+                }
+            }
     }
 }
 

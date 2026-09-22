@@ -42,6 +42,11 @@ extension DesignTokens {
         /// The grabber that shows the Activity Center can be dragged down.
         static let grabberWidth: CGFloat = 36
         static let grabberHeight: CGFloat = 5
+        /// The grabber's touch target: the minimum tap size, so it never
+        /// reaches the Filter and Clear Filters capsule beside it.
+        static let grabberHitWidth: CGFloat = 44
+        /// The inline navigation bar row the grabber is centred in.
+        static let navigationBarHeight: CGFloat = 44
         /// How far the grabber has to be pulled down to close.
         static let grabberDismissDistance: CGFloat = 60
         /// Keeps cards readable on iPad and in wide windows.
