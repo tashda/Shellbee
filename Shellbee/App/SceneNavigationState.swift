@@ -17,6 +17,8 @@ final class SceneNavigationState {
     var pendingDeviceNavigation: DeviceRoute?
     var pendingGroupNavigation: GroupRoute?
     var pendingSettingsNavigation: BridgeSettingsRoute?
+    var pendingActivityLogFilter: ActivityLogFilter?
+    var pendingSettingsLogFilter: ActivityLogFilter?
     var pendingNetworkMapBridgeID: UUID?
     var pendingNetworkMapRefreshBridgeID: UUID?
 

@@ -5,7 +5,11 @@ struct DeviceLogsView: View {
     let device: Device
 
     var body: some View {
-        ActivitySubjectLogsView(bridgeID: bridgeID, subjectName: device.friendlyName)
+        ActivitySubjectLogsView(
+            bridgeID: bridgeID,
+            subjectName: device.friendlyName,
+            showsSignalChanges: true
+        )
     }
 }
 

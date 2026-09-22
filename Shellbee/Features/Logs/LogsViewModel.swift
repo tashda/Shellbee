@@ -5,6 +5,13 @@ final class LogsWorkspaceState {
     var mode: LogsView.LogMode = .activity
     var activity = LogsViewModel()
     var bridge = BridgeLogViewModel()
+
+    init(activityFilter: ActivityLogFilter? = nil) {
+        guard let activityFilter else { return }
+        activity.bridgeFilter = activityFilter.bridgeID
+        activity.selectedDevices = [activityFilter.deviceName]
+        activity.showLinkQualityChanges = true
+    }
 }
 
 @Observable
@@ -59,7 +66,8 @@ final class LogsViewModel {
 
         if !selectedDevices.isEmpty {
             entries = entries.filter { entry in
-                guard let name = entry.deviceName else { return false }
+                let name = LogRowIconography.subjectName(for: entry, in: store) ?? entry.deviceName
+                guard let name else { return false }
                 return selectedDevices.contains(name)
             }
         }

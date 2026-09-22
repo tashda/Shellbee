@@ -68,6 +68,7 @@ struct MainSplitView: View {
         }
         .onAppear {
             selection = sceneNavigation.selectedTab
+            consumePendingActivityLogFilter()
             applyInitialDestinationIfPossible()
             if let route = sceneNavigation.pendingSettingsNavigation {
                 selectedSettingsRoute = .bridgeOverview(route.bridgeID)
@@ -84,6 +85,10 @@ struct MainSplitView: View {
             guard let route else { return }
             selectedSettingsRoute = .bridgeOverview(route.bridgeID)
             sceneNavigation.pendingSettingsNavigation = nil
+        }
+        .onChange(of: sceneNavigation.pendingActivityLogFilter) { _, filter in
+            guard filter != nil else { return }
+            consumePendingActivityLogFilter()
         }
         .onChange(of: logsWorkspace.mode) { _, _ in
             selectedLogsPaneRoute = nil
@@ -455,6 +460,16 @@ struct MainSplitView: View {
             }
         }
         didApplyInitialDestination = true
+    }
+
+    private func consumePendingActivityLogFilter() {
+        guard let filter = sceneNavigation.pendingActivityLogFilter else { return }
+        logsWorkspace.activity.clearAllFilters()
+        logsWorkspace.activity.bridgeFilter = filter.bridgeID
+        logsWorkspace.activity.selectedDevices = [filter.deviceName]
+        logsWorkspace.activity.showLinkQualityChanges = true
+        sceneNavigation.pendingActivityLogFilter = nil
+        selection = .logs
     }
 
 }

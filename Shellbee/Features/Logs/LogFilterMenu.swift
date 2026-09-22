@@ -145,7 +145,9 @@ struct LogFilterMenu: View {
         snapshot.showLinkQualityChanges = viewModel.showLinkQualityChanges
         return Set(
             filteredSessions.flatMap { session in
-                snapshot.filteredEntries(store: session.store).compactMap(\.deviceName)
+                snapshot.filteredEntries(store: session.store).compactMap {
+                    LogRowIconography.subjectName(for: $0, in: session.store) ?? $0.deviceName
+                }
             }
         ).sorted()
     }

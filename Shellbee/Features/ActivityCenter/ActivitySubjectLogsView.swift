@@ -7,6 +7,7 @@ struct ActivitySubjectLogsView: View {
     @Environment(AppEnvironment.self) private var environment
     let bridgeID: UUID
     let subjectName: String
+    var showsSignalChanges = false
     @State private var searchText = ""
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
@@ -16,7 +17,8 @@ struct ActivitySubjectLogsView: View {
             subjectName: subjectName,
             bridgeID: bridgeID,
             store: scope.store,
-            environment: environment
+            environment: environment,
+            showsSignalChanges: showsSignalChanges
         )
     }
 

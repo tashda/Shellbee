@@ -9,6 +9,14 @@ enum ActivityCenterSettings {
     }
 }
 
+/// A scene-local request to show activity for one device on its owning bridge.
+struct ActivityLogFilter: Hashable, Identifiable {
+    let bridgeID: UUID
+    let deviceName: String
+
+    var id: String { "\(bridgeID.uuidString):\(deviceName)" }
+}
+
 enum ActivityAccessoryDisplayMode: String, CaseIterable, Identifiable {
     case latestActivity
     case summary

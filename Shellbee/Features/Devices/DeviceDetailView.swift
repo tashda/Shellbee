@@ -6,6 +6,8 @@ private enum DeviceMenuDestination: Hashable {
 
 struct DeviceDetailView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     /// Phase 1 multi-bridge: the bridge that owns this device. Pushed as part
     /// of `DeviceRoute` from the list/notification layer so detail reads
     /// land on the correct store regardless of which bridge has focus.
@@ -266,9 +268,25 @@ struct DeviceDetailView: View {
         ActivitySubjectLogsSection(
             bridgeID: bridgeID,
             subjectName: device.friendlyName,
-            subjectLabel: "device"
+            subjectLabel: "device",
+            showsSignalChanges: true,
+            onSeeAll: { openAllLogs(for: device) }
         ) {
             DeviceLogsView(bridgeID: bridgeID, device: device)
+        }
+    }
+
+    private func openAllLogs(for device: Device) {
+        let filter = ActivityLogFilter(bridgeID: bridgeID, deviceName: device.friendlyName)
+        if isActivityCenterEnabled || AdaptiveLayout.isPad {
+            sceneNavigation.pendingActivityLogFilter = filter
+            sceneNavigation.selectedTab = .logs
+            if !AdaptiveLayout.isPad {
+                sceneNavigation.isActivityCenterPresented = true
+            }
+        } else {
+            sceneNavigation.pendingSettingsLogFilter = filter
+            sceneNavigation.selectedTab = .settings
         }
     }
 

@@ -13,7 +13,8 @@ struct ActivitySubjectEvents {
         subjectName: String,
         bridgeID: UUID,
         store: AppStore,
-        environment: AppEnvironment
+        environment: AppEnvironment,
+        showsSignalChanges: Bool = false
     ) {
         let bridgeName = environment.registry.session(for: bridgeID)?.displayName ?? "Bridge"
 
@@ -31,7 +32,9 @@ struct ActivitySubjectEvents {
         // Use the same default Activity filtering and coalescing as the
         // Activity log. This notably keeps high-volume link-quality drift
         // from crowding out events that a person can act on.
-        items = LogsViewModel()
+        let viewModel = LogsViewModel()
+        viewModel.showLinkQualityChanges = showsSignalChanges
+        items = viewModel
             .filteredEntries(store: store)
             .filter(belongsToSubject)
             .map { entry in

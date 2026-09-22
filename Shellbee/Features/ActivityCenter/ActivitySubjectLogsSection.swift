@@ -6,7 +6,9 @@ struct ActivitySubjectLogsSection<Destination: View>: View {
     let bridgeID: UUID
     let subjectName: String
     let subjectLabel: String
+    var showsSignalChanges = false
     let destination: () -> Destination
+    let onSeeAll: (() -> Void)?
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
     private static var recentLimit: Int { 5 }
@@ -15,11 +17,15 @@ struct ActivitySubjectLogsSection<Destination: View>: View {
         bridgeID: UUID,
         subjectName: String,
         subjectLabel: String,
+        showsSignalChanges: Bool = false,
+        onSeeAll: (() -> Void)? = nil,
         @ViewBuilder destination: @escaping () -> Destination
     ) {
         self.bridgeID = bridgeID
         self.subjectName = subjectName
         self.subjectLabel = subjectLabel
+        self.showsSignalChanges = showsSignalChanges
+        self.onSeeAll = onSeeAll
         self.destination = destination
     }
 
@@ -28,7 +34,8 @@ struct ActivitySubjectLogsSection<Destination: View>: View {
             subjectName: subjectName,
             bridgeID: bridgeID,
             store: scope.store,
-            environment: environment
+            environment: environment,
+            showsSignalChanges: showsSignalChanges
         )
         let recent = Array(activityEvents.items.prefix(Self.recentLimit))
 
@@ -41,8 +48,14 @@ struct ActivitySubjectLogsSection<Destination: View>: View {
                 ForEach(recent) { item in
                     ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
                 }
-                NavigationLink(destination: destination) {
-                    Label("See All Logs", systemImage: "list.bullet")
+                if let onSeeAll {
+                    Button(action: onSeeAll) {
+                        Label("See All Logs", systemImage: "list.bullet")
+                    }
+                } else {
+                    NavigationLink(destination: destination) {
+                        Label("See All Logs", systemImage: "list.bullet")
+                    }
                 }
             }
         }

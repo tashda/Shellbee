@@ -50,6 +50,7 @@ struct MainTabView: View {
                 .environment(environment)
         }
         .onAppear {
+            consumePendingActivityLogFilter()
             if !AdaptiveLayout.isPad, sceneNavigation.selectedTab == .logs {
                 sceneNavigation.isActivityCenterPresented = isActivityCenterEnabled
                 sceneNavigation.selectedTab = tabSelection
@@ -67,6 +68,10 @@ struct MainTabView: View {
             } else {
                 tabSelection = newValue
             }
+        }
+        .onChange(of: sceneNavigation.pendingActivityLogFilter) { _, filter in
+            guard filter != nil else { return }
+            consumePendingActivityLogFilter()
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
@@ -174,6 +179,15 @@ struct MainTabView: View {
     private var activityCenterTransitionNamespace: Namespace.ID? {
         guard #available(iOS 26.0, *) else { return nil }
         return activityCenterTransition
+    }
+
+    private func consumePendingActivityLogFilter() {
+        guard let filter = sceneNavigation.pendingActivityLogFilter else { return }
+        activityWorkspace.activity.clearAllFilters()
+        activityWorkspace.activity.bridgeFilter = filter.bridgeID
+        activityWorkspace.activity.selectedDevices = [filter.deviceName]
+        activityWorkspace.activity.showLinkQualityChanges = true
+        sceneNavigation.pendingActivityLogFilter = nil
     }
 
 }

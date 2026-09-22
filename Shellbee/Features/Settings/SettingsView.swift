@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var editorViewModel: ConnectionViewModel?
     @State private var removeConfirmation: ConnectionConfig?
     @State private var autoOpenedBridgeRoute: BridgeSettingsRoute?
+    @State private var autoOpenedLogsFilter: ActivityLogFilter?
 
     /// Phase 2 multi-bridge: when the user has more than one saved bridge, the
     /// top-level Settings page swaps to the merged layout — every per-bridge
@@ -86,6 +87,13 @@ struct SettingsView: View {
         .navigationDestination(item: $autoOpenedBridgeRoute) { route in
             BridgeSettingsView(bridgeID: route.bridgeID)
         }
+        .navigationDestination(item: $autoOpenedLogsFilter) { filter in
+            LogsView(
+                usesActivityFeed: true,
+                navigationTitle: "",
+                workspace: LogsWorkspaceState(activityFilter: filter)
+            )
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -144,10 +152,17 @@ struct SettingsView: View {
         } message: {
             Text("The app returns to the setup screen. Your server address is remembered.")
         }
-        .onAppear { consumePendingSettingsNavigation() }
+        .onAppear {
+            consumePendingSettingsNavigation()
+            consumePendingLogsFilter()
+        }
         .onChange(of: sceneNavigation.pendingSettingsNavigation) { _, route in
             guard route != nil else { return }
             consumePendingSettingsNavigation()
+        }
+        .onChange(of: sceneNavigation.pendingSettingsLogFilter) { _, filter in
+            guard filter != nil else { return }
+            consumePendingLogsFilter()
         }
     }
 
@@ -209,6 +224,12 @@ struct SettingsView: View {
         guard let route = sceneNavigation.pendingSettingsNavigation else { return }
         sceneNavigation.pendingSettingsNavigation = nil
         autoOpenedBridgeRoute = route
+    }
+
+    private func consumePendingLogsFilter() {
+        guard let filter = sceneNavigation.pendingSettingsLogFilter else { return }
+        sceneNavigation.pendingSettingsLogFilter = nil
+        autoOpenedLogsFilter = filter
     }
 
     private func presentEditor(for config: ConnectionConfig) {
