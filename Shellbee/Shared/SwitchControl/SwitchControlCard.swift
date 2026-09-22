@@ -19,9 +19,6 @@ struct SwitchControlCard: View {
                 ) {
                     powerControl
                 }
-                if context.hasPowerMetering {
-                    StatStrip(items: meteringItems)
-                }
             }
             .cardSurface()
         }
@@ -111,42 +108,9 @@ struct SwitchControlCard: View {
             )
     }
 
-    private var meteringItems: [StatStripItem] {
-        meteringTiles.map { StatStripItem(value: "\($0.value) \($0.unit)", caption: $0.label) }
-    }
-
-    private var meteringTiles: [MeteringDescriptor] {
-        var tiles: [MeteringDescriptor] = []
-        if let v = context.powerValue {
-            tiles.append(.init(label: "Power",
-                               value: format(v, fraction: 1), unit: context.powerFeature?.unit ?? "W"))
-        }
-        if let v = context.energyValue {
-            tiles.append(.init(label: "Energy",
-                               value: format(v, fraction: 2), unit: context.energyFeature?.unit ?? "kWh"))
-        }
-        if let v = context.voltageValue {
-            tiles.append(.init(label: "Voltage",
-                               value: format(v, fraction: 0), unit: context.voltageFeature?.unit ?? "V"))
-        }
-        if let v = context.currentValue {
-            tiles.append(.init(label: "Current",
-                               value: format(v, fraction: 2), unit: context.currentFeature?.unit ?? "A"))
-        }
-        return tiles
-    }
-
     private func format(_ v: Double, fraction: Int) -> String {
         v.formatted(.number.precision(.fractionLength(0...fraction)))
     }
-}
-
-// MARK: - Metering tile
-
-private struct MeteringDescriptor {
-    let label: String
-    let value: String
-    let unit: String
 }
 
 #Preview {

@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Renders a switch's "leftover" exposes (power-on behaviour, child lock,
 /// indicator config, timers, etc.) as native iOS Settings sections beneath
-/// the hero `SwitchControlCard`. Sections are grouped by `FeatureLayout` so
+/// the hero `SwitchControlCard`, led by Power Monitoring when the plug
+/// meters power. Sections are grouped by `FeatureLayout` so
 /// behaviour / indicators / maintenance / etc. each get their own header,
 /// matching the fan pattern.
 struct SwitchFeatureSections: View {
@@ -33,6 +34,15 @@ struct SwitchFeatureSections: View {
     }
 
     var body: some View {
+        if !context.meteringReadings.isEmpty {
+            Section("Power Monitoring") {
+                ForEach(context.meteringReadings, id: \.label) { reading in
+                    LabeledContent(reading.label) {
+                        Text(reading.value).monospacedDigit()
+                    }
+                }
+            }
+        }
         FeatureSectionsList(exposes: extras, state: state, onSend: onSend)
     }
 }
