@@ -2,19 +2,21 @@ import Foundation
 
 /// Turns the filtered Activity entries into the feed's sections and stacks.
 ///
-/// Errors and warnings from the last day are pinned under Needs Attention.
-/// Everything else is Recent. Within a section, events stack by subject on
+/// Errors and warnings from the last day are pinned under Needs Attention,
+/// until the user clears them. Everything else is Recent. Within a section, events stack by subject on
 /// their bridge, and stacks are ordered by their newest event.
 enum ActivityStackBuilder {
     static let attentionWindow: TimeInterval = 24 * 60 * 60
 
     /// - Parameters:
     ///   - entries: Bridge-attributed entries, newest first.
+    ///   - clearance: What the user has already cleared from Needs Attention.
     ///   - subject: Resolves who an entry is about. Injected so the builder
     ///     stays independent of the store.
     static func sections(
         from entries: [BridgeBoundLogEntry],
         now: Date = .now,
+        clearance: ActivityAttentionClearance = .init(rawValue: ""),
         subject: (BridgeBoundLogEntry) -> ActivityStack.Subject
     ) -> [ActivityFeedSection] {
         struct Key: Hashable {
@@ -28,10 +30,11 @@ enum ActivityStackBuilder {
         let attentionCutoff = now.addingTimeInterval(-attentionWindow)
 
         for item in entries {
-            let section: ActivityFeedSection.Kind =
-                needsAttention(item.entry) && item.entry.timestamp >= attentionCutoff
-                ? .needsAttention : .recent
-            let key = Key(section: section, bridgeID: item.bridgeID, subject: subject(item))
+            let itemSubject = subject(item)
+            let pinned = needsAttention(item.entry)
+                && item.entry.timestamp >= attentionCutoff
+                && !clearance.isCleared(item.entry, bridgeID: item.bridgeID, subject: itemSubject)
+            let key = Key(section: pinned ? .needsAttention : .recent, bridgeID: item.bridgeID, subject: itemSubject)
             if grouped[key] == nil {
                 order.append(key)
                 grouped[key] = []

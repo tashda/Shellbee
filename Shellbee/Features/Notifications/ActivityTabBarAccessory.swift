@@ -8,6 +8,7 @@ struct ActivityTabBarAccessory: View {
     @Environment(\.sceneNavigation) private var sceneNavigation
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
+    @AppStorage(ActivityAttentionClearance.storageKey) private var clearanceRaw = ""
     let transitionNamespace: Namespace.ID?
     /// Mirrors the Activity filter's Show Signal Changes, so the accessory
     /// never surfaces events the Activity Center itself hides.
@@ -30,8 +31,18 @@ struct ActivityTabBarAccessory: View {
         visibleEntries.first
     }
 
+    /// Attention the user hasn't cleared in the Activity Center, so the
+    /// accessory stops nagging once Needs Attention is cleared.
+    private var attentionEntries: [BridgeBoundLogEntry] {
+        let clearance = ActivityAttentionClearance(rawValue: clearanceRaw)
+        return visibleEntries.filter {
+            $0.entry.isActivityAttention
+                && !clearance.isCleared($0.entry, bridgeID: $0.bridgeID, subject: environment.activitySubject(for: $0))
+        }
+    }
+
     private var latestAttention: BridgeBoundLogEntry? {
-        visibleEntries.first { $0.entry.isActivityAttention }
+        attentionEntries.first
     }
 
     private var recentActivityCount: Int {
@@ -41,9 +52,7 @@ struct ActivityTabBarAccessory: View {
 
     private var recentAttentionCount: Int {
         let cutoff = Date.now.addingTimeInterval(-15 * 60)
-        return visibleEntries.count {
-            $0.entry.isActivityAttention && $0.entry.timestamp >= cutoff
-        }
+        return attentionEntries.count { $0.entry.timestamp >= cutoff }
     }
 
     var body: some View {

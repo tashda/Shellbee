@@ -31,6 +31,7 @@ nonisolated enum DesignTokens {
     }
 
     nonisolated enum Size {
+        static let activityClearButton: CGFloat = 28
         static let statusDot: CGFloat = 10
         static let statusDotHero: CGFloat = 8
         static let statusDotInline: CGFloat = 6
@@ -406,6 +407,8 @@ nonisolated enum DesignTokens {
         static let networkMapStatusRefresh: Double = 1
         static let hubAnimation: Double = 0.36
         static let liveActivitySuccess: Double = 3
+        /// How long the Needs Attention ✕ waits in its "Clear" state.
+        static let activityClearConfirmWindow: Double = 3
         static let liveActivityFailure: Double = 8
         static let liveActivityMinimumVisible: Double = 2
         static let liveActivityCancel: Double = 0.5

@@ -41,12 +41,12 @@ extension AppEnvironment {
     /// Same subject resolution as the Activity feed: the device or group an
     /// entry is about, or the bridge when it's about neither.
     func activityEventItem(for item: BridgeBoundLogEntry) -> ActivityEventItem {
-        let name = registry.session(for: item.bridgeID)
+        ActivityEventItem(entry: item.entry, subject: activitySubject(for: item), bridgeName: item.bridgeName)
+    }
+
+    func activitySubject(for item: BridgeBoundLogEntry) -> ActivityStack.Subject {
+        registry.session(for: item.bridgeID)
             .flatMap { LogRowIconography.subjectName(for: item.entry, in: $0.store) }
-        return ActivityEventItem(
-            entry: item.entry,
-            subject: name.map(ActivityStack.Subject.named) ?? .bridge,
-            bridgeName: item.bridgeName
-        )
+            .map(ActivityStack.Subject.named) ?? .bridge
     }
 }

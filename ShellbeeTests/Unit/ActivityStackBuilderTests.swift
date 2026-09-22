@@ -75,8 +75,45 @@ final class ActivityStackBuilderTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func build(_ entries: [BridgeBoundLogEntry]) -> [ActivityFeedSection] {
-        ActivityStackBuilder.sections(from: entries, now: now) { item in
+    func testClearingABridgeMovesItsWarningsToRecentUntilANewOneArrives() {
+        let old = bound(bridgeA, "Hallway Motion", secondsAgo: 60, level: .warning)
+        var clearance = ActivityAttentionClearance(rawValue: "")
+        clearance.clear(bridgeIDs: [bridgeA], through: now.addingTimeInterval(-30))
+
+        let cleared = build([old], clearance: clearance)
+        XCTAssertEqual(cleared.map(\.kind), [.recent])
+
+        let fresh = bound(bridgeA, "Hallway Motion", secondsAgo: 10, level: .warning)
+        let reopened = build([fresh, old], clearance: clearance)
+        XCTAssertEqual(reopened.map(\.kind), [.needsAttention, .recent])
+        XCTAssertEqual(reopened[0].stacks[0].latest.id, fresh.entry.id)
+    }
+
+    func testClearingOneStackLeavesOthersPinned() {
+        let entries = [
+            bound(bridgeA, "Front Door Lock", secondsAgo: 10, level: .error),
+            bound(bridgeA, "Hallway Motion", secondsAgo: 20, level: .warning)
+        ]
+        let pinned = build(entries)
+        var clearance = ActivityAttentionClearance(rawValue: "")
+        clearance.clear(pinned[0].stacks[0])
+
+        let sections = build(entries, clearance: clearance)
+        XCTAssertEqual(sections.first?.kind, .needsAttention)
+        XCTAssertEqual(sections.first?.stacks.map(\.subject), [.named("Hallway Motion")])
+    }
+
+    func testClearanceSurvivesEncoding() {
+        var clearance = ActivityAttentionClearance(rawValue: "")
+        clearance.clear(bridgeIDs: [bridgeA], through: now)
+        XCTAssertEqual(ActivityAttentionClearance(rawValue: clearance.rawValue), clearance)
+    }
+
+    private func build(
+        _ entries: [BridgeBoundLogEntry],
+        clearance: ActivityAttentionClearance = .init(rawValue: "")
+    ) -> [ActivityFeedSection] {
+        ActivityStackBuilder.sections(from: entries, now: now, clearance: clearance) { item in
             item.entry.deviceName.map(ActivityStack.Subject.named) ?? .bridge
         }
     }

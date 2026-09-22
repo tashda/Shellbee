@@ -9,6 +9,7 @@ struct ActivityFeedView: View {
     let selection: Binding<LogsPaneRoute?>?
     @State private var expandedStackID: String?
     @State private var presentedEntry: PresentedEntry?
+    @AppStorage(ActivityAttentionClearance.storageKey) private var clearanceRaw = ""
 
     init(viewModel: LogsViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
         self.viewModel = viewModel
@@ -20,8 +21,8 @@ struct ActivityFeedView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DesignTokens.ActivityFeed.cardSpacing) {
                 ForEach(sections) { section in
-                    if sections.count > 1 {
-                        sectionHeader(section.kind)
+                    if sections.count > 1 || section.kind == .needsAttention {
+                        sectionHeader(section)
                     }
                     ForEach(section.stacks) { stack in
                         stackView(stack)
@@ -43,12 +44,29 @@ struct ActivityFeedView: View {
 
     // MARK: - Sections
 
-    private func sectionHeader(_ kind: ActivityFeedSection.Kind) -> some View {
-        Text(kind == .needsAttention ? "Needs Attention" : "Recent")
-            .font(.title3.weight(.semibold))
-            .padding(.horizontal, DesignTokens.Spacing.xs)
-            .padding(.top, kind == .recent ? DesignTokens.ActivityFeed.sectionSpacing : 0)
-            .accessibilityAddTraits(.isHeader)
+    private func sectionHeader(_ section: ActivityFeedSection) -> some View {
+        HStack {
+            Text(section.kind == .needsAttention ? "Needs Attention" : "Recent")
+                .font(.title3.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            if section.kind == .needsAttention {
+                ActivityClearAttentionButton {
+                    updateClearance { $0.clear(bridgeIDs: Set(section.stacks.map(\.bridgeID))) }
+                }
+            }
+        }
+        .padding(.horizontal, DesignTokens.Spacing.xs)
+        .padding(.top, section.kind == .recent ? DesignTokens.ActivityFeed.sectionSpacing : 0)
+    }
+
+    /// Clearing moves the events down into Recent; nothing is deleted.
+    private func updateClearance(_ change: (inout ActivityAttentionClearance) -> Void) {
+        var clearance = ActivityAttentionClearance(rawValue: clearanceRaw)
+        change(&clearance)
+        withAnimation(.smooth) {
+            clearanceRaw = clearance.rawValue
+        }
     }
 
     @ViewBuilder
@@ -83,6 +101,11 @@ struct ActivityFeedView: View {
             }
             .buttonStyle(.plain)
             .contextMenu {
+                if stack.section == .needsAttention {
+                    Button("Clear", systemImage: "xmark") {
+                        updateClearance { $0.clear(stack) }
+                    }
+                }
                 Button("Copy Message", systemImage: "doc.on.doc") {
                     UIPasteboard.general.string = stack.latest.message
                 }
@@ -148,11 +171,11 @@ struct ActivityFeedView: View {
         }
         .sorted { $0.entry.timestamp > $1.entry.timestamp }
 
-        return ActivityStackBuilder.sections(from: entries) { item in
-            guard let store = environment.registry.session(for: item.bridgeID)?.store,
-                  let name = LogRowIconography.subjectName(for: item.entry, in: store) else { return .bridge }
-            return .named(name)
-        }
+        return ActivityStackBuilder.sections(
+            from: entries,
+            clearance: ActivityAttentionClearance(rawValue: clearanceRaw),
+            subject: environment.activitySubject(for:)
+        )
     }
 
     private struct PresentedEntry: Identifiable {
