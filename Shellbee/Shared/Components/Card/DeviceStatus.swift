@@ -55,7 +55,9 @@ extension Device {
     /// description.
     var cardSubtitle: String {
         let vendor = definition?.vendor ?? manufacturer
-        let detail = definition?.description ?? definition?.model ?? modelId
+        // A description the user set in z2m wins over the model description.
+        let custom = description.flatMap { $0.isEmpty ? nil : $0 }
+        let detail = custom ?? definition?.description ?? definition?.model ?? modelId
         return [vendor, detail].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

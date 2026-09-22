@@ -73,14 +73,6 @@ struct DeviceDetailView: View {
                 }
             }
 
-            if let description = device.definition?.description, !description.isEmpty {
-                Section("About") {
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             logsSection
         }
         .contentMargins(.top, 0, for: .scrollContent)
