@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct DeveloperSettingsView: View {
-    @AppStorage(DeveloperSettings.softTopEdgeEnabledKey)
-    private var softTopEdgeEnabled = DeveloperSettings.softTopEdgeEnabledDefault
+    @Environment(AppEnvironment.self) private var environment
+
+    private var resolvedBridgeID: UUID? {
+        environment.registry.primaryBridgeID
+    }
 
     var body: some View {
         Form {
@@ -10,47 +13,36 @@ struct DeveloperSettingsView: View {
                 NavigationLink {
                     MQTTInspectorView()
                 } label: {
-                    Label {
-                        Text("MQTT Inspector")
-                    } icon: {
-                        Image(systemName: "dot.radiowaves.left.and.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                            .background(.purple, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-                    }
+                    SettingsNavigationLabel(title: "MQTT Inspector", systemImage: "dot.radiowaves.left.and.right", color: .purple)
                 }
             } footer: {
                 Text("Inspect every message flowing over the bridge connection and publish arbitrary topics. For debugging Z2M behavior — be careful publishing to bridge/request/* topics.")
             }
 
             Section {
-                NavigationLink("Live Activity Gallery") {
-                    LiveActivityGalleryView()
+                NavigationLink {
+                    ShellbeeDeveloperView()
+                } label: {
+                    SettingsNavigationLabel(title: "Shellbee", systemImage: "wand.and.stars", color: .pink)
                 }
-                NavigationLink("Activity Instruments") {
-                    ActivityInstrumentGalleryView()
-                }
-                NavigationLink("Activity Icons") {
-                    ActivityIconGalleryView()
-                }
-                Button("Preview Permit Join Activity") {
-                    PermitJoinActivityPreview.run()
-                }
-            } header: {
-                Text("Live Activities")
             } footer: {
-                Text("Plays a scripted pairing session: a device interviews and pairs, then another fails. Go to the Home Screen or lock the device right after tapping to watch it in the Dynamic Island.")
+                Text("Live Activity, Activity Center, and rendering previews used to develop Shellbee's own UI.")
             }
 
-            if #available(iOS 27.0, *) {
-                Section {
-                    Toggle("Soft Top Edge", isOn: $softTopEdgeEnabled)
-                } header: {
-                    Text("Rendering")
-                } footer: {
-                    Text("Use the soft toolbar edge treatment when enabled.")
+            Section {
+                if let bridgeID = resolvedBridgeID {
+                    NavigationLink {
+                        FrontendSettingsView(bridgeID: bridgeID)
+                    } label: {
+                        SettingsNavigationLabel(title: "Frontend", systemImage: "globe", color: .teal)
+                    }
+                } else {
+                    LabeledContent("Frontend", value: "No bridge connected")
                 }
+            } header: {
+                Text("Z2M Advanced")
+            } footer: {
+                Text("Direct access to Zigbee2MQTT options not yet exposed elsewhere in the app. Changes are sent straight to bridge/request/options — double check before applying.")
             }
         }
         .navigationTitle("Developer")

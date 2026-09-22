@@ -17,6 +17,10 @@ struct NetworkSettingsView: View {
         return scope.bridgeInfo?.network?.channel ?? adv?.channel ?? 11
     }
 
+    private var currentPanID: Int? {
+        scope.bridgeInfo?.network?.panID ?? scope.bridgeInfo?.config?.advanced?.panId
+    }
+
     private var hasChanges: Bool {
         let adv = scope.bridgeInfo?.config?.advanced
         return transmitPower != optionalIntString(adv?.transmitPower)
@@ -28,10 +32,13 @@ struct NetworkSettingsView: View {
         Form {
             Section {
                 LabeledContent("Zigbee Channel", value: "\(currentChannel)")
+                if let panID = currentPanID {
+                    CopyableRow(label: "PAN ID", value: "\(panID)")
+                }
             } header: {
-                Text("RF Channel")
+                Text("Network Identifiers")
             } footer: {
-                Text("To change the Zigbee channel, use the Zigbee2MQTT web interface. Changing it causes all paired devices to lose connection and require re-pairing.")
+                Text("To change the channel or PAN ID, use the Zigbee2MQTT web interface. Changing either causes all paired devices to lose connection and require re-pairing.")
             }
 
             Section {
