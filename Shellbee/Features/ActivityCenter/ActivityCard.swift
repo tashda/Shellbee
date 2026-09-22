@@ -2,42 +2,25 @@ import SwiftUI
 
 /// One notification-style card in the Activity feed.
 struct ActivityCard: View {
-    let entry: LogEntry
+    let instrument: ActivityInstrument
     let content: ActivityCardContent
+    let timestamp: Date
     /// "13 more updates" on the top card of a collapsed stack.
     var moreText: String? = nil
     @ScaledMetric(relativeTo: .subheadline) private var thumbnailSize = DesignTokens.ActivityFeed.thumbnail
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            ActivityInstrumentView(
-                instrument: ActivityInstrumentResolver.instrument(for: entry),
-                size: thumbnailSize
-            )
-
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
-                    Text(content.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    ActivityRelativeTime(date: entry.timestamp)
-                }
-                Text(content.message)
-                    .font(.subheadline)
-                    .lineLimit(2)
-                if let detail = content.detail {
-                    Text(detail)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                if let moreText {
-                    Text(moreText)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, DesignTokens.Spacing.xxs)
-                }
+        ActivityEventRow(
+            instrument: instrument,
+            content: content,
+            timestamp: timestamp,
+            instrumentSize: thumbnailSize
+        ) {
+            if let moreText {
+                Text(moreText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, DesignTokens.Spacing.xxs)
             }
         }
         .padding(.horizontal, DesignTokens.ActivityFeed.cardHorizontalPadding)
@@ -59,24 +42,13 @@ struct ActivityCard: View {
     }
 }
 
-/// "now", "2m ago", "1h ago", refreshed each minute, the way Notification
-/// Center shows time.
-struct ActivityRelativeTime: View {
-    let date: Date
-
-    var body: some View {
-        TimelineView(.everyMinute) { context in
-            Text(label(now: context.date))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-        }
-    }
-
-    private func label(now: Date) -> String {
-        if now.timeIntervalSince(date) < 60 {
-            return String(localized: "now")
-        }
-        return date.formatted(.relative(presentation: .named, unitsStyle: .narrow))
+extension ActivityCard {
+    init(entry: LogEntry, content: ActivityCardContent, moreText: String? = nil) {
+        self.init(
+            instrument: ActivityInstrumentResolver.instrument(for: entry),
+            content: content,
+            timestamp: entry.timestamp,
+            moreText: moreText
+        )
     }
 }

@@ -77,14 +77,19 @@ enum ActivityInstrumentResolver {
 
     // MARK: - State changes
 
+    /// The change a multi-property report is about. Link quality and
+    /// last-seen ride along with most reports, so they only win alone.
+    static func headline(of changes: [LogContext.StateChange]) -> LogContext.StateChange? {
+        let meaningful = changes.filter { !metadataProperties.contains(canonical($0.property)) }
+        let candidates = meaningful.isEmpty ? changes : meaningful
+        return candidates.max { priority(for: $0) < priority(for: $1) }
+    }
+
     private static func stateInstrument(
         for changes: [LogContext.StateChange],
         entrySeverity: ActivityInstrumentSeverity
     ) -> ActivityInstrument {
-        let meaningful = changes.filter { !metadataProperties.contains(canonical($0.property)) }
-        let candidates = meaningful.isEmpty ? changes : meaningful
-
-        guard let primary = candidates.max(by: { priority(for: $0) < priority(for: $1) }) else {
+        guard let primary = headline(of: changes) else {
             return .init(kind: .unknown, severity: entrySeverity)
         }
         return instrument(

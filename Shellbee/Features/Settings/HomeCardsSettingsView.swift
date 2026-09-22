@@ -117,9 +117,15 @@ private struct HomeCardsPreview: View {
             )
         case .recentEvents:
             HomeLogsCard(
-                entries: Array(LogEntry.previewEntries.prefix(recentEventsCount)),
+                items: LogEntry.previewEntries.prefix(recentEventsCount).map { entry in
+                    ActivityEventItem(
+                        entry: entry,
+                        subject: entry.deviceName.map(ActivityStack.Subject.named) ?? .bridge,
+                        bridgeName: bridgeName ?? "Bridge"
+                    )
+                },
                 bridgeName: bridgeName,
-                onOpenEntry: { _ in },
+                onOpenItem: { _ in },
                 onOpenAll: {}
             )
         }

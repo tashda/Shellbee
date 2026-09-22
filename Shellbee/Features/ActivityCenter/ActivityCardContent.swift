@@ -7,6 +7,12 @@ struct ActivityCardContent: Equatable {
     let message: String
     let detail: String?
 
+    init(title: String, message: String, detail: String? = nil) {
+        self.title = title
+        self.message = message
+        self.detail = detail
+    }
+
     init(entry: LogEntry, subject: ActivityStack.Subject, bridgeName: String) {
         let message: String
         let detail: String?

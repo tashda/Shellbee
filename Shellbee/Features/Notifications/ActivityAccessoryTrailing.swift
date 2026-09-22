@@ -3,36 +3,37 @@ import SwiftUI
 /// What the Activity accessory shows on its trailing edge: the new value of
 /// a state change ("147 → 150"), or how long ago anything else happened.
 struct ActivityAccessoryChange: Equatable {
-    /// Z2M property key, e.g. "linkquality"; picks the glyph.
-    let property: String
     /// Human label, e.g. "Link Quality"; read by VoiceOver.
     let label: String
     let from: String?
     let to: String
-    let toValue: JSONValue
 
-    private static let metadata: Set<String> = ["linkquality", "last_seen"]
+    init(label: String, from: String?, to: String) {
+        self.label = label
+        self.from = from
+        self.to = to
+    }
 
     init?(entry: LogEntry) {
+        // The same change the instrument draws, so value and mark agree.
         guard entry.category == .stateChange,
-              let changes = entry.context?.stateChanges, !changes.isEmpty else { return nil }
-        let meaningful = changes.filter { !Self.metadata.contains($0.property) }
-        let candidates = meaningful.isEmpty ? changes : meaningful
-        guard let primary = candidates.first(where: { $0.displayFrom != nil }) ?? candidates.first else { return nil }
-        property = primary.property
+              let changes = entry.context?.stateChanges,
+              let primary = ActivityInstrumentResolver.headline(of: changes) else { return nil }
         label = primary.displayLabel
         from = primary.displayFrom
         to = primary.displayTo
-        toValue = primary.to
     }
 }
 
 struct ActivityAccessoryTrailing: View {
-    let entry: LogEntry
+    let change: ActivityAccessoryChange?
+    let timestamp: Date
+    /// Who reported the change; digits roll only within one identity.
+    let identity: String
     let isInline: Bool
 
     var body: some View {
-        if let change = ActivityAccessoryChange(entry: entry) {
+        if let change {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
                 if !isInline, let from = change.from, from != change.to {
                     Text(from)
@@ -49,14 +50,14 @@ struct ActivityAccessoryTrailing: View {
             // Digits roll only while the same device reports the same
             // property; a different device's value replaces it instead of
             // pretending one number changed.
-            .id("\(entry.summaryTitle)|\(change.label)")
+            .id("\(identity)|\(change.label)")
             .monospacedDigit()
             .lineLimit(1)
             .animation(.smooth, value: change.to)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityText(change))
         } else if !isInline {
-            ActivityRelativeTime(date: entry.timestamp)
+            ActivityRelativeTime(date: timestamp)
         }
     }
 

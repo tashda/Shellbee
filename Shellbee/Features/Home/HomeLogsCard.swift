@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct HomeLogsCard: View {
-    let entries: [LogEntry]
+    let items: [ActivityEventItem]
     var showsExpandedDetails = false
     var bridgeName: String? = nil
-    let onOpenEntry: (LogEntry) -> Void
+    let onOpenItem: (ActivityEventItem) -> Void
     let onOpenAll: () -> Void
 
     var body: some View {
@@ -19,7 +19,7 @@ struct HomeLogsCard: View {
                         .foregroundStyle(.blue)
                 }
 
-                if entries.isEmpty {
+                if items.isEmpty {
                     Text("No recent events")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -27,15 +27,12 @@ struct HomeLogsCard: View {
                 } else {
                     VStack(spacing: 0) {
                         Divider().padding(.top, DesignTokens.Spacing.xs)
-                        ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                            Button { onOpenEntry(entry) } label: {
-                                HomeLogRow(
-                                    entry: entry,
-                                    showsExpandedDetails: showsExpandedDetails
-                                )
+                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                            Button { onOpenItem(item) } label: {
+                                HomeLogRow(item: item, showsExpandedDetails: showsExpandedDetails)
                             }
                             .buttonStyle(HomeAlertRowButtonStyle())
-                            if index < entries.count - 1 {
+                            if index < items.count - 1 {
                                 Divider().padding(.leading, HomeLogRow.leadingInset)
                             }
                         }
@@ -50,66 +47,36 @@ struct HomeLogsCard: View {
     }
 }
 
+/// A Recent Events row: the same event row the Activity feed uses, with
+/// the raw log line underneath on wide layouts.
 struct HomeLogRow: View {
-    let entry: LogEntry
+    let item: ActivityEventItem
     var showsExpandedDetails = false
 
     static let badgeSize: CGFloat = 32
     static var leadingInset: CGFloat { badgeSize + DesignTokens.Spacing.md }
 
     var body: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-            // Shared with Activity Log rows so iconography stays unified —
-            // change LogRowIconography once and both surfaces update.
-            LogRowAvatar(entry: entry, size: Self.badgeSize)
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+        ActivityEventRow(
+            instrument: item.instrument,
+            content: item.content,
+            timestamp: item.timestamp,
+            instrumentSize: Self.badgeSize
+        ) {
+            if showsExpandedDetails, let entry = item.entry {
                 HStack(spacing: DesignTokens.Spacing.sm) {
-                    Text(entry.summaryTitle)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(titleColor)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-
-                    if showsExpandedDetails {
-                        StatusChip(entry.category)
-                        StatusChip(entry.level)
-                    }
+                    StatusChip(entry.category)
+                    StatusChip(entry.level)
                 }
-                Text(entry.summarySubtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                if showsExpandedDetails {
-                    Text(LogEntry.stripZ2MPrefix(entry.message))
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-                        .padding(.top, DesignTokens.Spacing.xxs)
-                }
-            }
-            Spacer(minLength: DesignTokens.Spacing.sm)
-            VStack(alignment: .trailing, spacing: DesignTokens.Spacing.xxs) {
-                if showsExpandedDetails {
-                    Text(entry.timestamp, format: .dateTime.hour().minute().second())
-                        .foregroundStyle(.secondary)
-                }
-                Text(entry.timestamp, style: .relative)
+                .padding(.top, DesignTokens.Spacing.xxs)
+                Text(LogEntry.stripZ2MPrefix(entry.message))
+                    .font(.caption2.monospaced())
                     .foregroundStyle(.tertiary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
             }
-            .font(.caption2.monospacedDigit())
         }
         .padding(.vertical, DesignTokens.Spacing.sm)
-    }
-
-    private var titleColor: Color {
-        switch entry.level {
-        case .error: return .red
-        case .warning: return .orange
-        default: return .primary
-        }
     }
 }
 

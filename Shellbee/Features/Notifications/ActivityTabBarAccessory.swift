@@ -101,45 +101,15 @@ struct ActivityAccessorySummary: View {
     let isInline: Bool
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            artwork
-
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                Text(title)
-                    .font(.footnote.weight(.semibold))
-                    .lineLimit(1)
-                if !isInline, let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer(minLength: DesignTokens.Spacing.sm)
-
-            if let event {
-                ActivityAccessoryTrailing(entry: event.entry, isInline: isInline)
-                    .layoutPriority(1)
-            }
-        }
-        .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.vertical, DesignTokens.Spacing.md)
-        .frame(maxWidth: isInline ? nil : .infinity, alignment: .leading)
-        .accessibilityLabel("Activity: \(title)")
-        .accessibilityHint("Opens Activity")
-    }
-
-    private var title: String {
-        switch mode {
-        case .latestActivity:
-            cardContent(latestActivity)?.title ?? "Activity"
-        case .summary:
-            recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
-        case .notificationsOnly:
-            cardContent(latestAttention)?.title
-                ?? (recentAttentionCount == 0 ? "Notifications" : "\(recentAttentionCount) notifications")
-        }
+        ActivityAccessoryContent(
+            instrument: instrument,
+            title: title,
+            subtitle: subtitle,
+            change: event.flatMap { ActivityAccessoryChange(entry: $0.entry) },
+            timestamp: event?.entry.timestamp,
+            identity: event?.entry.summaryTitle ?? "",
+            isInline: isInline
+        )
     }
 
     /// The event the accessory is showing, if its mode shows one.
@@ -151,69 +121,40 @@ struct ActivityAccessorySummary: View {
         }
     }
 
-    private var subtitle: String? {
-        // The trailing value and its glyph already say what changed.
-        if let event, ActivityAccessoryChange(entry: event.entry) != nil {
-            return nil
-        }
-        return switch mode {
-        case .latestActivity: cardContent(latestActivity)?.message
-        case .summary: "View Activity"
-        case .notificationsOnly: cardContent(latestAttention)?.message ?? "No new notifications"
-        }
+    /// Same wording as the event's card in the Activity feed.
+    private var item: ActivityEventItem? {
+        event.map(environment.activityEventItem(for:))
     }
 
-    /// Same wording as the event's card in the Activity feed: who it is
-    /// about, then what happened.
-    private func cardContent(_ item: BridgeBoundLogEntry?) -> ActivityCardContent? {
-        guard let item else { return nil }
-        let name = storeFor(item.bridgeID).flatMap { LogRowIconography.subjectName(for: item.entry, in: $0) }
-        return ActivityCardContent(
-            entry: item.entry,
-            subject: name.map(ActivityStack.Subject.named) ?? .bridge,
-            bridgeName: item.bridgeName
-        )
-    }
-
-    /// A player-style artwork slot. Event modes show the event's own
-    /// instrument; Summary stays quiet unless something needs attention.
-    @ViewBuilder
-    private var artwork: some View {
-        let size = DesignTokens.ActivityFeed.accessoryArtwork
+    private var title: String {
         switch mode {
         case .latestActivity:
-            eventArtwork(latestActivity, fallback: .message, size: size)
-        case .notificationsOnly:
-            eventArtwork(latestAttention, fallback: .safety, size: size)
+            item?.content.title ?? "Activity"
         case .summary:
-            ActivityInstrumentView(
-                instrument: .init(
-                    kind: recentAttentionCount > 0 ? .safety : .message,
-                    severity: recentAttentionCount > 0 ? .warning : .quiet
-                ),
-                size: size
-            )
+            recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
+        case .notificationsOnly:
+            item?.content.title
+                ?? (recentAttentionCount == 0 ? "Notifications" : "\(recentAttentionCount) notifications")
         }
     }
 
-    @ViewBuilder
-    private func eventArtwork(
-        _ item: BridgeBoundLogEntry?,
-        fallback: ActivityInstrumentKind,
-        size: CGFloat
-    ) -> some View {
-        if let item {
-            ActivityInstrumentView(
-                instrument: ActivityInstrumentResolver.instrument(for: item.entry),
-                size: size
-            )
-        } else {
-            ActivityInstrumentView(instrument: .init(kind: fallback, severity: .quiet), size: size)
+    private var subtitle: String? {
+        switch mode {
+        case .latestActivity: item?.content.message
+        case .summary: "View Activity"
+        case .notificationsOnly: item?.content.message ?? "No new notifications"
         }
     }
 
-    private func storeFor(_ bridgeID: UUID) -> AppStore? {
-        environment.registry.session(for: bridgeID)?.store
+    /// Event modes show the event's own instrument; Summary stays quiet
+    /// unless something needs attention.
+    private var instrument: ActivityInstrument {
+        if let item { return item.instrument }
+        switch mode {
+        case .summary where recentAttentionCount > 0, .notificationsOnly:
+            return .init(kind: .message, severity: recentAttentionCount > 0 ? .warning : .quiet)
+        case .summary, .latestActivity:
+            return .init(kind: .message, severity: .quiet)
+        }
     }
-
 }

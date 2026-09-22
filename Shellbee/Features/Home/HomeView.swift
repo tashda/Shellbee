@@ -273,11 +273,11 @@ struct HomeView: View {
             // the Activity Log by default — it's noise, not events the
             // user wants on their home screen.
             HomeLogsCard(
-                entries: logEntries(for: card.bridgeID),
+                items: recentEventItems(for: card.bridgeID),
                 showsExpandedDetails: usesWideLayout,
                 bridgeName: bridgeName(for: card.bridgeID),
-                onOpenEntry: { entry in
-                    sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [entry.id])
+                onOpenItem: { item in
+                    sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [item.id])
                 },
                 onOpenAll: openAllLogs
             )
@@ -331,17 +331,24 @@ struct HomeView: View {
         )
     }
 
-    private func logEntries(for bridgeID: UUID?) -> [LogEntry] {
-        let entries = bridgeID.flatMap { environment.registry.session(for: $0)?.store.logEntries }
-            ?? environment.allLogEntries.map(\.entry)
-        return entries
-            .filter { !LogRowIconography.isLinkQualityOnly($0) }
-            .prefix(
-                usesWideLayout
-                    ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
-                    : recentEventsCount
-            )
-            .map { $0 }
+    private func recentEventItems(for bridgeID: UUID?) -> [ActivityEventItem] {
+        let limit = usesWideLayout
+            ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
+            : recentEventsCount
+        let entries: [BridgeBoundLogEntry]
+        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
+            entries = Array(session.store.logEntries
+                .lazy
+                .filter { !LogRowIconography.isLinkQualityOnly($0) }
+                .prefix(limit)
+                .map { BridgeBoundLogEntry(bridgeID: bridgeID, bridgeName: session.displayName, entry: $0) })
+        } else {
+            entries = Array(environment.allLogEntries
+                .lazy
+                .filter { !LogRowIconography.isLinkQualityOnly($0.entry) }
+                .prefix(limit))
+        }
+        return entries.map(environment.activityEventItem(for:))
     }
 
     private func showDevices(filter: DeviceQuickFilter, bridgeID: UUID? = nil) {
