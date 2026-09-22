@@ -188,7 +188,7 @@ struct LogDetailView: View {
                     memberDevices: members,
                     state: groupState,
                     bridgeID: bridgeID,
-                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+                    bridgeName: environment.attributionBridgeName(for: bridgeID),
                     displayMode: .compact
                 )
                 NavigationLink {
@@ -238,7 +238,7 @@ struct LogDetailView: View {
                     isAvailable: scope.store.isAvailable(device.friendlyName),
                     otaStatus: scope.store.otaStatus(for: device.friendlyName),
                     bridgeID: bridgeID,
-                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+                    bridgeName: environment.attributionBridgeName(for: bridgeID),
                     lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
                     displayMode: .compact
                 )

@@ -10,6 +10,8 @@ struct GroupDetailView: View {
     @State private var showAddMembers = false
     @State private var showAddScene = false
     @State private var showRenameSheet = false
+    /// The hero shows the name; the navigation title appears once it scrolls away.
+    @State private var isNameHidden = false
     @State private var memberToRemove: GroupMember?
     @State private var menuDestination: GroupMenuDestination?
     /// Phase 1 multi-bridge: bridge that owns this group. Pushed in via
@@ -40,6 +42,13 @@ struct GroupDetailView: View {
         currentGroup.members.compactMap { member in
             scope.store.devices.first { $0.ieeeAddress == member.ieeeAddress }
         }
+    }
+
+    /// Members reporting ON, or nil when no member reports a state.
+    private var membersOnCount: Int? {
+        let states = memberDevices.compactMap { scope.store.state(for: $0.friendlyName)["state"]?.stringValue }
+        guard !states.isEmpty else { return nil }
+        return states.filter { $0.uppercased() == "ON" }.count
     }
 
     private var groupState: [String: JSONValue] {
@@ -91,8 +100,10 @@ struct GroupDetailView: View {
                 memberDevices: memberDevices,
                 state: groupState,
                 bridgeID: bridgeID,
-                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
-                onRenameTapped: { showRenameSheet = true }
+                bridgeName: environment.attributionBridgeName(for: bridgeID),
+                membersOnCount: membersOnCount,
+                onRenameTapped: { showRenameSheet = true },
+                onNameHiddenChange: { isNameHidden = $0 }
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -125,7 +136,7 @@ struct GroupDetailView: View {
         .contentMargins(.top, 0, for: .scrollContent)
         .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
-        .navigationTitle(currentGroup.friendlyName)
+        .navigationTitle(isNameHidden ? currentGroup.friendlyName : "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

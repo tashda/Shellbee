@@ -16,6 +16,8 @@ struct DeviceDetailView: View {
     @State private var pendingDeviceAlert: PendingDeviceAlert?
     @State private var showRemoveSheet = false
     @State private var showRenameSheet = false
+    /// The hero shows the name; the navigation title appears once it scrolls away.
+    @State private var isNameHidden = false
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
@@ -32,9 +34,10 @@ struct DeviceDetailView: View {
                 isAvailable: isAvailable,
                 otaStatus: otaStatus,
                 bridgeID: bridgeID,
-                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+                bridgeName: environment.attributionBridgeName(for: bridgeID),
                 lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-                onRenameTapped: { showRenameSheet = true }
+                onRenameTapped: { showRenameSheet = true },
+                onNameHiddenChange: { isNameHidden = $0 }
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -80,7 +83,7 @@ struct DeviceDetailView: View {
         .contentMargins(.top, 0, for: .scrollContent)
         .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
-        .navigationTitle(device.friendlyName)
+        .navigationTitle(isNameHidden ? device.friendlyName : "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

@@ -76,6 +76,7 @@
 		0A9D45E92F96238500DF6DF5 /* Exceptions for "Shellbee" folder in "ShellbeeWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"App/AppEnvironment+BridgeAttribution.swift",
 				App/AppEnvironment.swift,
 				App/ConnectionSessionController.swift,
 				App/LogSheetHost.swift,
@@ -212,8 +213,6 @@
 				Features/Groups/GroupAvatarPickerSheet.swift,
 				Features/Groups/GroupAvatarStore.swift,
 				Features/Groups/GroupCard.swift,
-				Features/Groups/GroupCardFooterBar.swift,
-				Features/Groups/GroupCardHeader.swift,
 				Features/Groups/GroupDetailView.swift,
 				Features/Groups/GroupDetailViewModel.swift,
 				Features/Groups/GroupDeviceDropPolicy.swift,
@@ -370,6 +369,8 @@
 				Shared/Components/Card/CardHeader.swift,
 				Shared/Components/Card/CardSurface.swift,
 				Shared/Components/Card/DeviceStatus.swift,
+				Shared/Components/Card/IdentityHero.swift,
+				Shared/Components/Card/IdentityRow.swift,
 				Shared/Components/Card/StatStrip.swift,
 				Shared/Components/CompactSnapshotCard.swift,
 				Shared/Components/CopyableRow.swift,

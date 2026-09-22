@@ -377,6 +377,8 @@ nonisolated enum DesignTokens {
     nonisolated enum Threshold {
         static let lowBattery = 20
         static let weakSignal = 40
+        /// Top of the Zigbee link quality scale, for signal-bar fill.
+        static let maxLinkQuality: Double = 255
 
         /// Single predicate so Home, the status filter and the card icons agree.
         static func isLowBattery(_ level: Int) -> Bool { level < lowBattery }
