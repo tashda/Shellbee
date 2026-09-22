@@ -9,6 +9,7 @@ enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
     case network
     case linkQuality
     case batteries
+    case vendors
     case bridgeHealth
     case activity
 
@@ -19,6 +20,7 @@ enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
         case .network:      "Network"
         case .linkQuality:  "Link quality"
         case .batteries:    "Batteries"
+        case .vendors:      "Vendors"
         case .bridgeHealth: "Bridge health"
         case .activity:     "Activity"
         }
@@ -30,6 +32,7 @@ enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
         case .network:      "Devices, routers and end devices"
         case .linkQuality:  "How well the mesh is connected"
         case .batteries:    "Which batteries are going flat"
+        case .vendors:      "Who made your network"
         case .bridgeHealth: "Uptime, memory and messages"
         case .activity:     "The last few events, as on the Activity tab"
         }
@@ -40,6 +43,7 @@ enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
         case .network:      "chart.bar.doc.horizontal"
         case .linkQuality:  "chart.bar.fill"
         case .batteries:    "battery.50"
+        case .vendors:      "building.2"
         case .bridgeHealth: "heart.text.square"
         case .activity:     "list.bullet.rectangle"
         }

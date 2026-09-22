@@ -27,6 +27,32 @@ struct HomeStatsSnapshot: Sendable {
         )
     }
 
+    /// Vendor counts for a card: the named makers, heaviest first, and
+    /// everything past `limit` as a separate remainder.
+    ///
+    /// They're kept apart because they aren't the same kind of thing. A
+    /// long tail of one-off devices can easily outweigh the biggest maker,
+    /// and letting that set the scale of a ranking makes every real maker
+    /// look small.
+    static func vendorBreakdown(for devices: [Device], limit: Int) -> (named: [HomeStatsCount], others: Int) {
+        let labels = devices.filter { $0.type != .coordinator }.map(vendorLabel)
+        var countsByTitle: [String: Int] = [:]
+        for label in labels { countsByTitle[label, default: 0] += 1 }
+
+        let sorted = countsByTitle
+            .map { HomeStatsCount(title: $0.key, count: $0.value) }
+            .sorted(by: sortCounts)
+
+        guard sorted.count > limit else { return (sorted, 0) }
+        return (Array(sorted.prefix(limit)),
+                sorted.dropFirst(limit).reduce(0) { $0 + $1.count })
+    }
+
+    /// How many makers are represented, before any bucketing.
+    static func distinctVendorCount(for devices: [Device]) -> Int {
+        Set(devices.filter { $0.type != .coordinator }.map(vendorLabel)).count
+    }
+
     private enum Limits {
         static let deviceTypes = 4
         static let powerSources = 4

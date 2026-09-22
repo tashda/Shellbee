@@ -55,6 +55,10 @@ nonisolated enum DesignTokens {
         static let linkQualityBarMinimum: CGFloat = 3
         /// Right-aligned percentage column in the Batteries card.
         static let batteryPercentColumn: CGFloat = 46
+        /// Vendors card: the ranked bar and its count column.
+        static let vendorBar: CGFloat = 90
+        static let vendorBarHeight: CGFloat = 8
+        static let vendorCountColumn: CGFloat = 40
         static let heroSymbol: CGFloat = 34
         static let metricSymbol: CGFloat = 18
         static let cardSymbol: CGFloat = 22
@@ -584,6 +588,8 @@ nonisolated enum DesignTokens {
         /// bar is the darkest and the shape carries the reading.
         static let chartBarFloor: Double = 0.25
         static let chartBarRange: Double = 0.55
+        /// How much lighter each rank is than the one above it.
+        static let chartBarStep: Double = 0.14
         static let subtleFill: Double = 0.12
         static let softFill: Double = 0.18
         static let accentFill: Double = 0.2

@@ -10,6 +10,7 @@ struct HomeSettingsView: View {
     @AppStorage(HomeCardKind.network.storageKey) private var showsNetwork = false
     @AppStorage(HomeCardKind.linkQuality.storageKey) private var showsLinkQuality = false
     @AppStorage(HomeCardKind.batteries.storageKey) private var showsBatteries = false
+    @AppStorage(HomeCardKind.vendors.storageKey) private var showsVendors = false
     @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealth = false
     @AppStorage(HomeCardKind.activity.storageKey) private var showsActivity = false
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount = HomeSettings.recentEventsCountDefault
@@ -20,6 +21,7 @@ struct HomeSettingsView: View {
                 toggle(.network, isOn: $showsNetwork)
                 toggle(.linkQuality, isOn: $showsLinkQuality)
                 toggle(.batteries, isOn: $showsBatteries)
+                toggle(.vendors, isOn: $showsVendors)
                 toggle(.bridgeHealth, isOn: $showsBridgeHealth)
                 toggle(.activity, isOn: $showsActivity)
             } header: {

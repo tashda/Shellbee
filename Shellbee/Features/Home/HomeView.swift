@@ -36,9 +36,11 @@ struct HomeView: View {
     @AppStorage(HomeCardKind.network.storageKey) private var showsNetworkCard = false
     @AppStorage(HomeCardKind.linkQuality.storageKey) private var showsLinkQualityCard = false
     @AppStorage(HomeCardKind.batteries.storageKey) private var showsBatteriesCard = false
+    @AppStorage(HomeCardKind.vendors.storageKey) private var showsVendorsCard = false
     @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealthCard = false
     @AppStorage(HomeCardKind.activity.storageKey) private var showsActivityCard = false
     @State private var showingAllLogs = false
+    @State private var showingStatistics = false
 
     /// One entry per saved bridge, including sessions that are reconnecting
     /// or offline, so Home can show their state. Each becomes a row.
@@ -148,6 +150,12 @@ struct HomeView: View {
                 activitySection
             }
             .listStyle(.insetGrouped)
+            .navigationDestination(isPresented: $showingStatistics) {
+                if let bridgeID = selectedBridgeID {
+                    DeviceStatisticsView(bridgeID: bridgeID)
+                        .environment(environment)
+                }
+            }
             .navigationDestination(isPresented: $showingAllLogs) {
                 LogsView(usesActivityFeed: true, navigationTitle: "Activity")
             }
@@ -357,6 +365,16 @@ struct HomeView: View {
             cardSection {
                 HomeBatteriesCard(snapshot: snapshot) {
                     showDevices(filter: .batteryLow)
+                }
+            }
+        }
+        if showsVendorsCard {
+            cardSection {
+                // Merged across bridges, like every other card here. The
+                // statistics screen it opens is per-bridge by design, so it
+                // opens on the selected one.
+                HomeVendorsCard(devices: environment.allDevices.map(\.device)) {
+                    showingStatistics = true
                 }
             }
         }
