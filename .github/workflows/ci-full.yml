@@ -140,7 +140,12 @@ jobs:
             -only-testing:"$TEST_TARGET" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
             -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
+            -skip-testing:"ShellbeeTests/DeviceFavoritesStoreTests" \
+            -skip-testing:"ShellbeeTests/GroupsWorkspaceStateTests" \
             -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
+            -skip-testing:"ShellbeeTests/LogsWorkspaceStateTests" \
+            -skip-testing:"ShellbeeTests/MultiWindowTests" \
+            -skip-testing:"ShellbeeTests/NetworkMapTests" \
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \

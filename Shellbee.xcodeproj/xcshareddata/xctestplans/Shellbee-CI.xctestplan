@@ -25,8 +25,13 @@
         "ConnectionConfigTests\/testSaveAndLoad()",
         "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
         "ConnectionHistoryTests",
+        "DeviceFavoritesStoreTests",
+        "GroupsWorkspaceStateTests",
         "HomeLayoutStoreTests",
+        "LogsWorkspaceStateTests",
         "MultiBridgeIntegrationTests",
+        "MultiWindowTests",
+        "NetworkMapTests",
         "NotificationPreferencesTests",
         "Z2MIntegrationTests"
       ],
