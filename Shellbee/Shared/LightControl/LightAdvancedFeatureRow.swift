@@ -69,20 +69,19 @@ struct LightAdvancedFeatureRow: View {
         }
     }
 
+    /// Same layout as `SettingsFormRow`: label and value on one line, the
+    /// slider beneath, committing once when the drag ends.
     private func numericRow(range: ClosedRange<Double>?, step: Double?) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack {
-                Text(feature.displayLabel)
-                Spacer()
+            LabeledContent(feature.displayLabel) {
                 Text(numericDraftValue.formatted(.number.precision(.fractionLength(0...1))))
-                    .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
 
             if let range {
-                Slider(value: $numericDraftValue, in: range) { editing in
+                Slider(value: $numericDraftValue, in: range, step: step ?? 1) { editing in
                     guard !editing else { return }
-                    onChange(.double(numericDraftValue))
+                    onChange(payloadValue(numericDraftValue, step: step))
                 }
                 .onChange(of: feature.value?.numberValue ?? 0) { _, newValue in
                     numericDraftValue = newValue
@@ -93,16 +92,15 @@ struct LightAdvancedFeatureRow: View {
                     .multilineTextAlignment(.center)
                     .focused($numericFocused)
                     .onChange(of: numericFocused) { _, isFocused in
-                        if !isFocused { onChange(.double(numericDraftValue)) }
+                        if !isFocused { onChange(payloadValue(numericDraftValue, step: step)) }
                     }
             }
         }
     }
 
-    private var kelvinBinding: Binding<Double> {
-        Binding(
-            get: { 1_000_000 / max(numericDraftValue, 1) },
-            set: { numericDraftValue = 1_000_000 / max($0, 1) }
-        )
+    /// Whole numbers go out as integers, as z2m expects for stepped values.
+    private func payloadValue(_ value: Double, step: Double?) -> JSONValue {
+        if (step ?? 1).truncatingRemainder(dividingBy: 1) == 0 { return .int(Int(value.rounded())) }
+        return .double(value)
     }
 }
