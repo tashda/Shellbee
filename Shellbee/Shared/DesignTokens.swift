@@ -21,6 +21,9 @@ nonisolated enum DesignTokens {
         static let sm: CGFloat = 8
         static let md: CGFloat = 12
         static let lg: CGFloat = 20
+        /// Matches the iOS 26 inset-grouped List section radius, so cards
+        /// and list sections on the same screen share one edge.
+        static let card: CGFloat = 26
         static let summaryRowSymbolBackground: CGFloat = 10
         static let xl: CGFloat = 28
         static let noteBar: CGFloat = 1.5
@@ -105,6 +108,9 @@ nonisolated enum DesignTokens {
         static let dragHandleWidth: CGFloat = 36
         static let dragHandleHeight: CGFloat = 5
         static let deviceCardImage: CGFloat = 64
+        static let deviceHeroImage: CGFloat = 96
+        static let deviceRowImage: CGFloat = 44
+        static let cardAccessoryButton: CGFloat = 22
         static let deviceCardMetricDivider: CGFloat = 30
         static let deviceCardMetricIconHeight: CGFloat = 12
         static let deviceCardMetricValueHeight: CGFloat = 12
@@ -440,6 +446,15 @@ nonisolated enum DesignTokens {
     }
 
     nonisolated enum Typography {
+        // MARK: Card header (symbol + title + current value)
+        static let cardHeaderTitle: Font = .headline
+        static let cardHeaderValue: Font = .body
+        static let cardHeaderSymbol: Font = .body.weight(.semibold)
+
+        // MARK: Stat strip (2–4 value/caption cells)
+        static let statValue: Font = .body.weight(.semibold)
+        static let statCaption: Font = .caption
+
         static let cardHeadline: Font = .title3.weight(.semibold)
         static let cardSubheadline: Font = .subheadline
 
