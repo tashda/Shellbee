@@ -111,6 +111,8 @@ nonisolated enum DesignTokens {
         static let deviceHeroImage: CGFloat = 96
         static let deviceRowImage: CGFloat = 44
         static let cardAccessoryButton: CGFloat = 22
+        static let valueCapsuleHeight: CGFloat = 56
+        static let capsuleDragThreshold: CGFloat = 8
         static let deviceCardMetricDivider: CGFloat = 30
         static let deviceCardMetricIconHeight: CGFloat = 12
         static let deviceCardMetricValueHeight: CGFloat = 12

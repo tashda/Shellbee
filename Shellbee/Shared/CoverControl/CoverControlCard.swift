@@ -7,7 +7,6 @@ struct CoverControlCard: View {
 
     @State private var positionDraft: Double
     @State private var tiltDraft: Double
-    @State private var isDraggingPosition = false
 
     init(context: CoverControlContext, mode: CardDisplayMode, onSend: @escaping (JSONValue) -> Void = { _ in }) {
         self.context = context
@@ -22,20 +21,45 @@ struct CoverControlCard: View {
         if mode == .snapshot {
             snapshotContent
         } else {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-                heroHeadline
-                if showsPositionSlider { positionSliderRow }
-                if showsActionButtons { hairline; actionButtons }
-                if context.tiltFeature != nil { hairline; tiltRow }
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                CardHeader(
+                    systemImage: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open",
+                    title: eyebrowLabel,
+                    value: headerValue,
+                    tint: heroTint
+                )
+                if let f = context.positionFeature {
+                    ValueCapsule(
+                        value: positionDraft,
+                        range: f.range ?? 0...100,
+                        fillColor: capsuleFill,
+                        systemImage: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open",
+                        isInteractive: showsPositionSlider,
+                        label: { "\(Int($0.rounded())) %" },
+                        onChange: { value in
+                            positionDraft = value
+                            if let p = context.positionPayload(value) { onSend(p) }
+                        }
+                    )
+                }
+                if showsActionButtons { actionButtons }
+                if let f = context.tiltFeature {
+                    ValueCapsule(
+                        value: tiltDraft,
+                        range: f.range ?? 0...100,
+                        fillColor: capsuleFill,
+                        systemImage: "rotate.3d",
+                        isInteractive: f.isWritable && mode == .interactive,
+                        label: { "Tilt \(Int($0.rounded())) %" },
+                        onChange: { value in
+                            tiltDraft = value
+                            if let p = context.tiltPayload(value) { onSend(p) }
+                        }
+                    )
+                }
             }
-            .padding(DesignTokens.Spacing.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(heroBackground)
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+            .cardSurface()
             .onChange(of: context.positionValue) { _, v in
-                guard !isDraggingPosition else { return }
                 positionDraft = v ?? 0
             }
             .onChange(of: context.tiltValue) { _, v in tiltDraft = v ?? 0 }
@@ -114,83 +138,21 @@ struct CoverControlCard: View {
         return state == "CLOSED" || state == "CLOSE" || (state == nil && context.positionValue == 0)
     }
 
-    private var heroBackground: some View {
-        ZStack {
-            Color(.secondarySystemGroupedBackground)
-            LinearGradient(
-                colors: [heroTint.opacity(isFullyClosed ? 0.06 : 0.18),
-                         heroTint.opacity(DesignTokens.Opacity.subtleFade)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-
-    // MARK: - Hero headline
-
-    private var heroHeadline: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                heroEyebrow
-                heroValue
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var heroEyebrow: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open")
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .symbolRenderingMode(.hierarchical)
-            Text(eyebrowLabel)
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-                .lineLimit(1)
-        }
-        .foregroundStyle(heroTint)
-    }
-
     private var eyebrowLabel: String {
         if let endpoint = context.endpointLabel { return "Cover · \(endpoint)" }
         return "Cover"
     }
 
-    @ViewBuilder
-    private var heroValue: some View {
+    /// "64 % open", or the state word when position isn't reported.
+    private var headerValue: String {
         if context.positionFeature != nil {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                    Text("\(Int(positionDraft.rounded()))")
-                        .font(DesignTokens.Typography.heroValue)
-                        .monospacedDigit()
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
-                        .contentTransition(.numericText(value: positionDraft))
-                        .animation(.snappy, value: positionDraft)
-                    Text("%")
-                        .font(DesignTokens.Typography.heroUnit)
-                        .foregroundStyle(.secondary)
-                }
-                Text(context.displayState)
-                    .font(DesignTokens.Typography.heroSubtitle)
-                    .foregroundStyle(heroTint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
-            }
-        } else {
-            Text(context.displayState)
-                .font(DesignTokens.Typography.heroStateText)
-                .foregroundStyle(heroTint)
+            return "\(Int(positionDraft.rounded())) % · \(context.displayState)"
         }
+        return context.displayState
     }
 
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
-            .frame(height: DesignTokens.Size.hairline)
+    private var capsuleFill: Color {
+        Color.orange.opacity(isFullyClosed ? 0.18 : 0.35)
     }
 
     // MARK: - Position slider
@@ -198,21 +160,6 @@ struct CoverControlCard: View {
     private var showsPositionSlider: Bool {
         guard let f = context.positionFeature else { return false }
         return mode == .interactive && f.isWritable
-    }
-
-    @ViewBuilder
-    private var positionSliderRow: some View {
-        if let f = context.positionFeature {
-            Slider(
-                value: $positionDraft,
-                in: f.range ?? 0...100,
-                onEditingChanged: { editing in
-                    isDraggingPosition = editing
-                    if !editing, let p = context.positionPayload(positionDraft) { onSend(p) }
-                }
-            )
-            .tint(heroTint == Color(.tertiaryLabel) ? .orange : heroTint)
-        }
     }
 
     // MARK: - Action buttons
@@ -243,46 +190,9 @@ struct CoverControlCard: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, DesignTokens.Spacing.sm)
         }
-        .buttonStyle(.bordered)
-        .tint(heroTint == Color(.tertiaryLabel) ? .orange : heroTint)
-    }
-
-    // MARK: - Tilt
-
-    @ViewBuilder
-    private var tiltRow: some View {
-        let writable = context.tiltFeature?.isWritable == true && mode == .interactive
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    Image(systemName: "rotate.3d")
-                        .font(DesignTokens.Typography.eyebrowIcon)
-                        .symbolRenderingMode(.hierarchical)
-                    Text("Tilt")
-                        .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(DesignTokens.Typography.eyebrowTracking)
-                        .textCase(.uppercase)
-                }
-                .foregroundStyle(.secondary)
-                Spacer()
-                HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                    Text("\(Int(tiltDraft.rounded()))")
-                        .font(DesignTokens.Typography.snapshotRowValue)
-                        .monospacedDigit()
-                        .foregroundStyle(.primary)
-                    Text("%")
-                        .font(DesignTokens.Typography.snapshotRowUnit)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            if writable, let f = context.tiltFeature {
-                Slider(value: $tiltDraft, in: f.range ?? 0...100) { editing in
-                    guard !editing else { return }
-                    if let p = context.tiltPayload(tiltDraft) { onSend(p) }
-                }
-                .tint(heroTint == Color(.tertiaryLabel) ? .orange : heroTint)
-            }
-        }
+        .glassButtonStyleIfAvailable()
+        .buttonBorderShape(.capsule)
+        .tint(.primary)
     }
 }
 
