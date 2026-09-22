@@ -9,17 +9,6 @@ nonisolated enum DesignTokens {
         static let lg: CGFloat = 16
         static let xl: CGFloat = 24
         static let xxl: CGFloat = 32
-        static let summaryRowTextSpacing: CGFloat = 3
-        static let summaryRowVerticalPadding: CGFloat = 2
-        static let compactSnapshotTextSpacing: CGFloat = 2
-        static let bridgeLogRowVerticalInset: CGFloat = 6
-        static let bridgeLogRowHorizontalInset: CGFloat = 16
-    }
-
-    nonisolated enum Count {
-        static let liveActivityQueueRows = 3
-        /// Most options a segmented control holds before a menu takes over.
-        static let segmentedMaxOptions = 4
     }
 
     nonisolated enum CornerRadius {
@@ -39,12 +28,6 @@ nonisolated enum DesignTokens {
     }
 
     nonisolated enum Size {
-        static let activityClearButton: CGFloat = 28
-        /// Fixed trailing slot for a selection checkmark. Keeping the slot
-        /// present prevents an adjacent value from moving when selected.
-        static let selectionIndicatorColumn: CGFloat = 28
-        static let temperatureKelvinColumn: CGFloat = 72
-        static let compactSnapshotSymbol: CGFloat = 32
         static let statusDot: CGFloat = 10
         static let statusDotHero: CGFloat = 8
         static let statusDotInline: CGFloat = 6
