@@ -7,7 +7,7 @@ struct ActivityTabBarAccessory: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
-    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
+    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.latestActivity.rawValue
     @AppStorage(ActivityAttentionClearance.storageKey) private var clearanceRaw = ""
     let transitionNamespace: Namespace.ID?
     /// Mirrors the Activity filter's Show Signal Changes, so the accessory

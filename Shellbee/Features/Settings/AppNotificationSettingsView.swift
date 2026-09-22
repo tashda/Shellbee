@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AppNotificationSettingsView: View {
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
-    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
+    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.latestActivity.rawValue
 
     var body: some View {
         Form {
@@ -35,7 +35,7 @@ struct AppNotificationSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
     private var displayMode: ActivityAccessoryDisplayMode {
-        ActivityAccessoryDisplayMode(rawValue: displayModeRaw) ?? .summary
+        ActivityAccessoryDisplayMode(rawValue: displayModeRaw) ?? .latestActivity
     }
 }
 

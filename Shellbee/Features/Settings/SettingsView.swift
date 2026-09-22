@@ -161,7 +161,7 @@ struct SettingsView: View {
             if showsSidebarDestinationsInSettings {
                 if !isActivityCenterEnabled {
                     NavigationLink {
-                        LogsView(usesActivityFeed: true, navigationTitle: "Activity")
+                        LogsView(usesActivityFeed: true, navigationTitle: "Logs")
                     } label: {
                         settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
                     }
@@ -324,7 +324,7 @@ struct SettingsView: View {
             }
             if showsSidebarDestinationsInSettings && !isActivityCenterEnabled {
                 NavigationLink {
-                    LogsView(usesActivityFeed: true, navigationTitle: "Activity")
+                    LogsView(usesActivityFeed: true, navigationTitle: "Logs")
                 } label: {
                     settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
                 }
