@@ -17,7 +17,7 @@ struct PermitJoinSheet: View {
     var body: some View {
         SwiftUI.Group {
             if #available(iOS 18.0, *) {
-                presentationContent.presentationSizing(.fitted)
+                fittedPresentationContent.presentationSizing(.fitted)
             } else {
                 presentationContent.presentationDetents([.large])
             }
@@ -36,16 +36,82 @@ struct PermitJoinSheet: View {
                             bridgeSection
                             permitJoinSection
                         }
-                        .fixedSize(horizontal: false, vertical: true)
                         actionBar
                     }
-                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
         }
         .configuredTopScrollEdgeEffect()
+    }
+
+    private var fittedPresentationContent: some View {
+        NavigationStack {
+            SwiftUI.Group {
+                if isSelectedBridgePermitJoinOpen {
+                    activeContent
+                } else {
+                    fittedInactiveContent
+                }
+            }
+            .navigationTitle("Permit Join")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .configuredTopScrollEdgeEffect()
+    }
+
+    private var fittedInactiveContent: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+            let connected = environment.registry.orderedSessions.filter(\.isConnected)
+            if connected.count >= 2 {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                    BridgePicker(selection: $bridgeID)
+                        .pickerStyle(.menu)
+                        .padding(.horizontal, DesignTokens.Spacing.lg)
+                        .padding(.vertical, DesignTokens.Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
+                    Text("Permit Join opens this bridge's network only. Other bridges remain closed.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, DesignTokens.Spacing.lg)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                Text("Open the network")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                VStack(spacing: 0) {
+                    Picker("Via", selection: $targetName) {
+                        Text("All devices").tag(String?.none)
+                        ForEach(joinTargets) { device in
+                            Text(device.friendlyName).tag(String?.some(device.friendlyName))
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Divider()
+
+                    Picker("Duration", selection: $duration) {
+                        Text("1 min").tag(60)
+                        Text("2 min").tag(120)
+                        Text("3 min").tag(180)
+                        Text("~4 min").tag(254)
+                    }
+                    .pickerStyle(.menu)
+                }
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
+            }
+
+            actionBar
+        }
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .padding(.top, DesignTokens.Spacing.xxl)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder
@@ -103,7 +169,6 @@ struct PermitJoinSheet: View {
                 .padding(.top, DesignTokens.Spacing.xl)
                 actionBar
             }
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
