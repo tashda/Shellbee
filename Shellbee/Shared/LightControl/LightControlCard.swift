@@ -119,6 +119,7 @@ struct LightControlCard: View {
             LightColorControl(
                 value: context.displayColor,
                 isInteractive: context.color?.isWritable ?? false,
+                showsSelection: context.isOn && context.isColorMode,
                 onChange: { color in
                     guard let hex = color.hexString, let payload = context.colorPayload(hex: hex) else { return }
                     onSend(payload)

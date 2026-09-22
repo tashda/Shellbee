@@ -61,6 +61,9 @@ struct DeviceDetailView: View {
             }
 
             Section("Device Info") {
+                if let model = device.definition?.model {
+                    CopyableRow(label: "Model", value: model)
+                }
                 CopyableRow(label: "Zigbee Model", value: device.modelId ?? "Unknown")
                 CopyableRow(label: "IEEE Address", value: device.ieeeAddress)
                 CopyableRow(label: "Network Address", value: "\(device.networkAddress)")

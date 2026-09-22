@@ -3,6 +3,8 @@ import SwiftUI
 struct LightColorControl: View {
     let value: Color
     let isInteractive: Bool
+    /// Only mark a swatch when the light is on and showing a colour.
+    var showsSelection: Bool = true
     let onChange: (Color) -> Void
 
     @State private var customColor: Color
@@ -22,9 +24,10 @@ struct LightColorControl: View {
     private let columns = Array(repeating: GridItem(.flexible()), count: 5)
     private static let swatchSize: CGFloat = 36
 
-    init(value: Color, isInteractive: Bool, onChange: @escaping (Color) -> Void) {
+    init(value: Color, isInteractive: Bool, showsSelection: Bool = true, onChange: @escaping (Color) -> Void) {
         self.value = value
         self.isInteractive = isInteractive
+        self.showsSelection = showsSelection
         self.onChange = onChange
         _customColor = State(initialValue: value)
     }
@@ -96,6 +99,7 @@ struct LightColorControl: View {
     /// showing a saturated colour. Bulbs never echo back the exact hex we
     /// sent, so an exact match would almost never show a selection.
     private var selectedSwatch: Color? {
+        guard showsSelection else { return nil }
         let current = Self.hsb(value)
         guard current.saturation >= 0.45 else { return nil }
         let nearest = Self.swatches.min { Self.hueDistance(Self.hsb($0).hue, current.hue) < Self.hueDistance(Self.hsb($1).hue, current.hue) }
