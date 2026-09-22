@@ -422,6 +422,7 @@
 				Shared/LightControl/LightAdvancedFeatureRow.swift,
 				Shared/LightControl/LightAdvancedSheet.swift,
 				Shared/LightControl/LightColorControl.swift,
+				Shared/LightControl/LightColorSheet.swift,
 				Shared/LightControl/LightConfigBar.swift,
 				Shared/LightControl/LightControlCard.swift,
 				Shared/LightControl/LightControlContext.swift,

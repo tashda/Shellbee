@@ -1,12 +1,6 @@
 import SwiftUI
 
 struct LightControlCard: View {
-    enum Surface: String, CaseIterable, Identifiable {
-        case color = "Color"
-        case white = "White"
-        var id: String { rawValue }
-    }
-
     let context: LightControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
@@ -19,7 +13,7 @@ struct LightControlCard: View {
     /// configuration.
     var rendersAdvancedSheetsInline: Bool = true
 
-    @State private var selectedSurface: Surface
+    @State private var showColor = false
     @State private var showEffects = false
     @State private var showStartup = false
     @State private var showMore = false
@@ -32,7 +26,6 @@ struct LightControlCard: View {
         self.mode = mode
         self.onSend = onSend
         self.rendersAdvancedSheetsInline = rendersAdvancedSheetsInline
-        _selectedSurface = State(initialValue: Self.initialSurface(for: context))
     }
 
     var body: some View {
@@ -42,6 +35,9 @@ struct LightControlCard: View {
         // CompactSnapshotCard chrome so it lines up with every other
         // card type at the same scale.
         modeSwitchedBody
+        .sheet(isPresented: $showColor) {
+            LightColorSheet(context: context, onSend: onSend)
+        }
         .sheet(isPresented: $showEffects) {
             if let effect = context.effectFeature {
                 LightEffectsSheet(feature: effect) { onSend(effect.payload($0)) }
@@ -82,6 +78,9 @@ struct LightControlCard: View {
             tint: headerTint
         ) {
             HStack(spacing: DesignTokens.Spacing.sm) {
+                if hasColorControls {
+                    colorButton
+                }
                 if context.effectFeature != nil {
                     CardAccessoryButton(systemImage: "sparkles", accessibilityLabel: "Effects") { showEffects = true }
                 }
@@ -109,34 +108,25 @@ struct LightControlCard: View {
                 onTogglePower: togglePower
             )
         }
-        if context.supportsColorControls && context.supportsWhiteControls {
-            Picker("Mode", selection: $selectedSurface) {
-                ForEach(Surface.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
+    }
+
+    private var hasColorControls: Bool {
+        context.supportsColorControls || context.colorTemperature != nil
+    }
+
+    /// The light's current colour as a swatch; opens the Color sheet.
+    private var colorButton: some View {
+        Button { showColor = true } label: {
+            Circle()
+                .fill(context.displayColor)
+                .overlay(Circle().strokeBorder(Color.primary.opacity(DesignTokens.Opacity.hairline)))
+                .frame(width: DesignTokens.Size.changeSwatch, height: DesignTokens.Size.changeSwatch)
+                .frame(width: DesignTokens.Size.cardAccessoryButton, height: DesignTokens.Size.cardAccessoryButton)
         }
-        if selectedSurface == .color, context.supportsColorControls {
-            LightColorControl(
-                value: context.displayColor,
-                isInteractive: context.color?.isWritable ?? false,
-                showsSelection: context.isOn && context.isColorMode,
-                onChange: { color in
-                    guard let hex = color.hexString, let payload = context.colorPayload(hex: hex) else { return }
-                    onSend(payload)
-                }
-            )
-        }
-        if selectedSurface == .white, let ct = context.colorTemperature {
-            LightTemperatureControl(
-                range: ct.range ?? 153...500,
-                value: context.colorTemperatureValue ?? ct.range?.lowerBound ?? 250,
-                isInteractive: ct.isWritable,
-                onChange: { value in
-                    guard let payload = context.colorTemperaturePayload(value) else { return }
-                    onSend(payload)
-                }
-            )
-        }
+        .buttonBorderShape(.circle)
+        .glassButtonStyleIfAvailable()
+        .accessibilityLabel("Color")
+        .accessibilityValue(colorDescription ?? "")
     }
 
     // MARK: – Snapshot
@@ -173,19 +163,22 @@ struct LightControlCard: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    /// "Off", "80 %", "80 % · Pink" or "80 % · 2700 K" beside the title.
+    /// "Off", "Pink" or "Warm white" beside the title. Brightness is
+    /// left to the capsule, which already shows it.
     private var headerValue: String {
         guard context.isOn else { return "Off" }
-        var parts: [String] = []
-        if context.brightness != nil, context.brightnessValue != nil {
-            parts.append("\(context.brightnessPercent) %")
-        }
+        return colorDescription ?? "On"
+    }
+
+    private var colorDescription: String? {
         if context.isColorMode, context.supportsColorControls {
-            parts.append(LightDisplayColor.name(for: context.displayColor))
-        } else if let mireds = context.colorTemperatureValue, mireds > 0 {
-            parts.append("\(Int(1_000_000 / mireds)) K")
+            return LightDisplayColor.name(for: context.displayColor)
         }
-        return parts.isEmpty ? "On" : parts.joined(separator: " · ")
+        guard let mireds = context.colorTemperatureValue, mireds > 0 else { return nil }
+        let kelvin = 1_000_000 / mireds
+        if kelvin < 3000 { return String(localized: "Warm white") }
+        if kelvin < 4500 { return String(localized: "Neutral white") }
+        return String(localized: "Cool white")
     }
 
     private var stateBadge: some View {
@@ -216,13 +209,6 @@ struct LightControlCard: View {
         }
         guard let payload = context.brightnessCommandPayload(context.suggestedOnBrightnessValue()) else { return }
         onSend(payload)
-    }
-
-    private static func initialSurface(for context: LightControlContext) -> Surface {
-        if context.supportsColorControls && context.supportsWhiteControls {
-            return context.colorMode == "color_temp" ? .white : .color
-        }
-        return context.supportsWhiteControls ? .white : .color
     }
 }
 
