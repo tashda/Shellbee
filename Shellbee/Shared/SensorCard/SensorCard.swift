@@ -13,6 +13,12 @@ struct SensorCard: View {
             snapshotContent
         } else {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                CardHeader(
+                    systemImage: "sensor.fill",
+                    title: "Sensor",
+                    value: DeviceStatus.lastSeenText(state.lastSeen).map { "Updated \($0)" },
+                    tint: .blue
+                )
                 let readings = makeReadings()
                 if readings.isEmpty {
                     Text("No sensor data available")
@@ -23,11 +29,7 @@ struct SensorCard: View {
                     readingsGrid(readings)
                 }
             }
-            .padding(DesignTokens.Spacing.xl)
-            .background(Color(.secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+            .cardSurface()
         }
     }
 
@@ -194,9 +196,9 @@ struct SensorReading {
         return isTrue
     }
 
-    /// Color of the *value* text. Numerics stay primary. Binary state sensors
-    /// get a state-driven color: alarm-class red, "open/triggered" orange,
-    /// "presence detected" green. Inactive binary stays secondary.
+    /// Color of the *value* text. Numerics and presence stay primary; colour
+    /// is kept for states that need attention: alarm-class red and
+    /// "open/triggered" orange. Inactive binary stays secondary.
     var valueColor: Color {
         guard expose.type == "binary" else { return .primary }
         if !binaryActive { return .secondary }
@@ -205,8 +207,6 @@ struct SensorReading {
             return .red
         case "contact", "window_open", "vibration", "moving", "child_lock":
             return .orange
-        case "motion", "occupancy", "presence":
-            return .green
         default:
             return .primary
         }
@@ -243,18 +243,13 @@ private struct SensorReadingTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: reading.icon)
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(reading.label)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(.secondary)
+            Label(reading.label, systemImage: reading.icon)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
+                .symbolRenderingMode(.hierarchical)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
                 Text(reading.numericDisplayValue)
