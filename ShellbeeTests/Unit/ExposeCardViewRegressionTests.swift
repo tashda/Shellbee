@@ -18,20 +18,21 @@ final class ExposeCardViewRegressionTests: XCTestCase {
     @MainActor
     func testZG204ZVHasSensorReadings() throws {
         let device = try Self.loadDevice()
-        XCTAssertTrue(SensorCard.hasReadings(device: device, state: Self.state))
+        XCTAssertTrue(SensorSections.hasReadings(device: device, state: Self.state))
     }
 
     @MainActor
     func testZG204ZVHasWritableConfigExposes() throws {
         let device = try Self.loadDevice()
-        XCTAssertTrue(GenericExposeCard.hasWritableRows(device: device, state: Self.state))
+        XCTAssertTrue(Self.settingsProperties(device: device).contains { writable in
+            ["fading_time", "indicator", "illuminance_interval"].contains(writable)
+        })
     }
 
     @MainActor
     func testZG204ZVWritableRowsIncludeEveryMissingSetting() throws {
         let device = try Self.loadDevice()
-        let rows = GenericExposeCard.rows(for: device, state: Self.state, writableOnly: true)
-        let properties = Set(rows.map(\.property))
+        let properties = Self.settingsProperties(device: device)
 
         // These are exactly the settings issue #135 reported as missing —
         // present in definition.exposes (not definition.options), writable,
@@ -43,10 +44,31 @@ final class ExposeCardViewRegressionTests: XCTestCase {
             XCTAssertTrue(properties.contains(expected), "Missing writable row for \(expected)")
         }
 
-        // Read-only readings (already shown by SensorCard) must not be duplicated.
+        // Read-only readings (already shown by SensorSections) must not be duplicated.
         for readingOnly in ["presence", "illuminance", "temperature", "humidity"] {
-            XCTAssertFalse(properties.contains(readingOnly), "\(readingOnly) should not appear in writable-only rows")
+            XCTAssertFalse(properties.contains(readingOnly), "\(readingOnly) is shown by SensorSections and should not repeat in settings")
         }
+    }
+
+    /// Every writable expose of the device reaches the settings sections
+    /// beneath the sensor readings (DeviceDetailView's sensor path).
+    @MainActor
+    func testZG204ZVEveryWritableExposeIsShown() throws {
+        let device = try Self.loadDevice()
+        let shown = Self.settingsProperties(device: device)
+        let writable = (device.definition?.exposes ?? []).flattenedLeaves
+            .filter(\.isWritable)
+            .compactMap(\.property)
+        for property in writable {
+            XCTAssertTrue(shown.contains(property), "Writable \(property) is not shown")
+        }
+    }
+
+    /// The properties DeviceDetailView shows as settings beneath the readings.
+    @MainActor
+    private static func settingsProperties(device: Device) -> Set<String> {
+        let claimed = SensorSections.readingProperties(device: device, state: state)
+        return Set(DeviceSettingsSections.exposes(for: device, claimedProperties: claimed).compactMap(\.property))
     }
 
     // MARK: - Fixture

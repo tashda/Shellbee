@@ -164,7 +164,7 @@ struct DeviceDetailView: View {
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
-                FanFeatureSections(context: ctx, mode: .interactive, onSend: send)
+                FanFeatureSections(context: ctx, onSend: send)
             } else {
                 genericExposeSection(device: device, state: state, send: send)
             }
@@ -233,7 +233,10 @@ struct DeviceDetailView: View {
 
         case .sensor where SensorSections.hasReadings(device: device, state: state):
             SensorSections(device: device, state: state)
-            GenericExposeSections(device: device, state: state, writableOnly: true, onSend: send)
+            // Writable config beside the readings (issue #135).
+            DeviceSettingsSections(device: device, state: state,
+                                   claimedProperties: SensorSections.readingProperties(device: device, state: state),
+                                   onSend: send)
 
         default:
             genericExposeSection(device: device, state: state, send: send)
@@ -251,11 +254,13 @@ struct DeviceDetailView: View {
                     .listRowBackground(Color.clear)
             }
         }
-        // Typed cards own their features; a device with no typed card gets
-        // every row.
-        if !hasPrimaryCard {
-            GenericExposeSections(device: device, state: state, onSend: send)
-        }
+        // Everything the card doesn't show, so no setting is ever hidden.
+        DeviceSettingsSections(
+            device: device,
+            state: state,
+            claimedProperties: hasPrimaryCard ? ExposeCardView.claimedProperties(device: device, state: state) : [],
+            onSend: send
+        )
     }
 
     private static let recentLogLimit = 5

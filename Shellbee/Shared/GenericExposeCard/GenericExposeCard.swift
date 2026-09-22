@@ -5,7 +5,7 @@ struct GenericExposeCard: View {
     let state: [String: JSONValue]
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
-    /// When true, only writable exposes are shown — used alongside SensorSections
+    /// When true, only writable exposes are shown
     /// so read-only readings (temperature, humidity, …) aren't duplicated.
     var writableOnly: Bool = false
 
@@ -131,28 +131,6 @@ struct GenericExposeCard: View {
     }
 }
 
-/// The generic rows as native List sections, matching the Startup and
-/// Configuration sections the typed cards put beneath themselves.
-/// Place inside an inset-grouped `List`.
-struct GenericExposeSections: View {
-    let device: Device
-    let state: [String: JSONValue]
-    var writableOnly: Bool = false
-    let onSend: (JSONValue) -> Void
-
-    var body: some View {
-        let rows = GenericExposeCard.rows(for: device, state: state, writableOnly: writableOnly)
-        if !rows.isEmpty {
-            Section(writableOnly ? "Settings" : "Controls") {
-                ForEach(rows) { row in
-                    GenericExposeRow(row: row, mode: .interactive, horizontalPadding: 0,
-                                     verticalPadding: 0, iconWidth: 0, showsIcon: false, onSend: onSend)
-                }
-            }
-        }
-    }
-}
-
 struct ExposeRow: Identifiable {
     let expose: Expose
     let property: String
@@ -171,7 +149,6 @@ private struct GenericExposeRow: View {
     let horizontalPadding: CGFloat
     let verticalPadding: CGFloat
     let iconWidth: CGFloat
-    var showsIcon: Bool = true
     let onSend: (JSONValue) -> Void
 
     @State private var numericDraft: Double = 0
@@ -196,14 +173,7 @@ private struct GenericExposeRow: View {
         }
     }
 
-    @ViewBuilder
     private var leadingIcon: some View {
-        if showsIcon {
-            iconImage
-        }
-    }
-
-    private var iconImage: some View {
         Image(systemName: meta.symbol)
             .font(DesignTokens.Typography.formRowIcon)
             .symbolRenderingMode(.hierarchical)
@@ -285,7 +255,7 @@ private struct GenericExposeRow: View {
                     guard !editing else { return }
                     onSend(.object([row.property: numericPayload(numericDraft, step: row.expose.valueStep)]))
                 }
-                .padding(.leading, showsIcon ? iconWidth + DesignTokens.Spacing.md : 0)
+                .padding(.leading, iconWidth + DesignTokens.Spacing.md)
             }
             .onAppear { numericDraft = current }
             .onChange(of: current) { _, v in numericDraft = v }

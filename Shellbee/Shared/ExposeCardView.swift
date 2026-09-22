@@ -8,7 +8,7 @@ struct ExposeCardView: View {
     let mode: CardDisplayMode
     var onSend: (JSONValue) -> Void = { _ in }
     /// When false, the generic fallback rows are left out so the caller can
-    /// draw them as native List sections (`GenericExposeSections`).
+    /// draw them as native List sections (`DeviceSettingsSections`).
     var includesGenericRows: Bool = true
 
     var body: some View {
@@ -77,6 +77,21 @@ struct ExposeCardView: View {
     private func genericRows(writableOnly: Bool = false) -> some View {
         if includesGenericRows {
             GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend, writableOnly: writableOnly)
+        }
+    }
+
+    /// Properties the typed card shows for lock and remote devices, so the
+    /// settings sections beneath skip them.
+    static func claimedProperties(device: Device, state: [String: JSONValue]) -> Set<String> {
+        let exposes = device.definition?.exposes ?? []
+        switch device.category {
+        case .lock:
+            let lock = exposes.first { $0.type == "lock" }?.features?.flattenedLeaves ?? []
+            return Set(lock.compactMap(\.property))
+        case .remote:
+            return ["action"]
+        default:
+            return []
         }
     }
 

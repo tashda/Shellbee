@@ -9,9 +9,6 @@ struct SensorSections: View {
     let state: [String: JSONValue]
 
     private static let skipKeys: Set<String> = ["linkquality", "last_seen", "update", "update_available", "battery", "battery_low"]
-    /// Diagnostic properties for devices whose definitions predate z2m's
-    /// `category` field.
-    private static let fallbackDiagnostics: Set<String> = ["device_temperature", "power_outage_count", "voltage"]
 
     var body: some View {
         let readings = Self.readings(device: device, state: state)
@@ -37,11 +34,17 @@ struct SensorSections: View {
     }
 
     private func isDiagnostic(_ reading: SensorReading) -> Bool {
-        reading.expose.isDiagnostic || (reading.expose.category == nil && Self.fallbackDiagnostics.contains(reading.property))
+        // A battery sensor's voltage is diagnostic even when z2m doesn't say so.
+        reading.expose.isDiagnostic || (reading.expose.category == nil && reading.property == "voltage")
     }
 
     static func hasReadings(device: Device, state: [String: JSONValue]) -> Bool {
         !readings(device: device, state: state).isEmpty
+    }
+
+    /// Properties these sections show, so the settings below skip them.
+    static func readingProperties(device: Device, state: [String: JSONValue]) -> Set<String> {
+        Set(readings(device: device, state: state).map(\.property))
     }
 
     private static func readings(device: Device, state: [String: JSONValue]) -> [SensorReading] {

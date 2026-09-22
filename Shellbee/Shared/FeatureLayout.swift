@@ -50,8 +50,8 @@ enum FeatureLayout {
         }
         for e in exposes {
             guard let prop = e.property, !claimed.contains(prop) else { continue }
-            let meta = FeatureCatalog.meta(for: prop, exposeType: e.type)
-            buckets[meta.category, default: []].append(.row(e))
+            let category = e.isDiagnostic ? .diagnostic : FeatureCatalog.meta(for: prop, exposeType: e.type).category
+            buckets[category, default: []].append(.row(e))
         }
 
         return displayOrder.compactMap { cat in
@@ -60,8 +60,9 @@ enum FeatureLayout {
         }
     }
 
+    /// Diagnostics always come last, so every device page ends the same way.
     private static let displayOrder: [FeatureCategory] = [
-        .behaviour, .indicator, .maintenance, .sensor, .advanced
+        .operation, .behaviour, .indicator, .maintenance, .sensor, .advanced, .diagnostic
     ]
 
     private static func title(for category: FeatureCategory) -> String {

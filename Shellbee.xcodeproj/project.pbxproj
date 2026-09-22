@@ -76,8 +76,8 @@
 		0A9D45E92F96238500DF6DF5 /* Exceptions for "Shellbee" folder in "ShellbeeWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"App/AppEnvironment+BridgeAttribution.swift",
 				App/AppEnvironment.swift,
+				"App/AppEnvironment+BridgeAttribution.swift",
 				App/ConnectionSessionController.swift,
 				App/LogSheetHost.swift,
 				App/MainSplitView.swift,
@@ -394,6 +394,7 @@
 				Shared/Components/Doc/PairingGuideExperienceView.swift,
 				Shared/Components/Doc/PairingSectionView.swift,
 				Shared/Components/FeatureGroupDetailView.swift,
+				Shared/Components/FeatureSectionsList.swift,
 				Shared/Components/FilterMenuComponents.swift,
 				Shared/Components/MemberAvatarStack.swift,
 				Shared/Components/OpenInNewWindowButton.swift,

@@ -157,7 +157,12 @@ struct Expose: Codable, Sendable, Equatable {
 
     nonisolated var isReadable: Bool { (access ?? 0) & 0x01 != 0 }
     nonisolated var isWritable: Bool { (access ?? 0) & 0x02 != 0 }
-    nonisolated var isDiagnostic: Bool { category == "diagnostic" }
+    /// z2m's diagnostic category, with a fallback for device definitions
+    /// that predate the `category` field.
+    nonisolated var isDiagnostic: Bool {
+        if let category { return category == "diagnostic" }
+        return ["device_temperature", "power_outage_count"].contains(property ?? "")
+    }
 
     // The custom init(from:) below suppresses Swift's synthesized
     // memberwise initializer, so we restore it explicitly for tests and

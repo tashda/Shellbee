@@ -32,15 +32,7 @@ struct SwitchFeatureSections: View {
         )
     }
 
-    private var sections: [LayoutSection] { FeatureLayout.sections(from: extras) }
-
     var body: some View {
-        ForEach(sections) { section in
-            Section(section.title) {
-                ForEach(section.items, id: \.id) { item in
-                    DeviceFeatureSectionRow(item: item, state: state, mode: .interactive, onSend: onSend)
-                }
-            }
-        }
+        FeatureSectionsList(exposes: extras, state: state, onSend: onSend)
     }
 }
