@@ -25,6 +25,7 @@ struct PermitJoinSheet: View {
                         bridgeSection
                         permitJoinSection
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                     .safeAreaInset(edge: .bottom) { actionBar }
                 }
             }
@@ -89,7 +90,7 @@ struct PermitJoinSheet: View {
             }
             .padding(.horizontal, DesignTokens.Spacing.xl)
             .padding(.top, DesignTokens.Spacing.xl)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .top)
             .safeAreaInset(edge: .bottom) {
                 actionBar
             }
@@ -105,7 +106,7 @@ struct PermitJoinSheet: View {
             }
             dismiss()
         } label: {
-            Text(isSelectedBridgePermitJoinOpen ? "Stop Permit Join" : "Start Permit Join")
+            Text(isSelectedBridgePermitJoinOpen ? "Close Network" : "Open Network")
                 .fontWeight(.semibold)
                 .frame(maxWidth: .infinity)
         }
