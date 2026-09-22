@@ -176,36 +176,39 @@ struct ActivityAccessorySummary: View {
     }
 
     /// A player-style artwork slot. Event modes show the event's own
-    /// thumbnail; Summary stays quiet unless something needs attention.
+    /// instrument; Summary stays quiet unless something needs attention.
     @ViewBuilder
     private var artwork: some View {
         let size = DesignTokens.ActivityFeed.accessoryArtwork
         switch mode {
         case .latestActivity:
-            eventArtwork(latestActivity, fallback: "tray.full.fill", size: size)
+            eventArtwork(latestActivity, fallback: .message, size: size)
         case .notificationsOnly:
-            eventArtwork(latestAttention, fallback: "bell.fill", size: size)
+            eventArtwork(latestAttention, fallback: .safety, size: size)
         case .summary:
-            if recentAttentionCount > 0 {
-                symbolArtwork("exclamationmark.triangle.fill", foreground: Color.orange, size: size)
-            } else {
-                symbolArtwork("tray.full.fill", foreground: .secondary, size: size)
-            }
+            ActivityInstrumentView(
+                instrument: .init(
+                    kind: recentAttentionCount > 0 ? .safety : .message,
+                    severity: recentAttentionCount > 0 ? .warning : .quiet
+                ),
+                size: size
+            )
         }
     }
 
     @ViewBuilder
-    private func eventArtwork(_ item: BridgeBoundLogEntry?, fallback: String, size: CGFloat) -> some View {
+    private func eventArtwork(
+        _ item: BridgeBoundLogEntry?,
+        fallback: ActivityInstrumentKind,
+        size: CGFloat
+    ) -> some View {
         if let item {
-            ActivityThumbnail(
-                entry: item.entry,
-                store: storeFor(item.bridgeID),
-                size: size,
-                pipBorder: .clear,
-                prefersSubjectImage: true
+            ActivityInstrumentView(
+                instrument: ActivityInstrumentResolver.instrument(for: item.entry),
+                size: size
             )
         } else {
-            symbolArtwork(fallback, foreground: .secondary, size: size)
+            ActivityInstrumentView(instrument: .init(kind: fallback, severity: .quiet), size: size)
         }
     }
 
@@ -213,11 +216,4 @@ struct ActivityAccessorySummary: View {
         environment.registry.session(for: bridgeID)?.store
     }
 
-    private func symbolArtwork(_ name: String, foreground: some ShapeStyle, size: CGFloat) -> some View {
-        Image(systemName: name)
-            .symbolRenderingMode(.hierarchical)
-            .font(.system(size: size * DesignTokens.ActivityFeed.bareGlyphRatio, weight: .semibold))
-            .foregroundStyle(foreground)
-            .frame(width: size, height: size)
-    }
 }

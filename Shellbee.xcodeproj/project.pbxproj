@@ -149,6 +149,7 @@
 				Features/ActivityCenter/ActivityCardContent.swift,
 				Features/ActivityCenter/ActivityFeedView.swift,
 				Features/ActivityCenter/ActivityInstrument.swift,
+				Features/ActivityCenter/ActivityInstrumentResolver.swift,
 				Features/ActivityCenter/ActivityInstrumentView.swift,
 				Features/ActivityCenter/ActivityLogSheet.swift,
 				Features/ActivityCenter/ActivityPropertyGlyph.swift,

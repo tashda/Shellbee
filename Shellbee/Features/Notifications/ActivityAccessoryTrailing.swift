@@ -34,10 +34,6 @@ struct ActivityAccessoryTrailing: View {
     var body: some View {
         if let change = ActivityAccessoryChange(entry: entry) {
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                ActivityPropertyGlyph(property: change.property, value: change.toValue)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.trailing, DesignTokens.Spacing.xxs)
                 if !isInline, let from = change.from, from != change.to {
                     Text(from)
                         .font(.caption)

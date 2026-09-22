@@ -53,7 +53,6 @@ struct ActivityFeedView: View {
 
     @ViewBuilder
     private func stackView(_ stack: ActivityStack) -> some View {
-        let store = environment.registry.session(for: stack.bridgeID)?.store
         let bridgeName = environment.registry.session(for: stack.bridgeID)?.displayName ?? "Bridge"
         if expandedStackID == stack.id {
             expandedHeader(ActivityCardContent(entry: stack.latest, subject: stack.subject, bridgeName: bridgeName).title)
@@ -63,8 +62,7 @@ struct ActivityFeedView: View {
                 } label: {
                     ActivityCard(
                         entry: entry,
-                        content: ActivityCardContent(entry: entry, subject: stack.subject, bridgeName: bridgeName),
-                        store: store
+                        content: ActivityCardContent(entry: entry, subject: stack.subject, bridgeName: bridgeName)
                     )
                 }
                 .buttonStyle(.plain)
@@ -80,8 +78,7 @@ struct ActivityFeedView: View {
             } label: {
                 ActivityStackCard(
                     stack: stack,
-                    content: ActivityCardContent(entry: stack.latest, subject: stack.subject, bridgeName: bridgeName),
-                    store: store
+                    content: ActivityCardContent(entry: stack.latest, subject: stack.subject, bridgeName: bridgeName)
                 )
             }
             .buttonStyle(.plain)

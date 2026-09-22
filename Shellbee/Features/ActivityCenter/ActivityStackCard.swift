@@ -5,11 +5,10 @@ import SwiftUI
 struct ActivityStackCard: View {
     let stack: ActivityStack
     let content: ActivityCardContent
-    let store: AppStore?
 
     var body: some View {
         VStack(spacing: 0) {
-            ActivityCard(entry: stack.latest, content: content, store: store, moreText: moreText)
+            ActivityCard(entry: stack.latest, content: content, moreText: moreText)
                 .zIndex(2)
             if stack.isStacked {
                 peek(
