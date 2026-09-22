@@ -7,6 +7,10 @@ final class AppStore {
     var groups: [Group] = []
     var bridgeInfo: BridgeInfo?
     var bridgeHealth: BridgeHealth?
+    /// When `bridgeHealth` last arrived from the bridge. Home timestamps the
+    /// stats it keeps on screen during an outage so a stale counter can't be
+    /// mistaken for a live one.
+    var bridgeHealthUpdatedAt: Date?
     var bridgeOnline = false
     var isConnected = false
     var deviceStates: [String: [String: JSONValue]] = [:]
@@ -107,6 +111,7 @@ final class AppStore {
         groups = []
         bridgeInfo = nil
         bridgeHealth = nil
+        bridgeHealthUpdatedAt = nil
         bridgeOnline = false
         isConnected = false
         deviceStates = [:]

@@ -10,21 +10,36 @@ final class HomeUITests: ShellbeeUITestCase {
 
     // MARK: - Cards visible
 
-    func testBridgeCardVisible() {
-        XCTAssertTrue(app.staticTexts["Zigbee2MQTT"].waitForExistence(timeout: 10) ||
-                      app.otherElements.containing(.staticText, identifier: "Zigbee2MQTT").firstMatch.waitForExistence(timeout: 10),
-                      "Bridge card not visible")
+    // Cards are matched by accessibility identifier rather than by the text
+    // inside them: a card with nothing to report collapses to a single line,
+    // so its figures ("Total", "Routers") are legitimately absent on a
+    // healthy network.
+
+    func testHeaderVisible() {
+        XCTAssertTrue(app.staticTexts["Home"].firstMatch.waitForExistence(timeout: 10),
+                      "Home header not visible")
+    }
+
+    func testNetworkCardVisible() {
+        XCTAssertTrue(homeCard("network").waitForExistence(timeout: 10),
+                      "Network card not visible")
     }
 
     func testDevicesCardVisible() {
-        // The devices card shows total/online/offline counts
-        let totalLabel = app.staticTexts["Total"].firstMatch
-        XCTAssertTrue(totalLabel.waitForExistence(timeout: 10), "Devices card not visible")
+        XCTAssertTrue(homeCard("devices").waitForExistence(timeout: 10),
+                      "Devices card not visible")
     }
 
-    func testMeshCardVisible() {
-        let routersLabel = app.staticTexts["Routers"].firstMatch
-        XCTAssertTrue(routersLabel.waitForExistence(timeout: 10), "Mesh card not visible")
+    func testActivityCardVisible() {
+        XCTAssertTrue(homeCard("activity").waitForExistence(timeout: 10),
+                      "Activity card not visible")
+    }
+
+    /// A Home card by identifier, whichever element type it resolves to.
+    private func homeCard(_ id: String) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(identifier: "home.card.\(id)")
+            .firstMatch
     }
 
     // MARK: - Permit Join
@@ -78,18 +93,18 @@ final class HomeUITests: ShellbeeUITestCase {
     // MARK: - Navigation from cards
 
     func testTappingDevicesCardNavigatesToDevices() {
-        let total = app.staticTexts["Total"].firstMatch
-        guard total.waitForExistence(timeout: 10) else {
-            return XCTFail("Total stat not found")
+        let devices = homeCard("devices")
+        guard devices.waitForExistence(timeout: 10) else {
+            return XCTFail("Devices card not found")
         }
-        total.tap()
+        devices.tap()
         XCTAssertTrue(
             app.navigationBars["Devices"].firstMatch.waitForExistence(timeout: 5),
             "Devices card should open Devices"
         )
     }
 
-    // MARK: - Bridge card
+    // MARK: - Network card
 
     func testBridgeVersionDisplayed() {
         // Version string should appear somewhere on the home screen
@@ -100,14 +115,14 @@ final class HomeUITests: ShellbeeUITestCase {
         // Not a hard failure — Z2M may not have sent bridge/info yet
     }
 
-    // MARK: - New card slots (Groups / Logs / Mesh detail)
+    // MARK: - Card slots (Activity / Logs / Mesh detail)
 
-    // Behavior: the Recent Events card has a "Show All" button that
-    // pushes the Logs screen. This is a shortcut for "all recent logs".
-    func testRecentEventsShowAllOpensLogs() {
+    // Behavior: the Activity card has a "Show All" button that pushes the
+    // Logs screen. This is a shortcut for "all recent logs".
+    func testActivityShowAllOpensLogs() {
         let showAll = app.buttons["Show All"].firstMatch
         XCTAssertTrue(showAll.waitForExistence(timeout: 10),
-                      "Recent Events card missing Show All button")
+                      "Activity card missing Show All button")
         showAll.tap()
         XCTAssertTrue(
             app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 5),
@@ -115,15 +130,16 @@ final class HomeUITests: ShellbeeUITestCase {
         )
     }
 
-    // Behavior: the Mesh card opens MeshDetailView (navigation title "Mesh").
-    func testTappingMeshCardOpensMeshDetail() {
-        let mesh = app.staticTexts["Mesh"].firstMatch
-        XCTAssertTrue(mesh.waitForExistence(timeout: 10),
-                      "Mesh card not rendered")
-        mesh.tap()
+    // Behavior: the Network card absorbed the Mesh card, so tapping it is
+    // what opens MeshDetailView (navigation title "Mesh").
+    func testTappingNetworkCardOpensMeshDetail() {
+        let network = homeCard("network")
+        XCTAssertTrue(network.waitForExistence(timeout: 10),
+                      "Network card not rendered")
+        network.tap()
         XCTAssertTrue(
             app.navigationBars["Mesh"].firstMatch.waitForExistence(timeout: 5),
-            "Mesh card should push MeshDetailView"
+            "Network card should push MeshDetailView"
         )
     }
 

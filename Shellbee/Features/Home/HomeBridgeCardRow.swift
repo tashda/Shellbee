@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One bridge's row inside the multi-bridge `HomeBridgeCard`. Compact: status
+/// One bridge's row inside the multi-bridge `HomeNetworkCard`. Compact: status
 /// dot, name, version/uptime line, and inline alert chips. Tapping the row
 /// (when `onSelect` is non-nil) sets focus to this bridge.
 struct HomeBridgeCardRow: View {

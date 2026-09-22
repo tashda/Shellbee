@@ -30,6 +30,7 @@ struct HomeView: View {
             HomeBridgeCardEntry(
                 id: session.bridgeID,
                 name: session.displayName,
+                host: session.config.host,
                 isFocused: session.bridgeID == primaryID,
                 connectionState: session.connectionState,
                 isWebSocketConnected: session.store.isConnected,
@@ -123,6 +124,32 @@ struct HomeView: View {
         NavigationStack {
             List {
                 Section {
+                    header
+                        .accessibilityIdentifier("home.header")
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(
+                            top: DesignTokens.Spacing.sm,
+                            leading: DesignTokens.Spacing.lg,
+                            bottom: DesignTokens.Spacing.xs,
+                            trailing: DesignTokens.Spacing.lg
+                        ))
+
+                    if showsNowCard {
+                        nowCard
+                            .accessibilityIdentifier("home.card.now")
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(
+                                top: DesignTokens.Spacing.sm,
+                                leading: DesignTokens.Spacing.lg,
+                                bottom: DesignTokens.Spacing.sm,
+                                trailing: DesignTokens.Spacing.lg
+                            ))
+                    }
+                }
+
+                Section {
                     ForEach(layout.visibleOrder) { id in
                         HomeCardSlot(
                             card: id,
@@ -139,6 +166,7 @@ struct HomeView: View {
                             }
                         ) {
                             cardView(for: id)
+                                .accessibilityIdentifier("home.card.\(id.rawValue)")
                         }
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -183,6 +211,7 @@ struct HomeView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .environment(\.editMode, .constant(layout.isEditing ? .active : .inactive))
+            .animation(.spring(duration: DesignTokens.Duration.mediumAnimation, bounce: 0.2), value: showsNowCard)
             .background(HomeBackgroundGradient().ignoresSafeArea())
             .navigationDestination(isPresented: $showingAllLogs) {
                 LogsView()
@@ -241,13 +270,17 @@ struct HomeView: View {
     @ViewBuilder
     private func cardView(for id: HomeCardID) -> some View {
         switch id {
-        case .bridge:
-            HomeBridgeCard(
+        case .network:
+            HomeNetworkCard(
                 entries: bridgeCardEntries,
+                snapshot: snapshot,
+                healthUpdatedAt: selectedScope?.store.bridgeHealthUpdatedAt,
                 onRestart: { id in
                     pendingRestartBridgeID = id
                     showingRestartAlert = true
                 },
+                onTap: { showingMeshDetail = true },
+                onFilter: { environment.showDevices(filter: $0) },
                 onSelectBridge: bridgeCardEntries.count >= 2 ? { id in
                     if environment.registry.primaryBridgeID != id {
                         environment.registry.setPrimary(id)
@@ -255,34 +288,108 @@ struct HomeView: View {
                 } : nil
             )
         case .devices:
-            HomeDevicesCard(snapshot: snapshot) {
-                environment.showDevices(filter: .all)
-            } onFilter: {
-                environment.showDevices(filter: $0)
-            }
-        case .groups:
-            // Phase 2 multi-bridge: count across every connected bridge so the
-            // card matches what the Groups tab shows in merged mode.
-            HomeGroupsCard(count: environment.allGroups.count) {
-                environment.selectedTab = .groups
-            }
-        case .mesh:
-            HomeMeshCard(snapshot: snapshot) {
-                showingMeshDetail = true
-            } onFilter: {
-                environment.showDevices(filter: $0)
-            }
-        case .recentEvents:
+            // Phase 2 multi-bridge: the group count spans every connected
+            // bridge so the card matches what the Groups tab shows.
+            HomeDevicesCard(
+                snapshot: snapshot,
+                groupCount: environment.allGroups.count,
+                onTap: { environment.showDevices(filter: .all) },
+                onFilter: { environment.showDevices(filter: $0) }
+            )
+        case .activity:
             // Phase 2 multi-bridge: merge the most-recent events across every
-            // bridge so the card shows the user's whole network.
+            // bridge so the card shows the user's whole network. The card is
+            // handed a deeper slice than it shows — repeats collapse first,
+            // then it trims, so a chatty poll can't crowd out real events.
             HomeLogsCard(
-                entries: environment.allLogEntries.prefix(recentEventsCount).map(\.entry),
+                entries: environment.allLogEntries
+                    .prefix(recentEventsCount * Self.eventOversampling)
+                    .map(\.entry),
+                limit: recentEventsCount,
                 onOpenEntry: { entry in
                     environment.pendingLogSheet = LogSheetRequest(entryIDs: [entry.id])
                 },
                 onOpenAll: { showingAllLogs = true }
             )
         }
+    }
+
+    /// How many raw events to hand the Activity card per row it will show.
+    /// Enough headroom that a run of identical health checks collapses without
+    /// emptying the list.
+    private static let eventOversampling = 5
+
+    // MARK: - Pinned "right now" card
+    //
+    // Not a `HomeCardID`: it exists only while something is in flight and
+    // outranks every static figure while it does, so it is pinned above the
+    // arrangeable cards rather than occupying a slot the user ordered.
+
+    private var otaStatuses: [String: OTAUpdateStatus] {
+        environment.registry.orderedSessions.reduce(into: [String: OTAUpdateStatus]()) { acc, session in
+            acc.merge(session.store.otaUpdates) { existing, _ in existing }
+        }
+    }
+
+    private var permitJoinEnd: Date? {
+        guard let millis = selectedScope?.store.bridgeInfo?.permitJoinEnd else { return nil }
+        let end = Date(timeIntervalSince1970: Double(millis) / 1_000)
+        return end > Date() ? end : nil
+    }
+
+    private var showsNowCard: Bool {
+        HomeNowCard.hasContent(
+            otaStatuses: otaStatuses,
+            permitJoinEnd: permitJoinEnd,
+            interviewingCount: snapshot.interviewingDevices
+        )
+    }
+
+    private var nowCard: some View {
+        HomeNowCard(
+            otaStatuses: otaStatuses,
+            permitJoinEnd: permitJoinEnd,
+            permitJoinTotal: selectedScope?.store.bridgeInfo?.permitJoinTimeout,
+            interviewingCount: snapshot.interviewingDevices,
+            onOpenUpdates: { environment.showDevices(filter: .updatesAvailable) },
+            onStopPermitJoin: { stopPermitJoin(bridgeID: nil) },
+            onOpenInterviewing: { environment.showDevices(filter: .interviewing) }
+        )
+    }
+
+    // MARK: - Header
+    //
+    // The navigation title was empty, which spent the most valuable strip on
+    // the screen on nothing. A large title with one live line under it anchors
+    // the page and is the only sentence worth reading before the cards.
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+            Text("Home")
+                .font(.largeTitle.weight(.bold))
+                .foregroundStyle(.primary)
+            Text(headerSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var headerSubtitle: String {
+        guard snapshot.isConnected else { return "Not connected" }
+        var parts: [String] = []
+        if bridgeCardEntries.count >= 2 {
+            parts.append("\(bridgeCardEntries.count) bridges")
+        } else if let name = bridgeCardEntries.first?.name, !name.isEmpty {
+            parts.append(name)
+        }
+        if snapshot.totalDevices > 0 {
+            parts.append("\(snapshot.onlineDevices) of \(snapshot.totalDevices) answering")
+        }
+        return parts.isEmpty ? "Connected" : parts.joined(separator: " · ")
     }
 
     private var emptyLayoutState: some View {

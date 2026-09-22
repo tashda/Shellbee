@@ -6,6 +6,10 @@ import Foundation
 struct HomeBridgeCardEntry: Identifiable {
     let id: UUID
     let name: String
+    /// The bridge's host. Shown as a monospaced subtitle under a *named*
+    /// bridge so the card's title can be the name people gave it rather than
+    /// an IP address.
+    let host: String
     let isFocused: Bool
     let connectionState: ConnectionSessionController.State
     let isWebSocketConnected: Bool
@@ -22,6 +26,12 @@ struct HomeBridgeCardEntry: Identifiable {
     var restartRequired: Bool { info?.restartRequired ?? false }
     var isPermitJoinActive: Bool { info?.permitJoin ?? false }
     var permitJoinEnd: Int? { info?.permitJoinEnd }
+
+    /// Nil when the bridge has no name of its own — `name` is already the
+    /// host, and repeating it under itself says nothing.
+    var subtitleHost: String? {
+        name == host ? nil : host
+    }
 
     var isReconnecting: Bool {
         if case .reconnecting = connectionState { return true }

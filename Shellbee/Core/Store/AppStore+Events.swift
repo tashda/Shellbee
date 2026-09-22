@@ -234,6 +234,7 @@ extension AppStore {
             } else {
                 bridgeHealth = health
             }
+            bridgeHealthUpdatedAt = Date()
 
         case .touchlinkScanResult(let devices):
             touchlinkDevices = devices

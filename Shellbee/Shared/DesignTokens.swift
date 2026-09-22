@@ -117,6 +117,11 @@ nonisolated enum DesignTokens {
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4
         static let firmwareUpdateBadgeOffsetY: CGFloat = -2
         static let homeCardSlotButtonOffset: CGFloat = -8
+        // Home: reachability bar + the "right now" card's progress ring
+        static let reachabilityBar: CGFloat = 7
+        static let homeNowRing: CGFloat = 44
+        static let homeNowRingStroke: CGFloat = 5
+        static let homeStatusDot: CGFloat = 12
     }
 
     nonisolated enum Shadow {
@@ -320,6 +325,8 @@ nonisolated enum DesignTokens {
         static let checkResultDisplay: Double = 3
         static let pendingDeleteTimeout: Double = 15
         static let discoveryScanWindow: Double = 15
+        // How long a Home stat cell stays highlighted after its count changes
+        static let statChangeFlash: Double = 0.9
     }
 
     nonisolated enum Typography {
@@ -421,6 +428,10 @@ nonisolated enum DesignTokens {
         static let subtleFade: Double = 0.04
         // Off-state hero tint, "tertiaryLabel" gradient
         static let offStateTint: Double = 0.06
+        // Home stat cell highlight when a count rolls to a new value
+        static let statChangeFlash: Double = 0.16
+        // Stats kept on screen during an outage, dimmed because they're stale
+        static let staleStats: Double = 0.55
         static let onStateTint: Double = 0.18
         // Climate action button background, color preview overlays
         static let actionButtonFill: Double = 0.15

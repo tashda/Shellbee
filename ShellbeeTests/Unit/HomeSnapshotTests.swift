@@ -163,6 +163,123 @@ final class HomeSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.devicesWithUpdates, 1)
     }
 
+    // MARK: - Captions and calm
+    //
+    // Home carries trouble in the figures themselves: a red count with a
+    // caption under it. These cover the caption sources and the "nothing to
+    // report" state that collapses a card to one line.
+
+    // Behavior: the Offline caption is built from the oldest last_seen among
+    // unreachable devices, so it says how long the quiet has lasted rather
+    // than repeating the count.
+    func testOfflineCaptionUsesOldestSilence() {
+        let recent = DeviceFixture.sensor(name: "Hall Sensor")
+        let stale = DeviceFixture.sensor(name: "Shed Sensor")
+        let now = Date()
+        let states: [String: [String: JSONValue]] = [
+            recent.friendlyName: ["last_seen": .string(Self.iso(now.addingTimeInterval(-600)))],
+            stale.friendlyName: ["last_seen": .string(Self.iso(now.addingTimeInterval(-10_800)))],
+        ]
+        let snapshot = makeSnapshot(
+            devices: [recent, stale],
+            availability: [recent.friendlyName: false, stale.friendlyName: false],
+            states: states
+        )
+        XCTAssertEqual(snapshot.offlineDevices, 2)
+        XCTAssertEqual(snapshot.offlineCaption, "3h+ quiet",
+                       "the caption reports the longest silence, not the shortest")
+    }
+
+    // Behavior: no offline devices means no caption. A cell only gets a
+    // caption when there is something true to put under it.
+    func testOfflineCaptionAbsentWhenEverythingAnswers() {
+        let sensor = DeviceFixture.sensor()
+        let snapshot = makeSnapshot(
+            devices: [sensor],
+            availability: [sensor.friendlyName: true],
+            states: [sensor.friendlyName: StateFixture.lightOn()]
+        )
+        XCTAssertNil(snapshot.offlineCaption)
+    }
+
+    // Behavior: the battery and signal captions name the worst offender, so
+    // "2" reads as "2, and the worst is at 8%".
+    func testBatteryAndSignalCaptionsNameTheWorstOffender() {
+        let weak = DeviceFixture.sensor(name: "Attic Sensor")
+        let flat = DeviceFixture.remote(name: "Porch Remote")
+        let snapshot = makeSnapshot(
+            devices: [weak, flat],
+            availability: [weak.friendlyName: true, flat.friendlyName: true],
+            states: [
+                weak.friendlyName: StateFixture.weakSignal(lqi: 12),
+                flat.friendlyName: StateFixture.batteryLow(level: 8),
+            ]
+        )
+        XCTAssertEqual(snapshot.lowBatteryCaption, "lowest 8%")
+        XCTAssertEqual(snapshot.weakSignalCaption, "lowest 12")
+    }
+
+    // Behavior: a network with nothing wrong is calm, so its cards collapse.
+    // A firmware update waiting is deliberately NOT trouble — it rides along
+    // in the collapsed line instead of forcing the card open.
+    func testCalmIgnoresPendingFirmwareUpdates() {
+        let light = DeviceFixture.light(name: "Bedroom Light")
+        var states = StateFixture.lightOn()
+        states["update"] = .object(["state": .string("available")])
+        let snapshot = makeSnapshot(
+            devices: [light],
+            availability: [light.friendlyName: true],
+            states: [light.friendlyName: states]
+        )
+        XCTAssertTrue(snapshot.devicesAreCalm)
+        XCTAssertTrue(snapshot.networkIsCalm)
+        XCTAssertEqual(snapshot.devicesWithUpdates, 1)
+    }
+
+    // Behavior: one unreachable device is enough to keep the Devices card open.
+    func testOneOfflineDeviceBreaksCalm() {
+        let sensor = DeviceFixture.sensor()
+        let offline = makeSnapshot(
+            devices: [sensor],
+            availability: [sensor.friendlyName: false],
+            states: [sensor.friendlyName: StateFixture.lightOn()]
+        )
+        XCTAssertFalse(offline.devicesAreCalm)
+        XCTAssertEqual(offline.deviceAttentionCount, 1)
+    }
+
+    // Behavior: permit join does NOT break the Network card's calm. The
+    // pinned "right now" card owns everything in flight — if this card
+    // reported it too, Home would say the same thing twice.
+    func testPermitJoinIsOwnedByThePinnedCardNotTheNetworkCard() {
+        let sensor = DeviceFixture.sensor()
+        let joining = makeSnapshot(
+            devices: [sensor],
+            availability: [sensor.friendlyName: true],
+            states: [sensor.friendlyName: StateFixture.lightOn()],
+            isPermitJoinActive: true
+        )
+        XCTAssertTrue(joining.networkIsCalm)
+        XCTAssertTrue(joining.isPermitJoinActive)
+    }
+
+    // Behavior: the compact duration is short enough to sit under a figure in
+    // a three-across row, and rounds down to the unit it names.
+    func testCompactDurationUnits() {
+        let now = Date()
+        XCTAssertEqual(HomeSnapshot.compactDuration(since: now.addingTimeInterval(-30), now: now), "1m+",
+                       "under a minute still reads as a minute, never 0m")
+        XCTAssertEqual(HomeSnapshot.compactDuration(since: now.addingTimeInterval(-900), now: now), "15m+")
+        XCTAssertEqual(HomeSnapshot.compactDuration(since: now.addingTimeInterval(-7_200), now: now), "2h+")
+        XCTAssertEqual(HomeSnapshot.compactDuration(since: now.addingTimeInterval(-172_800), now: now), "2d+")
+    }
+
+    private static func iso(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.string(from: date)
+    }
+
     private func makeSnapshot(
         devices: [Device],
         availability: [String: Bool] = [:],
