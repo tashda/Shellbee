@@ -10,32 +10,42 @@ struct PermitJoinSheet: View {
     @State private var bridgeID: UUID?
     @State private var targetName: String?
     @State private var duration: Int = 254
-    @State private var contentHeight: CGFloat = 0
 
     let onStart: (_ duration: Int, _ target: String?, _ bridgeID: UUID?) -> Void
     let onStop: (_ bridgeID: UUID?) -> Void
 
     var body: some View {
+        SwiftUI.Group {
+            if #available(iOS 18.0, *) {
+                presentationContent.presentationSizing(.fitted)
+            } else {
+                presentationContent.presentationDetents([.large])
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+
+    private var presentationContent: some View {
         NavigationStack {
             SwiftUI.Group {
                 if isSelectedBridgePermitJoinOpen {
                     activeContent
                 } else {
-                    Form {
-                        bridgeSection
-                        permitJoinSection
+                    VStack(spacing: 0) {
+                        Form {
+                            bridgeSection
+                            permitJoinSection
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                        actionBar
                     }
                     .fixedSize(horizontal: false, vertical: true)
-                    .safeAreaInset(edge: .bottom) { actionBar }
                 }
             }
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         .configuredTopScrollEdgeEffect()
-        .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.medium])
-        .presentationDragIndicator(.visible)
     }
 
     @ViewBuilder
@@ -72,28 +82,28 @@ struct PermitJoinSheet: View {
 
     private var activeContent: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            VStack(spacing: DesignTokens.Spacing.sm) {
-                Text("Network is open")
-                    .font(.title3.weight(.semibold))
-                if let remaining = remainingSeconds(at: ctx.date) {
-                    Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
-                        .font(DesignTokens.Typography.permitJoinActiveCountdown.monospacedDigit())
-                        .foregroundStyle(.primary)
-                        .contentTransition(.numericText(countsDown: true))
-                        .accessibilityLabel("\(remaining / 60) minutes and \(remaining % 60) seconds remaining")
+            VStack(spacing: 0) {
+                VStack(spacing: DesignTokens.Spacing.sm) {
+                    Text("Network is open")
+                        .font(.title3.weight(.semibold))
+                    if let remaining = remainingSeconds(at: ctx.date) {
+                        Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
+                            .font(DesignTokens.Typography.permitJoinActiveCountdown.monospacedDigit())
+                            .foregroundStyle(.primary)
+                            .contentTransition(.numericText(countsDown: true))
+                            .accessibilityLabel("\(remaining / 60) minutes and \(remaining % 60) seconds remaining")
+                    }
+                    if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
+                        Text("Pairing through \(target)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
-                    Text("Pairing through \(target)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, DesignTokens.Spacing.xl)
-            .padding(.top, DesignTokens.Spacing.xl)
-            .frame(maxWidth: .infinity, alignment: .top)
-            .safeAreaInset(edge: .bottom) {
+                .padding(.horizontal, DesignTokens.Spacing.xl)
+                .padding(.top, DesignTokens.Spacing.xl)
                 actionBar
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
