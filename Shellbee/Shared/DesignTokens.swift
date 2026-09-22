@@ -15,6 +15,8 @@ nonisolated enum DesignTokens {
 
     nonisolated enum Count {
         static let liveActivityQueueRows = 3
+        /// Most options a segmented control holds before a menu takes over.
+        static let segmentedMaxOptions = 4
     }
 
     nonisolated enum CornerRadius {
@@ -456,6 +458,7 @@ nonisolated enum DesignTokens {
         // MARK: Stat strip (2–4 value/caption cells)
         static let statValue: Font = .body.weight(.semibold)
         static let statCaption: Font = .caption
+        static let climateTemperature: Font = .system(size: 48, weight: .light, design: .rounded)
 
         static let cardHeadline: Font = .title3.weight(.semibold)
         static let cardSubheadline: Font = .subheadline
