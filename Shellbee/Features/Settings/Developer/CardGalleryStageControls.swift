@@ -20,7 +20,6 @@ struct CardGalleryStageControls: View {
                 }
             }
         }
-        .tint(.white)
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.bottom, DesignTokens.Spacing.sm)
     }
@@ -36,14 +35,14 @@ struct CardGalleryStageControls: View {
                         .frame(maxWidth: .infinity, minHeight: DesignTokens.Size.liveActivityStageControl)
                         .background {
                             if surface == option {
-                                Capsule().fill(.white.opacity(0.22))
+                                Capsule().fill(Color.primary.opacity(DesignTokens.Opacity.softFill))
                                     .padding(DesignTokens.Spacing.xs)
                             }
                         }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.white.opacity(surface == option ? 1 : 0.6))
+                .foregroundStyle(surface == option ? .primary : .secondary)
                 .accessibilityLabel(option.rawValue)
                 .accessibilityAddTraits(surface == option ? .isSelected : [])
             }
@@ -64,18 +63,19 @@ struct CardGalleryStageControls: View {
                 VStack(spacing: 0) {
                     Text(previews[index].title)
                         .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     Text("\(surface.rawValue) · \(index + 1) of \(previews.count)")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .monospacedDigit()
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
             }
-            .foregroundStyle(.white)
+            .tint(.primary)
             step("chevron.right", label: "Next card", by: 1)
         }
         .frame(height: DesignTokens.Size.liveActivityStageControl)
@@ -91,7 +91,7 @@ struct CardGalleryStageControls: View {
         } label: {
             Image(systemName: appearance == .light ? "sun.max.fill" : "moon.fill")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .frame(
                     width: DesignTokens.Size.liveActivityStageControl,
                     height: DesignTokens.Size.liveActivityStageControl
@@ -118,7 +118,7 @@ struct CardGalleryStageControls: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white.opacity(enabled ? 1 : 0.3))
+        .foregroundStyle(enabled ? .primary : Color.primary.opacity(DesignTokens.Opacity.disabled))
         .disabled(!enabled)
         .accessibilityLabel(label)
     }

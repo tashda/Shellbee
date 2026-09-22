@@ -566,7 +566,7 @@ nonisolated enum DesignTokens {
         static let networkMapBubbleStatusTint: Double = 0.28
         static let networkMapBubbleShadow: Double = 0.12
         static let overlay: Double = 0.3
-        static let cardGalleryControlsScrim: Double = 0.5
+        static let cardGalleryControlsScrim: Double = 0.85
         static let secondaryText: Double = 0.8
         static let chipFill: Double = 0.12
         static let subtleFill: Double = 0.12

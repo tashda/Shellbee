@@ -50,8 +50,15 @@ struct CardGalleryStageView: View {
         .preferredColorScheme(appearance)
         .overlay(alignment: .bottom) {
             VStack(spacing: 0) {
+                // A floor in the page's own background colour, not a black
+                // scrim — the same fade Photos and Maps use under a floating
+                // bottom bar, so Liquid Glass reads as sitting on the page
+                // rather than a mismatched dark bezel painted over it.
                 LinearGradient(
-                    colors: [.clear, .black.opacity(DesignTokens.Opacity.cardGalleryControlsScrim)],
+                    colors: [
+                        Color(.systemGroupedBackground).opacity(0),
+                        Color(.systemGroupedBackground).opacity(DesignTokens.Opacity.cardGalleryControlsScrim)
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -66,10 +73,6 @@ struct CardGalleryStageView: View {
                 )
             }
             .ignoresSafeArea(edges: .bottom)
-            // The controls' glass chrome is always dark, independent of the
-            // content's own light/dark appearance underneath it — otherwise
-            // white control text washes out over light content.
-            .environment(\.colorScheme, .dark)
         }
     }
 
