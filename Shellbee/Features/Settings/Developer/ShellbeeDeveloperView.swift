@@ -23,6 +23,9 @@ struct ShellbeeDeveloperView: View {
             }
 
             Section {
+                NavigationLink("Card Gallery") {
+                    CardGalleryView()
+                }
                 NavigationLink("Activity Instruments") {
                     ActivityInstrumentGalleryView()
                 }

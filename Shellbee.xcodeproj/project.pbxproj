@@ -318,6 +318,8 @@
 				Features/Settings/Developer/ActivityInstrumentStageControls.swift,
 				Features/Settings/Developer/ActivityInstrumentStageScreen.swift,
 				Features/Settings/Developer/ActivityInstrumentStageView.swift,
+				Features/Settings/Developer/CardGallerySamples.swift,
+				Features/Settings/Developer/CardGalleryView.swift,
 				Features/Settings/Developer/DeveloperSettings.swift,
 				Features/Settings/Developer/DeveloperSettingsView.swift,
 				Features/Settings/Developer/LiveActivityGalleryMoreSamples.swift,
