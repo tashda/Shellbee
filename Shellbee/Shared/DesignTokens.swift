@@ -86,6 +86,9 @@ nonisolated enum DesignTokens {
         static let liveActivityStageLockCardBottom: CGFloat = 150
         static let liveActivityStageControl: CGFloat = 48
         static let liveActivityStageSegment: CGFloat = 50
+        /// Gradient behind the Card Gallery's floating controls, so they
+        /// stay legible over the real page's own light or dark content.
+        static let cardGalleryControlsScrim: CGFloat = 140
         static let filterChipChevron: CGFloat = 8
         static let levelIndicatorWidth: CGFloat = 4
         static let levelIndicatorHeight: CGFloat = 20
@@ -563,6 +566,7 @@ nonisolated enum DesignTokens {
         static let networkMapBubbleStatusTint: Double = 0.28
         static let networkMapBubbleShadow: Double = 0.12
         static let overlay: Double = 0.3
+        static let cardGalleryControlsScrim: Double = 0.5
         static let secondaryText: Double = 0.8
         static let chipFill: Double = 0.12
         static let subtleFill: Double = 0.12

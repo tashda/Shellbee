@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// A full-screen device-detail stage for judging cards at the scale and among
-/// the rows where people use them. The same fixture can be stepped through
-/// without returning to the gallery list.
+/// A full-screen stage that shows each card on the real page it ships on,
+/// at real scale — not a scaled-down phone mockup. It's a genuine
+/// `NavigationStack` over a genuine `List`, so the scroll-away title, the
+/// card surfaces, and the native rows beneath all behave exactly as they do
+/// in the app. Floating controls step through every fixture and switch which
+/// real surface (Device Page, Log Detail, …) the current card is judged on.
 @available(iOS 26.0, *)
 struct CardGalleryStageView: View {
     let previews: [CardGalleryPreview]
@@ -32,28 +35,42 @@ struct CardGalleryStageView: View {
     }
 
     var body: some View {
-        ZStack {
-            LiveActivityPalette.stageBackdrop.ignoresSafeArea()
-            CardGalleryStageDevice(appearance: appearance) {
-                CardGalleryStageScreen(preview: currentPreview, surface: surface)
-            }
-            .padding(.top, DesignTokens.Size.liveActivityStageDeviceTop)
-            .padding(.bottom, DesignTokens.Size.liveActivityStageDeviceBottom)
+        NavigationStack {
+            CardGalleryStageScreen(preview: currentPreview, surface: surface)
+                .toolbar {
+                    // A real toolbar item, not a floating overlay — an
+                    // overlay sits on top of the hero's own image and name,
+                    // covering the very card this stage exists to show.
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Close") { dismiss() }
+                    }
+                }
         }
+        .environment(\.colorScheme, appearance)
+        .preferredColorScheme(appearance)
         .overlay(alignment: .bottom) {
-            CardGalleryStageControls(
-                previews: previews,
-                index: $index,
-                surface: $surface,
-                appearance: $appearance
-            )
+            VStack(spacing: 0) {
+                LinearGradient(
+                    colors: [.clear, .black.opacity(DesignTokens.Opacity.cardGalleryControlsScrim)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: DesignTokens.Size.cardGalleryControlsScrim)
+                .allowsHitTesting(false)
+
+                CardGalleryStageControls(
+                    previews: previews,
+                    index: $index,
+                    surface: $surface,
+                    appearance: $appearance
+                )
+            }
+            .ignoresSafeArea(edges: .bottom)
+            // The controls' glass chrome is always dark, independent of the
+            // content's own light/dark appearance underneath it — otherwise
+            // white control text washes out over light content.
+            .environment(\.colorScheme, .dark)
         }
-        .overlay(alignment: .topLeading) {
-            LiveActivityStageCloseButton { dismiss() }
-                .padding(.leading, DesignTokens.Spacing.lg)
-        }
-        .environment(\.colorScheme, .dark)
-        .preferredColorScheme(.dark)
     }
 
     private var currentPreview: CardGalleryPreview {
@@ -61,123 +78,52 @@ struct CardGalleryStageView: View {
     }
 }
 
-/// A phone-sized screen laid out at true iPhone scale, then scaled to fit the
-/// stage. Its contents are normal SwiftUI Lists, so card surfaces and native
-/// rows behave just as they do in the app.
-@available(iOS 26.0, *)
-private struct CardGalleryStageDevice<Screen: View>: View {
-    let appearance: ColorScheme
-    @ViewBuilder let screen: () -> Screen
-
-    var body: some View {
-        GeometryReader { proxy in
-            let size = CGSize(
-                width: DesignTokens.Size.liveActivityStageScreenWidth,
-                height: DesignTokens.Size.liveActivityStageScreenHeight
-            )
-            let scale = min(proxy.size.width / size.width, proxy.size.height / size.height)
-            let shape = RoundedRectangle(
-                cornerRadius: DesignTokens.CornerRadius.liveActivityStageScreen,
-                style: .continuous
-            )
-
-            ZStack(alignment: .top) {
-                Color(.systemGroupedBackground)
-                screen()
-                CardGalleryStageStatusBar()
-            }
-            .environment(\.colorScheme, appearance)
-            .frame(width: size.width, height: size.height)
-            .clipShape(shape)
-            .overlay(shape.strokeBorder(.black, lineWidth: DesignTokens.Size.liveActivityStageBezel))
-            .scaleEffect(scale)
-            .frame(width: proxy.size.width, height: proxy.size.height)
-        }
-    }
-}
-
-@available(iOS 26.0, *)
-private struct CardGalleryStageStatusBar: View {
-    var body: some View {
-        HStack {
-            Text("9:41")
-                .frame(maxWidth: .infinity)
-            Color.clear.frame(width: DesignTokens.Size.liveActivityStageStatusBarGap)
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: "wifi")
-                Image(systemName: "battery.100percent")
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .font(.body.weight(.semibold))
-        .frame(height: DesignTokens.Size.liveActivityGalleryIslandHeight)
-        .padding(.top, DesignTokens.Size.liveActivityStageIslandTop)
-        .overlay {
-            Capsule()
-                .fill(.black)
-                .frame(
-                    width: DesignTokens.Size.liveActivityStageStatusBarGap,
-                    height: DesignTokens.Size.liveActivityGalleryIslandHeight
-                )
-                .padding(.top, DesignTokens.Size.liveActivityStageIslandTop)
-        }
-    }
-}
-
-/// The actual grouped-list context of a device or group card. It deliberately
-/// uses the same typed control cards and settings sections as detail pages.
+/// The actual grouped-list context of a device or group card, in a real
+/// `NavigationStack`: the title only appears once the identity hero scrolls
+/// past it, exactly like `DeviceDetailView` and `GroupDetailView`. It
+/// deliberately uses the same typed control cards and settings sections as
+/// the real detail pages.
 @available(iOS 26.0, *)
 private struct CardGalleryStageScreen: View {
     let preview: CardGalleryPreview
     let surface: CardGalleryStageView.Surface
+    @State private var isNameHidden = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            navigationBar
-            List {
-                switch surface {
-                case .devicePage:
-                    if let sample = preview.sample {
-                        devicePage(sample)
-                    } else {
-                        groupPage
-                    }
-                case .logDetail:
-                    if let sample = preview.sample {
-                        logDetailPage(sample)
-                    } else {
-                        logDetailGroupPage
-                    }
+        List {
+            switch surface {
+            case .devicePage:
+                if let sample = preview.sample {
+                    devicePage(sample)
+                } else {
+                    groupPage
+                }
+            case .logDetail:
+                if let sample = preview.sample {
+                    logDetailPage(sample)
+                } else {
+                    logDetailGroupPage
                 }
             }
-            .contentMargins(.top, 0, for: .scrollContent)
-            .listSectionSpacing(DesignTokens.Spacing.lg)
         }
-        .padding(.top, DesignTokens.ActivityInstrument.stageContentTop)
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            Image(systemName: "chevron.left")
-                .font(.body.weight(.semibold))
-            Text(navigationBarTitle)
-                .font(.body.weight(.semibold))
-            Spacer(minLength: 0)
+        .id("\(preview.id)-\(surface.id)")
+        .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(DesignTokens.Spacing.lg)
+        .navigationTitle(isNameHidden ? navigationTitle : "")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
             if surface == .devicePage {
-                Image(systemName: "ellipsis")
-                    .font(.body.weight(.semibold))
+                ToolbarItem(placement: .topBarTrailing) {
+                    Image(systemName: "ellipsis")
+                }
             }
         }
-        .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.vertical, DesignTokens.Spacing.md)
-        .background(Color(.systemGroupedBackground))
+        .onChange(of: preview.id) { isNameHidden = false }
+        .onChange(of: surface) { isNameHidden = false }
     }
 
-    private var navigationBarTitle: String {
-        switch surface {
-        case .devicePage: return preview.sample == nil ? "Groups" : "Devices"
-        case .logDetail: return "Activity"
-        }
+    private var navigationTitle: String {
+        preview.sample?.device.friendlyName ?? CardGalleryCatalog.group.friendlyName
     }
 
     @ViewBuilder
@@ -191,7 +137,8 @@ private struct CardGalleryStageScreen: View {
             state: state,
             isAvailable: sample.isAvailable,
             otaStatus: nil,
-            lastSeenEnabled: true
+            lastSeenEnabled: true,
+            onNameHiddenChange: { isNameHidden = $0 }
         )
         .galleryHeroRow()
 
@@ -394,8 +341,14 @@ private struct CardGalleryStageScreen: View {
         let state = CardGalleryCatalog.groupState
         let send: (JSONValue) -> Void = { _ in }
 
-        GroupCard(group: group, memberDevices: devices, state: state, membersOnCount: 2)
-            .galleryHeroRow()
+        GroupCard(
+            group: group,
+            memberDevices: devices,
+            state: state,
+            membersOnCount: 2,
+            onNameHiddenChange: { isNameHidden = $0 }
+        )
+        .galleryHeroRow()
 
         if let context = LightControlContext(device: devices[0], state: state) {
             Section {
