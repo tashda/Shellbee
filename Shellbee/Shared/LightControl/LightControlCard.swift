@@ -63,43 +63,11 @@ struct LightControlCard: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
                 interactiveContent
             }
-            .padding(DesignTokens.Spacing.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+            .cardSurface()
         }
     }
 
-    // MARK: – Background
-
-    /// Snapshot mode gets a subtle gradient tinted by the bulb's displayColor
-    /// when on — same hero treatment as other cards, since there's no
-    /// interactive `LightBrightnessArea` to carry the color.
-    /// Interactive mode keeps a clean neutral card so the colored brightness
-    /// capsule inside doesn't have to compete with a gradient behind it.
-    @ViewBuilder
-    private var cardBackground: some View {
-        if mode == .snapshot {
-            ZStack {
-                Color(.secondarySystemGroupedBackground)
-                LinearGradient(
-                    colors: [
-                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(context.isOn ? 0.18 : 0.06),
-                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(DesignTokens.Opacity.subtleFade)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-        } else {
-            Color(.secondarySystemGroupedBackground)
-        }
-    }
-
-    /// Tint used by the interactive eyebrow and snapshot eyebrow/value. Tracks
-    /// the live bulb color when on, fades to neutral when off.
+    /// Symbol tint. Tracks the live bulb colour when on, neutral when off.
     private var headerTint: Color {
         context.isOn ? context.displayColor : Color(.tertiaryLabel)
     }
@@ -107,23 +75,24 @@ struct LightControlCard: View {
     // MARK: – Interactive
 
     @ViewBuilder private var interactiveContent: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(eyebrowLabel)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(headerTint)
-            Spacer()
-            if context.effectFeature != nil { configButton("sparkles") { showEffects = true } }
-            if rendersAdvancedSheetsInline {
-                if !context.startupFeatures.isEmpty { configButton("sunrise.fill") { showStartup = true } }
-                if !context.otherAdvancedFeatures.isEmpty { configButton("ellipsis") { showMore = true } }
+        CardHeader(
+            systemImage: context.isOn ? "lightbulb.fill" : "lightbulb",
+            title: eyebrowLabel,
+            value: headerValue,
+            tint: headerTint
+        ) {
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                if context.effectFeature != nil {
+                    CardAccessoryButton(systemImage: "sparkles", accessibilityLabel: "Effects") { showEffects = true }
+                }
+                if rendersAdvancedSheetsInline {
+                    if !context.startupFeatures.isEmpty {
+                        CardAccessoryButton(systemImage: "sunrise.fill", accessibilityLabel: "Startup") { showStartup = true }
+                    }
+                    if !context.otherAdvancedFeatures.isEmpty {
+                        CardAccessoryButton(systemImage: "ellipsis", accessibilityLabel: "Settings") { showMore = true }
+                    }
+                }
             }
         }
         if let brightness = context.brightness {
@@ -219,6 +188,21 @@ struct LightControlCard: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// "Off", "80 %", "80 % · Pink" or "80 % · 2700 K" beside the title.
+    private var headerValue: String {
+        guard context.isOn else { return "Off" }
+        var parts: [String] = []
+        if context.brightness != nil, context.brightnessValue != nil {
+            parts.append("\(context.brightnessPercent) %")
+        }
+        if context.isColorMode, context.supportsColorControls {
+            parts.append(LightDisplayColor.name(for: context.displayColor))
+        } else if let mireds = context.colorTemperatureValue, mireds > 0 {
+            parts.append("\(Int(1_000_000 / mireds)) K")
+        }
+        return parts.isEmpty ? "On" : parts.joined(separator: " · ")
+    }
+
     private var stateBadge: some View {
         Text(context.isOn ? "ON" : "OFF")
             .font(.caption.weight(.bold))
@@ -238,18 +222,6 @@ struct LightControlCard: View {
     }
 
     // MARK: – Helpers
-
-    private func configButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(DesignTokens.Typography.sectionHeader)
-                .foregroundStyle(.primary)
-                .frame(width: DesignTokens.Size.lightControlButton, height: DesignTokens.Size.lightControlButton)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .glassEffectIfAvailable(in: Circle())
-    }
 
     private func togglePower() {
         if context.isOn {

@@ -52,6 +52,7 @@ struct LightColorControl: View {
         } label: {
             Circle()
                 .fill(color)
+                .padding(isSelected(color) ? DesignTokens.Size.lightSelectionStroke * 2 : 0)
                 .frame(width: Self.swatchSize, height: Self.swatchSize)
                 .overlay(Circle().strokeBorder(isSelected(color) ? Color.primary : Color.clear, lineWidth: DesignTokens.Size.lightSelectionStroke))
                 .frame(maxWidth: .infinity)
@@ -91,8 +92,31 @@ struct LightColorControl: View {
         }
     }
 
+    /// The swatch closest in hue to the light's colour, when the light is
+    /// showing a saturated colour. Bulbs never echo back the exact hex we
+    /// sent, so an exact match would almost never show a selection.
+    private var selectedSwatch: Color? {
+        let current = Self.hsb(value)
+        guard current.saturation >= 0.45 else { return nil }
+        let nearest = Self.swatches.min { Self.hueDistance(Self.hsb($0).hue, current.hue) < Self.hueDistance(Self.hsb($1).hue, current.hue) }
+        guard let nearest, Self.hueDistance(Self.hsb(nearest).hue, current.hue) < 20 else { return nil }
+        return nearest
+    }
+
     private func isSelected(_ swatch: Color) -> Bool {
-        swatch.hexString == value.hexString
+        guard let selectedSwatch else { return false }
+        return swatch.hexString == selectedSwatch.hexString
+    }
+
+    private static func hsb(_ color: Color) -> (hue: Double, saturation: Double) {
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+        UIColor(color).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        return (hue * 360, saturation)
+    }
+
+    private static func hueDistance(_ a: Double, _ b: Double) -> Double {
+        let d = abs(a - b).truncatingRemainder(dividingBy: 360)
+        return min(d, 360 - d)
     }
 }
 
