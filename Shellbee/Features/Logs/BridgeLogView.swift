@@ -48,7 +48,7 @@ struct BridgeLogView: View {
         let liveEntries = mergedEntries
         let entries = liveFeed.displayedItems(from: liveEntries)
         ScrollViewReader { proxy in
-            ZStack(alignment: .bottom) {
+            ZStack {
                 selectableList {
                     ForEach(entries) { item in
                         bridgeLogRow(item)
@@ -78,16 +78,19 @@ struct BridgeLogView: View {
                     }
                 }
 
+            }
+            .toolbar {
                 if liveFeed.isReadingHistory {
-                    FollowLiveButton {
-                        withAnimation(.smooth) {
-                            liveFeed.followLive()
-                            if let first = liveEntries.first {
-                                proxy.scrollTo(first.id, anchor: .top)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        FollowLiveButton {
+                            withAnimation(.smooth) {
+                                liveFeed.followLive()
+                                if let first = liveEntries.first {
+                                    proxy.scrollTo(first.id, anchor: .top)
+                                }
                             }
                         }
                     }
-                    .padding(.bottom, DesignTokens.Spacing.lg)
                 }
             }
             .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in

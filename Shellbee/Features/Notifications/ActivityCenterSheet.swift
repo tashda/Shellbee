@@ -14,9 +14,12 @@ struct ActivityCenterSheet: View {
     private var activityContent: some View {
         let content = NavigationStack {
             LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
-                .toolbar { ActivityCenterGrabber() }
         }
         .configuredTopScrollEdgeEffect()
+        .overlay(alignment: .top) {
+            GrabberCapsule()
+                .padding(.top, DesignTokens.Spacing.xs)
+        }
 
         if #available(iOS 18.0, *), let transitionNamespace {
             content
@@ -27,34 +30,23 @@ struct ActivityCenterSheet: View {
     }
 }
 
-/// Sheets show a grabber when they can be dragged away; this full-screen
-/// presentation can too. It takes the toolbar's centre slot, so it lines up
-/// with the buttons on either side and stays clear of the Dynamic Island.
-private struct ActivityCenterGrabber: ToolbarContent {
-    var body: some ToolbarContent {
-        if #available(iOS 26.0, *) {
-            ToolbarItem(placement: .principal) { GrabberCapsule() }
-                .sharedBackgroundVisibility(.hidden)
-        } else {
-            ToolbarItem(placement: .principal) { GrabberCapsule() }
-        }
-    }
-}
-
+/// The full-screen Activity Center keeps its pull-down affordance fixed at
+/// the visual centre. A navigation-bar principal item would move sideways as
+/// filters and other trailing actions appear.
 private struct GrabberCapsule: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Capsule()
-            .fill(.tertiary)
-            .frame(
-                width: DesignTokens.ActivityFeed.grabberWidth,
-                height: DesignTokens.ActivityFeed.grabberHeight
-            )
-            .accessibilityElement()
-            .accessibilityLabel("Close Activity")
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { dismiss() }
+        Button { dismiss() } label: {
+            Capsule()
+                .fill(.tertiary)
+                .frame(
+                    width: DesignTokens.ActivityFeed.grabberWidth,
+                    height: DesignTokens.ActivityFeed.grabberHeight
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Close Activity")
     }
 }
 

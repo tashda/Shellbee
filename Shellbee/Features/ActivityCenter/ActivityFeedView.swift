@@ -44,15 +44,16 @@ struct ActivityFeedView: View {
             .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in
                 liveFeed.beginReadingHistory(with: liveSections)
             })
-            .overlay(alignment: .bottom) {
+            .toolbar {
                 if liveFeed.isReadingHistory {
-                    FollowLiveButton {
-                        withAnimation(.smooth) {
-                            liveFeed.followLive()
-                            proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        FollowLiveButton {
+                            withAnimation(.smooth) {
+                                liveFeed.followLive()
+                                proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
+                            }
                         }
                     }
-                    .padding(.bottom, DesignTokens.Spacing.lg)
                 }
             }
         }

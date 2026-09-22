@@ -27,16 +27,15 @@ final class LiveFeedState<Item: Identifiable> where Item.ID: Hashable {
     }
 }
 
-/// The compact escape hatch shown only after a live feed has been frozen.
+/// The compact toolbar action shown only after a live feed has been frozen.
 struct FollowLiveButton: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label("Follow Live", systemImage: "arrow.down.to.line.compact")
-                .font(.subheadline.weight(.semibold))
+            Image(systemName: "arrow.down.to.line.compact")
         }
-        .glassButtonStyleIfAvailable()
+        .accessibilityLabel("Follow Live")
         .accessibilityHint("Shows new activity and returns to the latest entry")
     }
 }

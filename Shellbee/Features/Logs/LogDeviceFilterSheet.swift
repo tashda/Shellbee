@@ -54,32 +54,27 @@ struct LogDeviceFilterSheet: View {
         NavigationStack {
             List {
                 Section {
-                    Toggle("Show All Devices", isOn: $showAll)
-                }
-                Section {
                     ForEach(candidates) { device in
                         Button {
-                            let name = device.friendlyName
-                            if selectedDevices.contains(name) {
-                                selectedDevices.remove(name)
-                            } else {
-                                selectedDevices.insert(name)
-                            }
+                            toggle(device)
                         } label: {
                             HStack {
-                                DevicePickerRow(device: device, isAvailable: availability(of: device))
-                                if selectedDevices.contains(device.friendlyName) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
-                                        .font(.body.weight(.semibold))
-                                }
+                                DeviceFilterRow(
+                                    device: device,
+                                    isAvailable: availability(of: device)
+                                )
+                                SelectionIndicator(isSelected: selectedDevices.contains(device.friendlyName))
                             }
                         }
                         .buttonStyle(.plain)
                     }
+                } header: {
+                    Text("Devices")
+                } footer: {
+                    Text(selectionSummary)
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .searchable(text: $searchText, prompt: "Search devices")
             .overlay {
                 if !searchText.isEmpty && candidates.isEmpty {
@@ -90,6 +85,12 @@ struct LogDeviceFilterSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
+                    Toggle("Show All Devices", isOn: $showAll)
+                        .labelsHidden()
+                        .accessibilityLabel("Show All Devices")
+                        .accessibilityHint("Includes devices without matching activity")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     if !selectedDevices.isEmpty {
                         Button("Clear") { selectedDevices.removeAll() }
                     }
@@ -102,6 +103,48 @@ struct LogDeviceFilterSheet: View {
         .configuredTopScrollEdgeEffect()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+    }
+
+    private var selectionSummary: String {
+        if selectedDevices.isEmpty {
+            return "Select one or more devices to include in Activity."
+        }
+        return "\(selectedDevices.count) device\(selectedDevices.count == 1 ? "" : "s") selected."
+    }
+
+    private func toggle(_ device: Device) {
+        let name = device.friendlyName
+        if selectedDevices.contains(name) {
+            selectedDevices.remove(name)
+        } else {
+            selectedDevices.insert(name)
+        }
+    }
+}
+
+private struct DeviceFilterRow: View {
+    let device: Device
+    let isAvailable: Bool
+
+    private var subtitle: String {
+        if let description = device.definition?.description, !description.isEmpty {
+            return description
+        }
+        return device.definition?.vendor ?? "Device"
+    }
+
+    var body: some View {
+        IdentityRow(
+            name: device.friendlyName,
+            subtitle: subtitle,
+            isListRow: true
+        ) {
+            DeviceImageView(
+                device: device,
+                isAvailable: isAvailable,
+                size: DesignTokens.Size.summaryRowSymbolFrame
+            )
+        }
     }
 }
 
