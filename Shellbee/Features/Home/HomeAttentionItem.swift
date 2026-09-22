@@ -50,8 +50,8 @@ struct HomeAttentionItem: Identifiable {
         if snapshot.offlineDevices > 0 {
             items.append(HomeAttentionItem(
                 id: "offline",
-                title: "Devices",
-                value: "\(snapshot.onlineDevices) of \(snapshot.totalDevices) answering",
+                title: "Offline",
+                value: deviceCount(snapshot.offlineDevices),
                 symbol: "antenna.radiowaves.left.and.right.slash",
                 tint: .red,
                 action: .devices(.offline)

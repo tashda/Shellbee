@@ -134,6 +134,7 @@ struct HomeView: View {
         NavigationStack {
             List {
                 bridgeSection
+                nowSection
                 attentionSection
                 activitySection
             }
@@ -206,6 +207,61 @@ struct HomeView: View {
                     presentedSheet = .bridge(entry.id)
                 }
                 .modifier(BridgeRowLeadingBarBackground(bridgeID: entry.id, enabled: true))
+            }
+        }
+    }
+
+    // MARK: - Now
+    //
+    // The one card on Home, because it is the one thing here you operate.
+    // It appears only while something is in flight and takes itself away
+    // when that finishes.
+
+    private var permitJoins: [HomeNowCard.PermitJoin] {
+        let namesBridge = bridgeCardEntries.count >= 2
+        return bridgeCardEntries.compactMap { entry in
+            guard entry.isPermitJoinActive, let end = entry.permitJoinEnd else { return nil }
+            let endsAt = Date(timeIntervalSince1970: Double(end) / 1_000)
+            guard endsAt > Date() else { return nil }
+            return HomeNowCard.PermitJoin(
+                bridgeID: entry.id,
+                bridgeName: entry.name,
+                endsAt: endsAt,
+                namesBridge: namesBridge
+            )
+        }
+    }
+
+    /// Mean progress across the devices actually flashing right now.
+    private var updateProgress: Double? {
+        let values = environment.registry.orderedSessions
+            .flatMap { $0.store.otaUpdates.values }
+            .filter { $0.phase == .updating }
+            .compactMap(\.progress)
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +) / Double(values.count) / 100
+    }
+
+    @ViewBuilder
+    private var nowSection: some View {
+        let joins = permitJoins
+        if HomeNowCard.hasContent(
+            permitJoins: joins,
+            updatingCount: snapshot.updatingDevices,
+            interviewingCount: snapshot.interviewingDevices
+        ) {
+            Section {
+                HomeNowCard(
+                    permitJoins: joins,
+                    updatingCount: snapshot.updatingDevices,
+                    updateProgress: updateProgress,
+                    interviewingCount: snapshot.interviewingDevices,
+                    onOpenUpdates: { showDevices(filter: .updatesAvailable) },
+                    onStopPermitJoin: { stopPermitJoin(bridgeID: $0) }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
     }
