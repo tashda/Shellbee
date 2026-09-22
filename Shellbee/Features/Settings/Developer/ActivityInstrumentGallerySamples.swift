@@ -32,6 +32,8 @@ struct ActivityInstrumentGallerySample: Identifiable {
     let exposeType: String?
     let logCategory: LogCategory?
     let bridgeTopic: String?
+    /// The value change the tab bar accessory shows on its trailing edge.
+    let change: ActivityAccessoryChange?
 
     init(
         _ id: String,
@@ -44,7 +46,8 @@ struct ActivityInstrumentGallerySample: Identifiable {
         topologyType: String? = nil,
         exposeType: String? = nil,
         logCategory: LogCategory? = nil,
-        bridgeTopic: String? = nil
+        bridgeTopic: String? = nil,
+        change: ActivityAccessoryChange? = nil
     ) {
         self.id = id
         self.scope = scope
@@ -57,6 +60,7 @@ struct ActivityInstrumentGallerySample: Identifiable {
         self.exposeType = exposeType
         self.logCategory = logCategory
         self.bridgeTopic = bridgeTopic
+        self.change = change
     }
 }
 
@@ -213,7 +217,8 @@ enum ActivityInstrumentGalleryCatalog {
             "change.\(id)", scope: .changes, section: "State Changes", title: title,
             detail: "\(property): \(detail)",
             instrument: ActivityInstrumentResolver.instrument(forProperty: property, from: from, to: to),
-            logCategory: .stateChange
+            logCategory: .stateChange,
+            change: ActivityAccessoryChange(label: title, from: from?.stringified, to: to.stringified)
         )
     }
 

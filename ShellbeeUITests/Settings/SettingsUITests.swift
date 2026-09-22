@@ -439,15 +439,22 @@ final class ActivityInstrumentGalleryUITests: ShellbeeUITestCase {
             app.navigationBars["Activity Instruments"].waitForExistence(timeout: 5),
             "Activity instrument gallery did not open"
         )
-        XCTAssertTrue(app.staticTexts["Visible Samples"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Light"].firstMatch.exists)
-
         let bridgeScope = app.segmentedControls.buttons["Bridge"].firstMatch
         bridgeScope.tapWhenReady()
+        let healthCheck = app.staticTexts["Health Check"].firstMatch
         XCTAssertTrue(
-            app.staticTexts["Health Check"].waitForExistence(timeout: 3),
+            healthCheck.waitForExistence(timeout: 3),
             "Bridge coverage should include health-check activity"
         )
+
+        healthCheck.tapWhenReady()
+        XCTAssertTrue(
+            app.buttons["Next instrument"].waitForExistence(timeout: 5),
+            "Tapping a sample should open it on the stage"
+        )
+        app.buttons["Minimized Tab Bar"].tapWhenReady()
+        app.buttons["Close"].tapWhenReady()
+        XCTAssertTrue(app.navigationBars["Activity Instruments"].waitForExistence(timeout: 5))
     }
 
     private func reveal(_ element: XCUIElement) {

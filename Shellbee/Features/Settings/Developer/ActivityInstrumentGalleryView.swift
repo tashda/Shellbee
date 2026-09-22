@@ -1,13 +1,12 @@
 import SwiftUI
 
-/// Exhaustive design harness for the proposed Activity Center instruments.
-/// Samples cover every structural Z2M expose type and Shellbee event family;
-/// model-specific properties use the custom-property fallback.
+/// Every Activity instrument, grouped the way the resolver sees events.
+/// Tapping one opens it on the stage, inside the real Activity Center,
+/// Recent Events and tab bar accessory surfaces.
 struct ActivityInstrumentGalleryView: View {
     @State private var scope: ActivityInstrumentGalleryScope = .all
     @State private var searchText = ""
-    @State private var colorScheme: ColorScheme = .light
-    @State private var showsCompactSize = true
+    @State private var staged: StagedSample?
 
     private var samples: [ActivityInstrumentGallerySample] {
         ActivityInstrumentGalleryCatalog.filtered(scope: scope, searchText: searchText)
@@ -15,21 +14,40 @@ struct ActivityInstrumentGalleryView: View {
 
     var body: some View {
         List {
-            controls
-            coverageSummary
+            Section {
+                Picker("Coverage", selection: $scope) {
+                    ForEach(ActivityInstrumentGalleryScope.allCases) { scope in
+                        Text(scope.label).tag(scope)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            } footer: {
+                Text("\(samples.count) samples across \(ActivityInstrumentKind.allCases.count) instruments. Open one to see it in Activity, Recent Events and the tab bar.")
+            }
 
             ForEach(visibleSections, id: \.self) { section in
                 Section(section) {
                     ForEach(samples.filter { $0.section == section }) { sample in
-                        sampleRow(sample)
+                        Button {
+                            staged = StagedSample(index: samples.firstIndex { $0.id == sample.id } ?? 0)
+                        } label: {
+                            sampleRow(sample)
+                        }
+                        .foregroundStyle(.primary)
                     }
                 }
             }
         }
-        .environment(\.colorScheme, colorScheme)
         .navigationTitle("Activity Instruments")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Find a device, change, or activity")
+        .fullScreenCover(item: $staged) { staged in
+            if #available(iOS 26.0, *) {
+                ActivityInstrumentStageView(samples: samples, startIndex: staged.index)
+            }
+        }
     }
 
     private var visibleSections: [String] {
@@ -38,40 +56,11 @@ struct ActivityInstrumentGalleryView: View {
         }
     }
 
-    private var controls: some View {
-        Section {
-            Picker("Appearance", selection: $colorScheme) {
-                Text("Light").tag(ColorScheme.light)
-                Text("Dark").tag(ColorScheme.dark)
-            }
-            .pickerStyle(.segmented)
-
-            Picker("Coverage", selection: $scope) {
-                ForEach(ActivityInstrumentGalleryScope.allCases) { scope in
-                    Text(scope.label).tag(scope)
-                }
-            }
-            .pickerStyle(.segmented)
-
-            Toggle("Show Compact Size", isOn: $showsCompactSize)
-        } header: {
-            Text("Preview")
-        }
-    }
-
-    private var coverageSummary: some View {
-        Section {
-            LabeledContent("Visible Samples", value: samples.count.formatted())
-            LabeledContent("Instrument Families", value: ActivityInstrumentKind.allCases.count.formatted())
-            LabeledContent("Z2M Expose Shapes", value: ActivityInstrumentGalleryCatalog.requiredExposeTypes.count.formatted())
-        } footer: {
-            Text("Every Shellbee device and event category is represented. Unknown Z2M properties and future bridge events use explicit fallback instruments.")
-        }
-    }
-
+    /// Feed size on the left, tab bar size on the right, so both scales are
+    /// visible while scrolling.
     private func sampleRow(_ sample: ActivityInstrumentGallerySample) -> some View {
         HStack(alignment: .center, spacing: DesignTokens.ActivityInstrument.rowSpacing) {
-            ActivityInstrumentView(instrument: sample.instrument)
+            ActivityInstrumentView(instrument: sample.instrument, size: DesignTokens.ActivityFeed.thumbnail)
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 Text(sample.title)
@@ -80,25 +69,22 @@ struct ActivityInstrumentGalleryView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                if let topic = sample.bridgeTopic {
-                    Text(topic)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
             }
 
             Spacer(minLength: 0)
 
-            if showsCompactSize {
-                ActivityInstrumentView(
-                    instrument: sample.instrument,
-                    size: DesignTokens.ActivityInstrument.compactSize
-                )
-            }
+            ActivityInstrumentView(instrument: sample.instrument, size: DesignTokens.ActivityFeed.accessoryArtwork)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, DesignTokens.ActivityInstrument.rowVerticalPadding)
         .accessibilityElement(children: .combine)
+    }
+
+    private struct StagedSample: Identifiable {
+        let index: Int
+        var id: Int { index }
     }
 }
 
