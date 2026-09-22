@@ -60,7 +60,6 @@ struct DeviceCard: View {
                 bridgeID: bridgeID,
                 bridgeName: bridgeName,
                 chips: chips,
-                footnote: lastSeenFootnote,
                 renameAccessibilityLabel: "Rename device",
                 onRenameTapped: onRenameTapped,
                 onNameHiddenChange: onNameHiddenChange
@@ -103,7 +102,7 @@ struct DeviceCard: View {
 
     private var chips: [IdentityChip] {
         var chips = [
-            IdentityChip(title: status.title, dotColor: status.color),
+            IdentityChip(title: statusTitle, dotColor: status.color),
             IdentityChip(title: device.type.chipLabel),
         ]
         if let lqi = state.linkQuality {
@@ -137,9 +136,12 @@ struct DeviceCard: View {
         return trimmed.capitalized
     }
 
-    private var lastSeenFootnote: String? {
-        guard lastSeenEnabled, let text = DeviceStatus.lastSeenText(state.lastSeen) else { return nil }
-        return "Last seen \(text)"
+    /// A healthy device doesn't need its last-seen time; an offline one
+    /// says how long it has been gone ("Offline · 3 h ago").
+    private var statusTitle: String {
+        guard status.needsAttention, !isAvailable, lastSeenEnabled,
+              let since = DeviceStatus.lastSeenText(state.lastSeen) else { return status.title }
+        return "\(status.title) · \(since)"
     }
 
     // MARK: - OTA

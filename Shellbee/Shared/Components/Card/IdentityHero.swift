@@ -12,16 +12,16 @@ struct IdentityChip: Identifiable {
     var id: String { title + (systemImage ?? "") }
 }
 
-/// Centred header for Device and Group detail, like the top of an AirPods
-/// or Apple Watch page in Settings: a large image, the name, a readable
-/// description and a row of neutral status capsules. No card behind it.
+/// Header for Device and Group detail, like the top of a contact or Apple
+/// Account page: the image on the left, the name and a readable
+/// description beside it, and one line of neutral status capsules below.
+/// The bridge shows as the last capsule, only when several are saved.
 struct IdentityHero<Artwork: View>: View {
     let name: String
     let subtitle: String
     var bridgeID: UUID? = nil
     var bridgeName: String? = nil
     let chips: [IdentityChip]
-    var footnote: String? = nil
     var renameAccessibilityLabel: String = "Rename"
     var onRenameTapped: (() -> Void)? = nil
     /// Reports whether the name has scrolled under the navigation bar, so
@@ -30,51 +30,42 @@ struct IdentityHero<Artwork: View>: View {
     @ViewBuilder let artwork: () -> Artwork
 
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.xs) {
-            artwork()
-                .padding(.bottom, DesignTokens.Spacing.sm)
-
-            nameView
-                .onGeometryChange(for: Bool.self) { proxy in
-                    proxy.frame(in: .scrollView).maxY < 0
-                } action: { hidden in
-                    onNameHiddenChange?(hidden)
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                artwork()
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    nameView
+                        .onGeometryChange(for: Bool.self) { proxy in
+                            proxy.frame(in: .scrollView).maxY < 0
+                        } action: { hidden in
+                            onNameHiddenChange?(hidden)
+                        }
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
-
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-
-            if let bridgeID, let bridgeName, !bridgeName.isEmpty {
-                BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
-                    .padding(.top, DesignTokens.Spacing.xxs)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if !chips.isEmpty {
-                FlowChips(chips: chips)
-                    .padding(.top, DesignTokens.Spacing.sm)
-            }
-
-            if let footnote {
-                Text(footnote)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, DesignTokens.Spacing.xs)
+            if !allChips.isEmpty {
+                FlowChips(chips: allChips)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.vertical, DesignTokens.Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, DesignTokens.Spacing.xs)
+    }
+
+    private var allChips: [IdentityChip] {
+        guard let bridgeID, let bridgeName, !bridgeName.isEmpty else { return chips }
+        return chips + [IdentityChip(title: bridgeName, color: DesignTokens.Bridge.color(for: bridgeID))]
     }
 
     @ViewBuilder
     private var nameView: some View {
         let label = Text(name)
-            .font(.title2.weight(.bold))
+            .font(.title3.weight(.bold))
             .foregroundStyle(.primary)
-            .multilineTextAlignment(.center)
             .lineLimit(2)
             .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
 
@@ -91,24 +82,21 @@ struct IdentityHero<Artwork: View>: View {
     }
 }
 
-/// Status capsules that wrap onto a second line when they don't fit.
+/// Status capsules on one line; they scroll sideways rather than wrap.
 private struct FlowChips: View {
     let chips: [IdentityChip]
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: DesignTokens.Spacing.sm) { chipViews }
-            VStack(spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: DesignTokens.Spacing.sm) { chipViews(chips.prefix(2)) }
-                HStack(spacing: DesignTokens.Spacing.sm) { chipViews(chips.dropFirst(2)) }
+            HStack(spacing: DesignTokens.Spacing.xs) { chipViews }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DesignTokens.Spacing.xs) { chipViews }
             }
         }
     }
 
-    private var chipViews: some View { chipViews(chips[...]) }
-
-    private func chipViews(_ slice: ArraySlice<IdentityChip>) -> some View {
-        ForEach(Array(slice)) { chip in
+    private var chipViews: some View {
+        ForEach(chips) { chip in
             HStack(spacing: DesignTokens.Spacing.xs) {
                 if let dotColor = chip.dotColor {
                     Circle()
@@ -120,13 +108,13 @@ private struct FlowChips: View {
                         .font(.caption.weight(.semibold))
                 }
                 Text(chip.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
                     .monospacedDigit()
                     .lineLimit(1)
             }
             .foregroundStyle(chip.color ?? .primary)
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.xs + DesignTokens.Spacing.xxs)
+            .padding(.horizontal, DesignTokens.Spacing.sm + DesignTokens.Spacing.xxs)
+            .padding(.vertical, DesignTokens.Spacing.xs)
             .background(Color(.secondarySystemGroupedBackground), in: Capsule())
             .accessibilityElement(children: .combine)
         }
@@ -143,8 +131,7 @@ private struct FlowChips: View {
                 IdentityChip(title: "Router"),
                 IdentityChip(title: "128", systemImage: "cellularbars", symbolVariableValue: 0.8),
                 IdentityChip(title: "Mains"),
-            ],
-            footnote: "Last seen 4 min ago"
+            ]
         ) {
             Image(systemName: "lightbulb.fill").font(.largeTitle)
         }
