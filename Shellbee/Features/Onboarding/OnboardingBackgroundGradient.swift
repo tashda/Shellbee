@@ -1,6 +1,10 @@
 import SwiftUI
 
-struct HomeBackgroundGradient: View {
+/// The signature mesh behind the welcome page. It belongs to onboarding
+/// alone — every screen inside the app uses the system grouped
+/// background, so the gradient reads as the front door rather than as a
+/// theme one screen happens to have.
+struct OnboardingBackgroundGradient: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -126,11 +130,11 @@ struct HomeBackgroundGradient: View {
 }
 
 #Preview("Light") {
-    HomeBackgroundGradient().ignoresSafeArea()
+    OnboardingBackgroundGradient().ignoresSafeArea()
 }
 
 #Preview("Dark") {
-    HomeBackgroundGradient()
+    OnboardingBackgroundGradient()
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
 }

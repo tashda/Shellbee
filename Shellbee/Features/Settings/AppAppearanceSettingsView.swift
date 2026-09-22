@@ -17,10 +17,10 @@ struct AppAppearanceSettingsView: View {
             }
 
             Section("Home") {
-                NavigationLink { HomeCardsSettingsView() } label: {
+                NavigationLink { HomeSettingsView() } label: {
                     SettingsNavigationLabel(
-                        title: "Home Cards",
-                        systemImage: "rectangle.3.group.fill",
+                        title: "Home",
+                        systemImage: "house.fill",
                         color: .blue
                     )
                 }

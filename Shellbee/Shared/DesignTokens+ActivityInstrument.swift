@@ -17,6 +17,8 @@ extension DesignTokens {
         static let stageAccessoryHeight: CGFloat = 48
         static let stageMinimizedHeight: CGFloat = 54
         static let stageContentTop: CGFloat = 64
+        /// Height of the mock Home Activity section, which doesn't scroll.
+        static let stageListHeight: CGFloat = 320
         /// Neighbouring samples shown with the current one, for comparison.
         static let stageNeighbours = 2
     }

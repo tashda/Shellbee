@@ -88,7 +88,7 @@ private struct WelcomePage: View {
 
     var body: some View {
         ZStack {
-            HomeBackgroundGradient()
+            OnboardingBackgroundGradient()
                 .ignoresSafeArea()
 
             VStack {

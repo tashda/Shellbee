@@ -124,3 +124,62 @@ struct HomeSnapshot: Sendable {
         return max((end - now) / 1000, 0)
     }
 }
+
+extension HomeSnapshot {
+    /// A small network with something wrong on it, for previews and tests:
+    /// two devices not answering, one flat battery, one weak link and one
+    /// firmware update waiting. Built from real devices and states so it
+    /// runs the same arithmetic the app does.
+    static var preview: HomeSnapshot {
+        func device(_ name: String, _ type: DeviceType = .router) -> Device {
+            Device(
+                ieeeAddress: "0x\(abs(name.hashValue))",
+                type: type,
+                networkAddress: abs(name.hashValue % 60_000),
+                supported: true,
+                friendlyName: name,
+                disabled: false,
+                interviewCompleted: true,
+                interviewing: false
+            )
+        }
+
+        let devices = [
+            device("hallway_plug"),
+            device("bathroom_ff_spot_1"),
+            device("kitchen_relay"),
+            device("office_door_sensor", .endDevice),
+            device("bedroom_remote", .endDevice),
+        ]
+
+        return HomeSnapshot(
+            devices: devices,
+            availability: [
+                "hallway_plug": true,
+                "bathroom_ff_spot_1": false,
+                "kitchen_relay": false,
+                "office_door_sensor": true,
+                "bedroom_remote": true,
+            ],
+            states: [
+                "hallway_plug": ["linkquality": .int(146)],
+                "bathroom_ff_spot_1": ["linkquality": .int(28)],
+                "office_door_sensor": ["battery": .int(9), "linkquality": .int(96)],
+                "bedroom_remote": ["linkquality": .int(120),
+                                   "update": .object(["state": .string("available")])],
+            ],
+            isConnected: true,
+            isBridgeOnline: true,
+            groupCount: 12,
+            bridgeVersion: "2.9.2",
+            bridgeCommit: nil,
+            coordinatorType: "EmberZNet",
+            coordinatorIEEEAddress: "0x4c5bb3fffe932a84",
+            networkChannel: 20,
+            panID: 54_074,
+            isPermitJoinActive: false,
+            permitJoinEnd: nil,
+            restartRequired: false
+        )
+    }
+}

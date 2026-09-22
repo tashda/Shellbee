@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The mock app screen inside the instrument stage. Each surface uses the
-/// shipping component: `ActivityCard`, `HomeLogsCard`, and the accessory's
-/// `ActivityAccessoryContent` on an iOS 26 style tab bar.
+/// shipping component: `ActivityCard`, Home's `HomeActivityRow`, and the
+/// accessory's `ActivityAccessoryContent` on an iOS 26 style tab bar.
 @available(iOS 26.0, *)
 struct InstrumentStageScreen: View {
     let surface: ActivityInstrumentStageView.Surface
@@ -18,7 +18,7 @@ struct InstrumentStageScreen: View {
                 if surface == .activity {
                     activityFeed
                 } else {
-                    HomeLogsCard(items: items, onOpenItem: { _ in }, onOpenAll: {})
+                    homeActivitySection
                 }
                 Spacer(minLength: 0)
             }
@@ -32,6 +32,21 @@ struct InstrumentStageScreen: View {
             case .activity, .home: EmptyView()
             }
         }
+    }
+
+    /// Home shows the same events as a plain List section, so the stage
+    /// shows them that way too.
+    private var homeActivitySection: some View {
+        List {
+            Section("Activity") {
+                ForEach(items) { item in
+                    HomeActivityRow(item: item)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollDisabled(true)
+        .frame(height: DesignTokens.ActivityInstrument.stageListHeight)
     }
 
     // MARK: - Activity Center
