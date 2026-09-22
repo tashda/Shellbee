@@ -32,22 +32,12 @@ struct LockControlCard: View {
     /// Compact log-row rendering. Lock glyph + "Lock" + LOCKED/UNLOCKED pill.
     private var snapshotContent: some View {
         CompactSnapshotCard {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: context.isLocked ? "lock.fill" : "lock.open.fill")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(heroTint)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Lock")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
+            CompactControlSnapshotRow(
+                systemImage: context.isLocked ? "lock.fill" : "lock.open.fill",
+                title: "Lock",
+                subtitle: nil,
+                tint: heroTint
+            ) {
                 statePill
             }
         }

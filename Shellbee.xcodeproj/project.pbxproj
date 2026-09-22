@@ -150,7 +150,6 @@
 				Features/ActivityCenter/ActivityCard.swift,
 				Features/ActivityCenter/ActivityCardContent.swift,
 				Features/ActivityCenter/ActivityChangeWording.swift,
-				Features/ActivityCenter/ActivityClearAttentionButton.swift,
 				Features/ActivityCenter/ActivityEventItem.swift,
 				Features/ActivityCenter/ActivityEventRow.swift,
 				Features/ActivityCenter/ActivityFeedView.swift,

@@ -30,28 +30,12 @@ struct SwitchControlCard: View {
     /// optional power-metering summary, ON/OFF pill.
     private var snapshotContent: some View {
         CompactSnapshotCard {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: context.isOn ? "power.circle.fill" : "power.circle")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(heroTint)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(eyebrowLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if let secondary = snapshotSecondaryText {
-                        Text(secondary)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
+            CompactControlSnapshotRow(
+                systemImage: context.isOn ? "power.circle.fill" : "power.circle",
+                title: eyebrowLabel,
+                subtitle: snapshotSecondaryText,
+                tint: heroTint
+            ) {
                 statePill
             }
         }

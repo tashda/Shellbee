@@ -8,14 +8,12 @@ struct LogDetailView: View {
     /// the entry resolve against the right store.
     let bridgeID: UUID
     let entry: LogEntry
-    private let doneAction: (() -> Void)?
 
     enum ViewMode { case parsed, json }
 
-    init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
+    init(bridgeID: UUID, entry: LogEntry) {
         self.bridgeID = bridgeID
         self.entry = entry
-        self.doneAction = doneAction
     }
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
@@ -69,13 +67,6 @@ struct LogDetailView: View {
                 jsonSection
             }
 
-            if entry.category == .stateChange {
-                Section {
-                    Button(viewMode == .parsed ? "Show Raw Message" : "Show Changes") {
-                        viewMode = viewMode == .parsed ? .json : .parsed
-                    }
-                }
-            }
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
         .navigationTitle(navTitle)
@@ -87,50 +78,8 @@ struct LogDetailView: View {
                     entryID: entry.id
                 ))
             }
-            ToolbarItem(placement: .principal) {
-                // Inline two-line title: subject on top, timestamp
-                // beneath. Same pattern Apple Calendar uses for event
-                // detail headers and Mail uses for thread headers.
-                // Cleaner than the previous treatment: no info-icon, no
-                // alert-banner styling — just title and quiet metadata.
-                VStack(spacing: 1) {
-                    Text(navTitle)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    Text(timestampSubtitle)
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(navTitle), \(timestampSubtitle)")
-            }
-            if let doneAction {
-                if entry.category != .stateChange {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        formatButton
-                    }
-                    // ToolbarSpacer breaks the iOS 26 glass-pill grouping
-                    // — without it, adjacent trailing items fuse into a
-                    // single capsule. The format button and the Done
-                    // action are unrelated, so they should read as
-                    // separate controls. SDK availability check is
-                    // belt-and-braces — our deployment target is iOS 26.0
-                    // but the symbol is annotated `iOS 26.0+` and the
-                    // compiler still wants the guard.
-                    if #available(iOS 26.0, *) {
-                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: doneAction)
-                        .fontWeight(.semibold)
-                }
-            } else if entry.category != .stateChange {
-                ToolbarItem(placement: .topBarTrailing) {
-                    formatButton
-                }
+            ToolbarItem(placement: .topBarTrailing) {
+                formatButton
             }
         }
     }
@@ -142,7 +91,7 @@ struct LogDetailView: View {
             Image(systemName: "curlybraces")
         }
         .tint(viewMode == .json ? .accentColor : .secondary)
-        .accessibilityLabel("Format")
+        .accessibilityLabel(viewMode == .json ? "Show formatted activity" : "Show raw message")
     }
 
     /// The group as one native row that opens Group detail.
@@ -189,9 +138,6 @@ struct LogDetailView: View {
     /// title (Mail puts the sender, Messages puts the contact). For
     /// non-device events we fall back to a quiet category label.
     private var navTitle: String {
-        if entry.category == .stateChange, let sentence = entry.activityChangeWordings.first?.sentence {
-            return sentence
-        }
         if let group = resolvedGroup { return group.friendlyName }
         if displayDevices.count == 1, let (_, device) = displayDevices.first {
             return device.friendlyName
@@ -269,6 +215,11 @@ struct LogDetailView: View {
         if !changes.isEmpty {
             let rows = LogChangeRows.rows(for: changes, payload: entry.context?.payload)
             Section("Changes") {
+                LabeledContent("Changed") {
+                    Text(timestampSubtitle)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
                 if rows.isEmpty {
                     Text("Reported again with the same values")
                         .foregroundStyle(.secondary)

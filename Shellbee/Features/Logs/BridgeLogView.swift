@@ -4,6 +4,7 @@ struct BridgeLogView: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: BridgeLogViewModel
     let selection: Binding<LogsPaneRoute?>?
+    @State private var liveFeed = LiveFeedState<BridgeBoundLogEntry>()
 
     init(viewModel: BridgeLogViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
         self.viewModel = viewModel
@@ -44,28 +45,54 @@ struct BridgeLogView: View {
     }
 
     var body: some View {
-        let entries = mergedEntries
-        selectableList {
-            ForEach(entries) { item in
-                bridgeLogRow(item)
-                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                .modifier(BridgeRowLeadingBarBackground(
-                    bridgeID: item.bridgeID,
-                    enabled: selection == nil
-                ))
+        let liveEntries = mergedEntries
+        let entries = liveFeed.displayedItems(from: liveEntries)
+        ScrollViewReader { proxy in
+            ZStack(alignment: .bottom) {
+                selectableList {
+                    ForEach(entries) { item in
+                        bridgeLogRow(item)
+                            .id(item.id)
+                            .listRowInsets(EdgeInsets(
+                                top: DesignTokens.Spacing.bridgeLogRowVerticalInset,
+                                leading: DesignTokens.Spacing.bridgeLogRowHorizontalInset,
+                                bottom: DesignTokens.Spacing.bridgeLogRowVerticalInset,
+                                trailing: DesignTokens.Spacing.bridgeLogRowHorizontalInset
+                            ))
+                            .modifier(BridgeRowLeadingBarBackground(
+                                bridgeID: item.bridgeID,
+                                enabled: selection == nil
+                            ))
+                    }
+                }
+                .listStyle(.plain)
+                .overlay {
+                    if displayedSessions.isEmpty || !hasAnyRawEntries {
+                        ContentUnavailableView(
+                            "No Log Entries",
+                            systemImage: "terminal",
+                            description: Text("Raw zigbee2mqtt log lines will appear here in real time.")
+                        )
+                    } else if entries.isEmpty {
+                        ContentUnavailableView.search(text: viewModel.searchText)
+                    }
+                }
+
+                if liveFeed.isReadingHistory {
+                    FollowLiveButton {
+                        withAnimation(.smooth) {
+                            liveFeed.followLive()
+                            if let first = liveEntries.first {
+                                proxy.scrollTo(first.id, anchor: .top)
+                            }
+                        }
+                    }
+                    .padding(.bottom, DesignTokens.Spacing.lg)
+                }
             }
-        }
-        .listStyle(.plain)
-        .overlay {
-            if displayedSessions.isEmpty || !hasAnyRawEntries {
-                ContentUnavailableView(
-                    "No Log Entries",
-                    systemImage: "terminal",
-                    description: Text("Raw zigbee2mqtt log lines will appear here in real time.")
-                )
-            } else if entries.isEmpty {
-                ContentUnavailableView.search(text: viewModel.searchText)
-            }
+            .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in
+                liveFeed.beginReadingHistory(with: liveEntries)
+            })
         }
     }
 
@@ -137,8 +164,6 @@ struct BridgeLogRowView: View {
 
 struct BridgeLogDetailView: View {
     let entry: LogEntry
-    /// Shown as a separate Done button when the viewer is presented in a sheet.
-    var doneAction: (() -> Void)? = nil
     @State private var prettyPrint = true
     @AppStorage("bridgeLogDetailFontSize") private var fontSize: Double = Double(DesignTokens.Size.bridgeLogDetailFontDefault)
 
@@ -271,13 +296,6 @@ struct BridgeLogDetailView: View {
                 }
             }
 
-            if let doneAction {
-                TrailingToolbarGroupSpacer()
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done", action: doneAction)
-                        .fontWeight(.semibold)
-                }
-            }
         }
     }
 }

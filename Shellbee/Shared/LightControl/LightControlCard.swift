@@ -147,28 +147,12 @@ struct LightControlCard: View {
     /// cards in the log detail reads as a uniform list.
     @ViewBuilder private var snapshotContent: some View {
         CompactSnapshotCard {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(headerTint)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(eyebrowLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if let secondary = snapshotSecondaryText {
-                        Text(secondary)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
+            CompactControlSnapshotRow(
+                systemImage: context.isOn ? "lightbulb.fill" : "lightbulb",
+                title: eyebrowLabel,
+                subtitle: snapshotSecondaryText,
+                tint: headerTint
+            ) {
                 stateBadge
             }
         }

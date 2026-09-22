@@ -72,28 +72,12 @@ struct CoverControlCard: View {
     /// summary + OPEN/CLOSED pill.
     private var snapshotContent: some View {
         CompactSnapshotCard {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(heroTint)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(eyebrowLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if let secondary = snapshotSecondaryText {
-                        Text(secondary)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
+            CompactControlSnapshotRow(
+                systemImage: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open",
+                title: eyebrowLabel,
+                subtitle: snapshotSecondaryText,
+                tint: heroTint
+            ) {
                 Text(isFullyClosed ? "CLOSED" : "OPEN")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(isFullyClosed ? Color(.secondaryLabel) : heroTint)

@@ -45,26 +45,12 @@ struct ClimateControlCard: View {
     /// "Climate" + temp · target summary + running-state pill.
     private var snapshotContent: some View {
         CompactSnapshotCard {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: heroIcon)
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(heroTint)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Climate")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    Text(snapshotSecondaryText)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
+            CompactControlSnapshotRow(
+                systemImage: heroIcon,
+                title: "Climate",
+                subtitle: snapshotSecondaryText,
+                tint: heroTint
+            ) {
                 Text(context.runningStateLabel.uppercased())
                     .font(.caption.weight(.bold))
                     .foregroundStyle(isActive ? heroTint : Color(.secondaryLabel))

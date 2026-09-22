@@ -4,11 +4,17 @@ import SwiftUI
 /// (Previous, Coolest … Warmest) as a checkmark list, and a Custom slider for
 /// an exact value.
 struct LightStartupTemperaturePage: View {
+    private enum Selection: Equatable {
+        case preset(String)
+        case custom
+    }
+
     let feature: LightAdvancedFeature
     let range: ClosedRange<Double>?
     let onChange: (Double) -> Void
 
     @State private var draft: Double
+    @State private var selection: Selection
 
     init(feature: LightAdvancedFeature, range: ClosedRange<Double>?, value: Double,
          onChange: @escaping (Double) -> Void) {
@@ -16,6 +22,13 @@ struct LightStartupTemperaturePage: View {
         self.range = range
         self.onChange = onChange
         _draft = State(initialValue: value)
+        if let preset = feature.presets.first(where: {
+            Int($0.value.numberValue ?? -1) == Int(value.rounded())
+        }) {
+            _selection = State(initialValue: .preset(preset.name))
+        } else {
+            _selection = State(initialValue: .custom)
+        }
     }
 
     var body: some View {
@@ -30,8 +43,21 @@ struct LightStartupTemperaturePage: View {
                 }
             }
             if let range {
-                Section("Custom") {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                Section {
+                    Button {
+                        selectCustom(in: range)
+                    } label: {
+                        HStack {
+                            Text("Custom")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            SelectionIndicator(isSelected: selection == .custom)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selection == .custom ? .isSelected : [])
+
+                    if selection == .custom {
                         LabeledContent("Temperature") {
                             Text(Self.kelvinText(draft))
                                 .monospacedDigit()
@@ -47,6 +73,7 @@ struct LightStartupTemperaturePage: View {
                             onChange(draft)
                         }
                         .tint(Self.swatch(for: draft))
+                        .accessibilityHint("Adjusts the Custom color temperature")
                     }
                 }
             }
@@ -57,9 +84,10 @@ struct LightStartupTemperaturePage: View {
 
     private func presetRow(_ preset: ExposePreset) -> some View {
         let mireds = preset.value.numberValue ?? 0
-        let isSelected = Int(mireds) == Int(draft.rounded())
+        let isSelected = selection == .preset(preset.name)
         return Button {
             draft = mireds
+            selection = .preset(preset.name)
             onChange(mireds)
         } label: {
             HStack(spacing: DesignTokens.Spacing.md) {
@@ -74,15 +102,21 @@ struct LightStartupTemperaturePage: View {
                     Text(Self.kelvinText(mireds))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .frame(width: DesignTokens.Size.temperatureKelvinColumn, alignment: .trailing)
                 }
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.tint)
-                }
+                SelectionIndicator(isSelected: isSelected)
             }
         }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func selectCustom(in range: ClosedRange<Double>) {
+        selection = .custom
+        if !range.contains(draft) {
+            draft = (range.lowerBound + range.upperBound) / 2
+        }
     }
 
     // MARK: - Formatting

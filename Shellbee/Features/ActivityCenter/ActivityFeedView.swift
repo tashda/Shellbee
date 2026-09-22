@@ -9,6 +9,8 @@ struct ActivityFeedView: View {
     let selection: Binding<LogsPaneRoute?>?
     @State private var expandedStackID: String?
     @State private var presentedEntry: PresentedEntry?
+    @State private var showsClearAttentionConfirmation = false
+    @State private var liveFeed = LiveFeedState<ActivityFeedSection>()
     @AppStorage(ActivityAttentionClearance.storageKey) private var clearanceRaw = ""
 
     init(viewModel: LogsViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
@@ -17,28 +19,63 @@ struct ActivityFeedView: View {
     }
 
     var body: some View {
-        let sections = feedSections()
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: DesignTokens.ActivityFeed.cardSpacing) {
-                ForEach(sections) { section in
-                    if sections.count > 1 || section.kind == .needsAttention {
-                        sectionHeader(section)
-                    }
-                    ForEach(section.stacks) { stack in
-                        stackView(stack)
+        let liveSections = feedSections()
+        let sections = liveFeed.displayedItems(from: liveSections)
+        ScrollViewReader { proxy in
+            ScrollView {
+                Color.clear
+                    .frame(height: 0)
+                    .id(LiveFeedAnchor.top)
+                LazyVStack(alignment: .leading, spacing: DesignTokens.ActivityFeed.cardSpacing) {
+                    ForEach(sections) { section in
+                        if sections.count > 1 || section.kind == .needsAttention {
+                            sectionHeader(section)
+                        }
+                        ForEach(section.stacks) { stack in
+                            stackView(stack)
+                        }
                     }
                 }
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.bottom, DesignTokens.Spacing.xl)
+                .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, DesignTokens.Spacing.lg)
-            .padding(.bottom, DesignTokens.Spacing.xl)
-            .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
-            .frame(maxWidth: .infinity)
+            .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in
+                liveFeed.beginReadingHistory(with: liveSections)
+            })
+            .overlay(alignment: .bottom) {
+                if liveFeed.isReadingHistory {
+                    FollowLiveButton {
+                        withAnimation(.smooth) {
+                            liveFeed.followLive()
+                            proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
+                        }
+                    }
+                    .padding(.bottom, DesignTokens.Spacing.lg)
+                }
+            }
         }
         .background(Color(.systemGroupedBackground))
         .overlay { emptyState(isEmpty: sections.isEmpty) }
         .animation(.smooth, value: expandedStackID)
         .sheet(item: $presentedEntry) { presented in
             ActivityLogSheet(route: presented.route)
+        }
+        .confirmationDialog(
+            "Clear Needs Attention?",
+            isPresented: $showsClearAttentionConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Clear All", role: .destructive) {
+                let bridgeIDs = Set(feedSections()
+                    .first(where: { $0.kind == .needsAttention })?
+                    .stacks
+                    .map(\.bridgeID) ?? [])
+                updateClearance { $0.clear(bridgeIDs: bridgeIDs) }
+            }
+        } message: {
+            Text("These events will move to Recent. No log data is deleted.")
         }
     }
 
@@ -51,9 +88,13 @@ struct ActivityFeedView: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             if section.kind == .needsAttention {
-                ActivityClearAttentionButton {
-                    updateClearance { $0.clear(bridgeIDs: Set(section.stacks.map(\.bridgeID))) }
+                Button {
+                    showsClearAttentionConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
                 }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Clear Needs Attention")
             }
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)

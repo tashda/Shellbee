@@ -21,7 +21,7 @@ struct LogSheetHost: View {
     var body: some View {
         if let (bridgeID, entry) = singleResolved {
             NavigationStack {
-                LogDetailView(bridgeID: bridgeID, entry: entry, doneAction: { dismiss() })
+                LogDetailView(bridgeID: bridgeID, entry: entry)
                     .navigationDestination(for: DeviceRoute.self) { route in
                         DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
                     }

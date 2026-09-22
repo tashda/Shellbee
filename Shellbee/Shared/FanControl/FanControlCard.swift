@@ -27,28 +27,12 @@ struct FanControlCard: View {
     /// single row: fan glyph, "Fan", speed/mode summary, ON/OFF pill.
     private var snapshotContent: some View {
         CompactSnapshotCard {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"))
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(heroTint)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(hasAirSensors ? "Air Quality" : "Fan")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if let secondary = snapshotSecondaryText {
-                        Text(secondary)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
-
+            CompactControlSnapshotRow(
+                systemImage: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"),
+                title: hasAirSensors ? "Air Quality" : "Fan",
+                subtitle: snapshotSecondaryText,
+                tint: heroTint
+            ) {
                 statePill
             }
         }
