@@ -4,26 +4,20 @@ struct FanControlCard: View {
     let context: FanControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
-    /// When `false`, the feature sections (Behaviour / Indicators / etc.) are
-    /// suppressed so the caller can render them as native `List` sections.
-    /// Defaults to `true` to preserve inline rendering for snapshot contexts
-    /// (e.g. LogDetailView) that aren't backed by a List.
-    var rendersSectionsInline: Bool = true
 
     @State private var speedDraft: Double = 0
 
+    private var air: FanAirReadings { FanAirReadings(context: context) }
+    private var hasAirSensors: Bool { air.hasAirSensors }
+
+    /// The controls only: power, mode and speed. Air readings and filter
+    /// health are rows beneath it (`FanReadingsSections`).
     @ViewBuilder
     var body: some View {
         if mode == .snapshot {
             snapshotContent
         } else {
-            VStack(spacing: DesignTokens.Spacing.lg) {
-                heroCard
-                if FanFilterCard.isRelevant(for: context) { FanFilterCard(context: context) }
-                if rendersSectionsInline {
-                    FanInlineSections(context: context, extras: eligibleExtras, mode: mode, onSend: onSend)
-                }
-            }
+            heroCard
         }
     }
 
@@ -65,8 +59,8 @@ struct FanControlCard: View {
     private var snapshotSecondaryText: String? {
         if hasAirSensors {
             var parts: [String] = []
-            if let pm = pm25Value { parts.append("\(Int(pm.rounded())) \(pm25Unit)") }
-            if let aq = airQualityText { parts.append(prettify(aq)) }
+            if let pm = air.pm25 { parts.append("\(Int(pm.rounded())) \(air.pm25Unit)") }
+            if let aq = air.airQuality { parts.append(prettify(aq)) }
             return parts.isEmpty ? nil : parts.joined(separator: " · ")
         }
         guard context.isOn else { return nil }
@@ -81,61 +75,12 @@ struct FanControlCard: View {
         return nil
     }
 
-    private var eligibleExtras: [Expose] {
-        let claimed: Set<String> = Set(["pm25", "air_quality"]).union(FanFilterCard.filterProps)
-        return context.extras.filter { e in
-            guard let prop = e.property else { return false }
-            return !claimed.contains(prop)
-        }
-    }
-
-    // MARK: - Hero data
-
-    private var pm25Expose: Expose? { context.extras.first { $0.property == "pm25" } }
-    private var airQualityExpose: Expose? { context.extras.first { $0.property == "air_quality" } }
-    private var hasAirSensors: Bool { airQualityExpose != nil || pm25Expose != nil }
-
-    /// Purifiers report -1 while the sensor isn't running; treat it as missing.
-    private var pm25Value: Double? {
-        guard let p = pm25Expose?.property, let v = context.state[p]?.numberValue, v >= 0 else { return nil }
-        return v
-    }
-    private var pm25Unit: String { pm25Expose?.unit ?? "µg/m³" }
-    private var airQualityText: String? {
-        guard let p = airQualityExpose?.property,
-              let v = context.state[p]?.stringValue, v.lowercased() != "unknown" else { return nil }
-        return v
-    }
-
     /// The single state-derived color that drives the hero gradient, eyebrow,
     /// and any state-text inside the hero. Air-quality devices use an AQI
     /// scale; plain fans use teal when on, neutral when off.
     private var heroTint: Color {
-        if hasAirSensors { return airQualityTint }
+        if hasAirSensors { return air.airQualityTint }
         return context.isOn ? .teal : Color(.tertiaryLabel)
-    }
-
-    private var airQualityTint: Color {
-        if let aq = airQualityText {
-            switch aq.lowercased() {
-            case "excellent": return .green
-            case "good": return .mint
-            case "moderate", "fair": return .yellow
-            case "poor": return .orange
-            case "unhealthy", "very_poor", "very poor", "hazardous", "bad": return .red
-            default: break
-            }
-        }
-        if let pm = pm25Value {
-            switch pm {
-            case ..<12: return .green
-            case ..<35: return .mint
-            case ..<55: return .yellow
-            case ..<150: return .orange
-            default: return .red
-            }
-        }
-        return .teal
     }
 
     // MARK: - Hero card
@@ -144,13 +89,12 @@ struct FanControlCard: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
             CardHeader(
                 systemImage: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"),
-                title: hasAirSensors ? "Air Quality" : "Fan",
+                title: hasAirSensors ? "Air Purifier" : "Fan",
                 value: headerValue,
                 tint: heroTint
             ) {
                 powerControl
             }
-            if hasAirSensors, !airItems.isEmpty { StatStrip(items: airItems) }
             if hasModeControl { modeControl }
             if hasSpeedControl { speedControl }
         }
@@ -160,27 +104,10 @@ struct FanControlCard: View {
     /// "On · Speed 3", "Off", or for purifiers without a power state the
     /// air quality in words.
     private var headerValue: String {
-        guard context.stateFeature != nil else { return airQualityText.map(prettify) ?? "" }
+        guard context.stateFeature != nil else { return air.airQuality.map(prettify) ?? "" }
         guard context.isOn else { return "Off" }
         if hasSpeedControl, !hasAirSensors { return "On · Speed \(Int(speedDraft.rounded()))" }
         return "On"
-    }
-
-    private var airItems: [StatStripItem] {
-        var items: [StatStripItem] = []
-        if let pm = pm25Value {
-            items.append(StatStripItem(value: "\(Int(pm.rounded())) \(pm25Unit)", caption: "PM2.5"))
-        }
-        if let aq = airQualityText {
-            items.append(StatStripItem(value: prettify(aq), caption: "Air Quality",
-                                       valueColor: airQualityNeedsAttention ? airQualityTint : nil))
-        }
-        return items
-    }
-
-    /// Only moderate or worse air earns a colour; good air stays neutral.
-    private var airQualityNeedsAttention: Bool {
-        [Color.yellow, .orange, .red].contains(airQualityTint)
     }
 
     @ViewBuilder
@@ -275,9 +202,7 @@ struct FanControlCard: View {
 
     // MARK: - Helpers
 
-    private func prettify(_ s: String) -> String {
-        s.replacingOccurrences(of: "_", with: " ").capitalized
-    }
+    private func prettify(_ s: String) -> String { FanAirReadings.prettify(s) }
 }
 
 #Preview {

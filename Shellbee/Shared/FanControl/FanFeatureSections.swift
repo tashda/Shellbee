@@ -8,13 +8,11 @@ struct FanFeatureSections: View {
     let context: FanControlContext
     let onSend: (JSONValue) -> Void
 
-    private let filterProps: Set<String> = ["replace_filter", "filter_age", "device_age"]
-
+    /// Air readings and filter health have their own sections.
     private var eligibleExtras: [Expose] {
-        let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
-        return context.extras.filter { e in
+        context.extras.filter { e in
             guard let prop = e.property else { return false }
-            return !claimed.contains(prop)
+            return !FanAirReadings.claimedProperties.contains(prop)
         }
     }
 

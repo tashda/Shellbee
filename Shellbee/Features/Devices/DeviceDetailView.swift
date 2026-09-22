@@ -160,10 +160,11 @@ struct DeviceDetailView: View {
         case .fan:
             if let ctx = FanControlContext(device: device, state: state) {
                 Section {
-                    FanControlCard(context: ctx, mode: .interactive, onSend: send, rendersSectionsInline: false)
+                    FanControlCard(context: ctx, mode: .interactive, onSend: send)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
+                FanReadingsSections(context: ctx)
                 FanFeatureSections(context: ctx, onSend: send)
             } else {
                 genericExposeSection(device: device, state: state, send: send)
