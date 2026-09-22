@@ -32,6 +32,10 @@ struct ShellbeeSymbol: Hashable, Sendable {
     /// sheets, and the Live Activity (which carries its own copy of the set).
     static let permitJoin = custom("permitjoin")
 
+    /// Follow Live in the Activity Center: back up to the newest entry,
+    /// with a dot for "live".
+    static let followLive = custom("followlive")
+
     var image: Image {
         isCustom ? Image(name) : Image(systemName: name)
     }

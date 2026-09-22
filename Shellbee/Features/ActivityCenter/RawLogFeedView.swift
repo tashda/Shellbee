@@ -53,10 +53,7 @@ struct RawLogFeedView: View {
             .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveBlocks))
             .toolbar {
                 FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
-                    withAnimation(.smooth) {
-                        liveFeed.followLive()
-                        proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
-                    }
+                    liveFeed.returnToLive(with: proxy)
                 }
             }
         }

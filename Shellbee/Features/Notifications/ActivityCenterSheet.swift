@@ -3,38 +3,40 @@ import SwiftUI
 /// The expanded state of the tab-bar Activity Center. On iPhone it is the
 /// destination of the tab accessory's system zoom transition.
 struct ActivityCenterSheet: View {
+    @Environment(\.dismiss) private var dismiss
     let transitionNamespace: Namespace.ID?
     let workspace: LogsWorkspaceState
 
     var body: some View {
-        activityContent
-    }
-
-    @ViewBuilder
-    private var activityContent: some View {
-        // The grabber gets its own strip above the navigation bar so the
-        // toolbar capsules can never cover it.
-        let content = VStack(spacing: 0) {
-            GrabberCapsule()
-            NavigationStack {
-                LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
-            }
-            .configuredTopScrollEdgeEffect()
-        }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
-
         if #available(iOS 18.0, *), let transitionNamespace {
-            content
+            // The zoom transition's own pull-down closes it, so no grabber:
+            // a strip above the navigation bar can't share its scroll-edge
+            // blur and would show as a flat band over scrolled content.
+            navigation
+                .accessibilityAction(.escape) { dismiss() }
                 .navigationTransition(.zoom(sourceID: "activity-center", in: transitionNamespace))
         } else {
-            content
+            // A plain full-screen cover can't be pulled down, so it keeps a
+            // grabber strip of its own above the toolbar.
+            VStack(spacing: 0) {
+                GrabberCapsule()
+                navigation
+            }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
         }
+    }
+
+    private var navigation: some View {
+        NavigationStack {
+            LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
+        }
+        .configuredTopScrollEdgeEffect()
     }
 }
 
 /// The full-screen Activity Center's pull-down affordance, fixed at the
-/// visual centre. Dragging it down closes the Activity Center even while
-/// the feed is scrolled, and tapping it does the same.
+/// visual centre, for covers without a zoom transition. Dragging it down or
+/// tapping it closes the Activity Center.
 private struct GrabberCapsule: View {
     @Environment(\.dismiss) private var dismiss
 

@@ -51,10 +51,7 @@ struct ActivityFeedView: View {
             .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveSections))
             .toolbar {
                 FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
-                    withAnimation(.smooth) {
-                        liveFeed.followLive()
-                        proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
-                    }
+                    liveFeed.returnToLive(with: proxy)
                 }
             }
         }

@@ -25,6 +25,18 @@ final class LiveFeedState<Item: Identifiable> where Item.ID: Hashable {
     func followLive() {
         frozenItems = nil
     }
+
+    /// Hides Follow Live straight away, then scrolls to the newest entry,
+    /// so the button melts back into the search field as the scroll starts
+    /// instead of once it has finished.
+    func returnToLive(with proxy: ScrollViewProxy) {
+        withAnimation(.smooth) { followLive() }
+        Task { @MainActor in
+            withAnimation(.smooth) {
+                proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
+            }
+        }
+    }
 }
 
 /// Freezes the feed once the user has scrolled away from the live edge and
@@ -39,10 +51,13 @@ struct LiveFeedScrollTracking<Item: Identifiable>: ViewModifier where Item.ID: H
             content.onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y + geometry.contentInsets.top > DesignTokens.ActivityFeed.liveEdgeTolerance
             } action: { _, isAwayFromLiveEdge in
-                if isAwayFromLiveEdge {
-                    state.beginReadingHistory(with: liveItems)
-                } else {
-                    state.followLive()
+                // Animated so Follow Live floats out of the search field.
+                withAnimation(.smooth) {
+                    if isAwayFromLiveEdge {
+                        state.beginReadingHistory(with: liveItems)
+                    } else {
+                        state.followLive()
+                    }
                 }
             }
         } else {
@@ -84,7 +99,7 @@ struct FollowLiveButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "arrow.up.to.line")
+            ShellbeeSymbol.followLive.image
         }
         .accessibilityLabel("Follow Live")
         .accessibilityHint("Shows new activity and returns to the latest entry")
