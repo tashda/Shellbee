@@ -4,14 +4,16 @@ import SwiftUI
 struct ActivityCard: View {
     let entry: LogEntry
     let content: ActivityCardContent
-    let store: AppStore?
     /// "13 more updates" on the top card of a collapsed stack.
     var moreText: String? = nil
     @ScaledMetric(relativeTo: .subheadline) private var thumbnailSize = DesignTokens.ActivityFeed.thumbnail
 
     var body: some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            ActivityThumbnail(entry: entry, store: store, size: thumbnailSize)
+            ActivityInstrumentView(
+                instrument: ActivityInstrumentResolver.instrument(for: entry),
+                size: thumbnailSize
+            )
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                 HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
