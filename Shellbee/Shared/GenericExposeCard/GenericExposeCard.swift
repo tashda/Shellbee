@@ -30,24 +30,26 @@ struct GenericExposeCard: View {
         if mode == .snapshot {
             snapshotContent(rows: rows)
         } else if !rows.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
-                    if idx > 0 { rowDivider }
-                    GenericExposeRow(
-                        row: row,
-                        mode: mode,
-                        horizontalPadding: rowHorizontalPadding,
-                        verticalPadding: rowVerticalPadding,
-                        iconWidth: rowIconWidth,
-                        onSend: onSend
-                    )
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                Text(writableOnly ? "Settings" : "Controls")
+                    .font(DesignTokens.Typography.sectionHeader)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, DesignTokens.Spacing.lg)
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
+                        if idx > 0 { rowDivider }
+                        GenericExposeRow(
+                            row: row,
+                            mode: mode,
+                            horizontalPadding: rowHorizontalPadding,
+                            verticalPadding: rowVerticalPadding,
+                            iconWidth: rowIconWidth,
+                            onSend: onSend
+                        )
+                    }
                 }
+                .cardSurface(padding: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         }
     }
 
@@ -212,27 +214,20 @@ private struct GenericExposeRow: View {
             labelText
             Spacer()
             if mode == .interactive, row.expose.isWritable, !values.isEmpty {
-                Menu {
-                    ForEach(values, id: \.self) { v in
-                        Button {
-                            onSend(.object([row.property: .string(v)]))
-                        } label: {
-                            if current == v {
-                                Label(prettify(v), systemImage: "checkmark")
-                            } else {
-                                Text(prettify(v))
-                            }
-                        }
+                // The native menu picker: value in secondary text with a
+                // single up-down glyph, and a checkmark on the current value.
+                Picker(row.label, selection: Binding(
+                    get: { current },
+                    set: { onSend(.object([row.property: .string($0)])) }
+                )) {
+                    if !values.contains(current) {
+                        Text(prettify(current)).tag(current)
                     }
-                } label: {
-                    HStack(spacing: DesignTokens.Spacing.xs) {
-                        Text(prettify(current))
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
+                    ForEach(values, id: \.self) { Text(prettify($0)).tag($0) }
                 }
-                .tint(.primary)
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .tint(.secondary)
             } else {
                 Text(prettify(current)).foregroundStyle(.secondary)
             }
