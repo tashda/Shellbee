@@ -232,6 +232,12 @@ struct DeviceDetailView: View {
                 genericExposeSection(device: device, state: state, send: send)
             }
 
+        case .remote:
+            RemoteSections(device: device, state: state)
+            DeviceSettingsSections(device: device, state: state,
+                                   claimedProperties: RemoteSections.claimedProperties,
+                                   onSend: send)
+
         case .sensor where SensorSections.hasReadings(device: device, state: state):
             SensorSections(device: device, state: state)
             // Writable config beside the readings (issue #135).

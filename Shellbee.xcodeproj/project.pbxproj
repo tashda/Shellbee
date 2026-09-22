@@ -429,7 +429,7 @@
 				Shared/LightControl/LightTemperatureControl.swift,
 				Shared/LockControl/LockControlCard.swift,
 				Shared/LockControl/LockControlContext.swift,
-				Shared/RemoteCard/RemoteCard.swift,
+				Shared/RemoteCard/RemoteSections.swift,
 				Shared/SensorCard/SensorCard.swift,
 				Shared/SwitchControl/SwitchControlCard.swift,
 				Shared/SwitchControl/SwitchControlContext.swift,

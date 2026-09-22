@@ -67,7 +67,8 @@ struct ExposeCardView: View {
                 genericRows()
             }
         case .remote:
-            RemoteCard(device: device, state: state, mode: mode)
+            // Remotes are rows only (RemoteSections), drawn by DeviceDetailView.
+            genericRows()
         case .other:
             genericRows()
         }
@@ -88,8 +89,6 @@ struct ExposeCardView: View {
         case .lock:
             let lock = exposes.first { $0.type == "lock" }?.features?.flattenedLeaves ?? []
             return Set(lock.compactMap(\.property))
-        case .remote:
-            return ["action"]
         default:
             return []
         }
@@ -106,7 +105,7 @@ struct ExposeCardView: View {
         case .cover: return !CoverControlContext.contexts(for: device, state: state).isEmpty
         case .lock: return LockControlContext(device: device, state: state) != nil
         case .fan: return FanControlContext(device: device, state: state) != nil
-        case .remote: return true
+        case .remote: return false
         case .other: return false
         }
     }
