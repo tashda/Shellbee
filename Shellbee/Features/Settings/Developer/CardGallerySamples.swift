@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// Fixture-backed examples for the developer Card Gallery. These definitions
 /// deliberately use the same expose shapes as Z2M, so the gallery exercises
@@ -10,6 +10,9 @@ struct CardGallerySample: Identifiable {
     let device: Device
     let state: [String: JSONValue]
     let isAvailable: Bool
+    /// A plausible "what changed" fixture for the Log Detail surface, in the
+    /// same shape the real Activity sheet renders beneath the compact card.
+    let logChangeRows: [LogChangeRow]
 
     init(
         _ id: String,
@@ -17,7 +20,8 @@ struct CardGallerySample: Identifiable {
         _ detail: String,
         device: Device,
         state: [String: JSONValue],
-        isAvailable: Bool = true
+        isAvailable: Bool = true,
+        logChangeRows: [LogChangeRow] = []
     ) {
         self.id = id
         self.title = title
@@ -25,6 +29,7 @@ struct CardGallerySample: Identifiable {
         self.device = device
         self.state = state
         self.isAvailable = isAvailable
+        self.logChangeRows = logChangeRows
     }
 }
 
@@ -101,7 +106,8 @@ enum CardGalleryCatalog {
         exposes: [Expose],
         state: [String: JSONValue],
         powerSource: String = "mains",
-        available: Bool = true
+        available: Bool = true,
+        logChangeRows: [LogChangeRow] = []
     ) -> CardGallerySample {
         let device = Device(
             ieeeAddress: "0xgallery(id)",
@@ -125,7 +131,10 @@ enum CardGalleryCatalog {
             interviewCompleted: true,
             interviewing: false
         )
-        return CardGallerySample(id, name, description, device: device, state: state, isAvailable: available)
+        return CardGallerySample(
+            id, name, description, device: device, state: state, isAvailable: available,
+            logChangeRows: logChangeRows
+        )
     }
 
     private static func expose(
@@ -183,6 +192,13 @@ enum CardGalleryCatalog {
             "state": .string("ON"), "brightness": .int(190), "color_mode": .string("color_temp"),
             "color_temp": .int(280), "power_on_behavior": .string("previous"), "color_temp_startup": .int(370),
             "linkquality": .int(132)
+        ], logChangeRows: [
+            LogChangeRow(id: "brightness", label: "Brightness", value: .text(from: "60 %", to: "75 %")),
+            LogChangeRow(id: "colour", label: "Colour", value: .colour(
+                from: Color(hue: 0.08, saturation: 0.7, brightness: 1),
+                to: Color(hue: 0.55, saturation: 0.55, brightness: 1),
+                name: "Ocean"
+            ))
         ]
     )
 
@@ -199,6 +215,8 @@ enum CardGalleryCatalog {
             "state": .string("ON"), "power": .double(12.4), "energy": .double(3.21),
             "voltage": .double(231), "current": .double(0.05), "power_on_behavior": .string("previous"),
             "linkquality": .int(118)
+        ], logChangeRows: [
+            LogChangeRow(id: "state", label: "State", value: .text(from: "Off", to: "On"))
         ]
     )
 
@@ -219,7 +237,10 @@ enum CardGalleryCatalog {
             "humidity": .double(48), "temperature_unit": .string("celsius"), "fading_time": .int(30),
             "indicator": .string("ON"), "device_temperature": .double(38), "battery": .int(76),
             "linkquality": .int(94)
-        ], powerSource: "battery"
+        ], powerSource: "battery", logChangeRows: [
+            LogChangeRow(id: "presence", label: "Presence", value: .text(from: "No", to: "Yes")),
+            LogChangeRow(id: "illuminance", label: "Illuminance", value: .text(from: "8 lx", to: "21 lx"))
+        ]
     )
 
     static let climate = device(
@@ -236,6 +257,8 @@ enum CardGalleryCatalog {
             "local_temperature": .double(21.5), "occupied_heating_setpoint": .double(22),
             "system_mode": .string("heat"), "running_state": .string("heating"), "preset": .string("none"),
             "linkquality": .int(105)
+        ], logChangeRows: [
+            LogChangeRow(id: "occupied_heating_setpoint", label: "Target", value: .text(from: "20.5 °C", to: "22 °C"))
         ]
     )
 
@@ -251,6 +274,8 @@ enum CardGalleryCatalog {
         ], state: [
             "state": .string("OPEN"), "position": .int(64), "tilt": .int(35), "child_lock": .bool(false),
             "linkquality": .int(86)
+        ], logChangeRows: [
+            LogChangeRow(id: "position", label: "Position", value: .text(from: "20 %", to: "64 %"))
         ]
     )
 
@@ -266,7 +291,9 @@ enum CardGalleryCatalog {
         ], state: [
             "state": .string("LOCK"), "auto_relock_time": .int(30), "sound_volume": .string("low"),
             "battery": .int(82), "linkquality": .int(78)
-        ], powerSource: "battery"
+        ], powerSource: "battery", logChangeRows: [
+            LogChangeRow(id: "state", label: "State", value: .text(from: "Unlocked", to: "Locked"))
+        ]
     )
 
     static let fan = device(
@@ -284,6 +311,8 @@ enum CardGalleryCatalog {
             "state": .string("ON"), "fan_mode": .string("auto"), "fan_speed_percent": .int(45),
             "pm25": .int(9), "air_quality": .string("excellent"), "filter_age": .int(42),
             "linkquality": .int(110)
+        ], logChangeRows: [
+            LogChangeRow(id: "fan_speed_percent", label: "Speed", value: .text(from: "20 %", to: "45 %"))
         ]
     )
 
@@ -294,7 +323,9 @@ enum CardGalleryCatalog {
             expose("numeric", "voltage", unit: "mV", category: "diagnostic")
         ], state: [
             "action": .string("brightness_up_click"), "voltage": .int(3045), "linkquality": .int(72)
-        ], powerSource: "battery"
+        ], powerSource: "battery", logChangeRows: [
+            LogChangeRow(id: "action", label: "Action", value: .text(from: "Toggle", to: "Brightness Up Click"))
+        ]
     )
 
     static let other = device(
@@ -305,6 +336,8 @@ enum CardGalleryCatalog {
         ], state: [
             "indicator_mode": .string("on"), "custom_label": .string("Gallery value"),
             "linkquality": .int(64)
+        ], logChangeRows: [
+            LogChangeRow(id: "indicator_mode", label: "Indicator Mode", value: .text(from: "Off", to: "On"))
         ]
     )
 }

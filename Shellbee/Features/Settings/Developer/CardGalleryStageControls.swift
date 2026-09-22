@@ -7,18 +7,48 @@ import SwiftUI
 struct CardGalleryStageControls: View {
     let previews: [CardGalleryPreview]
     @Binding var index: Int
+    @Binding var surface: CardGalleryStageView.Surface
     @Binding var appearance: ColorScheme
 
     var body: some View {
         GlassEffectContainer(spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
+            VStack(spacing: DesignTokens.Spacing.sm) {
                 navigator
-                appearanceToggle
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    surfaceSwitch
+                    appearanceToggle
+                }
             }
         }
         .tint(.white)
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.bottom, DesignTokens.Spacing.sm)
+    }
+
+    private var surfaceSwitch: some View {
+        HStack(spacing: 0) {
+            ForEach(CardGalleryStageView.Surface.allCases) { option in
+                Button {
+                    withAnimation(.snappy) { surface = option }
+                } label: {
+                    Image(systemName: option.symbol)
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: DesignTokens.Size.liveActivityStageControl)
+                        .background {
+                            if surface == option {
+                                Capsule().fill(.white.opacity(0.22))
+                                    .padding(DesignTokens.Spacing.xs)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(surface == option ? 1 : 0.6))
+                .accessibilityLabel(option.rawValue)
+                .accessibilityAddTraits(surface == option ? .isSelected : [])
+            }
+        }
+        .glassEffect(.regular.interactive(), in: Capsule())
     }
 
     private var navigator: some View {
@@ -36,7 +66,7 @@ struct CardGalleryStageControls: View {
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Text("\(previews[index].sample == nil ? "Group" : "Device") page · \(index + 1) of \(previews.count)")
+                    Text("\(surface.rawValue) · \(index + 1) of \(previews.count)")
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.6))
                         .lineLimit(1)

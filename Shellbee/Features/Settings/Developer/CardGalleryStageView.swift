@@ -8,6 +8,7 @@ struct CardGalleryStageView: View {
     let previews: [CardGalleryPreview]
     @Environment(\.dismiss) private var dismiss
     @State private var index: Int
+    @State private var surface: Surface = .devicePage
     @State private var appearance: ColorScheme = .light
 
     init(previews: [CardGalleryPreview], startIndex: Int) {
@@ -15,11 +16,26 @@ struct CardGalleryStageView: View {
         _index = State(initialValue: startIndex)
     }
 
+    /// Which app surface the current card is staged inside. Mirrors the Live
+    /// Activity gallery's Surface switch: the card doesn't change, only the
+    /// screen it's judged on.
+    enum Surface: String, CaseIterable, Identifiable {
+        case devicePage = "Device Page"
+        case logDetail = "Log Detail"
+        var id: String { rawValue }
+        var symbol: String {
+            switch self {
+            case .devicePage: return "rectangle.stack"
+            case .logDetail: return "clock.arrow.circlepath"
+            }
+        }
+    }
+
     var body: some View {
         ZStack {
             LiveActivityPalette.stageBackdrop.ignoresSafeArea()
             CardGalleryStageDevice(appearance: appearance) {
-                CardGalleryStageScreen(preview: currentPreview)
+                CardGalleryStageScreen(preview: currentPreview, surface: surface)
             }
             .padding(.top, DesignTokens.Size.liveActivityStageDeviceTop)
             .padding(.bottom, DesignTokens.Size.liveActivityStageDeviceBottom)
@@ -28,6 +44,7 @@ struct CardGalleryStageView: View {
             CardGalleryStageControls(
                 previews: previews,
                 index: $index,
+                surface: $surface,
                 appearance: $appearance
             )
         }
@@ -112,15 +129,25 @@ private struct CardGalleryStageStatusBar: View {
 @available(iOS 26.0, *)
 private struct CardGalleryStageScreen: View {
     let preview: CardGalleryPreview
+    let surface: CardGalleryStageView.Surface
 
     var body: some View {
         VStack(spacing: 0) {
             navigationBar
             List {
-                if let sample = preview.sample {
-                    devicePage(sample)
-                } else {
-                    groupPage
+                switch surface {
+                case .devicePage:
+                    if let sample = preview.sample {
+                        devicePage(sample)
+                    } else {
+                        groupPage
+                    }
+                case .logDetail:
+                    if let sample = preview.sample {
+                        logDetailPage(sample)
+                    } else {
+                        logDetailGroupPage
+                    }
                 }
             }
             .contentMargins(.top, 0, for: .scrollContent)
@@ -133,15 +160,24 @@ private struct CardGalleryStageScreen: View {
         HStack(spacing: DesignTokens.Spacing.md) {
             Image(systemName: "chevron.left")
                 .font(.body.weight(.semibold))
-            Text(preview.sample == nil ? "Groups" : "Devices")
+            Text(navigationBarTitle)
                 .font(.body.weight(.semibold))
             Spacer(minLength: 0)
-            Image(systemName: "ellipsis")
-                .font(.body.weight(.semibold))
+            if surface == .devicePage {
+                Image(systemName: "ellipsis")
+                    .font(.body.weight(.semibold))
+            }
         }
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
         .background(Color(.systemGroupedBackground))
+    }
+
+    private var navigationBarTitle: String {
+        switch surface {
+        case .devicePage: return preview.sample == nil ? "Groups" : "Devices"
+        case .logDetail: return "Activity"
+        }
     }
 
     @ViewBuilder
@@ -298,6 +334,57 @@ private struct CardGalleryStageScreen: View {
                 : [],
             onSend: onSend
         )
+    }
+
+    /// Mirrors `LogDetailView`'s single-device layout: the compact card as
+    /// one native row that would open detail, then a Changes section built
+    /// from `LogChangeRows`.
+    @ViewBuilder
+    private func logDetailPage(_ sample: CardGallerySample) -> some View {
+        Section {
+            DeviceCard(
+                device: sample.device,
+                state: sample.state,
+                isAvailable: sample.isAvailable,
+                otaStatus: nil,
+                displayMode: .compact
+            )
+        }
+        changesSection(rows: sample.logChangeRows)
+    }
+
+    @ViewBuilder
+    private var logDetailGroupPage: some View {
+        let group = CardGalleryCatalog.group
+        let devices = CardGalleryCatalog.groupMembers
+        let state = CardGalleryCatalog.groupState
+
+        Section {
+            GroupCard(
+                group: group,
+                memberDevices: devices,
+                state: state,
+                membersOnCount: 2,
+                displayMode: .compact
+            )
+        }
+        changesSection(rows: CardGalleryCatalog.light.logChangeRows)
+    }
+
+    private func changesSection(rows: [LogChangeRow]) -> some View {
+        Section("Changes") {
+            LabeledContent("Changed") {
+                Text("Today at 14:32:07")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            if rows.isEmpty {
+                Text("Reported again with the same values")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(rows) { LogChangeRowView(row: $0) }
+            }
+        }
     }
 
     @ViewBuilder
