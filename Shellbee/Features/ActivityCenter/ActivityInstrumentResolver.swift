@@ -103,6 +103,12 @@ enum ActivityInstrumentResolver {
         )
     }
 
+    /// The instrument family a Z2M property belongs to; Activity wording
+    /// follows the same families so text and instrument always agree.
+    static func kind(forProperty property: String) -> ActivityInstrumentKind {
+        kind(for: canonical(property))
+    }
+
     private static func kind(for property: String) -> ActivityInstrumentKind {
         if property.contains("temperature") || property.contains("setpoint") { return .temperature }
         if property.contains("humidity") || property.contains("moisture") { return .humidity }

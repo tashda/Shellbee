@@ -5,6 +5,19 @@ extension AppStore {
         devices.first { $0.friendlyName == friendlyName }
     }
 
+    /// Units by property from the device's Z2M exposes ("°C", "%", "W"),
+    /// so logged values carry the unit the device itself declares.
+    func exposeUnits(for friendlyName: String) -> [String: String] {
+        guard let exposes = device(named: friendlyName)?.definition?.exposes else { return [:] }
+        var units: [String: String] = [:]
+        for expose in exposes.flattened {
+            if let property = expose.property, let unit = expose.unit, units[property] == nil {
+                units[property] = unit
+            }
+        }
+        return units
+    }
+
     func group(named friendlyName: String) -> Group? {
         groups.first { $0.friendlyName == friendlyName }
     }

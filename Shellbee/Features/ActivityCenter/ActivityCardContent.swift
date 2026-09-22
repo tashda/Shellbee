@@ -56,16 +56,13 @@ struct ActivityCardContent: Equatable {
         return (entry.summarySubtitle, nil)
     }
 
-    /// "Humidity: 1.7 → 1.5 · +1". Link quality and last-seen ride along
-    /// with most reports, so they only show when nothing else changed.
+    /// "Colour set to Pink", "Turned on · Brightness: 60% → 80%", with
+    /// "+N" when more changed. Same wording as the tab bar accessory.
     private static func stateChangeText(_ entry: LogEntry) -> String? {
-        guard entry.category == .stateChange,
-              let changes = entry.context?.stateChanges, !changes.isEmpty else { return nil }
-        let metadata: Set<String> = ["linkquality", "last_seen"]
-        let meaningful = changes.filter { !metadata.contains($0.property) }
-        let shown = meaningful.isEmpty ? changes : meaningful
-        var parts = shown.prefix(2).map(\.shortDescription)
-        if shown.count > 2 { parts.append("+\(shown.count - 2)") }
+        let wordings = entry.activityChangeWordings
+        guard !wordings.isEmpty else { return nil }
+        var parts = wordings.prefix(2).map(\.sentence)
+        if wordings.count > 2 { parts.append("+\(wordings.count - 2)") }
         return parts.joined(separator: " · ")
     }
 

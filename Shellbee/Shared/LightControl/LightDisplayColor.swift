@@ -47,6 +47,27 @@ enum LightDisplayColor {
         return colorTemperature.map(temperatureColor(whiteValue:))
     }
 
+    /// A plain name for a light colour ("Pink", "Warm White"), for places
+    /// where coordinates would mean nothing to a person.
+    static func name(for color: Color) -> String {
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+        UIColor(color).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        let degrees = hue * 360
+        if saturation < 0.12 { return String(localized: "White") }
+        if saturation < 0.45, degrees < 60 { return String(localized: "Warm White") }
+        if saturation < 0.3, (180..<260).contains(degrees) { return String(localized: "Cool White") }
+        switch degrees {
+        case ..<15, 345...: return String(localized: "Red")
+        case ..<40: return String(localized: "Orange")
+        case ..<68: return String(localized: "Yellow")
+        case ..<160: return String(localized: "Green")
+        case ..<195: return String(localized: "Cyan")
+        case ..<250: return String(localized: "Blue")
+        case ..<285: return String(localized: "Purple")
+        default: return String(localized: "Pink")
+        }
+    }
+
     // MARK: - Colour formats
 
     private static let temperatureKeys = ["color_temp", "color_temperature", "colour_temp", "color_temp_kelvin"]

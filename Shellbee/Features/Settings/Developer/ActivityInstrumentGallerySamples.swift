@@ -211,19 +211,25 @@ enum ActivityInstrumentGalleryCatalog {
         change("custom", "Custom Property", "manufacturer_value", from: .string("alpha"), to: .string("beta"))
     ]
 
-    /// Runs through the live resolver, so the gallery shows exactly what
-    /// the Activity feed would draw for that report.
+    /// Runs through the live resolver and wording, so the gallery shows
+    /// exactly what the Activity feed and tab bar would for that report.
     private static func change(
         _ id: String, _ title: String, _ property: String, from: JSONValue?, to: JSONValue,
         state: [String: JSONValue]? = nil
     ) -> ActivityInstrumentGallerySample {
-        let detail = [from?.stringified, to.stringified].compactMap { $0 }.joined(separator: " → ")
+        let change = LogContext.StateChange(
+            id: UUID(), property: property, from: from, to: to,
+            displayLabel: LogMapperEngine.humanize(property),
+            displayFrom: from.map { LogMapperEngine.format($0, property: property) },
+            displayTo: LogMapperEngine.format(to, property: property)
+        )
+        let wording = ActivityChangeWording(change: change, state: state)
         return ActivityInstrumentGallerySample(
             "change.\(id)", scope: .changes, section: "State Changes", title: title,
-            detail: "\(property): \(detail)",
+            detail: wording.sentence,
             instrument: ActivityInstrumentResolver.instrument(forProperty: property, from: from, to: to, state: state),
             logCategory: .stateChange,
-            change: ActivityAccessoryChange(label: title, from: from?.stringified, to: to.stringified)
+            change: ActivityAccessoryChange(wording: wording)
         )
     }
 

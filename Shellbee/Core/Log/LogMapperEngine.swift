@@ -67,9 +67,11 @@ struct LogMapperEngine {
 
     // MARK: - State diffing
 
+    /// - Parameter units: Units by property, from the device's Z2M exposes.
     static func diff(
         _ previous: [String: JSONValue],
-        _ next: [String: JSONValue]
+        _ next: [String: JSONValue],
+        units: [String: String] = [:]
     ) -> [LogContext.StateChange] {
         let excluded: Set<String> = ["last_seen", "update", "update_available", "device", "elapsed"]
         // Momentary triggers (action, click) are events, not state — when the
@@ -99,7 +101,7 @@ struct LogMapperEngine {
                     if case .null = subVal { continue }
                     if case .object = subVal { continue }
                     if case .array = subVal { continue }
-                    changes.append(makeChange("\(key).\(sub)", from: pObj[sub], to: subVal))
+                    changes.append(makeChange("\(key).\(sub)", from: pObj[sub], to: subVal, units: units))
                 }
             } else if case .object = curr ?? .null {
                 // New top-level object: recurse into its keys with no "from" values
@@ -109,14 +111,14 @@ struct LogMapperEngine {
                         if case .null = subVal { continue }
                         if case .object = subVal { continue }
                         if case .array = subVal { continue }
-                        changes.append(makeChange("\(key).\(sub)", from: nil, to: subVal))
+                        changes.append(makeChange("\(key).\(sub)", from: nil, to: subVal, units: units))
                     }
                 }
             } else if case .array = curr ?? .null {
                 // Skip array-valued top-level keys — not meaningfully displayable
                 continue
             } else {
-                changes.append(makeChange(key, from: prev, to: curr ?? .null))
+                changes.append(makeChange(key, from: prev, to: curr ?? .null, units: units))
             }
         }
         return changes
@@ -160,7 +162,7 @@ struct LogMapperEngine {
         return table[property] ?? property.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
-    static func format(_ value: JSONValue, property: String) -> String {
+    static func format(_ value: JSONValue, property: String, unit: String? = nil) -> String {
         switch value {
         case .null: return "—"
         case .bool(let b):
@@ -169,17 +171,32 @@ struct LogMapperEngine {
         case .string(let s): return s.isEmpty ? "—" : s
         case .int(let i):
             if property == "brightness" { return "\(Int((Double(i) / 254.0 * 100).rounded()))%" }
-            if property == "color_temp" { return "\(Int((1_000_000.0 / Double(i)).rounded()))K" }
-            if property == "battery" || property == "humidity" { return "\(i)%" }
+            if property == "color_temp" { return "\(Int((1_000_000.0 / Double(i)).rounded())) K" }
+            if property.hasSuffix("temperature") || property.hasSuffix("setpoint") { return "\(i)°" }
             if Self.minuteDurationProps.contains(property) { return formatMinutesDuration(Double(i)) }
-            return "\(i)"
+            return withUnit("\(i)", property: property, unit: unit)
         case .double(let d):
-            if property == "temperature" { return String(format: "%.1f°", d) }
+            if property.hasSuffix("temperature") || property.hasSuffix("setpoint") { return String(format: "%.1f°", d) }
             if Self.minuteDurationProps.contains(property) { return formatMinutesDuration(d) }
-            return d.formatted(.number.precision(.fractionLength(0...2)))
+            return withUnit(d.formatted(.number.precision(.fractionLength(0...2))), property: property, unit: unit)
         default: return value.stringified
         }
     }
+
+    /// Z2M's unit for the property, or a sensible default for devices whose
+    /// exposes aren't known (groups, retained state before the device list).
+    /// Percent and degrees hug the number, like iOS; other units take a space.
+    private static func withUnit(_ number: String, property: String, unit: String?) -> String {
+        guard let unit = unit ?? defaultUnits[property], !unit.isEmpty else { return number }
+        return unit == "%" || unit.hasPrefix("°") ? number + unit : "\(number) \(unit)"
+    }
+
+    private static let defaultUnits: [String: String] = [
+        "battery": "%", "humidity": "%", "soil_moisture": "%", "position": "%",
+        "power": "W", "energy": "kWh", "voltage": "V", "current": "A",
+        "co2": "ppm", "voc": "ppb", "pm25": "µg/m³", "pm10": "µg/m³", "formaldehyd": "mg/m³",
+        "illuminance": "lx", "illuminance_lux": "lx", "pressure": "hPa"
+    ]
 
     private static let minuteDurationProps: Set<String> = ["filter_age", "device_age"]
 
@@ -246,12 +263,17 @@ struct LogMapperEngine {
         )
     }
 
-    private static func makeChange(_ property: String, from: JSONValue?, to: JSONValue) -> LogContext.StateChange {
-        LogContext.StateChange(
+    private static func makeChange(
+        _ property: String, from: JSONValue?, to: JSONValue, units: [String: String]
+    ) -> LogContext.StateChange {
+        // Units aren't meaningful on color.x / color.hue, and Z2M reports
+        // colour temperature in mireds, which format(_:) turns into kelvin.
+        let unit = property.contains(".") || property == "color_temp" ? nil : units[property]
+        return LogContext.StateChange(
             id: UUID(), property: property, from: from, to: to,
             displayLabel: humanize(property),
-            displayFrom: from.map { format($0, property: property) },
-            displayTo: format(to, property: property)
+            displayFrom: from.map { format($0, property: property, unit: unit) },
+            displayTo: format(to, property: property, unit: unit)
         )
     }
 }

@@ -210,7 +210,7 @@ extension AppStore {
             // section immediately.
             let isGroup = groups.contains { $0.friendlyName == name }
             if !previous.isEmpty || isGroup {
-                let changes = LogMapperEngine.diff(previous, state)
+                let changes = LogMapperEngine.diff(previous, state, units: exposeUnits(for: name))
                 if !changes.isEmpty {
                     insertLogEntry(LogMapperEngine.stateChangeEntry(device: name, changes: changes, payload: state))
                 }
