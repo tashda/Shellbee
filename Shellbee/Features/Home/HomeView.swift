@@ -1,22 +1,39 @@
 import SwiftUI
 
 struct HomeView: View {
+    var usesWideLayout: Bool = false
+
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
 
     @State private var isPermitJoinConfigPresented = false
     @State private var showingRestartAlert = false
     @State private var pendingRestartBridgeID: UUID?
-    @State private var showingMeshDetail = false
+    @State private var presentedSheet: HomeSheet?
 
     /// Phase 2 multi-bridge: every Home read goes through `selectedScope` —
     /// the user-selected bridge in the picker. Nil only when no bridge is
     /// connected; views guard accordingly. Permit Join, Restart, and the
     /// merged Recent Events log do their own per-bridge resolution.
     private var selectedScope: BridgeScope? {
-        environment.selectedScope
+        selectedBridgeID.map { environment.scope(for: $0) }
+    }
+
+    private var selectedBridgeID: UUID? {
+        if let selected = sceneNavigation.selectedBridgeID,
+           environment.registry.session(for: selected) != nil {
+            return selected
+        }
+        return environment.registry.primaryBridgeID
+            ?? environment.registry.orderedSessions.first?.bridgeID
     }
 
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
+    @AppStorage(HomeSettings.cardDisplayKey(.bridge)) private var bridgeCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.devices)) private var devicesCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.groups)) private var groupsCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.mesh)) private var meshCardDisplayRaw = HomeCardDisplayMode.one.rawValue
+    @AppStorage(HomeSettings.cardDisplayKey(.recentEvents)) private var recentEventsCardDisplayRaw = HomeCardDisplayMode.one.rawValue
     @State private var showingAllLogs = false
     @State private var layout = HomeLayoutStore()
 
@@ -25,7 +42,7 @@ struct HomeView: View {
     /// surface their status. In single-bridge mode this is just one entry, and
     /// the card renders the legacy layout.
     private var bridgeCardEntries: [HomeBridgeCardEntry] {
-        let primaryID = environment.registry.primaryBridgeID
+        let primaryID = selectedBridgeID
         return environment.registry.orderedSessions.map { session in
             HomeBridgeCardEntry(
                 id: session.bridgeID,
@@ -37,6 +54,22 @@ struct HomeView: View {
                 info: session.store.bridgeInfo,
                 health: session.store.bridgeHealth
             )
+        }
+    }
+
+    private var connectedSessions: [BridgeSession] {
+        environment.registry.orderedSessions.filter(\.isConnected)
+    }
+
+    private var homeCards: [HomeCardInstance] {
+        layout.visibleOrder.flatMap { type in
+            let sessions = type == .bridge
+                ? bridgeCardEntries.map(\.id)
+                : connectedSessions.map(\.bridgeID)
+            guard displayMode(for: type) == .perBridge, sessions.count >= 2 else {
+                return [HomeCardInstance(type: type)]
+            }
+            return sessions.map { HomeCardInstance(type: type, bridgeID: $0) }
         }
     }
 
@@ -63,7 +96,7 @@ struct HomeView: View {
                 acc.merge(s.store.otaUpdates) { existing, _ in existing }
             }
             let totalGroups = connected.reduce(0) { $0 + $1.store.groups.count }
-            let primary = environment.registry.primary
+            let primary = selectedBridgeID.flatMap { environment.registry.session(for: $0) }
 
             return HomeSnapshot(
                 devices: allDevices,
@@ -121,74 +154,18 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(layout.visibleOrder) { id in
-                        HomeCardSlot(
-                            card: id,
-                            isEditing: layout.isEditing,
-                            onHide: {
-                                withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
-                                    layout.hide(id)
-                                }
-                            },
-                            onEnterEdit: {
-                                withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
-                                    layout.isEditing = true
-                                }
-                            }
-                        ) {
-                            cardView(for: id)
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(
-                            top: DesignTokens.Spacing.sm,
-                            leading: DesignTokens.Spacing.lg,
-                            bottom: DesignTokens.Spacing.sm,
-                            trailing: DesignTokens.Spacing.lg
-                        ))
-                    }
-                    .onMove { source, destination in
-                        layout.move(from: source, to: destination)
-                    }
-                }
-
-                if layout.isEditing && !layout.hidden.isEmpty {
-                    Section {
-                        HomeAddCardsSection(
-                            hidden: HomeCardID.allCases.filter { layout.hidden.contains($0) }
-                        ) { card in
-                            withAnimation(.easeInOut(duration: DesignTokens.Duration.mediumAnimation)) {
-                                layout.show(card)
-                            }
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(
-                            top: DesignTokens.Spacing.md,
-                            leading: DesignTokens.Spacing.lg,
-                            bottom: DesignTokens.Spacing.lg,
-                            trailing: DesignTokens.Spacing.lg
-                        ))
-                    }
-                }
-
-                if layout.visibleOrder.isEmpty {
-                    emptyLayoutState
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                }
+            HomeCardsCollection(
+                layout: layout,
+                usesWideLayout: usesWideLayout,
+                cards: homeCards
+            ) { card in
+                cardView(for: card)
+            } emptyContent: {
+                emptyLayoutState
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .environment(\.editMode, .constant(layout.isEditing ? .active : .inactive))
             .background(HomeBackgroundGradient().ignoresSafeArea())
             .navigationDestination(isPresented: $showingAllLogs) {
-                LogsView()
-            }
-            .navigationDestination(isPresented: $showingMeshDetail) {
-                MeshDetailView(snapshot: snapshot)
+                LogsView(usesActivityFeed: true, navigationTitle: "Activity")
             }
             .task(id: selectedScope?.store.isConnected ?? false) {
                 // Phase 2 multi-bridge: probe health on every connected bridge
@@ -212,6 +189,9 @@ struct HomeView: View {
                     }
                 } else {
                     ToolbarItem(placement: .topBarTrailing) {
+                        OpenWindowMenu(currentDestination: .home)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
                         PermitJoinToolbarButton(isActive: snapshot.isPermitJoinActive) {
                             isPermitJoinConfigPresented = true
                         }
@@ -225,9 +205,19 @@ struct HomeView: View {
                 )
                 .environment(environment)
             }
+            .sheet(item: $presentedSheet) { sheet in
+                switch sheet {
+                case .mesh(let bridgeID):
+                    MeshDetailView(snapshot: snapshot(for: bridgeID))
+                        .environment(environment)
+                case .bridge(let bridgeID):
+                    BridgeInfoSheet(bridgeID: bridgeID)
+                        .environment(environment)
+                }
+            }
             .alert("Restart Bridge?", isPresented: $showingRestartAlert) {
                 Button("Restart", role: .destructive) {
-                    let id = pendingRestartBridgeID ?? environment.registry.primaryBridgeID
+                    let id = pendingRestartBridgeID ?? selectedBridgeID
                     if let id { environment.restartBridge(id) }
                     pendingRestartBridgeID = nil
                 }
@@ -236,52 +226,135 @@ struct HomeView: View {
                 Text("Restarting the bridge will apply pending configuration changes and temporarily disconnect all Zigbee devices.")
             }
         }
+        .configuredTopScrollEdgeEffect()
     }
 
     @ViewBuilder
-    private func cardView(for id: HomeCardID) -> some View {
-        switch id {
+    private func cardView(for card: HomeCardInstance) -> some View {
+        switch card.type {
         case .bridge:
             HomeBridgeCard(
-                entries: bridgeCardEntries,
+                entries: bridgeEntries(for: card),
                 onRestart: { id in
                     pendingRestartBridgeID = id
                     showingRestartAlert = true
                 },
-                onSelectBridge: bridgeCardEntries.count >= 2 ? { id in
-                    if environment.registry.primaryBridgeID != id {
-                        environment.registry.setPrimary(id)
-                    }
-                } : nil
+                onOpenBridge: { id in
+                    presentedSheet = .bridge(id)
+                }
             )
         case .devices:
-            HomeDevicesCard(snapshot: snapshot) {
-                environment.showDevices(filter: .all)
+            HomeDevicesCard(snapshot: snapshot(for: card.bridgeID), bridgeName: bridgeName(for: card.bridgeID)) {
+                showDevices(filter: .all, bridgeID: card.bridgeID)
             } onFilter: {
-                environment.showDevices(filter: $0)
+                showDevices(filter: $0, bridgeID: card.bridgeID)
             }
         case .groups:
-            // Phase 2 multi-bridge: count across every connected bridge so the
-            // card matches what the Groups tab shows in merged mode.
-            HomeGroupsCard(count: environment.allGroups.count) {
-                environment.selectedTab = .groups
+            HomeGroupsCard(
+                count: card.bridgeID.flatMap { environment.registry.session(for: $0)?.store.groups.count }
+                    ?? environment.allGroups.count,
+                bridgeName: bridgeName(for: card.bridgeID)
+            ) {
+                if let bridgeID = card.bridgeID {
+                    sceneNavigation.selectedBridgeID = bridgeID
+                }
+                sceneNavigation.selectedTab = .groups
             }
         case .mesh:
-            HomeMeshCard(snapshot: snapshot) {
-                showingMeshDetail = true
+            HomeMeshCard(snapshot: snapshot(for: card.bridgeID), bridgeName: bridgeName(for: card.bridgeID)) {
+                presentedSheet = .mesh(card.bridgeID)
             } onFilter: {
-                environment.showDevices(filter: $0)
+                showDevices(filter: $0, bridgeID: card.bridgeID)
             }
         case .recentEvents:
             // Phase 2 multi-bridge: merge the most-recent events across every
-            // bridge so the card shows the user's whole network.
+            // bridge so the card shows the user's whole network. LQI-only
+            // drift is suppressed here for the same reason it's hidden in
+            // the Activity Log by default — it's noise, not events the
+            // user wants on their home screen.
             HomeLogsCard(
-                entries: environment.allLogEntries.prefix(recentEventsCount).map(\.entry),
+                entries: logEntries(for: card.bridgeID),
+                showsExpandedDetails: usesWideLayout,
+                bridgeName: bridgeName(for: card.bridgeID),
                 onOpenEntry: { entry in
-                    environment.pendingLogSheet = LogSheetRequest(entryIDs: [entry.id])
+                    sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [entry.id])
                 },
-                onOpenAll: { showingAllLogs = true }
+                onOpenAll: openAllLogs
             )
+        }
+    }
+
+    private func displayMode(for type: HomeCardID) -> HomeCardDisplayMode {
+        let raw: String
+        switch type {
+        case .bridge: raw = bridgeCardDisplayRaw
+        case .devices: raw = devicesCardDisplayRaw
+        case .groups: raw = groupsCardDisplayRaw
+        case .mesh: raw = meshCardDisplayRaw
+        case .recentEvents: raw = recentEventsCardDisplayRaw
+        }
+        return HomeCardDisplayMode(rawValue: raw) ?? .one
+    }
+
+    private func bridgeEntries(for card: HomeCardInstance) -> [HomeBridgeCardEntry] {
+        guard let bridgeID = card.bridgeID else { return bridgeCardEntries }
+        return bridgeCardEntries.filter { $0.id == bridgeID }
+    }
+
+    private func bridgeName(for bridgeID: UUID?) -> String? {
+        bridgeID.flatMap { environment.registry.session(for: $0)?.displayName }
+    }
+
+    private func snapshot(for bridgeID: UUID?) -> HomeSnapshot {
+        guard let bridgeID,
+              let session = environment.registry.session(for: bridgeID)
+        else { return snapshot }
+
+        let store = session.store
+        return HomeSnapshot(
+            devices: store.devices,
+            availability: store.deviceAvailability,
+            states: store.deviceStates,
+            otaStatuses: store.otaUpdates,
+            isConnected: store.isConnected,
+            isBridgeOnline: store.bridgeOnline,
+            groupCount: store.groups.count,
+            bridgeVersion: store.bridgeInfo?.version,
+            bridgeCommit: store.bridgeInfo?.commit,
+            coordinatorType: store.bridgeInfo?.coordinator.type,
+            coordinatorIEEEAddress: store.bridgeInfo?.coordinator.ieeeAddress,
+            networkChannel: store.bridgeInfo?.network?.channel,
+            panID: store.bridgeInfo?.network?.panID,
+            isPermitJoinActive: store.bridgeInfo?.permitJoin ?? false,
+            permitJoinEnd: store.bridgeInfo?.permitJoinEnd,
+            restartRequired: store.bridgeInfo?.restartRequired ?? false
+        )
+    }
+
+    private func logEntries(for bridgeID: UUID?) -> [LogEntry] {
+        let entries = bridgeID.flatMap { environment.registry.session(for: $0)?.store.logEntries }
+            ?? environment.allLogEntries.map(\.entry)
+        return entries
+            .filter { !LogRowIconography.isLinkQualityOnly($0) }
+            .prefix(
+                usesWideLayout
+                    ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
+                    : recentEventsCount
+            )
+            .map { $0 }
+    }
+
+    private func showDevices(filter: DeviceQuickFilter, bridgeID: UUID? = nil) {
+        sceneNavigation.pendingDeviceBridgeID = bridgeID
+        sceneNavigation.pendingDeviceFilter = filter
+        sceneNavigation.selectedTab = .devices
+    }
+
+    private func openAllLogs() {
+        if AdaptiveLayout.isPad {
+            sceneNavigation.selectedTab = .logs
+        } else {
+            showingAllLogs = true
         }
     }
 
@@ -311,13 +384,13 @@ struct HomeView: View {
         // Phase 2 multi-bridge: PermitJoinSheet always provides a `bridgeID`
         // when ≥2 bridges are connected. Single-bridge mode passes nil and we
         // resolve to the only connected session.
-        let id = bridgeID ?? environment.registry.primaryBridgeID
+        let id = bridgeID ?? selectedBridgeID
         guard let id else { return }
         sendPermitJoin(duration: duration, deviceName: deviceName, bridgeID: id)
     }
 
     private func stopPermitJoin(bridgeID: UUID?) {
-        let id = bridgeID ?? environment.registry.primaryBridgeID
+        let id = bridgeID ?? selectedBridgeID
         guard let id else { return }
         sendPermitJoin(duration: 0, deviceName: nil, bridgeID: id)
     }
@@ -339,6 +412,18 @@ struct HomeView: View {
                 timeout: duration > 0 ? duration : nil,
                 target: duration > 0 ? deviceName : nil
             )
+        }
+    }
+}
+
+private enum HomeSheet: Identifiable {
+    case mesh(UUID?)
+    case bridge(UUID)
+
+    var id: String {
+        switch self {
+        case .mesh(let bridgeID): "mesh-\(bridgeID?.uuidString ?? "all")"
+        case .bridge(let bridgeID): "bridge-\(bridgeID.uuidString)"
         }
     }
 }

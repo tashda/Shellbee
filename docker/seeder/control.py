@@ -132,6 +132,19 @@ class NameBody(BaseModel):
     name: str
 
 
+class OTARunBody(BaseModel):
+    name: str
+    duration_s: float | None = None
+    fail_at: int | None = None
+
+
+class TouchlinkBody(BaseModel):
+    found: int = 2
+    scan_ms: int = 12_000
+    identify_ms: int = 3_000
+    fail: bool = False
+
+
 class SpamBody(BaseModel):
     name: str
     count: int = 50
@@ -313,15 +326,32 @@ def scenario_announce(body: NameBody):
 
 
 @app.post("/api/scenarios/ota/run")
-def scenario_ota(body: NameBody):
-    """Run the full OTA flow: check (mark available) then update (drive progress)."""
+def scenario_ota(body: OTARunBody):
+    """Run the full OTA flow: check (mark available) then update (drive progress).
+
+    `duration_s` stretches the update (default ~4s) so the Live Activity can be
+    watched; `fail_at` aborts with an error once progress reaches that percent.
+    """
     client = _client()
     d = _device_or_404(body.name)
     seeder.handle_request(client, "device/ota_update/check", {"id": d["friendly_name"]})
+    update: dict = {"id": d["friendly_name"]}
+    if body.duration_s:
+        update["_tick_ms"] = body.duration_s * 1000 / (100 / seeder.OTA_STEP)
+    if body.fail_at is not None:
+        update["_fail_at"] = body.fail_at
     # Small delay so the client can render "available" before we start updating.
     threading.Timer(0.4, lambda: seeder.handle_request(
-        client, "device/ota_update/update", {"id": d["friendly_name"]})).start()
-    return _ok(name=d["friendly_name"])
+        client, "device/ota_update/update", update)).start()
+    return _ok(name=d["friendly_name"], duration_s=body.duration_s, fail_at=body.fail_at)
+
+
+@app.post("/api/scenarios/touchlink")
+def scenario_touchlink(body: TouchlinkBody):
+    """Configure how the next touchlink scan/identify behaves. Start the scan
+    or identify from the app as usual; the mock answers after the delay."""
+    seeder.touchlink_config.update(body.model_dump())
+    return _ok(**seeder.touchlink_config)
 
 
 @app.post("/api/scenarios/ota/check")

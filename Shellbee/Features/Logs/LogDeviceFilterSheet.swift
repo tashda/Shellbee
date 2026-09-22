@@ -99,6 +99,7 @@ struct LogDeviceFilterSheet: View {
                 }
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }

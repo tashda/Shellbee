@@ -3,14 +3,10 @@ name: CI (Full)
 # Unit + Integration suite, run against a live mock z2m bridge. Triggers:
 #   1. Nightly at 03:00 UTC (catches environmental / flaky issues)
 #   2. On-demand from the Actions tab
-#   3. Labeling a PR with `run-ui-tests` (kept for parity with the existing
-#      flow even though the UI job itself was removed — see below)
+#   3. Labeling a PR with `run-ui-tests`
 #
-# UI tests previously ran here too but were removed while the device list /
-# settings / logs UIs are in active redesign — the suite was reliably red on
-# tests-vs-UI mismatches that aren't real regressions, training us to ignore
-# the nightly badge. Restore the ui-tests job (git history) once the UI
-# settles and we have a green baseline to defend.
+# The focused iPad matrix runs on every Full CI invocation. The broader iPhone
+# UI suite remains opt-in while its legacy coverage is stabilized.
 #
 # Typical duration: ~10 min. Not required for PR merge — see ci-fast.yml
 # for the required check.
@@ -262,6 +258,151 @@ jobs:
           name: ci-full-ipad-logs
           path: |
             build-ipad.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ipad-ui-tests:
+    name: iPad UI (${{ matrix.form_factor }})
+    needs: gate
+    runs-on: macos-15
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - form_factor: mini
+            name_regex: iPad mini
+          - form_factor: 13-inch
+            name_regex: iPad Pro.*13-inch
+
+    env:
+      SCHEME: Shellbee
+      TEST_PLAN: Shellbee
+      TEST_TARGET: ShellbeeUITests/IPadShellMatrixUITests
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/DerivedData/SourcePackages/checkouts
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Start duplicate-name dual mock bridges
+        env:
+          MULTI_BRIDGE: "1"
+          SECONDARY_DUPLICATE_NAMES: "1"
+          DRIFT_ON_CLIENT_CONNECT: "0"
+          MOCK_SEED_INTERVAL: "60"
+        run: ./.github/scripts/start-mock-bridge.sh
+
+      - name: Select latest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Pick representative iPad simulator
+        id: sim
+        env:
+          NAME_REGEX: ${{ matrix.name_regex }}
+        run: |
+          DEVICE_JSON=$(xcrun simctl list devices available --json)
+          DEVICE_ID=$(jq -r --arg regex "$NAME_REGEX" \
+            '[.devices | to_entries[]
+              | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
+              | .value[]
+              | select(.isAvailable and (.name | test($regex; "i")))]
+             | sort_by(.name) | last | .udid // empty' <<< "$DEVICE_JSON")
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No iPad matched $NAME_REGEX" >&2
+            xcrun simctl list devices available
+            exit 1
+          fi
+          NAME=$(jq -r --arg id "$DEVICE_ID" \
+            '[.devices | to_entries[].value[] | select(.udid==$id)][0].name' <<< "$DEVICE_JSON")
+          echo "Using: $NAME ($DEVICE_ID)"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Boot simulator and wait for readiness
+        timeout-minutes: 4
+        run: xcrun simctl bootstatus "${{ steps.sim.outputs.device_id }}" -b
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -derivedDataPath "$DERIVED_DATA"
+
+      - name: Build iPad UI tests
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO | tee build-ipad-ui.log
+
+      - name: Run adaptive iPad behavior tests
+        timeout-minutes: 20
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            -only-testing:"$TEST_TARGET" \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -resultBundlePath "$DERIVED_DATA/IPadMatrix.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | tee test-ipad-ui.log
+
+      - name: Capture mock bridge logs
+        if: always()
+        run: |
+          cp "$RUNNER_TEMP/z2m-bridge.log" mock-bridge.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-seeder.log" mock-seeder.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-bridge-2.log" mock-bridge-2.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
+
+      - name: Summarize
+        if: always()
+        env:
+          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
+        run: |
+          {
+            echo "## iPad UI — $DEVICE_NAME"
+            echo
+            echo "Behavioral smoke, bridge-scoped selection, and rotation restoration."
+            echo
+            echo "Failure artifacts include the xcresult bundle and XCTest screenshots."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-full-ipad-${{ matrix.form_factor }}
+          path: |
+            build-ipad-ui.log
+            test-ipad-ui.log
+            mock-bridge.log
+            mock-seeder.log
+            mock-bridge-2.log
+            mock-seeder-2.log
+            ${{ env.DERIVED_DATA }}/IPadMatrix.xcresult
           if-no-files-found: ignore
           retention-days: 14
 

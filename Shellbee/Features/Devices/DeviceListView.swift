@@ -1,8 +1,28 @@
 import SwiftUI
 
 struct DeviceListView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(DevicePresentationPreference.storageKey)
+    private var storedPresentationMode = DevicePresentationMode.list.rawValue
+    /// `false` lets a parent `NavigationSplitView` own navigation — used by
+    /// the iPad three-column shell so list rows route their detail into
+    /// the trailing column instead of pushing onto an inner stack.
+    var embedInNavigationStack: Bool = true
+    private let selection: Binding<DeviceRoute?>?
+
+    init(
+        embedInNavigationStack: Bool = true,
+        selection: Binding<DeviceRoute?>? = nil,
+        viewModel: DeviceListViewModel? = nil
+    ) {
+        self.embedInNavigationStack = embedInNavigationStack
+        self.selection = selection
+        _viewModel = State(initialValue: viewModel ?? DeviceListViewModel())
+    }
+
     @Environment(AppEnvironment.self) private var environment
-    @State private var viewModel = DeviceListViewModel()
+    @Environment(\.sceneNavigation) private var sceneNavigation
+    @State private var viewModel: DeviceListViewModel
     @State private var navigationPath = NavigationPath()
     @State private var deviceToRename: BridgeBoundDevice?
     @State private var deviceToRemove: BridgeBoundDevice?
@@ -12,6 +32,13 @@ struct DeviceListView: View {
 
     private var isGrouped: Bool {
         viewModel.groupByCategory
+    }
+
+    private var presentationMode: DevicePresentationMode {
+        DevicePresentationPreference.effectiveMode(
+            storedValue: storedPresentationMode,
+            usesRegularWidth: horizontalSizeClass == .regular
+        )
     }
 
     /// The bridge that toolbar actions (firmware menu, refresh) target. In
@@ -25,66 +52,11 @@ struct DeviceListView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            DeviceListContent(
-                viewModel: viewModel,
-                isGrouped: isGrouped,
-                onRename: { deviceToRename = $0 },
-                onRemove: { deviceToRemove = $0 },
-                onPendingAlert: { alert, bridgeID in
-                    pendingDeviceAlert = alert
-                    pendingAlertBridgeID = bridgeID
-                }
-            )
-            .listStyle(.insetGrouped)
-            .navigationTitle("Devices")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: DeviceRoute.self) { route in
-                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-            }
-            .searchable(text: $viewModel.searchText, prompt: "Search")
-            .minimizeSearchToolbarIfAvailable()
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        showPairingWizard = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Add Device")
-                    if let toolbarID = toolbarBridgeID {
-                        DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
-                        DeviceFirmwareMenu(bridgeID: toolbarID)
-                    }
-                    sortMenu
-                }
-            }
-            .refreshable {
-                if let id = toolbarBridgeID {
-                    await environment.refreshBridgeData(bridgeID: id)
-                }
-            }
-            .onAppear {
-                if let filter = environment.pendingDeviceFilter {
-                    navigationPath = NavigationPath()
-                    viewModel.applyQuickFilter(filter)
-                    environment.pendingDeviceFilter = nil
-                }
-                if let route = environment.pendingDeviceNavigation {
-                    environment.pendingDeviceNavigation = nil
-                    pushDeviceResettingPath(route)
-                }
-            }
-            .onChange(of: environment.pendingDeviceFilter) { _, newFilter in
-                guard let filter = newFilter else { return }
-                navigationPath = NavigationPath()
-                viewModel.applyQuickFilter(filter)
-                environment.pendingDeviceFilter = nil
-            }
-            .onChange(of: environment.pendingDeviceNavigation) { _, newRoute in
-                guard let route = newRoute else { return }
-                environment.pendingDeviceNavigation = nil
-                pushDeviceResettingPath(route)
+        SwiftUI.Group {
+            if embedInNavigationStack {
+                NavigationStack(path: $navigationPath) { listContent }
+            } else {
+                listContent
             }
         }
         .sheet(isPresented: $showPairingWizard) {
@@ -130,10 +102,107 @@ struct DeviceListView: View {
         }
     }
 
+    private var listContent: some View {
+        DeviceListContent(
+            viewModel: viewModel,
+            isGrouped: isGrouped,
+            onRename: { deviceToRename = $0 },
+            onRemove: { deviceToRemove = $0 },
+            onPendingAlert: { alert, bridgeID in
+                pendingDeviceAlert = alert
+                pendingAlertBridgeID = bridgeID
+            },
+            selection: selection,
+            presentationMode: presentationMode
+        )
+        // `.plain` in iPad 3-column mode: `.insetGrouped` renders rounded
+        // card sections, and iPadOS 26's selection chrome overlays them
+        // weirdly (the row's middle content disappears). `.plain` lets
+        // the system selection state render cleanly.
+        .modifier(AdaptiveListStyle(useGrouped: embedInNavigationStack))
+        .navigationTitle("Devices")
+        .navigationBarTitleDisplayMode(.large)
+        .modifier(DeviceListNavigationDestination(isEnabled: embedInNavigationStack))
+        .toolbar {
+            // Device-only actions sit in their own leading group so the
+            // Filter/Sort and Add groups line up with the Groups tab.
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if let toolbarID = toolbarBridgeID {
+                    DeviceFirmwareMenu(bridgeID: toolbarID)
+                }
+                if horizontalSizeClass == .regular {
+                    presentationModeMenu
+                }
+            }
+            TrailingToolbarGroupSpacer()
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if viewModel.hasActiveFilter {
+                    ClearFiltersToolbarButton { viewModel.clearFilters() }
+                }
+                if !AdaptiveLayout.isPad, let toolbarID = toolbarBridgeID {
+                    DeviceFilterMenu(viewModel: viewModel, store: environment.scope(for: toolbarID).store)
+                }
+                sortMenu
+            }
+            TrailingToolbarGroupSpacer()
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    showPairingWizard = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add Device")
+            }
+        }
+        .refreshable {
+            if let id = toolbarBridgeID {
+                await environment.refreshBridgeData(bridgeID: id)
+            }
+        }
+        .onAppear {
+            if let bridgeID = sceneNavigation.pendingDeviceBridgeID {
+                viewModel.bridgeFilter = bridgeID
+                sceneNavigation.pendingDeviceBridgeID = nil
+            }
+            if let filter = sceneNavigation.pendingDeviceFilter {
+                navigationPath = NavigationPath()
+                viewModel.applyQuickFilter(filter)
+                sceneNavigation.pendingDeviceFilter = nil
+            }
+            if let route = sceneNavigation.pendingDeviceNavigation {
+                sceneNavigation.pendingDeviceNavigation = nil
+                pushDeviceResettingPath(route)
+            }
+        }
+        .onChange(of: sceneNavigation.pendingDeviceFilter) { _, newFilter in
+            guard let filter = newFilter else { return }
+            navigationPath = NavigationPath()
+            viewModel.applyQuickFilter(filter)
+            sceneNavigation.pendingDeviceFilter = nil
+        }
+        .onChange(of: sceneNavigation.pendingDeviceBridgeID) { _, bridgeID in
+            guard let bridgeID else { return }
+            viewModel.bridgeFilter = bridgeID
+            sceneNavigation.pendingDeviceBridgeID = nil
+        }
+        .onChange(of: sceneNavigation.pendingDeviceNavigation) { _, newRoute in
+            guard let route = newRoute else { return }
+            sceneNavigation.pendingDeviceNavigation = nil
+            pushDeviceResettingPath(route)
+        }
+        .onChange(of: viewModel.filterState) { _, _ in
+            reconcileSelectionWithFilters()
+        }
+    }
+
     // Pop to root then push on the next runloop. Replacing and appending the
     // path in the same cycle raised AnyNavigationPath.comparisonTypeMismatch
     // when the stack already contained a Device entry.
     private func pushDeviceResettingPath(_ route: DeviceRoute) {
+        if let selection {
+            selection.wrappedValue = route
+            return
+        }
         if !navigationPath.isEmpty {
             navigationPath.removeLast(navigationPath.count)
         }
@@ -142,7 +211,31 @@ struct DeviceListView: View {
         }
     }
 
-    // MARK: - Sort menu
+    private func reconcileSelectionWithFilters() {
+        guard let route = selection?.wrappedValue,
+              let store = environment.registry.session(for: route.bridgeID)?.store
+        else { return }
+        if !viewModel.includes(device: route.device, bridgeID: route.bridgeID, store: store) {
+            selection?.wrappedValue = nil
+        }
+    }
+
+    // MARK: - Presentation and sort
+
+    private var presentationModeMenu: some View {
+        Menu {
+            Picker("Presentation", selection: $storedPresentationMode) {
+                ForEach(DevicePresentationMode.allCases) { mode in
+                    Label(mode.title, systemImage: mode.systemImage)
+                        .tag(mode.rawValue)
+                }
+            }
+        } label: {
+            Image(systemName: presentationMode.systemImage)
+        }
+        .accessibilityLabel("Device Presentation")
+        .accessibilityValue(presentationMode.title)
+    }
 
     private var sortMenu: some View {
         Menu {
@@ -178,11 +271,26 @@ struct DeviceListView: View {
     }
 }
 
+private struct DeviceListNavigationDestination: ViewModifier {
+    let isEnabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.navigationDestination(for: DeviceRoute.self) { route in
+                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+            }
+        } else {
+            content
+        }
+    }
+}
+
 // Isolating the per-device state observation in a child view keeps OTA
 // progress ticks from invalidating the parent's `.toolbar` modifier, which
 // would otherwise dismiss any open Filter submenu mid-interaction.
-private struct DeviceListContent: View {
-    @Environment(AppEnvironment.self) private var environment
+struct DeviceListContent: View {
+    @Environment(AppEnvironment.self) var environment
     @Bindable var viewModel: DeviceListViewModel
     let isGrouped: Bool
     let onRename: (BridgeBoundDevice) -> Void
@@ -190,23 +298,29 @@ private struct DeviceListContent: View {
     /// Phase 1 multi-bridge: the bridgeID is required so reconfigure/interview
     /// alerts route to the right bridge.
     let onPendingAlert: (PendingDeviceAlert, UUID) -> Void
+    let selection: Binding<DeviceRoute?>?
+    let presentationMode: DevicePresentationMode
 
-    private var isMergedMode: Bool {
+    var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
     }
 
     /// In single-bridge mode, the only connected session's id (used to wrap
     /// every device into a `BridgeBoundDevice` so the row, callbacks, and
     /// nav route all carry the same bridge identity).
-    private var singleBridgeID: UUID? {
+    var singleBridgeID: UUID? {
         environment.registry.orderedSessions.first(where: \.isConnected)?.bridgeID
     }
 
     var body: some View {
-        if isMergedMode {
-            mergedList
+        if presentationMode == .list {
+            if isMergedMode {
+                mergedList
+            } else {
+                singleBridgeList
+            }
         } else {
-            singleBridgeList
+            alternativePresentation
         }
     }
 
@@ -220,7 +334,7 @@ private struct DeviceListContent: View {
            let session = environment.registry.session(for: bridgeID) {
             singleBridgeListBody(bridgeID: bridgeID, store: session.store, bridgeName: session.displayName)
         } else {
-            List {
+            selectableList {
                 EmptyView()
             }
             .overlay {
@@ -235,7 +349,7 @@ private struct DeviceListContent: View {
 
     @ViewBuilder
     private func singleBridgeListBody(bridgeID: UUID, store: AppStore, bridgeName: String) -> some View {
-        List {
+        selectableList {
             if isGrouped {
                 if viewModel.showRecents {
                     let recents = viewModel.recentDevices(store: store)
@@ -295,7 +409,7 @@ private struct DeviceListContent: View {
     @ViewBuilder
     private var mergedList: some View {
         let allBound = filteredMergedDevices()
-        List {
+        selectableList {
             if viewModel.showRecents {
                 let recents = recentMergedDevices()
                 if !recents.isEmpty {
@@ -342,6 +456,19 @@ private struct DeviceListContent: View {
         }
     }
 
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
+            }
+        }
+    }
+
     private var noMatchingDevicesView: some View {
         ContentUnavailableView {
             Label("No Matching Devices", systemImage: "line.3.horizontal.decrease.circle")
@@ -354,7 +481,7 @@ private struct DeviceListContent: View {
 
     /// Apply the full filter set to the aggregated multi-bridge list. Status
     /// filtering resolves state/availability/OTA from each row's owning bridge.
-    private func filteredMergedDevices() -> [BridgeBoundDevice] {
+    func filteredMergedDevices() -> [BridgeBoundDevice] {
         let q = viewModel.searchText.lowercased()
         var all = environment.allDevices.filter { $0.device.type != .coordinator }
         if let bridgeID = viewModel.bridgeFilter {

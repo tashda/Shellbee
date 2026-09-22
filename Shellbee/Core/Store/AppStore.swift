@@ -7,6 +7,17 @@ final class AppStore {
     var groups: [Group] = []
     var bridgeInfo: BridgeInfo?
     var bridgeHealth: BridgeHealth?
+    var networkTopology: NetworkTopology?
+    var networkMapLastUpdated: Date?
+    var networkMapIsRefreshing = false
+    var networkMapRefreshPhase: NetworkMapRefreshPhase = .idle
+    var networkMapRefreshStartedAt: Date?
+    /// Live progress of the running scan, from the bridge's own log lines.
+    var networkMapScan: NetworkMapScanProgress?
+    /// Lightweight invalidation for the map's derived render index. Keeping
+    /// this separate from the topology avoids rebuilding the node/action
+    /// layer during pan and zoom while still reflecting live health changes.
+    var networkMapRenderRevision = 0
     var bridgeOnline = false
     var isConnected = false
     var deviceStates: [String: [String: JSONValue]] = [:]
@@ -42,6 +53,7 @@ final class AppStore {
     /// which writes one record per bridge so two stores running concurrently
     /// can't race the read-modify-write loop.
     private static let firstSeenByBridgeStoreKey = "AppStore.deviceFirstSeenByBridge"
+    let networkMapCache: NetworkMapCache
     private static func firstSeenKey(for bridgeID: UUID) -> String {
         "AppStore.deviceFirstSeen.\(bridgeID.uuidString)"
     }
@@ -57,17 +69,20 @@ final class AppStore {
     var touchlinkScanInProgress = false
     var touchlinkIdentifyInProgress = false
     var touchlinkResetInProgress = false
+    var permitJoinJoinedCount = 0
+    /// Last permit-join state seen by `syncPermitJoinLiveActivity`, used to
+    /// detect a new pairing window however it was opened.
+    var permitJoinWasOpen = false
+    /// Interviews running in the current pairing window, oldest first.
+    var permitJoinInterviewing: [String] = []
+    /// Last failed interview in the current window, cleared by the next event.
+    var permitJoinInterviewFailure: String?
+    /// A device that finished pairing moments ago; cleared after a beat.
+    var permitJoinRecentlyPaired: String?
     /// Friendly names of devices currently running an Identify (Zigbee
     /// Identify cluster). The action is fire-and-forget, so the row clears
     /// itself on a short timer rather than waiting for a response.
     var identifyInProgress: Set<String> = []
-    var pendingNotifications: [InAppNotification] = []
-    var fastTrackNotifications: [InAppNotification] = []
-    // Bumped whenever a new (non-coalesced) normal notification is enqueued.
-    // The overlay observes this to fire the arrival haptic exactly once per
-    // new banner, independent of coalescing bumps.
-    var notificationArrivalID: UUID = UUID()
-
     // Set by AppEnvironment to route OTA check/update responses into the
     // bulk queue so it can advance to the next device.
     var otaResponseForwarding: ((_ friendlyName: String, _ success: Bool, _ kind: OTABulkOperationQueue.Kind) -> Void)?
@@ -77,8 +92,8 @@ final class AppStore {
     // Tuple: (zipBase64, errorMessage) — exactly one is non-nil.
     var backupResponseHandler: ((_ zipBase64: String?, _ error: String?) -> Void)?
 
-    // Set by AppEnvironment to filter out notifications the user disabled
-    // in Settings → App → Notifications. Returns true to allow.
+    // Set by AppEnvironment to decide which Activity entries should be
+    // highlighted in Notifications Only. Returns true to highlight.
     var notificationFilter: ((InAppNotification) -> Bool)?
 
     // Transient per-device check results rendered briefly in the row after
@@ -92,9 +107,8 @@ final class AppStore {
     }
 
     static let logLimit = 1000
-    static let coalesceWindow: TimeInterval = AppConfig.UX.notificationCoalesceWindow
-
-    init() {
+    init(networkMapCache: NetworkMapCache = .shared) {
+        self.networkMapCache = networkMapCache
         loadFirstSeen()
     }
 
@@ -115,15 +129,22 @@ final class AppStore {
         otaUpdates = [:]
         logEntries = []
         operationErrors = []
-        pendingNotifications = []
-        fastTrackNotifications = []
         deviceCheckResults = [:]
         pendingRemovals = []
         touchlinkDevices = []
         touchlinkScanInProgress = false
         touchlinkIdentifyInProgress = false
         touchlinkResetInProgress = false
+        permitJoinJoinedCount = 0
+        permitJoinWasOpen = false
+        permitJoinInterviewing = []
+        permitJoinInterviewFailure = nil
+        permitJoinRecentlyPaired = nil
         identifyInProgress = []
+        networkMapIsRefreshing = false
+        networkMapRefreshPhase = .idle
+        networkMapRefreshStartedAt = nil
+        networkMapScan = nil
         // `deviceFirstSeen` itself is rebuilt by `setActiveBridge` after the
         // next successful connect — so we clear the published mirror here so
         // the UI doesn't briefly show the prior bridge's "Recently Added"
@@ -133,6 +154,8 @@ final class AppStore {
         // activities stay alive. activeBridgeID is preserved here — it's
         // cleared explicitly via `clearActiveBridge()` only on disconnect.
         OTAUpdateLiveActivityCoordinator.shared.clear(bridgeID: activeBridgeID)
+        PermitJoinLiveActivityCoordinator.shared.clear(bridgeID: activeBridgeID)
+        BridgeOperationLiveActivityCoordinator.shared.clear(bridgeID: activeBridgeID)
     }
 
     // MARK: - Active bridge tracking
@@ -156,6 +179,17 @@ final class AppStore {
         activeBridgeID = id
         activeBridgeName = name
         deviceFirstSeen = firstSeenByBridge[id] ?? [:]
+        if let cached = networkMapCache.load(bridgeID: id) {
+            networkTopology = cached.topology
+            networkMapLastUpdated = cached.updatedAt
+        } else {
+            networkTopology = nil
+            networkMapLastUpdated = nil
+        }
+        networkMapIsRefreshing = false
+        networkMapRefreshPhase = .idle
+        networkMapRefreshStartedAt = nil
+        networkMapScan = nil
         // Persist now (handles legacy migration too) — safe because
         // persistFirstSeen only writes activeBridgeID's slot.
         if pendingLegacyFirstSeen == nil && firstSeenByBridge[id]?.isEmpty == false {
@@ -168,6 +202,50 @@ final class AppStore {
     func clearActiveBridge() {
         activeBridgeID = nil
         activeBridgeName = ""
+    }
+
+    func beginNetworkMapRefresh() {
+        let now = Date()
+        networkMapIsRefreshing = true
+        networkMapRefreshPhase = .requesting
+        networkMapRefreshStartedAt = now
+        // Z2M queries the coordinator and every enabled router; end devices
+        // are reported by their parents, so they are not part of the count.
+        let targets = devices
+            .filter { ($0.type == .coordinator || $0.type == .router) && !$0.disabled }
+            .map(\.friendlyName)
+        networkMapScan = NetworkMapScanProgress(
+            targetNames: targets,
+            visibility: NetworkMapScanProgress.Visibility(
+                logLevel: bridgeInfo?.logLevel,
+                debugToFrontend: bridgeInfo?.config?.advanced?.logDebugToMqttFrontend ?? false
+            ),
+            requestedAt: now
+        )
+    }
+
+    func settleNetworkMapRefreshPhase(after delay: Duration = .seconds(1.2)) {
+        let phase = networkMapRefreshPhase
+        Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard let self, self.networkMapRefreshPhase == phase else { return }
+            self.clearNetworkMapRefreshPresentation()
+        }
+    }
+
+    /// Closes the finished-scan summary (or failure card) once the user has
+    /// read it.
+    func dismissNetworkMapRefreshSummary() {
+        switch networkMapRefreshPhase {
+        case .completed, .failed: clearNetworkMapRefreshPresentation()
+        case .idle, .requesting, .building: break
+        }
+    }
+
+    private func clearNetworkMapRefreshPresentation() {
+        networkMapRefreshPhase = .idle
+        networkMapRefreshStartedAt = nil
+        networkMapScan = nil
     }
 
     // MARK: - First-seen persistence

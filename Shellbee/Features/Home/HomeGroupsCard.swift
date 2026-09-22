@@ -2,13 +2,14 @@ import SwiftUI
 
 struct HomeGroupsCard: View {
     let count: Int
+    var bridgeName: String? = nil
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HomeCardContainer {
                 HStack(alignment: .center) {
-                    HomeCardTitle(symbol: "rectangle.3.group.fill", title: "Groups", tint: .green)
+                    HomeCardTitle(symbol: .custom("groups"), title: cardTitle, tint: .green)
                     Spacer()
                     Text("\(count)")
                         .font(.title3.weight(.semibold))
@@ -18,6 +19,10 @@ struct HomeGroupsCard: View {
             }
         }
         .buttonStyle(HomeCardButtonStyle())
+    }
+
+    private var cardTitle: String {
+        bridgeName.map { "Groups · \($0)" } ?? "Groups"
     }
 }
 

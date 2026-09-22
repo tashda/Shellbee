@@ -17,28 +17,87 @@ struct FanControlCard: View {
     private let rowVerticalPadding: CGFloat = DesignTokens.Spacing.md
     private let rowIconWidth: CGFloat = DesignTokens.Size.cardSymbol
 
+    @ViewBuilder
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.lg) {
-            heroCard
-            if hasFilterSection { filterCard }
-            if rendersSectionsInline {
-                ForEach(sections) { section in
-                    sectionView(section)
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(spacing: DesignTokens.Spacing.lg) {
+                heroCard
+                if hasFilterSection { filterCard }
+                if rendersSectionsInline {
+                    ForEach(sections) { section in
+                        sectionView(section)
+                    }
+                }
+            }
+            .sheet(item: $presentedGroup) { group in
+                FeatureDetailSheet(title: group.label) {
+                    ForEach(Array(group.members.enumerated()), id: \.element.property) { idx, e in
+                        if idx > 0 { rowDivider }
+                        FanExtraRow(expose: e, state: context.state, mode: mode,
+                                    horizontalPadding: rowHorizontalPadding,
+                                    verticalPadding: rowVerticalPadding,
+                                    iconWidth: rowIconWidth,
+                                    onSend: onSend)
+                    }
                 }
             }
         }
-        .sheet(item: $presentedGroup) { group in
-            FeatureDetailSheet(title: group.label) {
-                ForEach(Array(group.members.enumerated()), id: \.element.property) { idx, e in
-                    if idx > 0 { rowDivider }
-                    FanExtraRow(expose: e, state: context.state, mode: mode,
-                                horizontalPadding: rowHorizontalPadding,
-                                verticalPadding: rowVerticalPadding,
-                                iconWidth: rowIconWidth,
-                                onSend: onSend)
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Shared CompactSnapshotCard chrome,
+    /// single row: fan glyph, "Fan", speed/mode summary, ON/OFF pill.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                Image(systemName: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"))
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(heroTint)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(hasAirSensors ? "Air Quality" : "Fan")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    if let secondary = snapshotSecondaryText {
+                        Text(secondary)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
+
+                Spacer(minLength: DesignTokens.Spacing.sm)
+
+                statePill
             }
         }
+    }
+
+    /// Best one-line summary for the current state. Air-quality fans get
+    /// the AQ reading; plain fans get speed or mode if available.
+    private var snapshotSecondaryText: String? {
+        if hasAirSensors {
+            var parts: [String] = []
+            if let pm = pm25Value { parts.append("\(Int(pm.rounded())) \(pm25Unit)") }
+            if let aq = airQualityText { parts.append(prettify(aq)) }
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        }
+        guard context.isOn else { return nil }
+        if let modeName = context.fanModeFeature?.property,
+           let mode = context.state[modeName]?.stringValue, !mode.isEmpty {
+            return prettify(mode)
+        }
+        if let speedProp = context.speedFeature?.property,
+           let speed = context.state[speedProp]?.numberValue {
+            return "Speed \(Int(speed))"
+        }
+        return nil
     }
 
     // MARK: - Sectioning

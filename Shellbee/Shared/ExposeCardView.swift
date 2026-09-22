@@ -31,7 +31,14 @@ struct ExposeCardView: View {
                 }
             }
         case .sensor:
-            if SensorCard.hasReadings(device: device, state: state) {
+            let hasReadings = SensorCard.hasReadings(device: device, state: state)
+            let hasWritableExtras = GenericExposeCard.hasWritableRows(device: device, state: state)
+            if hasReadings && hasWritableExtras {
+                VStack(spacing: DesignTokens.Spacing.lg) {
+                    SensorCard(device: device, state: state, mode: mode)
+                    GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend, writableOnly: true)
+                }
+            } else if hasReadings {
                 SensorCard(device: device, state: state, mode: mode)
             } else {
                 GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)

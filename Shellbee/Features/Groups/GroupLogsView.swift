@@ -42,6 +42,7 @@ struct GroupLogsView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search logs")
+        .avoidHidingSearchToolbarContentIfAvailable()
         .navigationTitle("Logs")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -52,4 +53,5 @@ struct GroupLogsView: View {
         GroupLogsView(bridgeID: UUID(), group: .previewWithMembers)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

@@ -37,6 +37,7 @@ struct AddSceneSheet: View {
                 .padding(.vertical, DesignTokens.Spacing.md)
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.fraction(0.4)])
         .presentationDragIndicator(.visible)
         .task { nameFieldFocused = true }

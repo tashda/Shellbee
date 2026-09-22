@@ -78,10 +78,17 @@ struct DeviceDetailView: View {
             logsSection
         }
         .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
         .navigationTitle(device.friendlyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .device(
+                    bridgeID: bridgeID,
+                    ieeeAddress: device.ieeeAddress
+                ))
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 deviceConfigMenu(for: device)
             }
@@ -410,4 +417,5 @@ struct DeviceDetailView: View {
         DeviceDetailView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

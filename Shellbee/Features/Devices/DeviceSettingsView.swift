@@ -362,4 +362,5 @@ private struct NumericOption: View {
         DeviceSettingsView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

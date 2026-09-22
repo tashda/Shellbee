@@ -8,6 +8,7 @@ struct HomeCardContainer<Content: View>: View {
             content()
         }
         .padding(DesignTokens.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity), radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
@@ -15,13 +16,13 @@ struct HomeCardContainer<Content: View>: View {
 }
 
 struct HomeCardTitle: View {
-    let symbol: String
+    let symbol: ShellbeeSymbol
     let title: String
     let tint: Color
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: symbol)
+            symbol.image
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(tint)
             Text(title)

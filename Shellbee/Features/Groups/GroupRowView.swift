@@ -63,4 +63,5 @@ struct GroupRowView: View {
             )
         }
     }
+    .configuredTopScrollEdgeEffect()
 }

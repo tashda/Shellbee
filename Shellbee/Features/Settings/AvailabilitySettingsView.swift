@@ -109,4 +109,5 @@ struct AvailabilitySettingsView: View {
     NavigationStack {
         AvailabilitySettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

@@ -5,20 +5,51 @@ struct LockControlCard: View {
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            heroHeadline
-            if showsActionButton {
-                hairline
-                actionButton
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+                heroHeadline
+                if showsActionButton {
+                    hairline
+                    actionButton
+                }
+            }
+            .padding(DesignTokens.Spacing.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(heroBackground)
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        }
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Lock glyph + "Lock" + LOCKED/UNLOCKED pill.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                Image(systemName: context.isLocked ? "lock.fill" : "lock.open.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(heroTint)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Lock")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: DesignTokens.Spacing.sm)
+
+                statePill
             }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
     }
 
     /// Locked = green (Apple Home's "secured" tile), Unlocked = orange so the
@@ -55,7 +86,6 @@ struct LockControlCard: View {
                 heroValue
             }
             Spacer(minLength: 0)
-            if mode == .snapshot { statePill }
         }
     }
 

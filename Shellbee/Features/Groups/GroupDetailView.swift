@@ -18,6 +18,17 @@ struct GroupDetailView: View {
     /// is the only reliable way to disambiguate.
     let bridgeID: UUID
     let group: Group
+    private let memberSelection: Binding<DeviceRoute?>?
+
+    init(
+        bridgeID: UUID,
+        group: Group,
+        memberSelection: Binding<DeviceRoute?>? = nil
+    ) {
+        self.bridgeID = bridgeID
+        self.group = group
+        self.memberSelection = memberSelection
+    }
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
@@ -96,12 +107,13 @@ struct GroupDetailView: View {
                     .listRowBackground(Color.clear)
                 }
             } else if !groupState.isEmpty {
-                BeautifulPayloadView(payload: groupState)
+                PayloadSectionsView(payload: groupState)
             }
 
             GroupMembersSection(
                 bridgeID: bridgeID,
                 group: currentGroup,
+                selection: memberSelection,
                 onRemove: { memberToRemove = $0 },
                 onAdd: { showAddMembers = true }
             )
@@ -111,12 +123,18 @@ struct GroupDetailView: View {
             logsSection
         }
         .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
         .navigationTitle(currentGroup.friendlyName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    OpenInNewWindowButton(destination: .group(
+                        bridgeID: bridgeID,
+                        groupID: currentGroup.id
+                    ))
+                    Divider()
                     Button { menuDestination = .settings } label: {
                         Label("Group Settings", systemImage: "slider.horizontal.3")
                     }
@@ -190,4 +208,5 @@ struct GroupDetailView: View {
         GroupDetailView(bridgeID: UUID(), group: .previewWithMembers)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

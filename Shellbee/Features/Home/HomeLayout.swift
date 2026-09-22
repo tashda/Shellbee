@@ -2,6 +2,33 @@ import SwiftUI
 import UniformTypeIdentifiers
 import CoreTransferable
 
+enum HomeCardDisplayMode: String, CaseIterable, Sendable {
+    case one
+    case perBridge
+
+    var label: String {
+        switch self {
+        case .one: "One card"
+        case .perBridge: "One per bridge"
+        }
+    }
+}
+
+struct HomeCardInstance: Identifiable, Hashable, Sendable {
+    let type: HomeCardID
+    let bridgeID: UUID?
+
+    init(type: HomeCardID, bridgeID: UUID? = nil) {
+        self.type = type
+        self.bridgeID = bridgeID
+    }
+
+    var id: String {
+        guard let bridgeID else { return type.rawValue }
+        return "\(type.rawValue):\(bridgeID.uuidString)"
+    }
+}
+
 enum HomeCardID: String, CaseIterable, Codable, Identifiable, Hashable, Transferable {
     case bridge
     case devices
@@ -21,13 +48,13 @@ enum HomeCardID: String, CaseIterable, Codable, Identifiable, Hashable, Transfer
         }
     }
 
-    var symbol: String {
+    @MainActor var symbol: ShellbeeSymbol {
         switch self {
-        case .bridge:        "antenna.radiowaves.left.and.right"
-        case .devices:       "sensor.tag.radiowaves.forward.fill"
-        case .groups:        "rectangle.3.group.fill"
-        case .mesh:          "point.3.connected.trianglepath.dotted"
-        case .recentEvents:  "list.bullet.rectangle.fill"
+        case .bridge:        .custom("bridge")
+        case .devices:       .custom("devices")
+        case .groups:        .custom("groups")
+        case .mesh:          .custom("mesh")
+        case .recentEvents:  .custom("activity")
         }
     }
 
@@ -107,10 +134,41 @@ final class HomeLayoutStore {
         persist()
     }
 
+    func move(cards: [HomeCardInstance], from source: IndexSet, to destination: Int) {
+        guard let sourceIndex = source.first,
+              sourceIndex < cards.count,
+              let sourceTypeIndex = visibleOrder.firstIndex(of: cards[sourceIndex].type)
+        else { return }
+
+        let targetIndex = min(destination, cards.count - 1)
+        guard targetIndex >= 0,
+              let targetTypeIndex = visibleOrder.firstIndex(of: cards[targetIndex].type)
+        else { return }
+
+        move(
+            cards[sourceIndex].type,
+            before: cards[targetIndex].type,
+            sourceIndex: sourceTypeIndex,
+            targetIndex: targetTypeIndex
+        )
+    }
+
     func move(_ card: HomeCardID, before target: HomeCardID) {
         guard card != target,
               let fromIndex = visibleOrder.firstIndex(of: card),
               let toIndex = visibleOrder.firstIndex(of: target) else { return }
+        move(card, before: target, sourceIndex: fromIndex, targetIndex: toIndex)
+    }
+
+    private func move(
+        _ card: HomeCardID,
+        before target: HomeCardID,
+        sourceIndex: Int,
+        targetIndex: Int
+    ) {
+        guard card != target else { return }
+        let fromIndex = sourceIndex
+        let toIndex = targetIndex
         let destination = toIndex > fromIndex ? toIndex + 1 : toIndex
         visibleOrder.move(fromOffsets: IndexSet([fromIndex]), toOffset: destination)
         persist()

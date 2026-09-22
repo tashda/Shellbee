@@ -51,4 +51,5 @@ struct DeviceStatisticsView: View {
     NavigationStack {
         DeviceStatisticsView(bridgeID: UUID()).environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

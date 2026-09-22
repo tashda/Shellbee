@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LogDetailView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var viewMode: ViewMode = .beautiful
+    @State private var viewMode: ViewMode = .parsed
     /// Phase 1 multi-bridge: source bridge for this log entry. Threaded
     /// through from the navigation route so device/group references inside
     /// the entry resolve against the right store.
@@ -10,7 +10,7 @@ struct LogDetailView: View {
     let entry: LogEntry
     private let doneAction: (() -> Void)?
 
-    enum ViewMode { case beautiful, json }
+    enum ViewMode { case parsed, json }
 
     init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
         self.bridgeID = bridgeID
@@ -96,32 +96,56 @@ struct LogDetailView: View {
                 LogDetailDevicesSection(bridgeID: bridgeID, devices: displayDevices)
             }
 
-            if viewMode == .beautiful {
-                beautifulBody
+            if viewMode == .parsed {
+                parsedBody
             } else {
                 jsonSection
             }
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
-        .navigationTitle(headerTitle)
+        .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .log(
+                    bridgeID: bridgeID,
+                    entryID: entry.id
+                ))
+            }
             ToolbarItem(placement: .principal) {
-                VStack(spacing: 0) {
-                    Text(headerTitle)
+                // Inline two-line title: subject on top, timestamp
+                // beneath. Same pattern Apple Calendar uses for event
+                // detail headers and Mail uses for thread headers.
+                // Cleaner than the previous treatment: no info-icon, no
+                // alert-banner styling — just title and quiet metadata.
+                VStack(spacing: 1) {
+                    Text(navTitle)
                         .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
                     Text(timestampSubtitle)
-                        .font(.caption2)
+                        .font(.caption2.monospacedDigit())
                         .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                        .lineLimit(1)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(headerTitle), \(timestampSubtitle)")
+                .accessibilityLabel("\(navTitle), \(timestampSubtitle)")
             }
             if let doneAction {
                 if entry.category != .stateChange {
                     ToolbarItem(placement: .topBarTrailing) {
                         formatButton
+                    }
+                    // ToolbarSpacer breaks the iOS 26 glass-pill grouping
+                    // — without it, adjacent trailing items fuse into a
+                    // single capsule. The format button and the Done
+                    // action are unrelated, so they should read as
+                    // separate controls. SDK availability check is
+                    // belt-and-braces — our deployment target is iOS 26.0
+                    // but the symbol is annotated `iOS 26.0+` and the
+                    // compiler still wants the guard.
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -138,7 +162,7 @@ struct LogDetailView: View {
 
     private var formatButton: some View {
         Button {
-            viewMode = viewMode == .json ? .beautiful : .json
+            viewMode = viewMode == .json ? .parsed : .json
         } label: {
             Image(systemName: "curlybraces")
         }
@@ -259,6 +283,32 @@ struct LogDetailView: View {
         return scoped.isEmpty ? nil : scoped
     }
 
+    /// Title for the navigation bar. The user tapped a row about a
+    /// specific subject — Apple's pattern is to make the subject the page
+    /// title (Mail puts the sender, Messages puts the contact). For
+    /// non-device events we fall back to a quiet category label.
+    private var navTitle: String {
+        if let group = resolvedGroup { return group.friendlyName }
+        if displayDevices.count == 1, let (_, device) = displayDevices.first {
+            return device.friendlyName
+        }
+        if displayDevices.count > 1 { return "Activity" }
+        switch entry.category {
+        case .deviceJoined, .deviceAnnounce, .deviceLeave, .interview, .availability:
+            return entry.deviceName ?? entry.category.label
+        case .stateChange: return "Activity"
+        case .bridgeState: return "Bridge"
+        case .bridgeActivity: return entry.bridgeTopicDisplay?.title ?? "Bridge"
+        case .permitJoin: return "Pairing"
+        case .general:
+            switch entry.level {
+            case .error: return "Error"
+            case .warning: return "Warning"
+            default: return "Activity"
+            }
+        }
+    }
+
     private var timestampSubtitle: String {
         let cal = Calendar.current
         let day: String
@@ -282,79 +332,137 @@ struct LogDetailView: View {
         }
     }
 
-    private var headerTitle: String {
-        entry.category == .general ? entry.level.label : entry.category.label
-    }
-
     @ViewBuilder
-    private var beautifulBody: some View {
+    private var parsedBody: some View {
         let changes = entry.context?.stateChanges ?? []
         let payload: [String: JSONValue] = {
             if case .mqttPublish(_, _, let p) = entry.parsedMessageKind { return p }
             return [:]
         }()
+        let topic: String? = {
+            if case .mqttPublish(_, let t, _) = entry.parsedMessageKind { return t }
+            return nil
+        }()
 
-        if !changes.isEmpty {
-            LogDetailChangesSection(changes: changes)
-        }
-        // Skip the full-payload snapshot for state-change events — the diff is
-        // what actually happened, the rest is noise.
-        if !payload.isEmpty && entry.category != .stateChange {
-            BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
-        }
-        if changes.isEmpty && payload.isEmpty {
-            if let structure = LogMessageParser.structure(for: entry.message) {
-                structuredMessageSections(structure)
-            } else {
-                messageSection
-            }
+        // bridge/health gets a dedicated detail renderer that maps the
+        // `devices` IEEE map to per-device cards instead of dumping
+        // "0X000…1234: 4 properties" rows the user can't decipher.
+        // `hasSuffix` because Z2M prepends the configurable MQTT base
+        // (default `zigbee2mqtt/`) to the topic; we want to match the
+        // canonical sub-topic regardless of how the user has it set.
+        if topic?.hasSuffix("bridge/health") == true {
+            LogHealthDetailSections(payload: payload, store: scope.store)
+        } else {
+            payloadBody(changes: changes, payload: payload)
         }
     }
 
     @ViewBuilder
-    private func structuredMessageSections(_ structure: LogMessageStructure) -> some View {
-        Section(sectionTitle) {
-            Text(structure.summary)
-                .font(.callout)
-                .textSelection(.enabled)
-                .padding(.vertical, DesignTokens.Spacing.xs)
-            ForEach(structure.fields) { field in
-                CopyableRow(label: field.label, value: field.value)
-            }
-        }
-        ForEach(structure.groups) { group in
-            Section(group.title) {
-                ForEach(group.fields) { field in
-                    CopyableRow(label: field.label, value: field.value)
+    private func payloadBody(
+        changes: [LogContext.StateChange],
+        payload: [String: JSONValue]
+    ) -> some View {
+        if !changes.isEmpty {
+            // Diff rows live inside a single Section whose header carries
+            // the event noun. SwiftUI Lists don't support nested Sections,
+            // so this branch is mutually exclusive with the payload one.
+            Section {
+                ForEach(changes) { change in
+                    diffRow(for: change)
                 }
+            } header: {
+                eventHeader
             }
-        }
-    }
-
-    private var messageSection: some View {
-        let (summary, detail) = parsedMessage
-        return Section(sectionTitle) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(summary)
+        } else if !payload.isEmpty && entry.category != .stateChange {
+            // PayloadSectionsView produces its own Sections — render at
+            // the top level so each section gets a real header (Status,
+            // Data, Firmware, etc.) the way iOS Settings detail screens
+            // do. Wrapping it in another Section would nest sections,
+            // which SwiftUI silently drops.
+            PayloadSectionsView(payload: payload, device: displayDevices.first?.device)
+        } else if let structure = LogMessageParser.structure(for: entry.message) {
+            // Structured message: top-level summary sits in its own
+            // section under the event header; structured fields/groups
+            // get their own real sections beneath.
+            Section {
+                Text(structure.summary)
                     .font(.callout)
                     .textSelection(.enabled)
-                if let detail {
-                    Text(detail)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
+                    .padding(.vertical, DesignTokens.Spacing.xs)
+            } header: {
+                eventHeader
+            }
+            ForEach(structure.fields) { field in
+                Section { CopyableRow(label: field.label, value: field.value) }
+            }
+            ForEach(structure.groups) { group in
+                Section(group.title) {
+                    ForEach(group.fields) { field in
+                        CopyableRow(label: field.label, value: field.value)
+                    }
                 }
             }
-            .padding(.vertical, DesignTokens.Spacing.xs)
+        } else {
+            Section {
+                let (summary, detail) = parsedMessage
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                    Text(summary)
+                        .font(.callout)
+                        .textSelection(.enabled)
+                    if let detail {
+                        Text(detail)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.vertical, DesignTokens.Spacing.xs)
+            } header: {
+                eventHeader
+            }
         }
     }
 
-    private var sectionTitle: String {
-        switch entry.level {
-        case .error: "Error"
-        case .warning: "Warning"
-        default: "Message"
+    /// Single uniform `key: prev → next` row used for every diff entry —
+    /// matches the bottom-row pattern the issue called out as the right
+    /// baseline. No special-case "IDLE card" or thermometer block: a value
+    /// without a `from` simply renders without the prev half, same shape.
+    @ViewBuilder
+    private func diffRow(for change: LogContext.StateChange) -> some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            Text(change.displayLabel)
+                .font(DesignTokens.Typography.formRowLabel)
+            Spacer()
+            if let from = change.displayFrom {
+                Text(from)
+                    .font(DesignTokens.Typography.formRowValue)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "arrow.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            Text(change.displayTo)
+                .font(DesignTokens.Typography.formRowValue.weight(.medium))
+                .foregroundStyle(diffColor(for: change))
         }
+    }
+
+    private func diffColor(for change: LogContext.StateChange) -> Color {
+        switch change.to {
+        case .string(let s) where s == "ON": return .green
+        case .string(let s) where s == "OFF": return .red
+        case .bool(true): return .green
+        case .bool(false): return .red
+        default: return .primary
+        }
+    }
+
+    /// Body section header. Plain noun in the iOS Settings idiom —
+    /// "Signal", "Humidity", "Battery", "Interview". The verb lives in
+    /// the diff rows beneath; the timestamp lives in the nav-bar subtitle
+    /// at the top of the screen.
+    private var eventHeader: some View {
+        Text(entry.bodyHeader)
     }
 
     private var parsedMessage: (summary: String, detail: String?) {
@@ -396,4 +504,5 @@ struct LogDetailView: View {
         LogDetailView(bridgeID: UUID(), entry: LogEntry.previewEntries[3])
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

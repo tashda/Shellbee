@@ -36,15 +36,12 @@ struct LightControlCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            if mode == .snapshot { snapshotContent } else { interactiveContent }
-        }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        // Snapshot bypasses the interactive-mode chrome (gradient tint,
+        // large padding, drop shadow) — those exist for the controls
+        // surface. Snapshot lives in a log row and uses the shared
+        // CompactSnapshotCard chrome so it lines up with every other
+        // card type at the same scale.
+        modeSwitchedBody
         .sheet(isPresented: $showEffects) {
             if let effect = context.effectFeature {
                 LightEffectsSheet(feature: effect) { onSend(effect.payload($0)) }
@@ -55,6 +52,23 @@ struct LightControlCard: View {
         }
         .sheet(isPresented: $showMore) {
             LightAdvancedSheet(title: "Settings", features: context.otherAdvancedFeatures, onChange: onSend)
+        }
+    }
+
+    @ViewBuilder
+    private var modeSwitchedBody: some View {
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                interactiveContent
+            }
+            .padding(DesignTokens.Spacing.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         }
     }
 
@@ -157,61 +171,52 @@ struct LightControlCard: View {
 
     // MARK: – Snapshot
 
+    /// Compact log-row rendering. Single-row card with bulb icon, name +
+    /// summary value (brightness / on/off / color temp), and trailing
+    /// ON/OFF pill. Same scale as DeviceCard.compact so a stack of mixed
+    /// cards in the log detail reads as a uniform list.
     @ViewBuilder private var snapshotContent: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            snapshotHero
-            if hasColorOrTempInfo {
-                hairline
-                colorSnapshotRow
-            }
-        }
-    }
+        CompactSnapshotCard {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(headerTint)
+                    .frame(width: 32)
 
-    private var snapshotHero: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                        .font(DesignTokens.Typography.eyebrowIcon)
-                        .symbolRenderingMode(.hierarchical)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(eyebrowLabel)
-                        .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(DesignTokens.Typography.eyebrowTracking)
-                        .textCase(.uppercase)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
+                    if let secondary = snapshotSecondaryText {
+                        Text(secondary)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
-                .foregroundStyle(headerTint)
 
-                snapshotHeroValue
+                Spacer(minLength: DesignTokens.Spacing.sm)
+
+                stateBadge
             }
-            Spacer(minLength: 0)
-            stateBadge
         }
     }
 
-    @ViewBuilder
-    private var snapshotHeroValue: some View {
-        // Snapshot is a frozen view of the payload at log time — never invent
-        // a brightness value. State-change diffs (and ON/OFF-only publishes)
-        // omit brightness when it didn't change, so brightnessValue is nil;
-        // showing brightnessPercent there would fabricate a default (100%).
+    /// "80% · 2700 K" / "80%" / "2700 K" / nil. Only emits text when the
+    /// payload actually carries a brightness or color value — log entries
+    /// often don't (state-change diff omits unchanged fields). Returning
+    /// nil collapses the row to a single line.
+    private var snapshotSecondaryText: String? {
+        var parts: [String] = []
         if context.isOn, context.brightness != nil, context.brightnessValue != nil {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                Text("\(context.brightnessPercent)")
-                    .font(DesignTokens.Typography.heroValue)
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
-                Text("%")
-                    .font(DesignTokens.Typography.heroUnit)
-                    .foregroundStyle(.secondary)
-            }
-        } else {
-            Text(context.isOn ? "On" : "Off")
-                .font(DesignTokens.Typography.heroStateText)
-                .foregroundStyle(headerTint)
+            parts.append("\(context.brightnessPercent)%")
         }
+        if !context.isColorMode, let mireds = context.colorTemperatureValue {
+            parts.append("\(Int(1_000_000 / mireds)) K")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var stateBadge: some View {
@@ -225,70 +230,6 @@ struct LightControlCard: View {
                              : Color(.tertiarySystemFill),
                 in: Capsule()
             )
-    }
-
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
-            .frame(height: DesignTokens.Size.hairline)
-    }
-
-    private var hasColorOrTempInfo: Bool {
-        let isColorMode = context.isColorMode
-        return isColorMode || context.colorTemperatureValue != nil
-    }
-
-    @ViewBuilder private var colorSnapshotRow: some View {
-        let isColorMode = context.isColorMode
-        if !isColorMode, let tempMireds = context.colorTemperatureValue {
-            snapshotInfoRow(
-                icon: "thermometer.medium",
-                label: "Color Temperature",
-                value: "\(Int(1_000_000 / tempMireds))",
-                unit: "K"
-            )
-        } else if isColorMode {
-            HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    Image(systemName: "paintpalette.fill")
-                        .font(DesignTokens.Typography.eyebrowIcon)
-                        .symbolRenderingMode(.hierarchical)
-                    Text("Color")
-                        .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(DesignTokens.Typography.eyebrowTracking)
-                        .textCase(.uppercase)
-                }
-                .foregroundStyle(.secondary)
-                Spacer()
-            }
-        }
-    }
-
-    private func snapshotInfoRow(icon: String, label: String, value: String, unit: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(label)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(.secondary)
-            Spacer()
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                Text(value)
-                    .font(DesignTokens.Typography.snapshotRowValue)
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                Text(unit)
-                    .font(DesignTokens.Typography.snapshotRowUnit)
-                    .foregroundStyle(.secondary)
-            }
-        }
     }
 
     private var eyebrowLabel: String {

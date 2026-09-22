@@ -101,4 +101,17 @@ final class HomeLayoutStoreTests: XCTestCase {
         XCTAssertFalse(reloaded.hidden.contains(.groups))
         XCTAssertTrue(reloaded.visibleOrder.contains(.groups))
     }
+
+    func testBridgeScopedCardInstancesHaveDistinctIDs() {
+        let first = HomeCardInstance(type: .devices, bridgeID: UUID())
+        let second = HomeCardInstance(type: .devices, bridgeID: UUID())
+
+        XCTAssertNotEqual(first.id, second.id)
+        XCTAssertEqual(HomeCardInstance(type: .devices).id, HomeCardID.devices.rawValue)
+    }
+
+    func testDisplayModeLabelsAreUserFacing() {
+        XCTAssertEqual(HomeCardDisplayMode.one.label, "One card")
+        XCTAssertEqual(HomeCardDisplayMode.perBridge.label, "One per bridge")
+    }
 }

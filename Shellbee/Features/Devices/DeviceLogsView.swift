@@ -42,6 +42,7 @@ struct DeviceLogsView: View {
             }
         }
         .searchable(text: $searchText, prompt: "Search logs")
+        .avoidHidingSearchToolbarContentIfAvailable()
         .navigationTitle("Logs")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -52,4 +53,5 @@ struct DeviceLogsView: View {
         DeviceLogsView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

@@ -14,25 +14,78 @@ struct ClimateControlCard: View {
         _setpointDraft = State(initialValue: context.activeSetpoint ?? 20)
     }
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            heroHeadline
-            if showsSetpointControl {
-                hairline
-                setpointRow
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
+                heroHeadline
+                if showsSetpointControl {
+                    hairline
+                    setpointRow
+                }
+                if let modes = context.systemModeFeature?.values, !modes.isEmpty, mode == .interactive {
+                    hairline
+                    modeRow(modes: modes)
+                }
             }
-            if let modes = context.systemModeFeature?.values, !modes.isEmpty, mode == .interactive {
-                hairline
-                modeRow(modes: modes)
+            .padding(DesignTokens.Spacing.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(heroBackground)
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
+                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+            .onChange(of: context.activeSetpoint) { _, v in setpointDraft = v ?? setpointDraft }
+        }
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Mode glyph (flame/snowflake/fan) +
+    /// "Climate" + temp · target summary + running-state pill.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
+                Image(systemName: heroIcon)
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(heroTint)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Climate")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text(snapshotSecondaryText)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: DesignTokens.Spacing.sm)
+
+                Text(context.runningStateLabel.uppercased())
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(isActive ? heroTint : Color(.secondaryLabel))
+                    .padding(.horizontal, DesignTokens.Spacing.sm)
+                    .padding(.vertical, DesignTokens.Spacing.xs)
+                    .background(
+                        isActive ? heroTint.opacity(DesignTokens.Opacity.chipFill)
+                                 : Color(.tertiarySystemFill),
+                        in: Capsule()
+                    )
             }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
-        .onChange(of: context.activeSetpoint) { _, v in setpointDraft = v ?? setpointDraft }
+    }
+
+    private var snapshotSecondaryText: String {
+        var parts: [String] = [context.displayTemperature]
+        if let setpoint = context.activeSetpoint {
+            parts.append("Target \(formatTemp(setpoint))")
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Tinting

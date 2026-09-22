@@ -14,7 +14,7 @@ struct DeviceFilterMenu: View {
     var body: some View {
         Menu {
             if connectedSessions.count >= 2 {
-                bridgeMenu
+                BridgeFilterMenu(selection: $viewModel.bridgeFilter, sessions: connectedSessions)
             }
             Menu {
                 Picker("Status", selection: statusSelection) {
@@ -26,16 +26,18 @@ struct DeviceFilterMenu: View {
                 .pickerStyle(.inline)
             } label: {
                 let active = viewModel.statusFilter != .all
-                Label(
-                    active ? "Status: \(viewModel.statusFilter.rawValue)" : "Status",
-                    systemImage: active ? viewModel.statusFilter.systemImage : "circle.grid.2x2"
+                FilterSubmenuLabel(
+                    name: "Status",
+                    systemImage: "circle.grid.2x2",
+                    value: active ? viewModel.statusFilter.rawValue : nil,
+                    valueSystemImage: viewModel.statusFilter.systemImage
                 )
             }
 
             if !snapshot.categories.isEmpty {
                 Menu {
                     Picker("Type", selection: categorySelection) {
-                        Label("All Types", systemImage: "square.grid.2x2")
+                        Label("All Types", systemImage: FilterMenuSymbol.all)
                             .tag(Device.Category?.none)
                         ForEach(snapshot.categories, id: \.category) { item in
                             Label(item.title, systemImage: item.systemImage)
@@ -44,18 +46,19 @@ struct DeviceFilterMenu: View {
                     }
                     .pickerStyle(.inline)
                 } label: {
-                    if let category = viewModel.categoryFilter {
-                        Label("Type: \(category.label)", systemImage: category.systemImage)
-                    } else {
-                        Label("Type", systemImage: "tag")
-                    }
+                    FilterSubmenuLabel(
+                        name: "Type",
+                        systemImage: "tag",
+                        value: viewModel.categoryFilter?.label,
+                        valueSystemImage: viewModel.categoryFilter?.systemImage
+                    )
                 }
             }
 
             if !snapshot.vendors.isEmpty {
                 Menu {
                     Picker("Manufacturer", selection: vendorSelection) {
-                        Label("All Manufacturers", systemImage: "building.2")
+                        Label("All Manufacturers", systemImage: FilterMenuSymbol.all)
                             .tag(String?.none)
                         ForEach(snapshot.vendors, id: \.vendor) { item in
                             Text(item.title)
@@ -64,18 +67,14 @@ struct DeviceFilterMenu: View {
                     }
                     .pickerStyle(.inline)
                 } label: {
-                    if let vendor = viewModel.vendorFilter {
-                        Label(vendor, systemImage: "building.2.fill")
-                    } else {
-                        Label("Manufacturer", systemImage: "building.2")
-                    }
+                    FilterSubmenuLabel(name: "Manufacturer", systemImage: "building.2", value: viewModel.vendorFilter)
                 }
             }
 
             if !snapshot.roles.isEmpty {
                 Menu {
                     Picker("Network Role", selection: roleSelection) {
-                        Label("All Roles", systemImage: "point.3.connected.trianglepath.dotted")
+                        Label("All Roles", systemImage: FilterMenuSymbol.all)
                             .tag(DeviceType?.none)
                         ForEach(snapshot.roles, id: \.type) { item in
                             Label(item.title, systemImage: item.systemImage)
@@ -84,26 +83,20 @@ struct DeviceFilterMenu: View {
                     }
                     .pickerStyle(.inline)
                 } label: {
-                    if let type = viewModel.typeFilter {
-                        Label("Role: \(type.chipLabel)", systemImage: "point.3.connected.trianglepath.dotted")
-                    } else {
-                        Label("Network Role", systemImage: "point.3.connected.trianglepath.dotted")
-                    }
+                    FilterSubmenuLabel(
+                        name: "Network Role",
+                        systemImage: "point.3.connected.trianglepath.dotted",
+                        value: viewModel.typeFilter?.chipLabel
+                    )
                 }
             }
 
-            if viewModel.hasActiveFilter {
-                Divider()
-                Button(role: .destructive) {
-                    viewModel.clearFilters()
-                    refreshSnapshot()
-                } label: {
-                    Label("Clear Filters", systemImage: "xmark.circle")
-                }
+            ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
+                viewModel.clearFilters()
+                refreshSnapshot()
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
+            FilterMenuLabel(isActive: viewModel.hasActiveFilter)
         }
         .simultaneousGesture(TapGesture().onEnded { snapshot = .make(viewModel: viewModel, store: store) })
         .onAppear { snapshot = .make(viewModel: viewModel, store: store) }
@@ -147,26 +140,6 @@ struct DeviceFilterMenu: View {
                 refreshSnapshot()
             }
         )
-    }
-
-    private var bridgeMenu: some View {
-        Menu {
-            Picker("Bridge", selection: $viewModel.bridgeFilter) {
-                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
-                    .tag(UUID?.none)
-                ForEach(connectedSessions, id: \.bridgeID) { session in
-                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
-                }
-            }
-            .pickerStyle(.inline)
-        } label: {
-            if let id = viewModel.bridgeFilter,
-               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
-                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
-            } else {
-                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
-            }
-        }
     }
 
     private func refreshSnapshot() {

@@ -16,14 +16,21 @@ struct PermitJoinSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                bridgeSection
-                permitJoinSection
+            SwiftUI.Group {
+                if isSelectedBridgePermitJoinOpen {
+                    activeContent
+                } else {
+                    Form {
+                        bridgeSection
+                        permitJoinSection
+                    }
+                    .safeAreaInset(edge: .bottom) { actionBar }
+                }
             }
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .bottom) { actionBar }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
@@ -42,56 +49,49 @@ struct PermitJoinSheet: View {
 
     @ViewBuilder
     private var permitJoinSection: some View {
-        if isSelectedBridgePermitJoinOpen {
-            Section {
-                activeRow
-            }
-        } else {
-            Section {
-                Picker("Via", selection: $targetName) {
-                    Text("All devices").tag(String?.none)
-                    ForEach(joinTargets) { device in
-                        Text(device.friendlyName).tag(String?.some(device.friendlyName))
-                    }
+        Section {
+            Picker("Via", selection: $targetName) {
+                Text("All devices").tag(String?.none)
+                ForEach(joinTargets) { device in
+                    Text(device.friendlyName).tag(String?.some(device.friendlyName))
                 }
-                Picker("Duration", selection: $duration) {
-                    Text("1 min").tag(60)
-                    Text("2 min").tag(120)
-                    Text("3 min").tag(180)
-                    Text("~4 min").tag(254)
-                }
-            } header: {
-                Text("Open the network")
             }
+            Picker("Duration", selection: $duration) {
+                Text("1 min").tag(60)
+                Text("2 min").tag(120)
+                Text("3 min").tag(180)
+                Text("~4 min").tag(254)
+            }
+        } header: {
+            Text("Open the network")
         }
     }
 
-    private var activeRow: some View {
+    private var activeContent: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            HStack(spacing: DesignTokens.Spacing.md) {
-                Image(systemName: "dot.radiowaves.up.forward")
-                    .foregroundStyle(.white)
-                    .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                    .background(.green, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-                    .symbolEffect(.pulse)
-
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                    if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
-                        Text("Network is open via \(target)")
-                            .foregroundStyle(.primary)
-                    } else {
-                        Text("Network is open")
-                            .foregroundStyle(.primary)
-                    }
-                    if let remaining = remainingSeconds(at: ctx.date) {
-                        Text(String(format: "%d:%02d remaining", remaining / 60, remaining % 60))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .contentTransition(.numericText(countsDown: true))
-                    }
+            VStack(spacing: DesignTokens.Spacing.sm) {
+                Text("Network is open")
+                    .font(.title3.weight(.semibold))
+                if let remaining = remainingSeconds(at: ctx.date) {
+                    Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
+                        .font(DesignTokens.Typography.permitJoinActiveCountdown.monospacedDigit())
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText(countsDown: true))
+                        .accessibilityLabel("\(remaining / 60) minutes and \(remaining % 60) seconds remaining")
                 }
-                Spacer()
+                if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
+                    Text("Pairing through \(target)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, DesignTokens.Spacing.xl)
+            .padding(.top, DesignTokens.Spacing.xl)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .safeAreaInset(edge: .bottom) {
+                actionBar
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .padding(.bottom, DesignTokens.Spacing.md)
             }
         }
     }
@@ -112,10 +112,6 @@ struct PermitJoinSheet: View {
         .buttonStyle(.borderedProminent)
         .tint(isSelectedBridgePermitJoinOpen ? .red : nil)
         .controlSize(.large)
-        .padding(.horizontal, DesignTokens.Spacing.lg)
-        .padding(.top, DesignTokens.Spacing.sm)
-        .padding(.bottom, DesignTokens.Spacing.xl)
-        .background(.ultraThinMaterial)
     }
 
     private var resolvedBridgeID: UUID? {

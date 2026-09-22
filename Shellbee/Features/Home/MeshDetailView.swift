@@ -2,8 +2,25 @@ import SwiftUI
 
 struct MeshDetailView: View {
     let snapshot: HomeSnapshot
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        NavigationStack {
+            form
+                .navigationTitle("Mesh")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
+                }
+        }
+        .configuredTopScrollEdgeEffect()
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var form: some View {
         Form {
             Section("Network") {
                 if let channel = snapshot.networkChannel {
@@ -31,9 +48,14 @@ struct MeshDetailView: View {
                 if let lqi = snapshot.averageLinkQuality {
                     CopyableRow(label: "Average LQI", value: "\(lqi)")
                 }
+                if AdaptiveLayout.isPad {
+                    NavigationLink {
+                        NetworkMapView()
+                    } label: {
+                        Label("Network Map", symbol: .custom("mesh"))
+                    }
+                }
             }
         }
-        .navigationTitle("Mesh")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

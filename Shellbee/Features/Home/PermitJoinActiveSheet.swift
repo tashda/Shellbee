@@ -28,6 +28,7 @@ struct PermitJoinActiveSheet: View {
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }
@@ -50,7 +51,7 @@ struct PermitJoinActiveSheet: View {
                     .foregroundStyle(.primary)
                     .contentTransition(.numericText(countsDown: true))
             } else {
-                Image(systemName: "dot.radiowaves.up.forward")
+                ShellbeeSymbol.permitJoin.image
                     .font(DesignTokens.Typography.permitJoinSymbol)
                     .foregroundStyle(.green)
                     .symbolEffect(.pulse)

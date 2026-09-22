@@ -1,0 +1,219 @@
+import SwiftUI
+
+/// The persistent, player-like Activity Center attached to the iPhone tab
+/// bar. It reads the same structured Activity history shown in its sheet.
+@available(iOS 26.0, *)
+struct ActivityTabBarAccessory: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.summary.rawValue
+    let transitionNamespace: Namespace.ID?
+    /// Mirrors the Activity filter's Show Signal Changes, so the accessory
+    /// never surfaces events the Activity Center itself hides.
+    let showsSignalChanges: Bool
+
+    private var displayMode: ActivityAccessoryDisplayMode {
+        ActivityAccessoryDisplayMode(rawValue: displayModeRaw) ?? .summary
+    }
+
+    private var isInline: Bool {
+        placement == .inline
+    }
+
+    private var visibleEntries: [BridgeBoundLogEntry] {
+        guard !showsSignalChanges else { return environment.allLogEntries }
+        return environment.allLogEntries.filter { !LogRowIconography.isLinkQualityOnly($0.entry) }
+    }
+
+    private var latestActivity: BridgeBoundLogEntry? {
+        visibleEntries.first
+    }
+
+    private var latestAttention: BridgeBoundLogEntry? {
+        visibleEntries.first { $0.entry.isActivityAttention }
+    }
+
+    private var recentActivityCount: Int {
+        let cutoff = Date.now.addingTimeInterval(-15 * 60)
+        return visibleEntries.count { $0.entry.timestamp >= cutoff }
+    }
+
+    private var recentAttentionCount: Int {
+        let cutoff = Date.now.addingTimeInterval(-15 * 60)
+        return visibleEntries.count {
+            $0.entry.isActivityAttention && $0.entry.timestamp >= cutoff
+        }
+    }
+
+    var body: some View {
+        SwiftUI.Group {
+            if let transitionNamespace {
+                accessorySurface
+                    .matchedTransitionSource(id: "activity-center", in: transitionNamespace)
+            } else {
+                accessorySurface
+            }
+        }
+    }
+
+    /// Keep the matched source on the actual mini-player surface. A Button
+    /// adds a separate control transaction before the cover starts, which
+    /// makes the opening zoom noticeably less continuous than the return.
+    private var accessorySurface: some View {
+        ActivityAccessorySummary(
+            mode: displayMode,
+            latestActivity: latestActivity,
+            latestAttention: latestAttention,
+            recentActivityCount: recentActivityCount,
+            recentAttentionCount: recentAttentionCount,
+            isInline: isInline
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: openActivity)
+        .simultaneousGesture(openActivityGesture, including: .all)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private func openActivity() {
+        sceneNavigation.isActivityCenterPresented = true
+    }
+
+    private var openActivityGesture: some Gesture {
+        DragGesture(minimumDistance: DesignTokens.Spacing.xs)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(vertical) > abs(horizontal), vertical < -DesignTokens.Spacing.xxl else { return }
+                openActivity()
+            }
+    }
+}
+
+@available(iOS 26.0, *)
+struct ActivityAccessorySummary: View {
+    @Environment(AppEnvironment.self) private var environment
+    let mode: ActivityAccessoryDisplayMode
+    let latestActivity: BridgeBoundLogEntry?
+    let latestAttention: BridgeBoundLogEntry?
+    let recentActivityCount: Int
+    let recentAttentionCount: Int
+    let isInline: Bool
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            artwork
+
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                Text(title)
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
+                if !isInline, let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: DesignTokens.Spacing.sm)
+
+            if let event {
+                ActivityAccessoryTrailing(entry: event.entry, isInline: isInline)
+                    .layoutPriority(1)
+            }
+        }
+        .padding(.horizontal, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.Spacing.md)
+        .frame(maxWidth: isInline ? nil : .infinity, alignment: .leading)
+        .accessibilityLabel("Activity: \(title)")
+        .accessibilityHint("Opens Activity")
+    }
+
+    private var title: String {
+        switch mode {
+        case .latestActivity:
+            cardContent(latestActivity)?.title ?? "Activity"
+        case .summary:
+            recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
+        case .notificationsOnly:
+            cardContent(latestAttention)?.title
+                ?? (recentAttentionCount == 0 ? "Notifications" : "\(recentAttentionCount) notifications")
+        }
+    }
+
+    /// The event the accessory is showing, if its mode shows one.
+    private var event: BridgeBoundLogEntry? {
+        switch mode {
+        case .latestActivity: latestActivity
+        case .notificationsOnly: latestAttention
+        case .summary: nil
+        }
+    }
+
+    private var subtitle: String? {
+        // The trailing value and its glyph already say what changed.
+        if let event, ActivityAccessoryChange(entry: event.entry) != nil {
+            return nil
+        }
+        return switch mode {
+        case .latestActivity: cardContent(latestActivity)?.message
+        case .summary: "View Activity"
+        case .notificationsOnly: cardContent(latestAttention)?.message ?? "No new notifications"
+        }
+    }
+
+    /// Same wording as the event's card in the Activity feed: who it is
+    /// about, then what happened.
+    private func cardContent(_ item: BridgeBoundLogEntry?) -> ActivityCardContent? {
+        guard let item else { return nil }
+        let name = storeFor(item.bridgeID).flatMap { LogRowIconography.subjectName(for: item.entry, in: $0) }
+        return ActivityCardContent(
+            entry: item.entry,
+            subject: name.map(ActivityStack.Subject.named) ?? .bridge,
+            bridgeName: item.bridgeName
+        )
+    }
+
+    /// A player-style artwork slot. Event modes show the event's own
+    /// instrument; Summary stays quiet unless something needs attention.
+    @ViewBuilder
+    private var artwork: some View {
+        let size = DesignTokens.ActivityFeed.accessoryArtwork
+        switch mode {
+        case .latestActivity:
+            eventArtwork(latestActivity, fallback: .message, size: size)
+        case .notificationsOnly:
+            eventArtwork(latestAttention, fallback: .safety, size: size)
+        case .summary:
+            ActivityInstrumentView(
+                instrument: .init(
+                    kind: recentAttentionCount > 0 ? .safety : .message,
+                    severity: recentAttentionCount > 0 ? .warning : .quiet
+                ),
+                size: size
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func eventArtwork(
+        _ item: BridgeBoundLogEntry?,
+        fallback: ActivityInstrumentKind,
+        size: CGFloat
+    ) -> some View {
+        if let item {
+            ActivityInstrumentView(
+                instrument: ActivityInstrumentResolver.instrument(for: item.entry),
+                size: size
+            )
+        } else {
+            ActivityInstrumentView(instrument: .init(kind: fallback, severity: .quiet), size: size)
+        }
+    }
+
+    private func storeFor(_ bridgeID: UUID) -> AppStore? {
+        environment.registry.session(for: bridgeID)?.store
+    }
+
+}

@@ -22,6 +22,7 @@ struct DevicePairingSheet: View {
                     }
                 }
         }
+        .configuredTopScrollEdgeEffect()
         .task { await loadPairing() }
     }
 

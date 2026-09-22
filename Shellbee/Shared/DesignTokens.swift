@@ -13,6 +13,10 @@ nonisolated enum DesignTokens {
         static let summaryRowVerticalPadding: CGFloat = 2
     }
 
+    nonisolated enum Count {
+        static let liveActivityQueueRows = 3
+    }
+
     nonisolated enum CornerRadius {
         static let sm: CGFloat = 8
         static let md: CGFloat = 12
@@ -20,6 +24,10 @@ nonisolated enum DesignTokens {
         static let summaryRowSymbolBackground: CGFloat = 10
         static let xl: CGFloat = 28
         static let noteBar: CGFloat = 1.5
+        static let liveActivityGalleryIsland: CGFloat = 44
+        static let liveActivityStageCard: CGFloat = 24
+        static let liveActivityStageScreen: CGFloat = 62
+        static let liveActivityStageIcon: CGFloat = 14
     }
 
     nonisolated enum Size {
@@ -49,6 +57,38 @@ nonisolated enum DesignTokens {
         static let metricSymbol: CGFloat = 18
         static let cardSymbol: CGFloat = 22
         static let toolbarSymbol: CGFloat = 18
+        static let liveActivityBadge: CGFloat = 44
+        static let liveActivityIslandBadge: CGFloat = 40
+        static let liveActivityBadgeGlyphScale: CGFloat = 0.72
+        static let liveActivityRing: CGFloat = 52
+        static let liveActivityRingLine: CGFloat = 4
+        static let liveActivityTrackIcon: CGFloat = 26
+        static let liveActivityScoreboardIcon: CGFloat = 36
+        static let liveActivityChunkyBar: CGFloat = 10
+        static let liveActivityChunkyBarScale: CGFloat = 3
+        static let liveActivityQueueName: CGFloat = 110
+        static let liveActivityQueueBar: CGFloat = 6
+        static let liveActivityQueueStatus: CGFloat = 64
+        static let liveActivityCompactSymbol: CGFloat = 14
+        static let liveActivityMinimalSymbol: CGFloat = 10
+        // Developer gallery stand-ins for the system's activity surfaces.
+        static let liveActivityGalleryWidth: CGFloat = 371
+        static let liveActivityGalleryIslandHeight: CGFloat = 37
+        static let liveActivityGalleryCamera: CGFloat = 126
+        // Stage stand-in for the Home Screen and Lock Screen.
+        static let liveActivityStageIslandTop: CGFloat = 11
+        static let liveActivityStageIcon: CGFloat = 62
+        static let liveActivityStageIconsTop: CGFloat = 80
+        static let liveActivityStageScreenWidth: CGFloat = 402
+        static let liveActivityStageScreenHeight: CGFloat = 874
+        static let liveActivityStageBezel: CGFloat = 10
+        static let liveActivityStageStatusBarGap: CGFloat = 140
+        static let liveActivityStageDeviceTop: CGFloat = 60
+        static let liveActivityStageDeviceBottom: CGFloat = 132
+        static let liveActivityStageLockDateTop: CGFloat = 24
+        static let liveActivityStageLockCardBottom: CGFloat = 150
+        static let liveActivityStageControl: CGFloat = 48
+        static let liveActivityStageSegment: CGFloat = 50
         static let filterChipChevron: CGFloat = 8
         static let levelIndicatorWidth: CGFloat = 4
         static let levelIndicatorHeight: CGFloat = 20
@@ -110,8 +150,69 @@ nonisolated enum DesignTokens {
         static let permitJoinQR: CGFloat = 220
         static let homeAddDividerInset: CGFloat = 60
         static let docLabelColumnWidth: CGFloat = 90
+        static let iPadStandardWindowMinimumWidth: CGFloat = 700
+        static let iPadThreeColumnMinimumWidth: CGFloat = 1100
+        static let iPadSidebarMinimumWidth: CGFloat = 220
+        static let iPadSidebarIdealWidth: CGFloat = 260
+        static let iPadContentColumnMinimumWidth: CGFloat = 320
+        static let iPadContentColumnIdealWidth: CGFloat = 380
+        static let iPadContentColumnMaximumWidth: CGFloat = 460
+        static let readableContentMaxWidth: CGFloat = 720
+        static let notificationMaxWidth: CGFloat = 640
         static let permitJoinRingStroke: CGFloat = 8
         static let lightSelectionStroke: CGFloat = 2
+        static let deviceGridMinimumWidth: CGFloat = 220
+        static let deviceTableTypeWidth: CGFloat = 34
+        static let deviceTableBridgeWidth: CGFloat = 54
+        static let deviceTableMetricWidth: CGFloat = 38
+        static let deviceTableOTAWidth: CGFloat = 44
+        static let networkMapCoordinatorNode: CGFloat = 56
+        static let networkMapRouterNode: CGFloat = 46
+        static let networkMapEndDeviceNode: CGFloat = 38
+        static let networkMapInteractionTarget: CGFloat = 44
+        static let networkMapMinimumHeight: CGFloat = 480
+        static let networkMapEdgeWidth: CGFloat = 1.5
+        static let networkMapSecondaryEdgeWidth: CGFloat = 0.8
+        static let networkMapDashLength: CGFloat = 6
+        static let networkMapBubbleRimWidth: CGFloat = 1
+        static let networkMapBubbleStatusRimWidth: CGFloat = 2
+        static let networkMapBubbleHighlightRatio: CGFloat = 0.62
+        static let networkMapBubbleShadowRadius: CGFloat = 6
+        static let networkMapBubbleShadowY: CGFloat = 3
+        static let networkMapMinimumScale: CGFloat = 0.2
+        static let networkMapMaximumScale: CGFloat = 3
+        static let networkMapMeshEdgeScale: CGFloat = 1.4
+        static let networkMapZoomStep: CGFloat = 1.3
+        static let networkMapQuickLookImage: CGFloat = 88
+        static let networkMapPreferredLinkDistance: CGFloat = 150
+        static let networkMapRepulsion: CGFloat = 26_000
+        static let networkMapPrimarySpringStrength: CGFloat = 0.06
+        static let networkMapRouterGravity: CGFloat = 0.004
+        static let networkMapEndDeviceGravity: CGFloat = 0.0015
+        static let networkMapVelocityDamping: CGFloat = 0.78
+        static let networkMapMaximumLayoutStep: CGFloat = 24
+        static let networkMapLayoutIterations: Int = 220
+        static let networkMapLargeLayoutIterations: Int = 140
+        static let networkMapCollisionPasses: Int = 400
+        /// Empty space kept between two node footprints (bubble + label), so
+        /// neighbouring names never touch even in the densest cluster.
+        static let networkMapFootprintGap: CGFloat = 14
+        static let networkMapLabelVisibilityScale: CGFloat = 0.65
+        static let networkMapInitialScale: CGFloat = 0.8
+        static let networkMapContentPadding: CGFloat = 96
+        static let networkMapNodeLabelSpacing: CGFloat = 4
+        static let networkMapNodeLabelHeight: CGFloat = 16
+        static let networkMapNodeLabelWidth: CGFloat = 120
+        static let networkMapNodeLabelScale: CGFloat = 0.8
+        static let networkMapNodeImageRatio: CGFloat = 0.64
+        static let networkMapRefreshOuterRing: CGFloat = 92
+        static let networkMapRefreshInnerRing: CGFloat = 64
+        static let networkMapRefreshGraphic: CGFloat = 104
+        static let networkMapRefreshActiveDot: CGFloat = 9
+        static let networkMapRefreshPassiveDot: CGFloat = 6
+        static let networkMapRefreshOrbitRadius: CGFloat = 39
+        static let networkMapScanCardWidth: CGFloat = 380
+        static let networkMapScanCardWideWidth: CGFloat = 440
         // Offsets (pixel-pushing for badge alignment over a parent shape)
         static let logRowBadgeOffset: CGFloat = 3
         static let firmwareUpdateBadgeOffsetX: CGFloat = 4
@@ -302,11 +403,23 @@ nonisolated enum DesignTokens {
 
     nonisolated enum Duration {
         static let standardAnimation: Double = 0.3
+        static let networkMapStatusRefresh: Double = 1
         static let hubAnimation: Double = 0.36
         static let liveActivitySuccess: Double = 3
         static let liveActivityFailure: Double = 8
         static let liveActivityMinimumVisible: Double = 2
         static let liveActivityCancel: Double = 0.5
+        static let liveActivityTouchlinkScan: Double = 30
+        static let liveActivityTouchlinkIdentify: Double = 20
+        static let liveActivityOTAStale: Double = 120
+        static let liveActivityOTAEstimateTolerance: Double = 0.15
+        static let liveActivityGracePoll: Double = 1
+        static let liveActivityGraceWrapUp: Double = 12
+        static let liveActivityWindowTolerance: Double = 5
+        static let liveActivityPairedMoment: Double = 4
+        static let liveActivityPreviewWindow: Double = 120
+        static let liveActivityPreviewLinger: Double = 5
+        static let liveActivityGalleryWindow: Double = 240
         static let statusPulse: Double = 1.8
         static let otaBadgeSpin: Double = 1.1
         static let pressedState: Double = 0.16
@@ -320,6 +433,7 @@ nonisolated enum DesignTokens {
         static let checkResultDisplay: Double = 3
         static let pendingDeleteTimeout: Double = 15
         static let discoveryScanWindow: Double = 15
+        static let frameInterval: Double = 1.0 / 30.0
     }
 
     nonisolated enum Typography {
@@ -375,11 +489,21 @@ nonisolated enum DesignTokens {
         // MARK: Form / settings rows
         static let formRowIcon: Font = .system(size: 16, weight: .medium)
         static let formRowIconBold: Font = .system(size: 16, weight: .semibold)
+        // Label + value text inside a Settings-style key/value row. Mirrors
+        // the size iOS Settings itself uses for its rows. Use these instead
+        // of literal `.subheadline` for any form-row content so detail
+        // surfaces share one consistent rhythm.
+        static let formRowLabel: Font = .body
+        static let formRowValue: Font = .body
 
         // MARK: Misc one-offs
         static let sliderEndLabel: Font = .system(size: 9, weight: .medium)
         static let permitJoinCountdown: Font = .system(size: 64, weight: .thin)
+        static let permitJoinActiveCountdown: Font = .system(size: 48, weight: .bold, design: .rounded)
         static let permitJoinSymbol: Font = .system(size: 48)
+        static let liveActivityValue: Font = .system(size: 34, weight: .semibold, design: .rounded)
+        static let liveActivityHeroValue: Font = .system(size: 48, weight: .bold, design: .rounded)
+        static let liveActivityStageClock: Font = .system(size: 96, weight: .semibold, design: .rounded)
         // Banner level glyph — shared by InAppNotificationBanner and
         // FastTrackBanner (#36.D resolved 2026-04-29: unified on 15pt).
         static let notificationLevelIcon: Font = .system(size: 15, weight: .semibold)
@@ -387,6 +511,12 @@ nonisolated enum DesignTokens {
         static let climateActionIcon: Font = .system(size: 14, weight: .bold)
         // Light card secondary glyphs (compass / palette icon overlays)
         static let lightSecondaryIcon: Font = .system(size: 14, weight: .semibold)
+        // iPad NavigationSplitView sidebar row glyph. List(.sidebar) sizes a
+        // genuine SF Symbol automatically, but a custom symbolset asset
+        // doesn't pick up that implicit sizing the same way and renders tiny
+        // when unselected — so sidebarRow pins this explicitly instead of
+        // relying on the environment font.
+        static let sidebarIcon: Font = .system(size: 20, weight: .medium)
 
         // MARK: Icon glyph ratios (proportional sizing inside a parent frame)
         // e.g. an icon glyph that fills half its containing thumbnail circle.
@@ -407,6 +537,13 @@ nonisolated enum DesignTokens {
     }
 
     nonisolated enum Opacity {
+        static let disabled: Double = 0.5
+        static let networkMapPrimaryEdge: Double = 0.82
+        static let networkMapSecondaryEdge: Double = 0.28
+        static let networkMapFadedEdge: Double = 0.08
+        static let networkMapBubbleTint: Double = 0.16
+        static let networkMapBubbleStatusTint: Double = 0.28
+        static let networkMapBubbleShadow: Double = 0.12
         static let overlay: Double = 0.3
         static let secondaryText: Double = 0.8
         static let chipFill: Double = 0.12

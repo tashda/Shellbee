@@ -22,6 +22,7 @@ struct LightAdvancedSheet: View {
                 }
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
     }
 }

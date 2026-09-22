@@ -63,6 +63,7 @@ struct AddGroupSheet: View {
                 .padding(.vertical, DesignTokens.Spacing.md)
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
         .task { nameFieldFocused = true }

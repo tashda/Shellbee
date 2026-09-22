@@ -3,6 +3,12 @@ import SwiftUI
 struct BridgeLogView: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: BridgeLogViewModel
+    let selection: Binding<LogsPaneRoute?>?
+
+    init(viewModel: BridgeLogViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
+        self.viewModel = viewModel
+        self.selection = selection
+    }
 
     private var connectedSessions: [BridgeSession] {
         environment.registry.orderedSessions.filter(\.isConnected)
@@ -39,13 +45,14 @@ struct BridgeLogView: View {
 
     var body: some View {
         let entries = mergedEntries
-        List {
+        selectableList {
             ForEach(entries) { item in
-                NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
-                    BridgeLogRowView(entry: item.entry)
-                }
+                bridgeLogRow(item)
                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
+                .modifier(BridgeRowLeadingBarBackground(
+                    bridgeID: item.bridgeID,
+                    enabled: selection == nil
+                ))
             }
         }
         .listStyle(.plain)
@@ -58,6 +65,32 @@ struct BridgeLogView: View {
                 )
             } else if entries.isEmpty {
                 ContentUnavailableView.search(text: viewModel.searchText)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func bridgeLogRow(_ item: BridgeBoundLogEntry) -> some View {
+        if selection != nil {
+            NavigationLink(value: LogsPaneRoute.bridge(LogRoute(bridgeID: item.bridgeID, entry: item.entry))) {
+                BridgeLogRowView(entry: item.entry)
+            }
+        } else {
+            NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
+                BridgeLogRowView(entry: item.entry)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
             }
         }
     }
@@ -104,6 +137,8 @@ struct BridgeLogRowView: View {
 
 struct BridgeLogDetailView: View {
     let entry: LogEntry
+    /// Shown as a separate Done button when the viewer is presented in a sheet.
+    var doneAction: (() -> Void)? = nil
     @State private var prettyPrint = true
     @AppStorage("bridgeLogDetailFontSize") private var fontSize: Double = Double(DesignTokens.Size.bridgeLogDetailFontDefault)
 
@@ -222,14 +257,25 @@ struct BridgeLogDetailView: View {
                     Image(systemName: "plus.magnifyingglass")
                 }
                 .disabled(fontSize >= Self.maxFontSize)
+            }
 
-                if prettyMessage != nil {
+            if prettyMessage != nil {
+                TrailingToolbarGroupSpacer()
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         prettyPrint.toggle()
                     } label: {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                     }
                     .tint(prettyPrint ? .accentColor : .secondary)
+                }
+            }
+
+            if let doneAction {
+                TrailingToolbarGroupSpacer()
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done", action: doneAction)
+                        .fontWeight(.semibold)
                 }
             }
         }

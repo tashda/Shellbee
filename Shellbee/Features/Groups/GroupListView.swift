@@ -1,11 +1,28 @@
 import SwiftUI
 
 struct GroupListView: View {
+    /// `false` lets a parent `NavigationSplitView` own navigation — see
+    /// `DeviceListView` for the matching pattern.
+    var embedInNavigationStack: Bool = true
+    private let selection: Binding<GroupRoute?>?
+
+    init(
+        embedInNavigationStack: Bool = true,
+        selection: Binding<GroupRoute?>? = nil
+    ) {
+        self.embedInNavigationStack = embedInNavigationStack
+        self.selection = selection
+    }
+
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @State private var viewModel = GroupListViewModel()
     @State private var groupToRename: BridgeBoundGroup?
     @State private var groupToRemove: BridgeBoundGroup?
     @State private var showAddGroup = false
+    @State private var autoOpenedGroupRoute: GroupRoute?
+    @State private var dropAddition: PendingGroupAddition?
+    @State private var dropFeedback: DropFeedback?
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
@@ -16,81 +33,11 @@ struct GroupListView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                if isMergedMode {
-                    let merged = mergedFilteredGroups()
-                    ForEach(merged) { item in
-                        // Bridge attribution lives on the row's leading-bar
-                        // background (handled inside `GroupListRow`), so the
-                        // merged path no longer wraps in an HStack with a
-                        // separate dot — the bar is the uniform multi-bridge
-                        // indicator across Devices, Groups, and Logs.
-                        GroupListRow(
-                            group: item.group,
-                            memberDevices: mergedMembers(for: item),
-                            bridgeID: item.bridgeID,
-                            onRename: { groupToRename = item },
-                            onRemove: { groupToRemove = item }
-                        )
-                    }
-                } else if let bridgeID = singleBridgeID,
-                          let session = environment.registry.session(for: bridgeID) {
-                    let groups = viewModel.filteredGroups(store: session.store)
-                    ForEach(groups) { group in
-                        GroupListRow(
-                            group: group,
-                            memberDevices: memberDevices(for: group, store: session.store),
-                            bridgeID: bridgeID,
-                            onRename: { groupToRename = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
-                            onRemove: { groupToRemove = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) }
-                        )
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Groups")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: GroupRoute.self) { route in
-                GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-            }
-            .navigationDestination(for: DeviceRoute.self) { route in
-                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-            }
-            .searchable(text: $viewModel.searchText, prompt: "Search")
-            .minimizeSearchToolbarIfAvailable()
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        showAddGroup = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Add Group")
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if isMergedMode {
-                        bridgeFilterMenu
-                    }
-                    sortMenu
-                }
-            }
-            .refreshable {
-                if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
-                    await environment.refreshBridgeData(bridgeID: id)
-                }
-            }
-            .overlay {
-                let totalGroups = environment.allGroups.count
-                if totalGroups == 0 {
-                    ContentUnavailableView(
-                        "No Groups",
-                        systemImage: "rectangle.3.group.fill",
-                        description: Text("Create a group to control multiple devices together.")
-                    )
-                } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
-                    ContentUnavailableView.search(text: viewModel.searchText)
-                }
+        SwiftUI.Group {
+            if embedInNavigationStack {
+                NavigationStack { listContent }
+            } else {
+                listContent
             }
         }
         .sheet(isPresented: $showAddGroup) {
@@ -109,30 +56,163 @@ struct GroupListView: View {
                 viewModel.removeGroup(bound.group, force: force, environment: environment, bridgeID: bound.bridgeID)
             }
         }
+        .alert(item: $dropAddition) { addition in
+            Alert(
+                title: Text("Add to \(addition.groupName)?"),
+                message: Text("Add \(addition.deviceName) to this Zigbee2MQTT group?"),
+                primaryButton: .default(Text("Add Member")) {
+                    environment.send(
+                        bridge: addition.request.bridgeID,
+                        topic: addition.request.topic,
+                        payload: addition.request.payload
+                    )
+                    Haptics.impact(.medium)
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .alert(item: $dropFeedback) { feedback in
+            Alert(
+                title: Text(feedback.title),
+                message: Text(feedback.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+    }
+
+    private func handleDrop(_ payload: DeviceTransferPayload, bridgeID: UUID, group: Group) -> Bool {
+        let devices = environment.registry.session(for: bridgeID)?.store.devices ?? []
+        switch GroupDeviceDropPolicy.evaluate(
+            payload,
+            targetGroup: group,
+            targetBridgeID: bridgeID,
+            availableDevices: devices
+        ) {
+        case .request(let request, let deviceName):
+            dropAddition = PendingGroupAddition(request: request, deviceName: deviceName, groupName: group.friendlyName)
+            return true
+        case .alreadyMember(let deviceName):
+            dropFeedback = DropFeedback(
+                title: "Already a Member",
+                message: "\(deviceName) already belongs to \(group.friendlyName)."
+            )
+            return false
+        case .rejected(let reason):
+            dropFeedback = DropFeedback(title: "Cannot Add Device", message: reason)
+            return false
+        }
+    }
+
+    private struct PendingGroupAddition: Identifiable {
+        let id = UUID()
+        let request: GroupMemberAddRequest
+        let deviceName: String
+        let groupName: String
+    }
+
+    private struct DropFeedback: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
+    }
+
+    @ViewBuilder
+    private var listContent: some View {
+        selectableList {
+            if isMergedMode {
+                let merged = mergedFilteredGroups()
+                ForEach(merged) { item in
+                    // Bridge attribution lives on the row's leading-bar
+                    // background (handled inside `GroupListRow`), so the
+                    // merged path no longer wraps in an HStack with a
+                    // separate dot — the bar is the uniform multi-bridge
+                    // indicator across Devices, Groups, and Logs.
+                    GroupListRow(
+                        group: item.group,
+                        memberDevices: mergedMembers(for: item),
+                        bridgeID: item.bridgeID,
+                        onRename: { groupToRename = item },
+                        onRemove: { groupToRemove = item },
+                        onDropDevice: { handleDrop($0, bridgeID: item.bridgeID, group: item.group) }
+                    )
+                }
+            } else if let bridgeID = singleBridgeID,
+                      let session = environment.registry.session(for: bridgeID) {
+                let groups = viewModel.filteredGroups(store: session.store)
+                ForEach(groups) { group in
+                    GroupListRow(
+                        group: group,
+                        memberDevices: memberDevices(for: group, store: session.store),
+                        bridgeID: bridgeID,
+                        onRename: { groupToRename = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
+                        onRemove: { groupToRemove = BridgeBoundGroup(bridgeID: bridgeID, bridgeName: session.displayName, group: group) },
+                        onDropDevice: { handleDrop($0, bridgeID: bridgeID, group: group) }
+                    )
+                }
+            }
+        }
+        .modifier(AdaptiveListStyle(useGrouped: embedInNavigationStack))
+        .navigationTitle("Groups")
+        .navigationBarTitleDisplayMode(.large)
+        .modifier(GroupListNavigationDestinations(isEnabled: embedInNavigationStack))
+        .navigationDestination(item: $autoOpenedGroupRoute) { route in
+            GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if isMergedMode, viewModel.bridgeFilter != nil {
+                    ClearFiltersToolbarButton { viewModel.bridgeFilter = nil }
+                }
+                if isMergedMode {
+                    bridgeFilterMenu
+                }
+                sortMenu
+            }
+            TrailingToolbarGroupSpacer()
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    showAddGroup = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add Group")
+            }
+        }
+        .refreshable {
+            if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
+                await environment.refreshBridgeData(bridgeID: id)
+            }
+        }
+        .overlay {
+            let totalGroups = environment.allGroups.count
+            if totalGroups == 0 {
+                ContentUnavailableView(
+                    "No Groups",
+                    systemImage: "rectangle.3.group.fill",
+                    description: Text("Create a group to control multiple devices together.")
+                )
+            } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
+                ContentUnavailableView.search(text: viewModel.searchText)
+            }
+        }
+        .onAppear { consumePendingGroupNavigation() }
+        .onChange(of: sceneNavigation.pendingGroupNavigation) { _, route in
+            guard route != nil else { return }
+            consumePendingGroupNavigation()
+        }
     }
 
     private var bridgeFilterMenu: some View {
-        let connected = environment.registry.orderedSessions.filter(\.isConnected)
-        return Menu {
-            Picker("Bridge", selection: $viewModel.bridgeFilter) {
-                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
-                    .tag(UUID?.none)
-                ForEach(connected, id: \.bridgeID) { session in
-                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
-                }
-            }
-            .pickerStyle(.inline)
-            if viewModel.bridgeFilter != nil {
-                Divider()
-                Button(role: .destructive) {
-                    viewModel.bridgeFilter = nil
-                } label: {
-                    Label("Clear Filter", systemImage: "xmark.circle")
-                }
+        Menu {
+            BridgeFilterMenu(
+                selection: $viewModel.bridgeFilter,
+                sessions: environment.registry.orderedSessions.filter(\.isConnected)
+            )
+            ClearFiltersMenuItem(isActive: viewModel.bridgeFilter != nil) {
+                viewModel.bridgeFilter = nil
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(viewModel.bridgeFilter != nil ? .fill : .none)
+            FilterMenuLabel(isActive: viewModel.bridgeFilter != nil)
         }
     }
 
@@ -184,6 +264,48 @@ struct GroupListView: View {
                 return groups.map { BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: $0) }
             }
             .sorted { $0.group.friendlyName.localizedCompare($1.group.friendlyName) == .orderedAscending }
+    }
+
+    private func consumePendingGroupNavigation() {
+        guard let route = sceneNavigation.pendingGroupNavigation else { return }
+        sceneNavigation.pendingGroupNavigation = nil
+        if let selection {
+            selection.wrappedValue = route
+        } else {
+            autoOpenedGroupRoute = route
+        }
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
+            }
+        }
+    }
+}
+
+private struct GroupListNavigationDestinations: ViewModifier {
+    let isEnabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content
+                .navigationDestination(for: GroupRoute.self) { route in
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                }
+                .navigationDestination(for: DeviceRoute.self) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+        } else {
+            content
+        }
     }
 }
 

@@ -57,6 +57,7 @@ struct RenameGroupSheet: View {
                 .padding(.vertical, DesignTokens.Spacing.md)
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }
