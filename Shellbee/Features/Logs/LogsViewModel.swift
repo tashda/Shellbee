@@ -37,7 +37,18 @@ final class LogsViewModel {
             || !selectedDevices.isEmpty || entryIDFilter != nil || bridgeFilter != nil
     }
 
-    func filteredEntries(store: AppStore) -> [LogEntry] {
+    /// Changes whenever a filter or the search changes, so a feed frozen
+    /// for reading can go back to live and show the new results.
+    var filterSignature: [AnyHashable] {
+        [searchText, selectedLevel, selectedCategory, selectedNamespace, selectedDevices,
+         entryIDFilter, bridgeFilter, showLinkQualityChanges]
+    }
+
+    /// - Parameter coalescing: Collapses runs of the same device's signal
+    ///   drift and availability flaps into one row. The Activity feed passes
+    ///   false because its stacks already group a subject's events and must
+    ///   still list each one when expanded.
+    func filteredEntries(store: AppStore, coalescing: Bool = true) -> [LogEntry] {
         var entries = store.logEntries
 
         if let ids = entryIDFilter {
@@ -82,7 +93,7 @@ final class LogsViewModel {
         // newest-first; we walk it and produce synthesized entries with a
         // count when a run of identical rows is found. Bursts of LQI
         // drift, repeated availability flaps, etc. collapse to one row.
-        return coalesce(entries)
+        return coalescing ? coalesce(entries) : entries
     }
 
     /// Walk a newest-first entry list and collapse adjacent duplicates.

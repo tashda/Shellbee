@@ -36,9 +36,14 @@ extension DesignTokens {
         static let secondPeekInset: CGFloat = 24
         static let secondPeekOpacity: Double = 0.45
         static let peekCornerRadius: CGFloat = 16
+        /// How far a feed can scroll from its newest entry before it
+        /// freezes and offers Follow Live.
+        static let liveEdgeTolerance: CGFloat = 24
         /// The grabber that shows the Activity Center can be dragged down.
         static let grabberWidth: CGFloat = 36
         static let grabberHeight: CGFloat = 5
+        /// How far the grabber has to be pulled down to close.
+        static let grabberDismissDistance: CGFloat = 60
         /// Keeps cards readable on iPad and in wide windows.
         static let maxContentWidth: CGFloat = 640
     }

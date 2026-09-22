@@ -49,13 +49,21 @@ struct ActivitySubjectLogsSection<Destination: View>: View {
                     ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
                 }
                 if let onSeeAll {
+                    // Opens the Activity Center rather than pushing, but
+                    // reads as the same disclosure row as a NavigationLink.
                     Button(action: onSeeAll) {
-                        Label("See All Logs", systemImage: "list.bullet")
+                        HStack {
+                            Text("Show All Logs")
+                            Spacer()
+                            Image(systemName: "chevron.forward")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 } else {
-                    NavigationLink(destination: destination) {
-                        Label("See All Logs", systemImage: "list.bullet")
-                    }
+                    NavigationLink("Show All Logs", destination: destination)
                 }
             }
         }

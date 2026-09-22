@@ -50,24 +50,20 @@ struct RawLogFeedView: View {
                 .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
                 .frame(maxWidth: .infinity)
             }
-            .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in
-                liveFeed.beginReadingHistory(with: liveBlocks)
-            })
+            .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveBlocks))
             .toolbar {
-                if liveFeed.isReadingHistory {
-                    TrailingToolbarGroupSpacer()
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        FollowLiveButton {
-                            withAnimation(.smooth) {
-                                liveFeed.followLive()
-                                proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
-                            }
-                        }
+                FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
+                    withAnimation(.smooth) {
+                        liveFeed.followLive()
+                        proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
                     }
                 }
             }
         }
         .background(Color(.systemGroupedBackground))
+        .onChange(of: viewModel.filterSignature) {
+            liveFeed.followLive()
+        }
         .overlay { emptyState(isEmpty: blocks.isEmpty) }
         .sheet(item: $presentedEntry) { presented in
             RawLogSheet(entry: presented.route.entry)

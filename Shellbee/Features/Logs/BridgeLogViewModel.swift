@@ -10,6 +10,10 @@ final class BridgeLogViewModel {
 
     var hasActiveFilter: Bool { selectedLevel != nil || bridgeFilter != nil }
 
+    /// Changes whenever a filter or the search changes, so a feed frozen
+    /// for reading can go back to live and show the new results.
+    var filterSignature: [AnyHashable] { [searchText, selectedLevel, bridgeFilter] }
+
     func filteredEntries(store: AppStore) -> [LogEntry] {
         var entries = store.rawLogEntries
         if !searchText.isEmpty {

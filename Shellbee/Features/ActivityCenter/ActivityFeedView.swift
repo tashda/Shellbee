@@ -21,6 +21,9 @@ struct ActivityFeedView: View {
     var body: some View {
         let liveSections = feedSections()
         let sections = liveFeed.displayedItems(from: liveSections)
+        // A feed with a single subject, such as one opened from a device's
+        // Show All Logs, lists every event instead of one collapsed stack.
+        let isSingleStack = sections.count == 1 && sections[0].stacks.count == 1
         ScrollViewReader { proxy in
             ScrollView {
                 Color.clear
@@ -32,7 +35,11 @@ struct ActivityFeedView: View {
                             sectionHeader(section)
                         }
                         ForEach(section.stacks) { stack in
-                            stackView(stack)
+                            if isSingleStack {
+                                entryCards(stack)
+                            } else {
+                                stackView(stack)
+                            }
                         }
                     }
                 }
@@ -41,24 +48,20 @@ struct ActivityFeedView: View {
                 .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
                 .frame(maxWidth: .infinity)
             }
-            .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in
-                liveFeed.beginReadingHistory(with: liveSections)
-            })
+            .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveSections))
             .toolbar {
-                if liveFeed.isReadingHistory {
-                    TrailingToolbarGroupSpacer()
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        FollowLiveButton {
-                            withAnimation(.smooth) {
-                                liveFeed.followLive()
-                                proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
-                            }
-                        }
+                FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
+                    withAnimation(.smooth) {
+                        liveFeed.followLive()
+                        proxy.scrollTo(LiveFeedAnchor.top, anchor: .top)
                     }
                 }
             }
         }
         .background(Color(.systemGroupedBackground))
+        .onChange(of: viewModel.filterSignature) {
+            liveFeed.followLive()
+        }
         .overlay { emptyState(isEmpty: sections.isEmpty) }
         .animation(.smooth, value: expandedStackID)
         .sheet(item: $presentedEntry) { presented in
@@ -117,18 +120,7 @@ struct ActivityFeedView: View {
         let bridgeName = environment.registry.session(for: stack.bridgeID)?.displayName ?? "Bridge"
         if expandedStackID == stack.id {
             expandedHeader(ActivityCardContent(entry: stack.latest, subject: stack.subject, bridgeName: bridgeName).title)
-            ForEach(stack.entries) { entry in
-                Button {
-                    open(entry, bridgeID: stack.bridgeID)
-                } label: {
-                    ActivityCard(
-                        entry: entry,
-                        content: ActivityCardContent(entry: entry, subject: stack.subject, bridgeName: bridgeName)
-                    )
-                }
-                .buttonStyle(.plain)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            entryCards(stack)
         } else {
             Button {
                 if stack.isStacked {
@@ -153,6 +145,22 @@ struct ActivityFeedView: View {
                     UIPasteboard.general.string = stack.latest.message
                 }
             }
+        }
+    }
+
+    private func entryCards(_ stack: ActivityStack) -> some View {
+        let bridgeName = environment.registry.session(for: stack.bridgeID)?.displayName ?? "Bridge"
+        return ForEach(stack.entries) { entry in
+            Button {
+                open(entry, bridgeID: stack.bridgeID)
+            } label: {
+                ActivityCard(
+                    entry: entry,
+                    content: ActivityCardContent(entry: entry, subject: stack.subject, bridgeName: bridgeName)
+                )
+            }
+            .buttonStyle(.plain)
+            .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 
@@ -209,7 +217,7 @@ struct ActivityFeedView: View {
             session.isConnected && (viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true)
         }
         let entries = sessions.flatMap { session in
-            viewModel.filteredEntries(store: session.store)
+            viewModel.filteredEntries(store: session.store, coalescing: false)
                 .map { BridgeBoundLogEntry(bridgeID: session.bridgeID, bridgeName: session.displayName, entry: $0) }
         }
         .sorted { $0.entry.timestamp > $1.entry.timestamp }

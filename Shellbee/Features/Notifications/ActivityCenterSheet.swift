@@ -16,9 +16,10 @@ struct ActivityCenterSheet: View {
             LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
         }
         .configuredTopScrollEdgeEffect()
-        .overlay(alignment: .top) {
+        // The grabber gets its own strip above the navigation bar so the
+        // toolbar capsules can never cover it.
+        .safeAreaInset(edge: .top, spacing: 0) {
             GrabberCapsule()
-                .padding(.top, DesignTokens.Spacing.xs)
         }
 
         if #available(iOS 18.0, *), let transitionNamespace {
@@ -30,23 +31,33 @@ struct ActivityCenterSheet: View {
     }
 }
 
-/// The full-screen Activity Center keeps its pull-down affordance fixed at
-/// the visual centre. A navigation-bar principal item would move sideways as
-/// filters and other trailing actions appear.
+/// The full-screen Activity Center's pull-down affordance, fixed at the
+/// visual centre. Dragging it down closes the Activity Center even while
+/// the feed is scrolled, and tapping it does the same.
 private struct GrabberCapsule: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Button { dismiss() } label: {
-            Capsule()
-                .fill(.tertiary)
-                .frame(
-                    width: DesignTokens.ActivityFeed.grabberWidth,
-                    height: DesignTokens.ActivityFeed.grabberHeight
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Close Activity")
+        Capsule()
+            .fill(.tertiary)
+            .frame(
+                width: DesignTokens.ActivityFeed.grabberWidth,
+                height: DesignTokens.ActivityFeed.grabberHeight
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, DesignTokens.Spacing.sm)
+            .contentShape(Rectangle())
+            .background(Color(.systemGroupedBackground))
+            .onTapGesture { dismiss() }
+            .gesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onEnded { value in
+                if value.translation.height > DesignTokens.ActivityFeed.grabberDismissDistance {
+                    dismiss()
+                }
+            })
+            .accessibilityElement()
+            .accessibilityLabel("Close Activity")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { dismiss() }
     }
 }
 
