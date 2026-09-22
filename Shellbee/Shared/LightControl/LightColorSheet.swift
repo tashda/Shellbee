@@ -12,8 +12,8 @@ struct LightColorSheet: View {
     let context: LightControlContext
     let onSend: (JSONValue) -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var surface: Surface
+    @State private var contentHeight: CGFloat = 0
 
     init(context: LightControlContext, onSend: @escaping (JSONValue) -> Void) {
         self.context = context
@@ -22,30 +22,25 @@ struct LightColorSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    if context.supportsColorControls && context.supportsWhiteControls {
-                        Picker("Mode", selection: $surface) {
-                            ForEach(Surface.allCases) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .listRowSeparator(.hidden)
-                    }
-                    controls
-                        .padding(.vertical, DesignTokens.Spacing.xs)
+        // The sheet is the card: its controls sit straight on the sheet,
+        // with no title or inset section, and it's only as tall as they are.
+        VStack(spacing: DesignTokens.Spacing.lg) {
+            if context.supportsColorControls && context.supportsWhiteControls {
+                Picker("Mode", selection: $surface) {
+                    ForEach(Surface.allCases) { Text($0.rawValue).tag($0) }
                 }
+                .pickerStyle(.segmented)
             }
-            .navigationTitle(surface == .color ? "Color" : "Color Temperature")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+            controls
         }
-        .presentationDetents([.medium])
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .padding(.top, DesignTokens.Spacing.xxl)
+        .padding(.bottom, DesignTokens.Spacing.lg)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.medium])
         .presentationDragIndicator(.visible)
+        .configuredTopScrollEdgeEffect()
     }
 
     @ViewBuilder

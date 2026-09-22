@@ -91,6 +91,9 @@ private struct CardGalleryStageScreen: View {
     let preview: CardGalleryPreview
     let surface: CardGalleryStageView.Surface
     @State private var isNameHidden = false
+    /// What each fixture has been sent, merged over its state the way a
+    /// bridge would echo it, so the gallery's controls respond.
+    @State private var sent: [String: [String: JSONValue]] = [:]
 
     var body: some View {
         List {
@@ -125,6 +128,20 @@ private struct CardGalleryStageScreen: View {
         .onChange(of: surface) { isNameHidden = false }
     }
 
+    private func liveState(_ base: [String: JSONValue]) -> [String: JSONValue] {
+        base.merging(sent[preview.id] ?? [:]) { _, new in new }
+    }
+
+    private var sender: (JSONValue) -> Void {
+        let id = preview.id
+        return { payload in
+            guard case .object(var fields) = payload else { return }
+            if fields["color"] != nil { fields["color_mode"] = .string("hs") }
+            if fields["color_temp"] != nil { fields["color_mode"] = .string("color_temp") }
+            sent[id, default: [:]].merge(fields) { _, new in new }
+        }
+    }
+
     private var navigationTitle: String {
         preview.sample?.device.friendlyName ?? CardGalleryCatalog.group.friendlyName
     }
@@ -132,8 +149,8 @@ private struct CardGalleryStageScreen: View {
     @ViewBuilder
     private func devicePage(_ sample: CardGallerySample) -> some View {
         let device = sample.device
-        let state = sample.state
-        let send: (JSONValue) -> Void = { _ in }
+        let state = liveState(sample.state)
+        let send = sender
 
         DeviceCard(
             device: device,
@@ -155,7 +172,7 @@ private struct CardGalleryStageScreen: View {
 
         Section("Logs") {
             Label("State reported", systemImage: "checkmark.circle")
-            Label("See All Logs", systemImage: "list.bullet")
+            NavigationLink("Show All Logs") { EmptyView() }
         }
     }
 
@@ -294,7 +311,7 @@ private struct CardGalleryStageScreen: View {
         Section {
             DeviceCard(
                 device: sample.device,
-                state: sample.state,
+                state: liveState(sample.state),
                 isAvailable: sample.isAvailable,
                 otaStatus: nil,
                 displayMode: .compact
@@ -341,8 +358,8 @@ private struct CardGalleryStageScreen: View {
     private var groupPage: some View {
         let group = CardGalleryCatalog.group
         let devices = CardGalleryCatalog.groupMembers
-        let state = CardGalleryCatalog.groupState
-        let send: (JSONValue) -> Void = { _ in }
+        let state = liveState(CardGalleryCatalog.groupState)
+        let send = sender
 
         GroupCard(
             group: group,
@@ -374,7 +391,7 @@ private struct CardGalleryStageScreen: View {
 
         Section("Logs") {
             Label("Group state reported", systemImage: "checkmark.circle")
-            Label("See All Logs", systemImage: "list.bullet")
+            NavigationLink("Show All Logs") { EmptyView() }
         }
     }
 }
