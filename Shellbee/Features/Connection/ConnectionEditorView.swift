@@ -123,7 +123,7 @@ struct ConnectionEditorView: View {
     private var testStatusText: String? {
         switch testState {
         case .idle: return nil
-        case .testing: return "Testing connection…"
+        case .testing: return "Testing connection"
         case .success: return "Connection successful"
         case .failure(let message): return message
         }

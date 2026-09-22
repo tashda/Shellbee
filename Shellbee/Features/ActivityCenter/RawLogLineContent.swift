@@ -46,7 +46,7 @@ struct RawLogLineContent: Equatable {
         case .array, .object:
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-            guard let data = try? encoder.encode(value) else { return "…" }
+            guard let data = try? encoder.encode(value) else { return "Unable to encode value" }
             return String(decoding: data, as: UTF8.self)
         }
     }
