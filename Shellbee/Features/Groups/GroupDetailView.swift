@@ -93,6 +93,24 @@ struct GroupDetailView: View {
         return nil
     }
 
+    /// A control card is only offered when every member shares the same
+    /// category — a mixed group falls back to read-only rows, since there's
+    /// no one control that speaks for the whole group.
+    private var isUniformCategory: Device.Category? {
+        let categories = Set(memberDevices.map(\.category))
+        return categories.count == 1 ? categories.first : nil
+    }
+
+    private var groupSwitchContext: SwitchControlContext? {
+        guard isUniformCategory == .switchPlug, let device = memberDevices.first else { return nil }
+        return SwitchControlContext.contexts(for: device, state: groupState).first
+    }
+
+    private var groupCoverContext: CoverControlContext? {
+        guard isUniformCategory == .cover, let device = memberDevices.first else { return nil }
+        return CoverControlContext.contexts(for: device, state: groupState).first
+    }
+
     var body: some View {
         List {
             GroupCard(
@@ -112,6 +130,22 @@ struct GroupDetailView: View {
             if let lightContext = groupLightContext {
                 Section {
                     LightControlCard(context: lightContext, mode: .interactive) { payload in
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+            } else if let switchContext = groupSwitchContext {
+                Section {
+                    SwitchControlCard(context: switchContext, mode: .interactive) { payload in
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+            } else if let coverContext = groupCoverContext {
+                Section {
+                    CoverControlCard(context: coverContext, mode: .interactive) { payload in
                         scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
                     }
                     .listRowInsets(EdgeInsets())
