@@ -4,12 +4,10 @@ struct HomeBridgeCard: View {
     let entries: [HomeBridgeCardEntry]
     let onRestart: (UUID) -> Void
     var onOpenBridge: ((UUID) -> Void)? = nil
-    var fetchesLatestVersion = true
-
-    /// Latest Z2M version from GitHub Releases. Polled at most every 5 min,
-    /// shared by every bridge row so we don't fan out the same network call.
-    @State private var latestVersion: String? = nil
-    @State private var lastVersionFetch: Date? = nil
+    /// Latest Z2M release, resolved by `Z2MReleaseService` and passed in.
+    /// The card never fetches: a view that appears twice would otherwise
+    /// send the same request twice.
+    var latestVersion: String? = nil
 
     var body: some View {
         SwiftUI.Group {
@@ -22,11 +20,6 @@ struct HomeBridgeCard: View {
                     onRestart: onRestart,
                     onOpen: onOpenBridge
                 )
-            }
-        }
-        .task(id: entries.compactMap(\.version).joined(separator: ",")) {
-            if fetchesLatestVersion {
-                await fetchLatestVersion()
             }
         }
     }
@@ -52,15 +45,6 @@ struct HomeBridgeCard: View {
         }
     }
 
-    private func fetchLatestVersion() async {
-        if let last = lastVersionFetch, Date().timeIntervalSince(last) < 300 { return }
-        guard let url = URL(string: "https://api.github.com/repos/Koenkk/zigbee2mqtt/releases/latest") else { return }
-        lastVersionFetch = Date()
-        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
-        struct Release: Decodable { let tag_name: String }
-        guard let release = try? JSONDecoder().decode(Release.self, from: data) else { return }
-        latestVersion = release.tag_name
-    }
 }
 
 /// Single-bridge layout — preserves the legacy stat/status/alert presentation.

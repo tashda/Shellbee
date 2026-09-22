@@ -96,8 +96,7 @@ private struct HomeCardsPreview: View {
         case .bridge:
             HomeBridgeCard(
                 entries: [Self.bridgeEntry(name: bridgeName ?? "Zigbee2MQTT")],
-                onRestart: { _ in },
-                fetchesLatestVersion: false
+                onRestart: { _ in }
             )
         case .devices:
             HomeDevicesCard(

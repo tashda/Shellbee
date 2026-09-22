@@ -175,6 +175,9 @@ struct HomeView: View {
                     environment.send(bridge: session.bridgeID, topic: Z2MTopics.Request.healthCheck, payload: .object([:]))
                 }
             }
+            .task {
+                await environment.releases.refresh()
+            }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -241,7 +244,8 @@ struct HomeView: View {
                 },
                 onOpenBridge: { id in
                     presentedSheet = .bridge(id)
-                }
+                },
+                latestVersion: environment.releases.latestVersion
             )
         case .devices:
             HomeDevicesCard(snapshot: snapshot(for: card.bridgeID), bridgeName: bridgeName(for: card.bridgeID)) {

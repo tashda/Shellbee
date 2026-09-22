@@ -7,6 +7,8 @@ final class AppEnvironment {
     let history = ConnectionHistory()
     let registry: BridgeRegistry
     let notificationPreferences = NotificationPreferences()
+    /// Latest Zigbee2MQTT release, shared by every surface that reports one.
+    let releases = Z2MReleaseService()
     /// Per-bridge OTA queues. Each bridge's bulk-OTA work runs independently —
     /// a 200-device check on bridge A doesn't serialize bridge B's update.
     private var otaQueues: [UUID: OTABulkOperationQueue] = [:]
