@@ -57,8 +57,8 @@ struct LightColorSheet: View {
             )
         } else if let ct = context.colorTemperature {
             LightTemperatureControl(
-                range: ct.range ?? 153...500,
-                value: context.colorTemperatureValue ?? ct.range?.lowerBound ?? 250,
+                range: context.colorTemperatureRange,
+                value: context.colorTemperatureValue ?? context.colorTemperatureRange.lowerBound,
                 isInteractive: ct.isWritable,
                 onChange: { value in
                     guard let payload = context.colorTemperaturePayload(value) else { return }

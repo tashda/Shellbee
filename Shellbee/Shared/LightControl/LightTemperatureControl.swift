@@ -8,9 +8,19 @@ struct LightTemperatureControl: View {
 
     @State private var draftValue: Double
 
-    private static let presets: [(kelvin: Double, label: String)] = [
-        (2700, "2.7K"), (3000, "3K"), (4000, "4K"), (5000, "5K"), (6500, "6.5K")
-    ]
+    /// Five stops across what this light can reach, warmest first, so every
+    /// preset is one the bulb can actually show.
+    private var presets: [(mireds: Double, label: String)] {
+        let warmest = 1_000_000 / range.upperBound
+        let coolest = 1_000_000 / range.lowerBound
+        return (0..<5).map { step in
+            let kelvin = ((warmest + (coolest - warmest) * Double(step) / 4) / 100).rounded() * 100
+            let label = kelvin.truncatingRemainder(dividingBy: 1000) == 0
+                ? "\(Int(kelvin / 1000))K"
+                : String(format: "%.1fK", kelvin / 1000)
+            return (min(max(1_000_000 / kelvin, range.lowerBound), range.upperBound), label)
+        }
+    }
 
     init(range: ClosedRange<Double>, value: Double, isInteractive: Bool, onChange: @escaping (Double) -> Void) {
         self.range = range
@@ -32,7 +42,13 @@ struct LightTemperatureControl: View {
                     .foregroundStyle(.secondary)
             }
 
-            Slider(value: $draftValue, in: range) { editing in
+            // Mireds run opposite to kelvin; flip so warm is on the left,
+            // matching the presets beneath.
+            Slider(
+                value: Binding(get: { range.upperBound + range.lowerBound - draftValue },
+                               set: { draftValue = range.upperBound + range.lowerBound - $0 }),
+                in: range
+            ) { editing in
                 guard !editing else { return }
                 onChange(draftValue)
             }
@@ -46,13 +62,11 @@ struct LightTemperatureControl: View {
 
     private var presetsRow: some View {
         HStack(spacing: DesignTokens.Spacing.xs) {
-            ForEach(Self.presets, id: \.kelvin) { preset in
-                let mireds = 1_000_000 / preset.kelvin
-                let inRange = range.contains(mireds)
+            ForEach(presets, id: \.label) { preset in
+                let mireds = preset.mireds
                 let isSelected = abs(draftValue - mireds) < 10
 
                 Button {
-                    guard inRange else { return }
                     draftValue = mireds
                     onChange(mireds)
                 } label: {
@@ -64,7 +78,6 @@ struct LightTemperatureControl: View {
                                 isSelected ? Color.primary : Color.clear,
                                 lineWidth: DesignTokens.Size.lightSelectionStroke
                             ))
-                            .opacity(inRange ? 1 : DesignTokens.Opacity.outOfRange)
                         Text(preset.label)
                             .font(DesignTokens.Typography.sliderEndLabel)
                             .foregroundStyle(.secondary)
@@ -72,7 +85,7 @@ struct LightTemperatureControl: View {
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.plain)
-                .disabled(!isInteractive || !inRange)
+                .disabled(!isInteractive)
             }
         }
     }

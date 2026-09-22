@@ -69,7 +69,10 @@ struct GroupDetailView: View {
     private var groupLightContext: LightControlContext? {
         for member in currentGroup.members {
             guard let device = scope.store.devices.first(where: { $0.ieeeAddress == member.ieeeAddress }) else { continue }
-            if let ctx = LightControlContext(device: device, state: groupState) { return ctx }
+            if let ctx = LightControlContext(device: device, state: groupState) {
+                let members = memberDevices.compactMap { LightControlContext(device: $0, state: groupState) }
+                return ctx.limitingColorTemperature(toMembers: members)
+            }
         }
         return nil
     }

@@ -52,7 +52,7 @@ struct LightAdvancedFeatureRow: View {
         NavigationLink {
             LightStartupTemperaturePage(
                 feature: feature,
-                range: range,
+                range: range.map { LightControlContext.plausibleColorTemperatureRange($0) },
                 value: numericDraftValue,
                 onChange: { mireds in
                     numericDraftValue = mireds

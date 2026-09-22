@@ -597,7 +597,6 @@ nonisolated enum DesignTokens {
         static let mildOpaque: Double = 0.22
         static let pressedAlpha: Double = 0.25
         static let dimmedSurface: Double = 0.30
-        static let outOfRange: Double = 0.35
         static let secondaryDim: Double = 0.75
         static let secondaryFull: Double = 0.7
     }
