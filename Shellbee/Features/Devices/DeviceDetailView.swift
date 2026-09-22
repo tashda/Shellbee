@@ -261,33 +261,14 @@ struct DeviceDetailView: View {
         )
     }
 
-    private static let recentLogLimit = 5
-
     @ViewBuilder
     private var logsSection: some View {
-        let activityEvents = ActivitySubjectEvents(
-            subjectName: device.friendlyName,
+        ActivitySubjectLogsSection(
             bridgeID: bridgeID,
-            store: scope.store,
-            environment: environment
-        )
-        let recent = Array(activityEvents.items.prefix(Self.recentLogLimit))
-
-        Section("Logs") {
-            if activityEvents.sourceEntries.isEmpty {
-                Text("No logs for this device yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(recent) { item in
-                    ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
-                }
-                NavigationLink {
-                    DeviceLogsView(bridgeID: bridgeID, device: device)
-                } label: {
-                    Label("See All Logs", systemImage: "list.bullet")
-                }
-            }
+            subjectName: device.friendlyName,
+            subjectLabel: "device"
+        ) {
+            DeviceLogsView(bridgeID: bridgeID, device: device)
         }
     }
 

@@ -252,11 +252,12 @@ private struct ActivityLogContent: View {
         let entries = viewModel.filteredEntries(store: store)
         selectableList {
             ForEach(entries) { entry in
-                activityRow(entry: entry, store: store, bridgeID: bridgeID)
-                    .modifier(BridgeRowLeadingBarBackground(
-                        bridgeID: bridgeID,
-                        enabled: selection == nil
-                    ))
+                ActivitySubjectEvents.Row(
+                    item: activityItem(entry: entry, bridgeID: bridgeID),
+                    bridgeID: bridgeID,
+                    usesValueNavigation: selection != nil,
+                    showsBridgeIndicator: selection == nil
+                )
             }
         }
         .listStyle(.plain)
@@ -281,12 +282,12 @@ private struct ActivityLogContent: View {
         let bound = mergedFilteredEntries()
         selectableList {
             ForEach(bound) { item in
-                let rowStore = environment.registry.session(for: item.bridgeID)?.store
-                activityRow(entry: item.entry, store: rowStore, bridgeID: item.bridgeID)
-                    .modifier(BridgeRowLeadingBarBackground(
-                        bridgeID: item.bridgeID,
-                        enabled: selection == nil
-                    ))
+                ActivitySubjectEvents.Row(
+                    item: activityItem(entry: item.entry, bridgeID: item.bridgeID),
+                    bridgeID: item.bridgeID,
+                    usesValueNavigation: selection != nil,
+                    showsBridgeIndicator: selection == nil
+                )
             }
         }
         .listStyle(.plain)
@@ -319,25 +320,13 @@ private struct ActivityLogContent: View {
         return perBridge.sorted { $0.entry.timestamp > $1.entry.timestamp }
     }
 
-    @ViewBuilder
-    private func activityRow(entry: LogEntry, store: AppStore?, bridgeID: UUID) -> some View {
-        let route = LogRoute(bridgeID: bridgeID, entry: entry)
-        let bridgeName = environment.registry.session(for: bridgeID)?.displayName ?? "Unknown"
-        if selection != nil {
-            NavigationLink(value: LogsPaneRoute.activity(route)) {
-                LogRowView(entry: entry, store: store, bridgeID: bridgeID)
-                    .accessibilityIdentifier("activity-log-\(bridgeName)")
-            }
-        } else {
-            ZStack {
-                LogRowView(entry: entry, store: store, bridgeID: bridgeID)
-                    .accessibilityIdentifier("activity-log-\(bridgeName)")
-                NavigationLink {
-                    LogDetailView(bridgeID: bridgeID, entry: entry)
-                } label: { EmptyView() }
-                .opacity(0)
-            }
-        }
+    private func activityItem(entry: LogEntry, bridgeID: UUID) -> ActivityEventItem {
+        let bridgeName = environment.registry.session(for: bridgeID)?.displayName ?? "Bridge"
+        return environment.activityEventItem(for: BridgeBoundLogEntry(
+            bridgeID: bridgeID,
+            bridgeName: bridgeName,
+            entry: entry
+        ))
     }
 
     @ViewBuilder

@@ -55,33 +55,14 @@ struct GroupDetailView: View {
         viewModel.synthesizedState(for: currentGroup, environment: environment, bridgeID: bridgeID)
     }
 
-    private static let recentLogLimit = 5
-
     @ViewBuilder
     private var logsSection: some View {
-        let activityEvents = ActivitySubjectEvents(
-            subjectName: currentGroup.friendlyName,
+        ActivitySubjectLogsSection(
             bridgeID: bridgeID,
-            store: scope.store,
-            environment: environment
-        )
-        let recent = Array(activityEvents.items.prefix(Self.recentLogLimit))
-
-        Section("Logs") {
-            if activityEvents.sourceEntries.isEmpty {
-                Text("No logs for this group yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(recent) { item in
-                    ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
-                }
-                NavigationLink {
-                    GroupLogsView(bridgeID: bridgeID, group: currentGroup)
-                } label: {
-                    Label("See All Logs", systemImage: "list.bullet")
-                }
-            }
+            subjectName: currentGroup.friendlyName,
+            subjectLabel: "group"
+        ) {
+            GroupLogsView(bridgeID: bridgeID, group: currentGroup)
         }
     }
 

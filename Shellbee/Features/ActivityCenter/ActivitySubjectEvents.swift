@@ -46,24 +46,47 @@ struct ActivitySubjectEvents {
     /// The shared native-list presentation of an Activity event. The card
     /// feed, Home and detail pages all build from the same `ActivityEventItem`.
     struct Row: View {
+        @Environment(AppEnvironment.self) private var environment
         let item: ActivityEventItem
         let bridgeID: UUID
+        var usesValueNavigation = false
+        var showsBridgeIndicator = true
 
         var body: some View {
             if let entry = item.entry {
-                NavigationLink {
-                    LogDetailView(bridgeID: bridgeID, entry: entry)
-                } label: {
-                    ActivityEventRow(
-                        instrument: item.instrument,
-                        content: item.content,
-                        timestamp: item.timestamp,
-                        instrumentSize: DesignTokens.ActivityFeed.thumbnail
-                    )
-                    .padding(.vertical, DesignTokens.Spacing.sm)
+                SwiftUI.Group {
+                    if usesValueNavigation {
+                        NavigationLink(value: LogsPaneRoute.activity(LogRoute(bridgeID: bridgeID, entry: entry))) {
+                            label
+                        }
+                    } else {
+                        NavigationLink {
+                            LogDetailView(bridgeID: bridgeID, entry: entry)
+                        } label: {
+                            label
+                        }
+                    }
                 }
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+                .modifier(BridgeRowLeadingBarBackground(
+                    bridgeID: bridgeID,
+                    enabled: showsBridgeIndicator
+                ))
             }
+        }
+
+        private var label: some View {
+            ActivityEventRow(
+                instrument: item.instrument,
+                content: item.content,
+                timestamp: item.timestamp,
+                instrumentSize: DesignTokens.ActivityFeed.thumbnail
+            )
+            .padding(.vertical, DesignTokens.Spacing.sm)
+            .accessibilityIdentifier("activity-log-\(bridgeName)")
+        }
+
+        private var bridgeName: String {
+            environment.registry.session(for: bridgeID)?.displayName ?? "Unknown"
         }
     }
 }

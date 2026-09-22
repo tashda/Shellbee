@@ -37,9 +37,11 @@ struct GlobalSearchResultRows: View {
             }
         case .activity:
             ForEach(capped(results.activity)) { item in
-                NavigationLink(value: LogsPaneRoute.activity(LogRoute(bridgeID: item.bridgeID, entry: item.entry))) {
-                    LogRowView(entry: item.entry, store: store(for: item.bridgeID), bridgeID: item.bridgeID)
-                }
+                ActivitySubjectEvents.Row(
+                    item: environment.activityEventItem(for: item),
+                    bridgeID: item.bridgeID,
+                    usesValueNavigation: true
+                )
             }
         case .logs:
             ForEach(capped(results.logs)) { item in
