@@ -30,6 +30,14 @@ struct HomeView: View {
     }
 
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount: Int = HomeSettings.recentEventsCountDefault
+    // Optional cards, all off to begin with. Home answers "is anything
+    // wrong" without any of them; these answer the questions you only ask
+    // when you feel like looking. Switched on in Settings › Home.
+    @AppStorage(HomeCardKind.network.storageKey) private var showsNetworkCard = false
+    @AppStorage(HomeCardKind.linkQuality.storageKey) private var showsLinkQualityCard = false
+    @AppStorage(HomeCardKind.batteries.storageKey) private var showsBatteriesCard = false
+    @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealthCard = false
+    @AppStorage(HomeCardKind.activity.storageKey) private var showsActivityCard = false
     @State private var showingAllLogs = false
 
     /// One entry per saved bridge, including sessions that are reconnecting
@@ -136,6 +144,7 @@ struct HomeView: View {
                 bridgeSection
                 nowSection
                 attentionSection
+                optionalCards
                 activitySection
             }
             .listStyle(.insetGrouped)
@@ -267,30 +276,51 @@ struct HomeView: View {
     }
 
     private var attentionItems: [HomeAttentionItem] {
-        HomeAttentionItem.items(
-            snapshot: snapshot,
-            bridges: bridgeCardEntries,
-            latestVersion: environment.releases.latestVersion
-        )
+        HomeAttentionItem.items(snapshot: snapshot)
     }
 
+    /// Needs attention is device problems. Anything true of one bridge —
+    /// a pending restart, a Zigbee2MQTT release — gets its own section
+    /// headed with that bridge's name, so which bridge is never something
+    /// you work out from a colour. With one bridge there is nothing to
+    /// disambiguate, so it all reads as one section.
     @ViewBuilder
     private var attentionSection: some View {
-        let items = attentionItems
-        if !items.isEmpty {
-            Section("Needs attention") {
-                ForEach(items) { item in
-                    Button { perform(item.action) } label: {
-                        HomeAttentionRow(item: item)
-                    }
-                    .buttonStyle(.plain)
-                    .modifier(BridgeRowLeadingBarBackground(
-                        bridgeID: item.bridgeID,
-                        enabled: item.bridgeID != nil
-                    ))
+        let entries = bridgeCardEntries
+        let perBridge = entries.map { entry in
+            (entry: entry, items: HomeAttentionItem.bridgeItems(
+                for: entry,
+                latestVersion: environment.releases.latestVersion
+            ))
+        }.filter { !$0.items.isEmpty }
+        let deviceItems = attentionItems
+
+        if entries.count <= 1 {
+            let all = perBridge.flatMap(\.items) + deviceItems
+            if !all.isEmpty {
+                Section("Needs attention") {
+                    ForEach(all) { attentionRow($0) }
+                }
+            }
+        } else {
+            ForEach(perBridge, id: \.entry.id) { group in
+                Section("Needs attention · \(group.entry.name)") {
+                    ForEach(group.items) { attentionRow($0) }
+                }
+            }
+            if !deviceItems.isEmpty {
+                Section(perBridge.isEmpty ? "Needs attention" : "Needs attention · All bridges") {
+                    ForEach(deviceItems) { attentionRow($0) }
                 }
             }
         }
+    }
+
+    private func attentionRow(_ item: HomeAttentionItem) -> some View {
+        Button { perform(item.action) } label: {
+            HomeAttentionRow(item: item)
+        }
+        .buttonStyle(.plain)
     }
 
     private func perform(_ action: HomeAttentionItem.Action) {
@@ -305,23 +335,75 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Optional cards
+
+    @ViewBuilder
+    private var optionalCards: some View {
+        if showsNetworkCard {
+            cardSection {
+                HomeNetworkCard(snapshot: snapshot) {
+                    sceneNavigation.selectedTab = .networkMap
+                }
+            }
+        }
+        if showsLinkQualityCard {
+            cardSection {
+                HomeLinkQualityCard(snapshot: snapshot) {
+                    showDevices(filter: .weakSignal)
+                }
+            }
+        }
+        if showsBatteriesCard {
+            cardSection {
+                HomeBatteriesCard(snapshot: snapshot) {
+                    showDevices(filter: .batteryLow)
+                }
+            }
+        }
+        if showsBridgeHealthCard {
+            ForEach(bridgeCardEntries) { entry in
+                cardSection {
+                    HomeBridgeHealthCard(
+                        entry: entry,
+                        namesBridge: bridgeCardEntries.count >= 2
+                    ) {
+                        presentedSheet = .bridge(entry.id)
+                    }
+                }
+            }
+        }
+    }
+
+    /// A card sits in its own section so the List draws no row chrome
+    /// around it — the card is the surface.
+    private func cardSection<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        Section {
+            content()
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+        }
+    }
+
     @ViewBuilder
     private var activitySection: some View {
-        let items = recentEventItems(for: nil)
-        Section("Activity") {
-            if items.isEmpty {
-                Text("No recent events")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(items) { item in
-                    Button {
-                        sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [item.id])
-                    } label: {
-                        HomeActivityRow(item: item)
+        if showsActivityCard {
+            let items = recentEventItems(for: nil)
+            Section("Activity") {
+                if items.isEmpty {
+                    Text("No recent events")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(items) { item in
+                        Button {
+                            sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [item.id])
+                        } label: {
+                            HomeActivityRow(item: item)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    Button("See all", action: openAllLogs)
                 }
-                Button("See all", action: openAllLogs)
             }
         }
     }

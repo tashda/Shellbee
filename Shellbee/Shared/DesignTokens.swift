@@ -50,6 +50,11 @@ nonisolated enum DesignTokens {
         static let summaryRowSymbol: CGFloat = 18
         static let summaryRowSymbolFrame: CGFloat = 36
         static let summaryRowTrailingIcon: CGFloat = 20
+        /// Home's Link quality chart and its shortest drawable bar.
+        static let linkQualityChart: CGFloat = 92
+        static let linkQualityBarMinimum: CGFloat = 3
+        /// Right-aligned percentage column in the Batteries card.
+        static let batteryPercentColumn: CGFloat = 46
         static let heroSymbol: CGFloat = 34
         static let metricSymbol: CGFloat = 18
         static let cardSymbol: CGFloat = 22
@@ -372,6 +377,9 @@ nonisolated enum DesignTokens {
     nonisolated enum Threshold {
         static let lowBattery = 20
         static let weakSignal = 40
+        /// Z2M's own process memory share, above which the bridge is worth
+        /// a second look.
+        static let highProcessMemory: Double = 30
         /// Top of the Zigbee link quality scale, for signal-bar fill.
         static let maxLinkQuality: Double = 255
 
@@ -572,6 +580,10 @@ nonisolated enum DesignTokens {
         static let cardGalleryControlsScrim: Double = 0.85
         static let secondaryText: Double = 0.8
         static let chipFill: Double = 0.12
+        /// Chart bars run from this opacity to floor + range, so the tallest
+        /// bar is the darkest and the shape carries the reading.
+        static let chartBarFloor: Double = 0.25
+        static let chartBarRange: Double = 0.55
         static let subtleFill: Double = 0.12
         static let softFill: Double = 0.18
         static let accentFill: Double = 0.2

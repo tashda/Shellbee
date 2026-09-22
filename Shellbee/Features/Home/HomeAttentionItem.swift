@@ -6,8 +6,8 @@ import SwiftUI
 /// The section exists only while this list is non-empty, so the shape of
 /// Home answers "is anything wrong" before a single figure is read. Facts
 /// with nothing to do about them — how many routers, the average link
-/// quality, the channel — are not attention items and live on the screens
-/// that own them.
+/// quality, the channel — are not attention items and live on the cards
+/// and screens that own them.
 struct HomeAttentionItem: Identifiable {
     enum Action {
         /// Open the Devices tab with this filter applied.
@@ -26,25 +26,15 @@ struct HomeAttentionItem: Identifiable {
     /// the label colours.
     let tint: Color
     /// Set when the row is about one bridge rather than the network as a
-    /// whole. The row then carries that bridge's colour on its leading
-    /// edge, the way Devices, Groups and Logs already attribute rows —
-    /// which says which bridge without spending the title on its name.
+    /// whole. Those rows are grouped under a section headed with the
+    /// bridge's name, so which bridge is never something you infer.
     var bridgeID: UUID? = nil
     let action: Action
 
-    /// Builds the list, most severe first.
-    ///
-    /// - Parameters:
-    ///   - snapshot: merged across every connected bridge, because a device
-    ///     that stopped answering is one whichever bridge owns it.
-    ///   - bridges: per-bridge entries, for the things that are genuinely
-    ///     per-bridge (a pending restart, an available Z2M release).
-    ///   - latestVersion: the tag `Z2MReleaseService` resolved, if any.
-    static func items(
-        snapshot: HomeSnapshot,
-        bridges: [HomeBridgeCardEntry],
-        latestVersion: String?
-    ) -> [HomeAttentionItem] {
+    /// The device problems, most severe first. These are true of the
+    /// network rather than of any one bridge: a device that stopped
+    /// answering stopped answering whichever bridge owns it.
+    static func items(snapshot: HomeSnapshot) -> [HomeAttentionItem] {
         var items: [HomeAttentionItem] = []
 
         if snapshot.offlineDevices > 0 {
@@ -66,18 +56,6 @@ struct HomeAttentionItem: Identifiable {
                 symbol: "battery.25",
                 tint: .red,
                 action: .devices(.batteryLow)
-            ))
-        }
-
-        for bridge in bridges where bridge.restartRequired {
-            items.append(HomeAttentionItem(
-                id: "restart-\(bridge.id)",
-                title: "Restart required",
-                value: "To apply configuration",
-                symbol: "arrow.triangle.2.circlepath.circle.fill",
-                tint: .orange,
-                bridgeID: bridge.id,
-                action: .restart(bridge.id)
             ))
         }
 
@@ -103,9 +81,33 @@ struct HomeAttentionItem: Identifiable {
             ))
         }
 
-        for bridge in bridges {
-            guard let url = releaseURL(for: bridge, latestVersion: latestVersion),
-                  let latest = latestVersion else { continue }
+        return items
+    }
+
+    /// The things true of one bridge rather than of the network: a restart
+    /// waiting to be applied, a Zigbee2MQTT release it hasn't taken yet.
+    /// With several bridges these get their own section, headed with that
+    /// bridge's name.
+    static func bridgeItems(
+        for bridge: HomeBridgeCardEntry,
+        latestVersion: String?
+    ) -> [HomeAttentionItem] {
+        var items: [HomeAttentionItem] = []
+
+        if bridge.restartRequired {
+            items.append(HomeAttentionItem(
+                id: "restart-\(bridge.id)",
+                title: "Restart required",
+                value: "To apply configuration",
+                symbol: "arrow.triangle.2.circlepath.circle.fill",
+                tint: .orange,
+                bridgeID: bridge.id,
+                action: .restart(bridge.id)
+            ))
+        }
+
+        if let url = releaseURL(for: bridge, latestVersion: latestVersion),
+           let latest = latestVersion {
             items.append(HomeAttentionItem(
                 id: "z2m-\(bridge.id)",
                 title: "Zigbee2MQTT",
@@ -176,11 +178,7 @@ struct HomeAttentionRow: View {
 #Preview {
     List {
         Section("Needs attention") {
-            ForEach(HomeAttentionItem.items(
-                snapshot: .preview,
-                bridges: [.preview(name: "Home Bridge")],
-                latestVersion: nil
-            )) { item in
+            ForEach(HomeAttentionItem.items(snapshot: .preview)) { item in
                 HomeAttentionRow(item: item)
             }
         }

@@ -10,6 +10,7 @@ struct PermitJoinSheet: View {
     @State private var bridgeID: UUID?
     @State private var targetName: String?
     @State private var duration: Int = 254
+    @State private var contentHeight: CGFloat = 0
 
     let onStart: (_ duration: Int, _ target: String?, _ bridgeID: UUID?) -> Void
     let onStop: (_ bridgeID: UUID?) -> Void
@@ -17,7 +18,10 @@ struct PermitJoinSheet: View {
     var body: some View {
         SwiftUI.Group {
             if #available(iOS 18.0, *) {
-                fittedPresentationContent.presentationSizing(.fitted)
+                fittedPresentationContent
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.medium])
             } else {
                 presentationContent.presentationDetents([.large])
             }
@@ -61,7 +65,6 @@ struct PermitJoinSheet: View {
         .padding(.horizontal, DesignTokens.Spacing.xl)
         .padding(.top, DesignTokens.Spacing.xxl)
         .padding(.bottom, DesignTokens.Spacing.lg)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var fittedInactiveContent: some View {
@@ -69,12 +72,17 @@ struct PermitJoinSheet: View {
             let connected = environment.registry.orderedSessions.filter(\.isConnected)
             if connected.count >= 2 {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                    BridgePicker(selection: $bridgeID)
-                        .pickerStyle(.menu)
-                        .padding(.horizontal, DesignTokens.Spacing.lg)
-                        .padding(.vertical, DesignTokens.Spacing.md)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
+                    HStack {
+                        Text("Bridge")
+                        Spacer()
+                        BridgePicker(selection: $bridgeID)
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .tint(.secondary)
+                    }
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
+                    .padding(.vertical, DesignTokens.Spacing.md)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
                     Text("Permit Join opens this bridge's network only. Other bridges remain closed.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -88,23 +96,37 @@ struct PermitJoinSheet: View {
                     .foregroundStyle(.secondary)
 
                 VStack(spacing: 0) {
-                    Picker("Via", selection: $targetName) {
-                        Text("All devices").tag(String?.none)
-                        ForEach(joinTargets) { device in
-                            Text(device.friendlyName).tag(String?.some(device.friendlyName))
+                    HStack {
+                        Text("Via")
+                        Spacer()
+                        Picker("Via", selection: $targetName) {
+                            Text("All devices").tag(String?.none)
+                            ForEach(joinTargets) { device in
+                                Text(device.friendlyName).tag(String?.some(device.friendlyName))
+                            }
                         }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .tint(.secondary)
                     }
-                    .pickerStyle(.menu)
+                    .padding(.vertical, DesignTokens.Spacing.md)
 
                     Divider()
 
-                    Picker("Duration", selection: $duration) {
-                        Text("1 min").tag(60)
-                        Text("2 min").tag(120)
-                        Text("3 min").tag(180)
-                        Text("~4 min").tag(254)
+                    HStack {
+                        Text("Duration")
+                        Spacer()
+                        Picker("Duration", selection: $duration) {
+                            Text("1 min").tag(60)
+                            Text("2 min").tag(120)
+                            Text("3 min").tag(180)
+                            Text("~4 min").tag(254)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .tint(.secondary)
                     }
-                    .pickerStyle(.menu)
+                    .padding(.vertical, DesignTokens.Spacing.md)
                 }
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
@@ -112,7 +134,6 @@ struct PermitJoinSheet: View {
 
             actionBar
         }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder

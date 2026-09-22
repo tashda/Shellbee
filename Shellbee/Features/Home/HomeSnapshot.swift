@@ -1,6 +1,33 @@
 import Foundation
 
 struct HomeSnapshot: Sendable {
+    struct LinkQualityBand: Identifiable, Sendable {
+        /// Lower bound of the band, inclusive.
+        let lowerBound: Int
+        /// Upper bound, exclusive. `nil` on the open-ended top band.
+        let upperBound: Int?
+        let count: Int
+
+        var id: Int { lowerBound }
+
+        var label: String {
+            guard let upperBound else { return "\(lowerBound)+" }
+            return "\(lowerBound)–\(upperBound)"
+        }
+
+        /// The band worth acting on. Matches the weak-signal threshold the
+        /// rest of the app filters by.
+        var needsAttention: Bool { (upperBound ?? Int.max) <= DesignTokens.Threshold.weakSignal }
+    }
+
+    struct BatteryReading: Identifiable, Sendable {
+        let name: String
+        let percent: Int
+
+        var id: String { name }
+        var isLow: Bool { DesignTokens.Threshold.isLowBattery(percent) }
+    }
+
     let isConnected: Bool
     let isBridgeOnline: Bool
     let totalDevices: Int
@@ -19,6 +46,13 @@ struct HomeSnapshot: Sendable {
     let weakSignalDevices: Int
     let interviewingDevices: Int
     let averageLinkQuality: Int?
+    /// How many devices fall in each link-quality band, weakest first.
+    /// The Link quality card draws these; the average alone hides whether
+    /// a mesh is evenly good or bimodal with a corner barely hanging on.
+    let linkQualityBands: [LinkQualityBand]
+    /// Battery-powered devices, emptiest first. The attention row says how
+    /// many are low; this says which, and what is next in line.
+    let batteryReadings: [BatteryReading]
     let bridgeVersion: String?
     let bridgeCommit: String?
     let coordinatorType: String?
@@ -104,6 +138,13 @@ struct HomeSnapshot: Sendable {
         interviewingDevices = nonCoordinatorDevices.filter { $0.isInterviewing }.count
         let lqiValues = nonCoordinatorDevices.compactMap { states[$0.friendlyName]?.linkQuality }
         averageLinkQuality = lqiValues.isEmpty ? nil : lqiValues.reduce(0, +) / lqiValues.count
+        linkQualityBands = Self.bands(for: lqiValues)
+        batteryReadings = nonCoordinatorDevices
+            .compactMap { device in
+                guard let percent = (states[device.friendlyName] ?? [:]).battery else { return nil }
+                return BatteryReading(name: device.friendlyName, percent: percent)
+            }
+            .sorted { ($0.percent, $0.name) < ($1.percent, $1.name) }
 
         self.isConnected = isConnected
         self.isBridgeOnline = isBridgeOnline
@@ -116,6 +157,21 @@ struct HomeSnapshot: Sendable {
         self.isPermitJoinActive = isPermitJoinActive
         self.permitJoinRemaining = Self.permitJoinRemaining(from: permitJoinEnd)
         self.restartRequired = restartRequired
+    }
+
+    /// Five bands wide enough to read on a phone, narrow enough to show a
+    /// bimodal mesh for what it is.
+    private static func bands(for values: [Int]) -> [LinkQualityBand] {
+        guard !values.isEmpty else { return [] }
+        let edges = [0, 50, 100, 150, 200]
+        return edges.enumerated().map { index, lower in
+            let upper = index + 1 < edges.count ? edges[index + 1] : nil
+            let count = values.filter { value in
+                guard let upper else { return value >= lower }
+                return value >= lower && value < upper
+            }.count
+            return LinkQualityBand(lowerBound: lower, upperBound: upper, count: count)
+        }
     }
 
     private static func permitJoinRemaining(from end: Int?) -> Int? {
