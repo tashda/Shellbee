@@ -75,7 +75,8 @@ struct GroupCard: View {
             name: group.friendlyName,
             subtitle: "Group · \(membersText)",
             bridgeID: bridgeID,
-            bridgeName: bridgeName
+            bridgeName: bridgeName,
+            isListRow: true
         ) {
             GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceRowImage)
         }
