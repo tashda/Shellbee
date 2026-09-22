@@ -132,6 +132,14 @@ struct GroupDetailView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                 }
+                if let device = memberDevices.first {
+                    FeatureSectionsList(
+                        exposes: CoverFeatureSections.tiltExposes(for: device),
+                        state: groupState
+                    ) { payload in
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                    }
+                }
             } else if !groupState.isEmpty {
                 PayloadSectionsView(payload: groupState)
             }

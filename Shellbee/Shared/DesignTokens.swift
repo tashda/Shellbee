@@ -417,6 +417,9 @@ nonisolated enum DesignTokens {
         static let liveActivitySuccess: Double = 3
         /// How long the Needs Attention ✕ waits in its "Clear" state.
         static let activityClearConfirmWindow: Double = 3
+        /// How long a cover keeps offering Stop after Open or Close is
+        /// tapped, for motors that never report OPENING/CLOSING.
+        static let coverStopWindow: Double = 60
         static let liveActivityFailure: Double = 8
         static let liveActivityMinimumVisible: Double = 2
         static let liveActivityCancel: Double = 0.5

@@ -6,14 +6,15 @@ struct CoverControlCard: View {
     let onSend: (JSONValue) -> Void
 
     @State private var positionDraft: Double
-    @State private var tiltDraft: Double
+    /// Set when Open or Close is tapped, so Stop is offered even for
+    /// motors that never report that they're moving.
+    @State private var commandedAt: Date?
 
     init(context: CoverControlContext, mode: CardDisplayMode, onSend: @escaping (JSONValue) -> Void = { _ in }) {
         self.context = context
         self.mode = mode
         self.onSend = onSend
         _positionDraft = State(initialValue: context.positionValue ?? 0)
-        _tiltDraft = State(initialValue: context.tiltValue ?? 0)
     }
 
     @ViewBuilder
@@ -25,9 +26,11 @@ struct CoverControlCard: View {
                 CardHeader(
                     systemImage: isFullyClosed ? "blinds.horizontal.closed" : "blinds.horizontal.open",
                     title: eyebrowLabel,
-                    value: headerValue,
+                    value: context.displayState,
                     tint: heroTint
-                )
+                ) {
+                    if showsActionButtons { headerButtons }
+                }
                 if let f = context.positionFeature {
                     ValueCapsule(
                         value: positionDraft,
@@ -42,27 +45,17 @@ struct CoverControlCard: View {
                         }
                     )
                 }
-                if showsActionButtons { actionButtons }
-                if let f = context.tiltFeature {
-                    ValueCapsule(
-                        value: tiltDraft,
-                        range: f.range ?? 0...100,
-                        fillColor: capsuleFill,
-                        systemImage: "rotate.3d",
-                        isInteractive: f.isWritable && mode == .interactive,
-                        label: { "Tilt \(Int($0.rounded())) %" },
-                        onChange: { value in
-                            tiltDraft = value
-                            if let p = context.tiltPayload(value) { onSend(p) }
-                        }
-                    )
-                }
             }
             .cardSurface()
             .onChange(of: context.positionValue) { _, v in
                 positionDraft = v ?? 0
+                if v == 0 || v == 100 { commandedAt = nil }
             }
-            .onChange(of: context.tiltValue) { _, v in tiltDraft = v ?? 0 }
+            .task(id: commandedAt) {
+                guard commandedAt != nil else { return }
+                try? await Task.sleep(for: .seconds(DesignTokens.Duration.coverStopWindow))
+                commandedAt = nil
+            }
         }
     }
 
@@ -127,14 +120,6 @@ struct CoverControlCard: View {
         return "Cover"
     }
 
-    /// "64 % open", or the state word when position isn't reported.
-    private var headerValue: String {
-        if context.positionFeature != nil {
-            return "\(Int(positionDraft.rounded())) % · \(context.displayState)"
-        }
-        return context.displayState
-    }
-
     private var capsuleFill: Color {
         Color.orange.opacity(isFullyClosed ? 0.18 : 0.35)
     }
@@ -152,31 +137,32 @@ struct CoverControlCard: View {
         mode == .interactive && context.stateFeature?.isWritable == true
     }
 
-    private var actionButtons: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            actionButton(title: "Open", systemImage: "arrow.up.to.line", payload: "OPEN")
-            actionButton(title: "Stop", systemImage: "stop.fill", payload: "STOP")
-            actionButton(title: "Close", systemImage: "arrow.down.to.line", payload: "CLOSE")
+    private var showsStop: Bool { context.isMoving || commandedAt != nil }
+
+    /// Open and Close as two round buttons; one Stop button while moving.
+    @ViewBuilder
+    private var headerButtons: some View {
+        if showsStop {
+            CardAccessoryButton(systemImage: "stop.fill", accessibilityLabel: "Stop") {
+                send("STOP")
+                commandedAt = nil
+            }
+        } else {
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                CardAccessoryButton(systemImage: "arrow.up", accessibilityLabel: "Open") {
+                    send("OPEN")
+                    commandedAt = .now
+                }
+                CardAccessoryButton(systemImage: "arrow.down", accessibilityLabel: "Close") {
+                    send("CLOSE")
+                    commandedAt = .now
+                }
+            }
         }
     }
 
-    private func actionButton(title: String, systemImage: String, payload: String) -> some View {
-        Button {
-            if let p = context.statePayload(payload) { onSend(p) }
-        } label: {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: systemImage)
-                    .font(DesignTokens.Typography.lightSecondaryIcon)
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, DesignTokens.Spacing.sm)
-        }
-        .glassButtonStyleIfAvailable()
-        .buttonBorderShape(.capsule)
-        .tint(.primary)
+    private func send(_ command: String) {
+        if let p = context.statePayload(command) { onSend(p) }
     }
 }
 
