@@ -22,18 +22,31 @@ struct RemoteCard: View {
         if mode == .snapshot {
             snapshotContent
         } else {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-                actionTile
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                CardHeader(systemImage: "hand.tap.fill", title: "Remote", tint: .purple)
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    ActivityInstrumentView(
+                        instrument: ActivityInstrument(kind: .action, severity: lastAction == nil ? .quiet : .routine),
+                        size: DesignTokens.Size.remoteInstrument
+                    )
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                        Text(lastAction.map(prettyAction) ?? "Waiting for a press")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(lastAction == nil ? .secondary : .primary)
+                            .lineLimit(2)
+                            .contentTransition(.opacity)
+                        if lastAction != nil, let pressed = DeviceStatus.lastSeenText(state.lastSeen) {
+                            Text("Pressed \(pressed)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
                 if let voltage {
-                    voltageTile(voltage)
+                    StatStrip(items: [StatStripItem(value: "\(Int(voltage)) \(voltageUnit)", caption: "Voltage")])
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(DesignTokens.Spacing.xl)
-            .background(Color(.secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+            .cardSurface()
         }
     }
 
@@ -79,69 +92,8 @@ struct RemoteCard: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    private var actionTile: some View {
-        ReadingTile(
-            icon: "hand.tap.fill",
-            label: "Last Action",
-            value: lastAction.map(prettyAction) ?? "Waiting",
-            unit: nil,
-            valueColor: lastAction == nil ? .secondary : .primary
-        )
-    }
-
-    private func voltageTile(_ value: Double) -> some View {
-        ReadingTile(
-            icon: "bolt.fill",
-            label: "Voltage",
-            value: "\(Int(value))",
-            unit: voltageUnit,
-            valueColor: .primary
-        )
-    }
-
     private func prettyAction(_ raw: String) -> String {
         raw.replacingOccurrences(of: "_", with: " ").capitalized
-    }
-}
-
-private struct ReadingTile: View {
-    let icon: String
-    let label: String
-    let value: String
-    let unit: String?
-    let valueColor: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(label)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(.secondary)
-
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                Text(value)
-                    .font(DesignTokens.Typography.featureTileValue)
-                    .monospacedDigit()
-                    .foregroundStyle(valueColor)
-                    .lineLimit(2)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
-                if let unit {
-                    Text(unit)
-                        .font(DesignTokens.Typography.featureTileUnit)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
