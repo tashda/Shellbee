@@ -45,6 +45,26 @@ final class SettingsUITests: ShellbeeUITestCase {
         )
     }
 
+    // Behavior: Device Statistics is a visual dashboard rather than a Form of
+    // raw counts. Its chart cards stay discoverable to accessibility clients.
+    func testDeviceStatisticsDashboardOpens() {
+        app.cells.containing(.staticText, identifier: "Server").firstMatch.tapWhenReady()
+        app.staticTexts["Device Statistics"].firstMatch.tapWhenReady()
+
+        XCTAssertTrue(app.navigationBars["Device Statistics"].waitForExistence(timeout: 5))
+        for heading in ["Network overview", "Device types", "Power sources", "Vendors"] {
+            XCTAssertTrue(
+                app.staticTexts[heading].firstMatch.waitForExistence(timeout: 5),
+                "Missing dashboard section: \(heading)"
+            )
+        }
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Device Statistics dashboard"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
     // MARK: - General bridge settings
 
     // Behavior: tapping the first "General" row navigates to bridge-wide

@@ -59,6 +59,11 @@ nonisolated enum DesignTokens {
         static let vendorBar: CGFloat = 90
         static let vendorBarHeight: CGFloat = 8
         static let vendorCountColumn: CGFloat = 40
+        /// Device Statistics dashboard charts.
+        static let statisticsAvailabilityChart: CGFloat = 18
+        static let statisticsDonut: CGFloat = 132
+        static let statisticsMinimumBarChart: CGFloat = 88
+        static let statisticsBarRow: CGFloat = 38
         static let heroSymbol: CGFloat = 34
         static let metricSymbol: CGFloat = 18
         static let cardSymbol: CGFloat = 22
@@ -420,6 +425,9 @@ nonisolated enum DesignTokens {
         static let memberAvatarBadgeFont: CGFloat = 0.44
         static let memberAvatarBadgeFontMin: CGFloat = 9
         static let memberAvatarBadgePadding: CGFloat = 0.25
+
+        // Device Statistics chart geometry.
+        static let statisticsDonutInnerRadius: CGFloat = 0.62
     }
 
     nonisolated enum Duration {
@@ -590,6 +598,8 @@ nonisolated enum DesignTokens {
         static let chartBarRange: Double = 0.55
         /// How much lighter each rank is than the one above it.
         static let chartBarStep: Double = 0.14
+        static let statisticsChartHigh: Double = 0.88
+        static let statisticsChartRange: Double = 0.56
         static let subtleFill: Double = 0.12
         static let softFill: Double = 0.18
         static let accentFill: Double = 0.2

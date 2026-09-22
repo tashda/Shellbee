@@ -331,6 +331,7 @@
 				Features/Settings/Developer/MQTTInspectorView.swift,
 				Features/Settings/Developer/ShellbeeDeveloperView.swift,
 				Features/Settings/Developer/SubscribeStore.swift,
+				Features/Settings/DeviceStatisticsSnapshot.swift,
 				Features/Settings/DeviceStatisticsView.swift,
 				Features/Settings/DocBrowserDetailView.swift,
 				Features/Settings/DocBrowserView.swift,
