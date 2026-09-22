@@ -1,0 +1,122 @@
+<div id="activity-list-directions" aria-label="Three list-focused Activity Center directions">
+  <style>
+    #activity-list-directions {
+      color-scheme: light dark;
+      --al-bg: light-dark(#f2f2f7, #101114);
+      --al-surface: light-dark(#ffffff, #1b1c20);
+      --al-text: light-dark(#111216, #f5f5f7);
+      --al-secondary: light-dark(#74757d, #a9aab1);
+      --al-separator: light-dark(#d9d9de, #303136);
+      --al-blue: light-dark(#007aff, #0a84ff);
+      --al-red: light-dark(#ff3b30, #ff453a);
+      --al-green: light-dark(#34c759, #30d158);
+      --al-orange: light-dark(#ff9f0a, #ff9f0a);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      color: var(--al-text);
+    }
+    #activity-list-directions * { box-sizing: border-box; }
+    #activity-list-directions .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+    #activity-list-directions .choice { min-width: 0; }
+    #activity-list-directions .choice h2 { margin: 0 0 7px; font-size: 15px; font-weight: 500; }
+    #activity-list-directions .choice p { min-height: 36px; margin: 0 0 12px; color: var(--al-secondary); font-size: 13px; line-height: 1.35; }
+    #activity-list-directions .phone { overflow: hidden; min-height: 590px; border-radius: 32px; background: var(--al-bg); box-shadow: 0 10px 28px light-dark(rgb(0 0 0 / 15%), rgb(0 0 0 / 45%)); }
+    #activity-list-directions .status { display: flex; justify-content: space-between; padding: 16px 20px 10px; font-size: 12px; font-weight: 500; }
+    #activity-list-directions .nav { display: flex; align-items: center; justify-content: space-between; padding: 5px 18px 17px; }
+    #activity-list-directions .nav h3 { margin: 0; font-size: 27px; font-weight: 500; letter-spacing: -0.6px; }
+    #activity-list-directions .tool { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--al-surface); color: var(--al-blue); }
+    #activity-list-directions .tool i { width: 18px; height: 18px; }
+    #activity-list-directions .section-title { margin: 0 20px 8px; color: var(--al-secondary); font-size: 13px; font-weight: 500; }
+    #activity-list-directions .plain-list { margin: 0 18px 16px; }
+    #activity-list-directions .journal-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; min-height: 64px; border-bottom: 1px solid var(--al-separator); }
+    #activity-list-directions .glyph { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: color-mix(in srgb, var(--glyph) 14%, transparent); color: var(--glyph); }
+    #activity-list-directions .glyph i { width: 16px; height: 16px; }
+    #activity-list-directions .copy { min-width: 0; }
+    #activity-list-directions .title { overflow: hidden; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    #activity-list-directions .detail { overflow: hidden; margin-top: 3px; color: var(--al-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    #activity-list-directions .time { align-self: start; padding-top: 15px; color: var(--al-secondary); font-size: 11px; }
+    #activity-list-directions .inset-list { margin: 0 12px 16px; overflow: hidden; border-radius: 16px; background: var(--al-surface); }
+    #activity-list-directions .inset-row { display: flex; align-items: center; gap: 11px; min-height: 62px; padding: 10px 12px; border-bottom: 1px solid var(--al-separator); }
+    #activity-list-directions .inset-row:last-child { border-bottom: 0; }
+    #activity-list-directions .badge { display: grid; flex: 0 0 auto; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: color-mix(in srgb, var(--glyph) 13%, transparent); color: var(--glyph); }
+    #activity-list-directions .badge i { width: 17px; height: 17px; }
+    #activity-list-directions .chev { margin-left: auto; color: var(--al-secondary); }
+    #activity-list-directions .chev i { width: 16px; height: 16px; }
+    #activity-list-directions .subtle-count { color: var(--al-secondary); font-size: 12px; }
+    #activity-list-directions .run-header { display: flex; align-items: center; gap: 9px; padding: 13px 12px 10px; border-bottom: 1px solid var(--al-separator); }
+    #activity-list-directions .run-header .badge { width: 28px; height: 28px; border-radius: 50%; }
+    #activity-list-directions .run-header .badge i { width: 15px; height: 15px; }
+    #activity-list-directions .run-title { font-size: 14px; font-weight: 500; }
+    #activity-list-directions .run-meta { margin-top: 2px; color: var(--al-secondary); font-size: 12px; }
+    #activity-list-directions .event { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; column-gap: 9px; padding: 11px 12px 11px 20px; }
+    #activity-list-directions .event:not(:last-child)::before { position: absolute; top: 29px; bottom: -1px; left: 25px; width: 1px; background: var(--al-separator); content: ""; }
+    #activity-list-directions .dot { z-index: 1; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--glyph); }
+    #activity-list-directions .event .detail { white-space: normal; line-height: 1.3; }
+    #activity-list-directions .micro-time { color: var(--al-secondary); font-size: 11px; }
+    #activity-list-directions .hint { margin: 17px 20px 0; color: var(--al-secondary); font-size: 12px; text-align: center; }
+    @media (max-width: 760px) { #activity-list-directions .choices { grid-template-columns: 1fr; } #activity-list-directions .choice p { min-height: 0; } #activity-list-directions .phone { min-height: 520px; } }
+  </style>
+
+  <div class="choices">
+    <section class="choice" aria-label="Direction one: Activity journal">
+      <h2>1. Activity Journal</h2>
+      <p>One elegant, plain list. The event is primary; device and time are quiet supporting detail.</p>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▮▮▮ Wi‑Fi&nbsp; 100%</span></div>
+        <div class="nav"><h3>Activity</h3><span class="tool"><i data-lucide="line-chart" aria-hidden="true"></i></span></div>
+        <div class="section-title">Today</div>
+        <div class="plain-list">
+          <div class="journal-row" style="--glyph:var(--al-red)"><span class="glyph"><i data-lucide="circle-x" aria-hidden="true"></i></span><span class="copy"><span class="title">OTA check failed</span><span class="detail">basement_remote didn’t respond</span></span><span class="time">Now</span></div>
+          <div class="journal-row" style="--glyph:var(--al-green)"><span class="glyph"><i data-lucide="wifi" aria-hidden="true"></i></span><span class="copy"><span class="title">Device is online</span><span class="detail">krea_ambient · Signal quality 220</span></span><span class="time">2m</span></div>
+          <div class="journal-row" style="--glyph:var(--al-blue)"><span class="glyph"><i data-lucide="download" aria-hidden="true"></i></span><span class="copy"><span class="title">Update installed</span><span class="detail">Kitchen bulb · Version 1.2.4</span></span><span class="time">12m</span></div>
+        </div>
+        <div class="section-title">Earlier today</div>
+        <div class="plain-list">
+          <div class="journal-row" style="--glyph:var(--al-orange)"><span class="glyph"><i data-lucide="triangle-alert" aria-hidden="true"></i></span><span class="copy"><span class="title">Device became unavailable</span><span class="detail">krea_led_strip</span></span><span class="time">14:20</span></div>
+          <div class="journal-row" style="--glyph:var(--al-blue)"><span class="glyph"><i data-lucide="radio" aria-hidden="true"></i></span><span class="copy"><span class="title">Interview completed</span><span class="detail">Hall sensor joined the network</span></span><span class="time">13:56</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="choice" aria-label="Direction two: Activity by day">
+      <h2>2. Daily Groups</h2>
+      <p>A standard inset-grouped list. Each day is a small, calm chapter—not a dashboard.</p>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▮▮▮ Wi‑Fi&nbsp; 100%</span></div>
+        <div class="nav"><h3>Activity</h3><span class="tool"><i data-lucide="line-chart" aria-hidden="true"></i></span></div>
+        <div class="section-title">Today</div>
+        <div class="inset-list">
+          <div class="inset-row" style="--glyph:var(--al-red)"><span class="badge"><i data-lucide="circle-x" aria-hidden="true"></i></span><span class="copy"><span class="title">OTA check failed</span><span class="detail">basement_remote · Now</span></span><span class="chev"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="inset-row" style="--glyph:var(--al-green)"><span class="badge"><i data-lucide="wifi" aria-hidden="true"></i></span><span class="copy"><span class="title">Device is online</span><span class="detail">krea_ambient · 2m ago</span></span><span class="chev"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="inset-row" style="--glyph:var(--al-blue)"><span class="badge"><i data-lucide="download" aria-hidden="true"></i></span><span class="copy"><span class="title">Update installed</span><span class="detail">Kitchen bulb · 12m ago</span></span><span class="chev"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+        </div>
+        <div class="section-title">Yesterday</div>
+        <div class="inset-list">
+          <div class="inset-row" style="--glyph:var(--al-orange)"><span class="badge"><i data-lucide="triangle-alert" aria-hidden="true"></i></span><span class="copy"><span class="title">Device became unavailable</span><span class="detail">krea_led_strip</span></span><span class="subtle-count">3 events</span><span class="chev"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="inset-row" style="--glyph:var(--al-blue)"><span class="badge"><i data-lucide="radio" aria-hidden="true"></i></span><span class="copy"><span class="title">Interview completed</span><span class="detail">Hall sensor</span></span><span class="chev"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+        </div>
+        <div class="hint">Swipe an item for contextual actions.</div>
+      </div>
+    </section>
+
+    <section class="choice" aria-label="Direction three: Activity runs">
+      <h2>3. Activity Runs</h2>
+      <p>Still a chronological list, but related events read as one short operation transcript.</p>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▮▮▮ Wi‑Fi&nbsp; 100%</span></div>
+        <div class="nav"><h3>Activity</h3><span class="tool"><i data-lucide="line-chart" aria-hidden="true"></i></span></div>
+        <div class="section-title">Today</div>
+        <div class="inset-list">
+          <div class="run-header" style="--glyph:var(--al-blue)"><span class="badge"><i data-lucide="download" aria-hidden="true"></i></span><span class="copy"><span class="run-title">OTA check</span><span class="run-meta">3 devices · Just now</span></span><span class="chev"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="event" style="--glyph:var(--al-green)"><span class="dot"></span><span class="copy"><span class="title">Kitchen bulb is up to date</span><span class="detail">No update available</span></span><span class="micro-time">Now</span></div>
+          <div class="event" style="--glyph:var(--al-red)"><span class="dot"></span><span class="copy"><span class="title">basement_remote did not respond</span><span class="detail">Couldn’t check for an update</span></span><span class="micro-time">Now</span></div>
+          <div class="event" style="--glyph:var(--al-green)"><span class="dot"></span><span class="copy"><span class="title">Hall sensor is up to date</span><span class="detail">No update available</span></span><span class="micro-time">1m</span></div>
+        </div>
+        <div class="section-title">Earlier today</div>
+        <div class="inset-list">
+          <div class="run-header" style="--glyph:var(--al-blue)"><span class="badge"><i data-lucide="radio" aria-hidden="true"></i></span><span class="copy"><span class="run-title">Device interview</span><span class="run-meta">Hall sensor · 13:56</span></span><span class="chev"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="event" style="--glyph:var(--al-green)"><span class="dot"></span><span class="copy"><span class="title">Interview completed</span><span class="detail">Device joined the network</span></span><span class="micro-time">13:56</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
