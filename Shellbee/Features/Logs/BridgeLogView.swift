@@ -81,7 +81,8 @@ struct BridgeLogView: View {
             }
             .toolbar {
                 if liveFeed.isReadingHistory {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    TrailingToolbarGroupSpacer()
+                    ToolbarItemGroup(placement: .topBarTrailing) {
                         FollowLiveButton {
                             withAnimation(.smooth) {
                                 liveFeed.followLive()

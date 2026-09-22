@@ -30,7 +30,7 @@ struct LightEffectsSheet: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .configuredTopScrollEdgeEffect()
-        .presentationDetents([.large])
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
 }
