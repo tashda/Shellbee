@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// Converts live Activity entries into the same semantic instruments used by
 /// the Developer gallery. Classification is based on Z2M property and topic
@@ -38,15 +38,12 @@ enum ActivityInstrumentResolver {
                 kind: .lifecycle,
                 normalizedValue: online ? 1 : 0,
                 trend: online ? .rising : .falling,
-                severity: online ? .success : .failure
+                severity: online ? .success : .failure,
+                variant: .availability
             )
         case .permitJoin:
             let opened = message.contains("open") || message.contains("true")
-            return .init(
-                kind: .pairing,
-                normalizedValue: opened ? 1 : 0,
-                severity: opened ? .routine : .quiet
-            )
+            return permitJoin(opened: opened)
         case .bridgeActivity:
             return .init(kind: .unknown, severity: severity)
         case .stateChange:
@@ -60,23 +57,21 @@ enum ActivityInstrumentResolver {
         forProperty property: String,
         from: JSONValue? = nil,
         to: JSONValue,
-        displayTo: String? = nil,
         severity entrySeverity: ActivityInstrumentSeverity = .routine
     ) -> ActivityInstrument {
         let key = canonical(property)
         let kind = kind(for: key)
-        let value = to.numberValue
         let normalizedValue = normalized(value: to, property: key)
         let propertySeverity = severity(for: key, normalizedValue: normalizedValue)
-        let primaryText = kind == .level ? compactValue(displayTo ?? to.stringified) : nil
 
         return ActivityInstrument(
             kind: kind,
-            value: value,
+            value: to.numberValue,
             normalizedValue: normalizedValue,
-            primaryText: primaryText,
             trend: trend(from: from, to: to),
-            severity: entrySeverity == .routine ? propertySeverity : entrySeverity
+            severity: entrySeverity == .routine ? propertySeverity : entrySeverity,
+            variant: variant(for: key),
+            swatch: kind == .colour ? swatch(property: key, value: to) : nil
         )
     }
 
@@ -89,18 +84,13 @@ enum ActivityInstrumentResolver {
         let meaningful = changes.filter { !metadataProperties.contains(canonical($0.property)) }
         let candidates = meaningful.isEmpty ? changes : meaningful
 
-        if candidates.count > 2 {
-            return .init(kind: .group, normalizedValue: 0.5, severity: entrySeverity)
-        }
-
-        guard let primary = candidates.max(by: { priority(for: $0.property) < priority(for: $1.property) }) else {
+        guard let primary = candidates.max(by: { priority(for: $0) < priority(for: $1) }) else {
             return .init(kind: .unknown, severity: entrySeverity)
         }
         return instrument(
             forProperty: primary.property,
             from: primary.from,
             to: primary.to,
-            displayTo: primary.displayTo,
             severity: entrySeverity
         )
     }
@@ -122,15 +112,29 @@ enum ActivityInstrumentResolver {
         if property == "action" || property.contains("button") || property.contains("click") { return .action }
         if property == "brightness" || property.contains("level") || property.contains("speed")
             || property.contains("illuminance") { return .level }
-        if ["state", "contact", "lock", "child_lock", "occupied_heating_setpoint"].contains(property) {
+        if ["state", "contact", "lock", "child_lock"].contains(property) {
             return .binary
         }
         if ["pressure", "voltage", "frequency", "vibration"].contains(property) { return .trend }
         return .unknown
     }
 
+    /// Which change headlines a multi-property report. An actual on/off
+    /// flip is what happened when a light turns on, even though brightness
+    /// arrives alongside it; only a safety alarm outranks it.
+    private static func priority(for change: LogContext.StateChange) -> Int {
+        let property = canonical(change.property)
+        if kind(for: property) == .binary,
+           let before = change.from.flatMap(binaryValue),
+           let after = binaryValue(change.to),
+           before != after {
+            return 95
+        }
+        return priority(for: property)
+    }
+
     private static func priority(for property: String) -> Int {
-        switch kind(for: canonical(property)) {
+        switch kind(for: property) {
         case .safety: 100
         case .presence, .action: 90
         case .battery: 80
@@ -141,8 +145,38 @@ enum ActivityInstrumentResolver {
         }
     }
 
+    private static func variant(for property: String) -> ActivityInstrumentVariant {
+        switch property {
+        case "contact": return .contact
+        case "lock", "child_lock": return .lock
+        default: return property.contains("speed") ? .fan : .standard
+        }
+    }
+
+    /// The colour a light was set to: an xy/hs/rgb object, a hex string,
+    /// or a colour temperature in mireds.
+    private static func swatch(property: String, value: JSONValue) -> Color? {
+        if property.contains("color_temp") || property.contains("colour_temp") {
+            return value.numberValue.map { LightDisplayColor.temperatureColor(mireds: $0) }
+        }
+        if value.object != nil {
+            return LightDisplayColor.resolve(colorValue: value, colorTemperature: nil, colorMode: nil)
+        }
+        guard let hex = value.stringValue?.trimmingCharacters(in: CharacterSet(charactersIn: "#")),
+              hex.count == 6, let rgb = UInt32(hex, radix: 16) else { return nil }
+        return Color(
+            red: Double((rgb >> 16) & 0xFF) / 255,
+            green: Double((rgb >> 8) & 0xFF) / 255,
+            blue: Double(rgb & 0xFF) / 255
+        )
+    }
+
     private static func normalized(value: JSONValue, property: String) -> Double {
-        if let binary = binaryValue(value) { return binary ? 1 : 0 }
+        if let binary = binaryValue(value) {
+            // Z2M reports `contact: true` for closed; the lit state is open.
+            if property == "contact" { return binary ? 0 : 1 }
+            return binary ? 1 : 0
+        }
         guard let number = value.numberValue else { return 0.5 }
 
         let scaled: Double
@@ -174,10 +208,10 @@ enum ActivityInstrumentResolver {
     private static func binaryValue(_ value: JSONValue) -> Bool? {
         if let bool = value.boolValue { return bool }
         guard let string = value.stringValue?.lowercased() else { return nil }
-        if ["on", "open", "opened", "true", "yes", "active", "detected", "occupied", "locked", "online"].contains(string) {
+        if ["on", "open", "opened", "true", "yes", "active", "detected", "occupied", "locked", "lock", "online"].contains(string) {
             return true
         }
-        if ["off", "closed", "false", "no", "inactive", "clear", "unoccupied", "unlocked", "offline"].contains(string) {
+        if ["off", "closed", "false", "no", "inactive", "clear", "unoccupied", "unlocked", "unlock", "offline"].contains(string) {
             return false
         }
         return nil
@@ -228,17 +262,23 @@ enum ActivityInstrumentResolver {
             || suffix.hasSuffix("/configure") { return .init(kind: .options, severity: severity) }
         if suffix == "backup" { return .init(kind: .backup, severity: severity) }
         if suffix == "restart" { return .init(kind: .restart, severity: severity) }
-        if suffix == "permit_join" { return .init(kind: .pairing, severity: severity) }
+        if suffix == "permit_join" {
+            let data = payload["data"]?.object
+            let opened = data?["value"]?.boolValue ?? ((data?["time"]?.numberValue ?? 1) > 0)
+            return permitJoin(opened: opened, severity: severity)
+        }
         if suffix == "networkmap" || suffix == "devices" { return .init(kind: .network, severity: severity) }
         if suffix.hasPrefix("touchlink/") { return .init(kind: .touchlink, severity: severity) }
         if suffix.contains("ota_update") {
-            let progress = payload["data"]?.object?["progress"]?.numberValue ?? (severity == .success ? 100 : 0)
+            let finished = suffix.hasSuffix("/update") && severity == .success
+            let progress = payload["data"]?.object?["progress"]?.numberValue ?? (finished ? 100 : 0)
             return .init(kind: .update, normalizedValue: progress / 100, severity: severity)
         }
         if suffix.contains("interview") || suffix.hasSuffix("/bind") || suffix.hasSuffix("/unbind")
             || suffix.hasPrefix("install_code/") { return .init(kind: .pairing, severity: severity) }
         if suffix.hasPrefix("group/") || suffix == "groups" { return .init(kind: .group, severity: severity) }
-        if suffix.contains("rename") || suffix.contains("remove") { return .init(kind: .lifecycle, severity: severity) }
+        if suffix.contains("rename") { return .init(kind: .lifecycle, severity: severity, variant: .rename) }
+        if suffix.contains("remove") { return .init(kind: .lifecycle, severity: severity, variant: .remove) }
         if suffix == "action" { return .init(kind: .action, severity: severity) }
         if topic.hasPrefix("bridge/response/") { return .init(kind: .unknown, severity: severity) }
         return nil
@@ -262,7 +302,8 @@ enum ActivityInstrumentResolver {
         case "scene_added", "scene_removed":
             return .init(kind: .group, severity: severity)
         case "permit_join":
-            return .init(kind: .pairing, severity: severity)
+            let opened = payload["data"]?.object?["permit"]?.boolValue ?? true
+            return permitJoin(opened: opened, severity: severity)
         case "restart_required":
             return .init(kind: .restart, severity: .warning)
         default:
@@ -275,7 +316,7 @@ enum ActivityInstrumentResolver {
         let severity = severity(for: entry)
         switch action {
         case .otaProgress(let percent):
-            return .init(kind: .update, normalizedValue: Double(percent) / 100, primaryText: "\(percent)", severity: severity)
+            return .init(kind: .update, normalizedValue: Double(percent) / 100, severity: severity)
         case .otaFinished:
             return .init(kind: .update, normalizedValue: 1, severity: .success)
         case .bindSuccess:
@@ -313,12 +354,19 @@ enum ActivityInstrumentResolver {
         return .routine
     }
 
-    private static func canonical(_ property: String) -> String {
-        property.lowercased().replacingOccurrences(of: "-", with: "_")
+    private static func permitJoin(
+        opened: Bool,
+        severity: ActivityInstrumentSeverity = .routine
+    ) -> ActivityInstrument {
+        .init(
+            kind: .pairing,
+            normalizedValue: opened ? 1 : 0,
+            severity: opened ? severity : .quiet,
+            variant: .permitJoin
+        )
     }
 
-    private static func compactValue(_ value: String) -> String? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.count <= 4 ? trimmed : nil
+    private static func canonical(_ property: String) -> String {
+        property.lowercased().replacingOccurrences(of: "-", with: "_")
     }
 }

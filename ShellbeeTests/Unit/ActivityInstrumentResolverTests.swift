@@ -97,7 +97,7 @@ final class ActivityInstrumentResolverTests: XCTestCase {
 
     func testValuesDriveTrendFillAndSeverity() {
         let battery = ActivityInstrumentResolver.instrument(
-            forProperty: "battery", from: .int(24), to: .int(18), displayTo: "18"
+            forProperty: "battery", from: .int(24), to: .int(18)
         )
         XCTAssertEqual(battery.normalizedValue, 0.18, accuracy: 0.001)
         XCTAssertEqual(battery.trend, .falling)
@@ -117,11 +117,76 @@ final class ActivityInstrumentResolverTests: XCTestCase {
         XCTAssertEqual(signal.severity, .quiet)
     }
 
+    func testSwitchFlipHeadlinesOverBrightness() {
+        let entry = stateEntry([
+            change("brightness", from: .int(0), to: .int(204)),
+            change("state", from: .string("OFF"), to: .string("ON"))
+        ])
+        let instrument = ActivityInstrumentResolver.instrument(for: entry)
+        XCTAssertEqual(instrument.kind, .binary)
+        XCTAssertTrue(instrument.isOn)
+    }
+
+    func testManyChangesUseTheMostImportantPropertyNotGroup() {
+        let entry = stateEntry([
+            change("temperature", from: .double(20), to: .double(21)),
+            change("pressure", from: .int(1008), to: .int(1007)),
+            change("voltage", from: .int(3000), to: .int(2990))
+        ])
+        XCTAssertEqual(ActivityInstrumentResolver.instrument(for: entry).kind, .temperature)
+    }
+
+    func testContactIsLitWhenOpen() {
+        let open = ActivityInstrumentResolver.instrument(forProperty: "contact", from: .bool(true), to: .bool(false))
+        XCTAssertEqual(open.variant, .contact)
+        XCTAssertTrue(open.isOn)
+        let closed = ActivityInstrumentResolver.instrument(forProperty: "contact", to: .bool(true))
+        XCTAssertFalse(closed.isOn)
+    }
+
+    func testLockValuesResolveToPadlockState() {
+        let locked = ActivityInstrumentResolver.instrument(forProperty: "lock", to: .string("LOCK"))
+        XCTAssertEqual(locked.variant, .lock)
+        XCTAssertTrue(locked.isOn)
+        XCTAssertFalse(ActivityInstrumentResolver.instrument(forProperty: "lock", to: .string("UNLOCK")).isOn)
+    }
+
+    func testColourChangesCarryTheLightColour() {
+        XCTAssertNotNil(ActivityInstrumentResolver.instrument(forProperty: "color", to: .string("#6874ff")).swatch)
+        XCTAssertNotNil(ActivityInstrumentResolver.instrument(forProperty: "color_temp", to: .int(370)).swatch)
+    }
+
+    func testPermitJoinClosedIsUnlit() {
+        let entry = LogEntry(
+            id: UUID(), timestamp: .now, level: .info, category: .bridgeActivity, namespace: "z2m:mqtt",
+            message: "MQTT publish: topic 'zigbee2mqtt/bridge/response/permit_join', payload '{\"status\":\"ok\",\"data\":{\"time\":0}}'",
+            deviceName: nil
+        )
+        let instrument = ActivityInstrumentResolver.instrument(for: entry)
+        XCTAssertEqual(instrument.variant, .permitJoin)
+        XCTAssertFalse(instrument.isOn)
+    }
+
     func testUnknownBridgeResponseUsesFallbackInstrument() {
         let instrument = ActivityInstrumentResolver.instrument(
             for: bridgeEntry(topic: "future_operation")
         )
         XCTAssertEqual(instrument.kind, .unknown)
+    }
+
+    private func stateEntry(_ changes: [LogContext.StateChange]) -> LogEntry {
+        LogEntry(
+            id: UUID(), timestamp: .now, level: .info, category: .stateChange,
+            namespace: nil, message: "State change", deviceName: "Lamp",
+            context: LogContext(devices: [], stateChanges: changes, action: .stateChange)
+        )
+    }
+
+    private func change(_ property: String, from: JSONValue, to: JSONValue) -> LogContext.StateChange {
+        LogContext.StateChange(
+            id: UUID(), property: property, from: from, to: to,
+            displayLabel: property, displayFrom: from.stringified, displayTo: to.stringified
+        )
     }
 
     private func bridgeEntry(topic: String) -> LogEntry {

@@ -34,6 +34,20 @@ enum ActivityInstrumentKind: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+/// A named form within a kind, for properties and events that share the
+/// kind's geometry but deserve their own mark (a lock is binary, but draws
+/// a padlock rather than a toggle).
+enum ActivityInstrumentVariant: String, CaseIterable, Sendable {
+    case standard
+    case fan
+    case contact
+    case lock
+    case permitJoin
+    case availability
+    case rename
+    case remove
+}
+
 enum ActivityInstrumentSeverity: String, CaseIterable, Sendable {
     case quiet
     case routine
@@ -53,48 +67,32 @@ struct ActivityInstrument: Sendable, Equatable {
     let kind: ActivityInstrumentKind
     let value: Double?
     let normalizedValue: Double
-    let primaryText: String?
-    let secondaryText: String?
     let trend: ActivityInstrumentTrend
     let severity: ActivityInstrumentSeverity
+    let variant: ActivityInstrumentVariant
+    /// The light's actual colour for colour changes, drawn as a swatch.
+    let swatch: Color?
 
     init(
         kind: ActivityInstrumentKind,
         value: Double? = nil,
         normalizedValue: Double = 0.5,
-        primaryText: String? = nil,
-        secondaryText: String? = nil,
         trend: ActivityInstrumentTrend = .none,
-        severity: ActivityInstrumentSeverity = .routine
+        severity: ActivityInstrumentSeverity = .routine,
+        variant: ActivityInstrumentVariant = .standard,
+        swatch: Color? = nil
     ) {
         self.kind = kind
         self.value = value
         self.normalizedValue = min(max(normalizedValue, 0), 1)
-        self.primaryText = primaryText
-        self.secondaryText = secondaryText
         self.trend = trend
         self.severity = severity
-    }
-
-    var tint: Color {
-        switch severity {
-        case .warning: return .orange
-        case .failure: return .red
-        case .success: return .green
-        case .quiet: return .secondary
-        case .routine:
-            switch kind {
-            case .network, .signal, .touchlink: return .cyan
-            case .temperature, .energy, .battery: return .orange
-            case .humidity, .airQuality: return .teal
-            case .safety: return .red
-            default: return .indigo
-            }
-        }
+        self.variant = variant
+        self.swatch = swatch
     }
 
     var accessibilityDescription: String {
-        [kind.rawValue, primaryText, secondaryText, trend == .none ? nil : trend.rawValue, severity.rawValue]
+        [variant == .standard ? kind.rawValue : variant.rawValue, trend == .none ? nil : trend.rawValue, severity.rawValue]
             .compactMap { $0 }
             .joined(separator: ", ")
     }
