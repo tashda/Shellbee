@@ -158,11 +158,13 @@ struct SettingsView: View {
         bridgesSection
 
         Section {
-            if showsSidebarDestinationsInSettings && !isActivityCenterEnabled {
-                NavigationLink {
-                    LogsView(usesActivityFeed: true, navigationTitle: "Activity")
-                } label: {
-                    settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
+            if showsSidebarDestinationsInSettings {
+                if !isActivityCenterEnabled {
+                    NavigationLink {
+                        LogsView(usesActivityFeed: true, navigationTitle: "Activity")
+                    } label: {
+                        settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
+                    }
                 }
                 NavigationLink { DocBrowserView() } label: {
                     settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
