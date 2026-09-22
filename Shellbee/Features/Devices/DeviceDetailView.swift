@@ -265,22 +265,22 @@ struct DeviceDetailView: View {
 
     @ViewBuilder
     private var logsSection: some View {
-        let deviceEntries = scope.store.logEntries.filter { $0.deviceName == device.friendlyName }
-        let recent = Array(deviceEntries.prefix(Self.recentLogLimit))
+        let activityEvents = ActivitySubjectEvents(
+            subjectName: device.friendlyName,
+            bridgeID: bridgeID,
+            store: scope.store,
+            environment: environment
+        )
+        let recent = Array(activityEvents.items.prefix(Self.recentLogLimit))
 
         Section("Logs") {
-            if deviceEntries.isEmpty {
+            if activityEvents.sourceEntries.isEmpty {
                 Text("No logs for this device yet")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(recent) { entry in
-                    NavigationLink {
-                        LogDetailView(bridgeID: bridgeID, entry: entry)
-                    } label: {
-                        LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
-                    }
-                    .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+                ForEach(recent) { item in
+                    ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
                 }
                 NavigationLink {
                     DeviceLogsView(bridgeID: bridgeID, device: device)

@@ -59,22 +59,22 @@ struct GroupDetailView: View {
 
     @ViewBuilder
     private var logsSection: some View {
-        let groupEntries = scope.store.logEntries.filter { $0.deviceName == currentGroup.friendlyName }
-        let recent = Array(groupEntries.prefix(Self.recentLogLimit))
+        let activityEvents = ActivitySubjectEvents(
+            subjectName: currentGroup.friendlyName,
+            bridgeID: bridgeID,
+            store: scope.store,
+            environment: environment
+        )
+        let recent = Array(activityEvents.items.prefix(Self.recentLogLimit))
 
         Section("Logs") {
-            if groupEntries.isEmpty {
+            if activityEvents.sourceEntries.isEmpty {
                 Text("No logs for this group yet")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(recent) { entry in
-                    NavigationLink {
-                        LogDetailView(bridgeID: bridgeID, entry: entry)
-                    } label: {
-                        LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
-                    }
-                    .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+                ForEach(recent) { item in
+                    ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
                 }
                 NavigationLink {
                     GroupLogsView(bridgeID: bridgeID, group: currentGroup)
