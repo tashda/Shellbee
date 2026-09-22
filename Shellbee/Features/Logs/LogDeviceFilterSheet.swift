@@ -1,13 +1,23 @@
 import SwiftUI
 
+/// Picks the devices Activity is filtered to. Choices are drafted locally
+/// and only applied by the checkmark, so the feed and its toolbar don't
+/// change underneath the sheet while the user is still picking.
 struct LogDeviceFilterSheet: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedDevices: Set<String>
     let logDevices: [String]
 
+    @State private var draft: Set<String>
     @State private var showAll = false
     @State private var searchText = ""
+
+    init(selectedDevices: Binding<Set<String>>, logDevices: [String]) {
+        _selectedDevices = selectedDevices
+        self.logDevices = logDevices
+        _draft = State(initialValue: selectedDevices.wrappedValue)
+    }
 
     /// Phase 1 multi-bridge: when "Show All Devices" is on, walk every
     /// connected session to surface devices from any bridge. Resolving a
@@ -63,7 +73,7 @@ struct LogDeviceFilterSheet: View {
                                     device: device,
                                     isAvailable: availability(of: device)
                                 )
-                                SelectionIndicator(isSelected: selectedDevices.contains(device.friendlyName))
+                                SelectionIndicator(isSelected: draft.contains(device.friendlyName))
                             }
                         }
                         .buttonStyle(.plain)
@@ -83,41 +93,52 @@ struct LogDeviceFilterSheet: View {
             }
             .navigationTitle("Filter by Device")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Toggle("Show All Devices", isOn: $showAll)
-                        .labelsHidden()
-                        .accessibilityLabel("Show All Devices")
-                        .accessibilityHint("Includes devices without matching activity")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    if !selectedDevices.isEmpty {
-                        Button("Clear") { selectedDevices.removeAll() }
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
+            .toolbar { toolbarContent }
         }
         .configuredTopScrollEdgeEffect()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Toggle(isOn: $showAll) {
+                Label("Show All Devices", systemImage: "eye")
+            }
+            .toggleStyle(.button)
+            .accessibilityHint("Includes devices without matching activity")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                draft.removeAll()
+            } label: {
+                Label("Clear Selection", systemImage: FilterMenuSymbol.clear)
+            }
+            .disabled(draft.isEmpty)
+        }
+        TrailingToolbarGroupSpacer()
+        ToolbarItem(placement: .topBarTrailing) {
+            ConfirmToolbarButton(title: "Apply") {
+                selectedDevices = draft
+                dismiss()
+            }
+        }
+    }
+
     private var selectionSummary: String {
-        if selectedDevices.isEmpty {
+        if draft.isEmpty {
             return "Select one or more devices to include in Activity."
         }
-        return "\(selectedDevices.count) device\(selectedDevices.count == 1 ? "" : "s") selected."
+        return "\(draft.count) device\(draft.count == 1 ? "" : "s") selected."
     }
 
     private func toggle(_ device: Device) {
         let name = device.friendlyName
-        if selectedDevices.contains(name) {
-            selectedDevices.remove(name)
+        if draft.contains(name) {
+            draft.remove(name)
         } else {
-            selectedDevices.insert(name)
+            draft.insert(name)
         }
     }
 }

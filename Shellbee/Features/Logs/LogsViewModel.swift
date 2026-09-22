@@ -128,6 +128,34 @@ final class LogsViewModel {
         Set(store.logEntries.compactMap { $0.deviceName }).sorted()
     }
 
+    /// Devices to offer in the device picker, across the connected
+    /// `sessions` this filter's bridge selection allows. Mirrors the filter
+    /// pipeline minus the device selection itself (which would create a
+    /// chicken-and-egg) so the list only contains devices the user can
+    /// actually pick *and* see rows for. Without this, picking a device
+    /// whose every entry was hidden by the Signal Changes toggle would
+    /// leave the user staring at an empty list.
+    func pickableDevices(sessions: [BridgeSession]) -> [String] {
+        let snapshot = LogsViewModel()
+        snapshot.searchText = searchText
+        snapshot.selectedLevel = selectedLevel
+        snapshot.selectedCategory = selectedCategory
+        snapshot.selectedNamespace = selectedNamespace
+        snapshot.entryIDFilter = entryIDFilter
+        snapshot.bridgeFilter = bridgeFilter
+        snapshot.showLinkQualityChanges = showLinkQualityChanges
+        let filtered = sessions.filter { session in
+            session.isConnected && (bridgeFilter.map { $0 == session.bridgeID } ?? true)
+        }
+        return Set(
+            filtered.flatMap { session in
+                snapshot.filteredEntries(store: session.store).compactMap {
+                    LogRowIconography.subjectName(for: $0, in: session.store) ?? $0.deviceName
+                }
+            }
+        ).sorted()
+    }
+
     func clearAllFilters() {
         selectedLevel = nil
         selectedCategory = nil

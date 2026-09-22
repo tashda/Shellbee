@@ -5,6 +5,7 @@ struct LogsView: View {
     @State private var workspace: LogsWorkspaceState
     @State private var autoOpenedEntry: LogRoute?
     @State private var showingClearConfirmation = false
+    @State private var showingDeviceFilter = false
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
     /// Activity Center shows Activity as notification-style stacks instead
@@ -100,7 +101,9 @@ struct LogsView: View {
                             ClearFiltersToolbarButton(action: clearActiveModeFilters)
                         }
                         if workspace.mode == .activity {
-                            LogFilterMenu(viewModel: workspace.activity)
+                            LogFilterMenu(viewModel: workspace.activity) {
+                                showingDeviceFilter = true
+                            }
                         } else {
                             BridgeLevelFilterMenu(viewModel: workspace.bridge)
                         }
@@ -114,6 +117,12 @@ struct LogsView: View {
                         Image(systemName: "trash")
                     }
                 }
+            }
+            .sheet(isPresented: $showingDeviceFilter) {
+                LogDeviceFilterSheet(
+                    selectedDevices: $workspace.activity.selectedDevices,
+                    logDevices: workspace.activity.pickableDevices(sessions: environment.registry.orderedSessions)
+                )
             }
             .alert("Clear Activity?", isPresented: $showingClearConfirmation) {
                 Button("Clear", role: .destructive) {

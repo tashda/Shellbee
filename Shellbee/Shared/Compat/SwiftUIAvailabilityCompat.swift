@@ -76,3 +76,19 @@ struct TrailingToolbarGroupSpacer: ToolbarContent {
         }
     }
 }
+
+/// The sheet's confirming action. iOS 26+ draws it as the system's
+/// prominent checkmark; earlier versions show the title as a bold button.
+struct ConfirmToolbarButton: View {
+    let title: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            Button(title, systemImage: "checkmark", role: .confirm, action: action)
+        } else {
+            Button(title, action: action)
+                .fontWeight(.semibold)
+        }
+    }
+}

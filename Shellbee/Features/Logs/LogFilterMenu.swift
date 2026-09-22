@@ -3,7 +3,10 @@ import SwiftUI
 struct LogFilterMenu: View {
     @Bindable var viewModel: LogsViewModel
     @Environment(AppEnvironment.self) private var environment
-    @State private var deviceSheetPresented = false
+    /// Opens the device picker. The host presents it, because a sheet
+    /// attached inside a toolbar item is torn down whenever the toolbar
+    /// rebuilds, such as when a new filter adds the Clear Filters button.
+    let onSelectDevices: () -> Void
     @State private var namespaceSnapshot: [String] = []
 
     private var connectedSessions: [BridgeSession] {
@@ -37,12 +40,6 @@ struct LogFilterMenu: View {
         })
         .onAppear {
             namespaceSnapshot = availableNamespaces()
-        }
-        .sheet(isPresented: $deviceSheetPresented) {
-            LogDeviceFilterSheet(
-                selectedDevices: $viewModel.selectedDevices,
-                logDevices: availableDevices()
-            )
         }
     }
 
@@ -100,7 +97,7 @@ struct LogFilterMenu: View {
 
     private var deviceButton: some View {
         Button {
-            deviceSheetPresented = true
+            onSelectDevices()
         } label: {
             FilterSubmenuLabel(name: "Device", systemImage: "cpu", value: selectedDevicesValue)
         }
@@ -127,30 +124,6 @@ struct LogFilterMenu: View {
             }
         ).sorted()
     }
-
-    /// Devices to offer in the picker. Mirrors the activity-log filter
-    /// pipeline (minus the device selection itself, which would create a
-    /// chicken-and-egg) so the list only contains devices the user can
-    /// actually pick *and* see rows for. Without this, picking a device
-    /// whose every entry was hidden by the Signal Changes toggle would
-    /// leave the user staring at an empty list.
-    private func availableDevices() -> [String] {
-        let snapshot = LogsViewModel()
-        snapshot.searchText = viewModel.searchText
-        snapshot.selectedLevel = viewModel.selectedLevel
-        snapshot.selectedCategory = viewModel.selectedCategory
-        snapshot.selectedNamespace = viewModel.selectedNamespace
-        snapshot.entryIDFilter = viewModel.entryIDFilter
-        snapshot.bridgeFilter = viewModel.bridgeFilter
-        snapshot.showLinkQualityChanges = viewModel.showLinkQualityChanges
-        return Set(
-            filteredSessions.flatMap { session in
-                snapshot.filteredEntries(store: session.store).compactMap {
-                    LogRowIconography.subjectName(for: $0, in: session.store) ?? $0.deviceName
-                }
-            }
-        ).sorted()
-    }
 }
 
 #Preview {
@@ -158,9 +131,7 @@ struct LogFilterMenu: View {
         Text("Logs")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    LogFilterMenu(
-                        viewModel: LogsViewModel()
-                    )
+                    LogFilterMenu(viewModel: LogsViewModel(), onSelectDevices: {})
                 }
             }
     }
