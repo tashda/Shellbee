@@ -12,15 +12,16 @@ struct ActivityCenterSheet: View {
 
     @ViewBuilder
     private var activityContent: some View {
-        let content = NavigationStack {
-            LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
-        }
-        .configuredTopScrollEdgeEffect()
         // The grabber gets its own strip above the navigation bar so the
         // toolbar capsules can never cover it.
-        .safeAreaInset(edge: .top, spacing: 0) {
+        let content = VStack(spacing: 0) {
             GrabberCapsule()
+            NavigationStack {
+                LogsView(usesActivityFeed: true, navigationTitle: "", workspace: workspace)
+            }
+            .configuredTopScrollEdgeEffect()
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
 
         if #available(iOS 18.0, *), let transitionNamespace {
             content
@@ -47,7 +48,6 @@ private struct GrabberCapsule: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, DesignTokens.Spacing.sm)
             .contentShape(Rectangle())
-            .background(Color(.systemGroupedBackground))
             .onTapGesture { dismiss() }
             .gesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onEnded { value in
                 if value.translation.height > DesignTokens.ActivityFeed.grabberDismissDistance {
