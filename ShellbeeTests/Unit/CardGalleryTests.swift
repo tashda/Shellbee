@@ -9,6 +9,15 @@ final class CardGalleryTests: XCTestCase {
     }
 
     @MainActor
+    func testGalleryProvidesAStagePreviewForEveryDeviceAndGroup() {
+        let previews = CardGalleryCatalog.previews
+
+        XCTAssertEqual(previews.count, CardGalleryCatalog.samples.count + 1)
+        XCTAssertEqual(Set(previews.compactMap(\.sample?.id)), Set(CardGalleryCatalog.samples.map(\.id)))
+        XCTAssertEqual(previews.last?.id, CardGalleryPreview.group.id)
+    }
+
+    @MainActor
     func testGalleryControlContextsMatchCardCategories() {
         for sample in CardGalleryCatalog.samples {
             let device = sample.device

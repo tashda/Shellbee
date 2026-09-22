@@ -26,7 +26,7 @@ struct DeveloperSettingsView: View {
                     SettingsNavigationLabel(title: "Shellbee", systemImage: "wand.and.stars", color: .pink)
                 }
             } footer: {
-                Text("Live Activity, Activity Center, and rendering previews used to develop Shellbee's own UI.")
+                Text("Live Activity, device page, Activity Center, and rendering previews used to develop Shellbee's own UI.")
             }
 
             Section {

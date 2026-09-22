@@ -26,6 +26,13 @@ struct ShellbeeDeveloperView: View {
                 NavigationLink("Card Gallery") {
                     CardGalleryView()
                 }
+            } header: {
+                Text("Device Pages")
+            } footer: {
+                Text("Preview every device and group card on the detail page where it appears, including its readings and settings rows.")
+            }
+
+            Section {
                 NavigationLink("Activity Instruments") {
                     ActivityInstrumentGalleryView()
                 }

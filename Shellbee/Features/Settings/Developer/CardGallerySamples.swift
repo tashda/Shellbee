@@ -28,6 +28,35 @@ struct CardGallerySample: Identifiable {
     }
 }
 
+/// A card as it appears in the gallery's picker. Device samples remain
+/// separate from the group fixture because their detail pages are genuinely
+/// different surfaces.
+struct CardGalleryPreview: Identifiable {
+    let id: String
+    let title: String
+    let detail: String
+    let symbol: String
+    let sample: CardGallerySample?
+
+    static func device(_ sample: CardGallerySample) -> CardGalleryPreview {
+        CardGalleryPreview(
+            id: sample.id,
+            title: sample.device.category.label,
+            detail: sample.title,
+            symbol: sample.device.category.systemImage,
+            sample: sample
+        )
+    }
+
+    static let group = CardGalleryPreview(
+        id: "group",
+        title: "Group",
+        detail: "Gallery Group",
+        symbol: "rectangle.3.group",
+        sample: nil
+    )
+}
+
 enum CardGalleryCatalog {
     static let samples: [CardGallerySample] = [
         light,
@@ -59,6 +88,8 @@ enum CardGalleryCatalog {
         "state": .string("ON"), "brightness": .int(168), "color_mode": .string("color_temp"),
         "color_temp": .int(320), "linkquality": .int(124)
     ]
+
+    static let previews = samples.map { CardGalleryPreview.device($0) } + [.group]
 
     private static func device(
         _ id: String,
