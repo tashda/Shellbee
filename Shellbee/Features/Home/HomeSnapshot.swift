@@ -15,9 +15,9 @@ struct HomeSnapshot: Sendable {
             return "\(lowerBound)–\(upperBound)"
         }
 
-        /// The band worth acting on. Matches the weak-signal threshold the
-        /// rest of the app filters by.
-        var needsAttention: Bool { (upperBound ?? Int.max) <= DesignTokens.Threshold.weakSignal }
+        /// The band worth acting on: the one that holds the devices the
+        /// rest of the app counts as weak.
+        var needsAttention: Bool { lowerBound < DesignTokens.Threshold.weakSignal }
     }
 
     struct BatteryReading: Identifiable, Sendable {

@@ -53,6 +53,18 @@ struct HomeBatteriesCard: View {
         .buttonStyle(.plain)
     }
 
+    /// The discrete battery symbols read correctly at every level; the
+    /// variable-value one draws a full battery at 0 %.
+    private static func symbol(for percent: Int) -> String {
+        switch percent {
+        case ..<13:  "battery.0percent"
+        case ..<38:  "battery.25percent"
+        case ..<63:  "battery.50percent"
+        case ..<88:  "battery.75percent"
+        default:     "battery.100percent"
+        }
+    }
+
     private func row(_ reading: HomeSnapshot.BatteryReading) -> some View {
         HStack(spacing: DesignTokens.Spacing.md) {
             Text(reading.name)
@@ -63,7 +75,7 @@ struct HomeBatteriesCard: View {
 
             Spacer(minLength: DesignTokens.Spacing.sm)
 
-            Image(systemName: "battery.100", variableValue: Double(reading.percent) / 100)
+            Image(systemName: Self.symbol(for: reading.percent))
                 .font(.subheadline)
                 .foregroundStyle(reading.isLow ? .red : .secondary)
 
