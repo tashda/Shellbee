@@ -7,9 +7,6 @@ struct ExposeCardView: View {
     let state: [String: JSONValue]
     let mode: CardDisplayMode
     var onSend: (JSONValue) -> Void = { _ in }
-    /// When false, the generic fallback rows are left out so the caller can
-    /// draw them as native List sections (`DeviceSettingsSections`).
-    var includesGenericRows: Bool = true
 
     var body: some View {
         switch device.category {
@@ -24,9 +21,7 @@ struct ExposeCardView: View {
             }
         case .switchPlug:
             let switchContexts = SwitchControlContext.contexts(for: device, state: state)
-            if switchContexts.isEmpty {
-                genericRows()
-            } else {
+            if !switchContexts.isEmpty {
                 VStack(spacing: DesignTokens.Spacing.lg) {
                     ForEach(switchContexts) { ctx in
                         SwitchControlCard(context: ctx, mode: mode, onSend: onSend)
@@ -34,20 +29,17 @@ struct ExposeCardView: View {
                 }
             }
         case .sensor:
-            // Readings are native List sections (SensorSections), drawn by
-            // DeviceDetailView; only the generic rows fit in a card.
-            genericRows()
+            // Readings and every setting are native List sections
+            // (SensorSections / DeviceSettingsSections), drawn by
+            // DeviceDetailView — nothing renders here.
+            EmptyView()
         case .climate:
             if let ctx = ClimateControlContext(device: device, state: state) {
                 ClimateControlCard(context: ctx, mode: mode, onSend: onSend)
-            } else {
-                genericRows()
             }
         case .cover:
             let coverContexts = CoverControlContext.contexts(for: device, state: state)
-            if coverContexts.isEmpty {
-                genericRows()
-            } else {
+            if !coverContexts.isEmpty {
                 VStack(spacing: DesignTokens.Spacing.lg) {
                     ForEach(coverContexts) { ctx in
                         CoverControlCard(context: ctx, mode: mode, onSend: onSend)
@@ -57,27 +49,14 @@ struct ExposeCardView: View {
         case .lock:
             if let ctx = LockControlContext(device: device, state: state) {
                 LockControlCard(context: ctx, mode: mode, onSend: onSend)
-            } else {
-                genericRows()
             }
         case .fan:
             if let ctx = FanControlContext(device: device, state: state) {
                 FanControlCard(context: ctx, mode: mode, onSend: onSend)
-            } else {
-                genericRows()
             }
-        case .remote:
-            // Remotes are rows only (RemoteSections), drawn by DeviceDetailView.
-            genericRows()
-        case .other:
-            genericRows()
-        }
-    }
-
-    @ViewBuilder
-    private func genericRows(writableOnly: Bool = false) -> some View {
-        if includesGenericRows {
-            GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend, writableOnly: writableOnly)
+        case .remote, .other:
+            // Rows only, drawn by DeviceDetailView.
+            EmptyView()
         }
     }
 

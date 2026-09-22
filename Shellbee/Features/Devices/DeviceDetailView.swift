@@ -247,8 +247,7 @@ struct DeviceDetailView: View {
         let hasPrimaryCard = ExposeCardView.hasPrimaryCard(device: device, state: state)
         if hasPrimaryCard {
             Section {
-                ExposeCardView(device: device, state: state, mode: .interactive, onSend: send,
-                               includesGenericRows: false)
+                ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
