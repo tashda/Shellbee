@@ -24,35 +24,33 @@ struct ActivityFeedView: View {
         // A feed with a single subject, such as one opened from a device's
         // Show All Logs, lists every event instead of one collapsed stack.
         let isSingleStack = sections.count == 1 && sections[0].stacks.count == 1
-        ScrollViewReader { proxy in
-            ScrollView {
-                Color.clear
-                    .frame(height: 0)
-                    .id(LiveFeedAnchor.top)
-                LazyVStack(alignment: .leading, spacing: DesignTokens.ActivityFeed.cardSpacing) {
-                    ForEach(sections) { section in
-                        if sections.count > 1 || section.kind == .needsAttention {
-                            sectionHeader(section)
-                        }
-                        ForEach(section.stacks) { stack in
-                            if isSingleStack {
-                                entryCards(stack)
-                            } else {
-                                stackView(stack)
-                            }
+        ScrollView {
+            Color.clear
+                .frame(height: 0)
+                .id(LiveFeedAnchor.top)
+            LazyVStack(alignment: .leading, spacing: DesignTokens.ActivityFeed.cardSpacing) {
+                ForEach(sections) { section in
+                    if sections.count > 1 || section.kind == .needsAttention {
+                        sectionHeader(section)
+                    }
+                    ForEach(section.stacks) { stack in
+                        if isSingleStack {
+                            entryCards(stack)
+                        } else {
+                            stackView(stack)
                         }
                     }
                 }
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.bottom, DesignTokens.Spacing.xl)
-                .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
-                .frame(maxWidth: .infinity)
             }
-            .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveSections))
-            .toolbar {
-                FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
-                    liveFeed.returnToLive(with: proxy)
-                }
+            .padding(.horizontal, DesignTokens.Spacing.lg)
+            .padding(.bottom, DesignTokens.Spacing.xl)
+            .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
+            .frame(maxWidth: .infinity)
+        }
+        .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveSections))
+        .toolbar {
+            FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
+                liveFeed.requestReturnToLive()
             }
         }
         .background(Color(.systemGroupedBackground))

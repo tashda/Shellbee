@@ -17,44 +17,42 @@ struct RawLogFeedView: View {
     var body: some View {
         let liveBlocks = RawLogBlock.blocks(from: mergedEntries())
         let blocks = liveFeed.displayedItems(from: liveBlocks)
-        ScrollViewReader { proxy in
-            ScrollView {
-                Color.clear
-                    .frame(height: 0)
-                    .id(LiveFeedAnchor.top)
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(blocks) { block in
-                        Text(block.minute, format: .dateTime.hour().minute())
-                            .font(.subheadline.weight(.semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, DesignTokens.Spacing.xs)
-                            .padding(.top, DesignTokens.Spacing.lg)
-                            .padding(.bottom, DesignTokens.Spacing.sm)
-                            .accessibilityAddTraits(.isHeader)
-                        ForEach(Array(block.lines.enumerated()), id: \.element.id) { index, item in
-                            Button {
-                                open(item)
-                            } label: {
-                                RawLogRow(
-                                    entry: item.entry,
-                                    position: RawLogRow.Position(index: index, count: block.lines.count)
-                                )
-                            }
-                            .buttonStyle(.plain)
+        ScrollView {
+            Color.clear
+                .frame(height: 0)
+                .id(LiveFeedAnchor.top)
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(blocks) { block in
+                    Text(block.minute, format: .dateTime.hour().minute())
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, DesignTokens.Spacing.xs)
+                        .padding(.top, DesignTokens.Spacing.lg)
+                        .padding(.bottom, DesignTokens.Spacing.sm)
+                        .accessibilityAddTraits(.isHeader)
+                    ForEach(Array(block.lines.enumerated()), id: \.element.id) { index, item in
+                        Button {
+                            open(item)
+                        } label: {
+                            RawLogRow(
+                                entry: item.entry,
+                                position: RawLogRow.Position(index: index, count: block.lines.count)
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.bottom, DesignTokens.Spacing.xl)
-                .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
-                .frame(maxWidth: .infinity)
             }
-            .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveBlocks))
-            .toolbar {
-                FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
-                    liveFeed.returnToLive(with: proxy)
-                }
+            .padding(.horizontal, DesignTokens.Spacing.lg)
+            .padding(.bottom, DesignTokens.Spacing.xl)
+            .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
+            .frame(maxWidth: .infinity)
+        }
+        .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveBlocks))
+        .toolbar {
+            FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
+                liveFeed.requestReturnToLive()
             }
         }
         .background(Color(.systemGroupedBackground))
