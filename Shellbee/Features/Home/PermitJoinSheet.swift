@@ -47,18 +47,21 @@ struct PermitJoinSheet: View {
     }
 
     private var fittedPresentationContent: some View {
-        NavigationStack {
-            SwiftUI.Group {
-                if isSelectedBridgePermitJoinOpen {
-                    activeContent
-                } else {
-                    fittedInactiveContent
-                }
+        VStack(spacing: DesignTokens.Spacing.lg) {
+            Text("Permit Join")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+
+            if isSelectedBridgePermitJoinOpen {
+                activeContent
+            } else {
+                fittedInactiveContent
             }
-            .navigationTitle("Permit Join")
-            .navigationBarTitleDisplayMode(.inline)
         }
-        .configuredTopScrollEdgeEffect()
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .padding(.top, DesignTokens.Spacing.xxl)
+        .padding(.bottom, DesignTokens.Spacing.lg)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var fittedInactiveContent: some View {
@@ -109,8 +112,6 @@ struct PermitJoinSheet: View {
 
             actionBar
         }
-        .padding(.horizontal, DesignTokens.Spacing.xl)
-        .padding(.top, DesignTokens.Spacing.xxl)
         .fixedSize(horizontal: false, vertical: true)
     }
 
