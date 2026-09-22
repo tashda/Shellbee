@@ -10,6 +10,7 @@ struct PermitJoinSheet: View {
     @State private var bridgeID: UUID?
     @State private var targetName: String?
     @State private var duration: Int = 254
+    @State private var contentHeight: CGFloat = 0
 
     let onStart: (_ duration: Int, _ target: String?, _ bridgeID: UUID?) -> Void
     let onStop: (_ bridgeID: UUID?) -> Void
@@ -30,8 +31,9 @@ struct PermitJoinSheet: View {
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         .configuredTopScrollEdgeEffect()
-        .presentationDetents([.medium, .large])
+        .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.medium])
         .presentationDragIndicator(.visible)
     }
 
@@ -90,8 +92,6 @@ struct PermitJoinSheet: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .safeAreaInset(edge: .bottom) {
                 actionBar
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.bottom, DesignTokens.Spacing.md)
             }
         }
     }
@@ -112,6 +112,8 @@ struct PermitJoinSheet: View {
         .buttonStyle(.borderedProminent)
         .tint(isSelectedBridgePermitJoinOpen ? .red : nil)
         .controlSize(.large)
+        .padding(.horizontal, DesignTokens.Spacing.xl)
+        .padding(.bottom, DesignTokens.Spacing.md)
     }
 
     private var resolvedBridgeID: UUID? {
