@@ -31,7 +31,7 @@ enum LiveActivityStageLauncher {
                 },
                 sampleIndex: env["SHELLBEE_LIVE_ACTIVITY_STAGE_STATE"].flatMap(Int.init) ?? 0,
                 surface: env["SHELLBEE_LIVE_ACTIVITY_STAGE_SURFACE"].flatMap(LiveActivityStageView.Surface.init) ?? .compact,
-                style: env["SHELLBEE_LIVE_ACTIVITY_STAGE_STYLE"].flatMap(LiveActivityStyle.init) 
+                style: env["SHELLBEE_LIVE_ACTIVITY_STAGE_STYLE"].flatMap(LiveActivityStyle.init)
             )
             window.rootViewController = UIHostingController(rootView: stage)
             window.makeKeyAndVisible()

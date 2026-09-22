@@ -59,7 +59,7 @@ def build(d, template, out, scale=None, valign="baseline", pre_wound=False):
                 ty = baseline - k * y1
             path = (f'<path transform="translate({tx:.3f},{ty:.3f}) scale({k:.5f})" '
                     f'fill="currentColor" d="{d}"/>')
-            svg = re.sub(rf'(<g id="{weight}-{size}">)(.*?)(</g>)', 
+            svg = re.sub(rf'(<g id="{weight}-{size}">)(.*?)(</g>)',
                          lambda m: m.group(1) + "\n" + path + "\n" + m.group(3),
                          svg, count=1, flags=re.S)
     open(out, 'w').write(svg)
