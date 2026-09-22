@@ -426,6 +426,7 @@
 				Shared/LightControl/LightDisplayColor.swift,
 				Shared/LightControl/LightEffectsSheet.swift,
 				Shared/LightControl/LightFeatureSections.swift,
+				Shared/LightControl/LightStartupTemperaturePage.swift,
 				Shared/LightControl/LightTemperatureControl.swift,
 				Shared/LockControl/LockControlCard.swift,
 				Shared/LockControl/LockControlContext.swift,

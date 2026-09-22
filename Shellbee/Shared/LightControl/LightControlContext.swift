@@ -280,7 +280,8 @@ struct LightControlContext: Equatable, Identifiable {
                 payloadPath: payloadPath,
                 label: label,
                 kind: .numeric(range: range(for: expose), step: expose.valueStep),
-                value: currentValue
+                value: currentValue,
+                presets: expose.presets ?? []
             )
         default:
             return nil

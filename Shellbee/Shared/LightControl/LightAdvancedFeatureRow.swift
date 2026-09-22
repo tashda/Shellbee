@@ -46,26 +46,26 @@ struct LightAdvancedFeatureRow: View {
         }
     }
 
-    /// Reuses the same swatch + slider control as the hero light card so the
-    /// "Color Temperature" startup row reads identically to the live control
-    /// the user just adjusted in the card.
+    /// One line showing the current choice; the presets and a custom
+    /// slider live on their own page, like Settings › Display › Night Shift.
     private func temperatureRow(range: ClosedRange<Double>?) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text(feature.displayLabel)
-            if let range {
-                LightTemperatureControl(
-                    range: range,
-                    value: numericDraftValue,
-                    isInteractive: true,
-                    onChange: { mireds in
-                        numericDraftValue = mireds
-                        onChange(.double(mireds))
-                    }
-                )
-                .onChange(of: feature.value?.numberValue ?? 0) { _, newValue in
-                    numericDraftValue = newValue
+        NavigationLink {
+            LightStartupTemperaturePage(
+                feature: feature,
+                range: range,
+                value: numericDraftValue,
+                onChange: { mireds in
+                    numericDraftValue = mireds
+                    onChange(.int(Int(mireds.rounded())))
                 }
+            )
+        } label: {
+            LabeledContent(feature.displayLabel) {
+                Text(LightStartupTemperaturePage.summary(for: numericDraftValue, presets: feature.presets))
             }
+        }
+        .onChange(of: feature.value?.numberValue ?? 0) { _, newValue in
+            numericDraftValue = newValue
         }
     }
 

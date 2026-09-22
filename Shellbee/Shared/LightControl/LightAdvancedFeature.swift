@@ -15,6 +15,8 @@ struct LightAdvancedFeature: Equatable, Identifiable {
     let label: String
     let kind: Kind
     let value: JSONValue?
+    /// z2m's named values (e.g. warmest, previous) for numeric settings.
+    var presets: [ExposePreset] = []
 
     var id: String { payloadPath.joined(separator: ".") }
 
