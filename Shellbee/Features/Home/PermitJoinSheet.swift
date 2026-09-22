@@ -44,18 +44,13 @@ struct PermitJoinSheet: View {
                     }
                 }
             }
-            .navigationTitle("Permit Join")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
         .configuredTopScrollEdgeEffect()
     }
 
     private var fittedPresentationContent: some View {
         VStack(spacing: DesignTokens.Spacing.lg) {
-            Text("Permit Join")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-
             if isSelectedBridgePermitJoinOpen {
                 activeContent
             } else {
@@ -170,15 +165,17 @@ struct PermitJoinSheet: View {
 
     private var activeContent: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            VStack(spacing: 0) {
+            let remaining = remainingSeconds(at: ctx.date)
+            VStack(spacing: DesignTokens.Spacing.xxl) {
                 VStack(spacing: DesignTokens.Spacing.sm) {
                     Text("Network is open")
-                        .font(.title3.weight(.semibold))
-                    if let remaining = remainingSeconds(at: ctx.date) {
+                        .font(.title2.weight(.semibold))
+                    if let remaining {
                         Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
-                            .font(DesignTokens.Typography.permitJoinActiveCountdown.monospacedDigit())
+                            .font(DesignTokens.Typography.permitJoinCountdown.monospacedDigit())
                             .foregroundStyle(.primary)
                             .contentTransition(.numericText(countsDown: true))
+                            .animation(.smooth(duration: DesignTokens.Duration.standardAnimation), value: remaining)
                             .accessibilityLabel("\(remaining / 60) minutes and \(remaining % 60) seconds remaining")
                     }
                     if let target = selectedBridgeInfo?.permitJoinTarget, !target.isEmpty {
@@ -186,9 +183,17 @@ struct PermitJoinSheet: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
+                    if let remaining,
+                       let total = selectedBridgeInfo?.permitJoinTimeout,
+                       total > 0 {
+                        ProgressView(value: Double(min(remaining, total)), total: Double(total))
+                            .tint(.green)
+                            .animation(.linear(duration: DesignTokens.Duration.pulseFull), value: remaining)
+                            .padding(.top, DesignTokens.Spacing.md)
+                            .accessibilityHidden(true)
+                    }
                 }
                 .padding(.horizontal, DesignTokens.Spacing.xl)
-                .padding(.top, DesignTokens.Spacing.xl)
                 actionBar
             }
         }
