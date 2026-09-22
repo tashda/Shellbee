@@ -156,6 +156,22 @@ final class ActivityInstrumentResolverTests: XCTestCase {
         XCTAssertNotNil(ActivityInstrumentResolver.instrument(forProperty: "color_temp", to: .int(370)).swatch)
     }
 
+    func testSplitColourChangesUseTheStateSnapshot() {
+        let entry = LogEntry(
+            id: UUID(), timestamp: .now, level: .info, category: .stateChange,
+            namespace: nil, message: "State change", deviceName: "Lamp",
+            context: LogContext(
+                devices: [],
+                stateChanges: [change("color.x", from: .double(0.36), to: .double(0.63))],
+                action: .stateChange,
+                payload: ["color": .object(["x": .double(0.63), "y": .double(0.28)]), "color_mode": .string("xy")]
+            )
+        )
+        let instrument = ActivityInstrumentResolver.instrument(for: entry)
+        XCTAssertEqual(instrument.kind, .colour)
+        XCTAssertNotNil(instrument.swatch)
+    }
+
     func testPermitJoinClosedIsUnlit() {
         let entry = LogEntry(
             id: UUID(), timestamp: .now, level: .info, category: .bridgeActivity, namespace: "z2m:mqtt",

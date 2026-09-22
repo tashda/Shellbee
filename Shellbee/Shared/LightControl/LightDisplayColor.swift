@@ -1,37 +1,119 @@
 import SwiftUI
 
+/// The one place Shellbee turns whatever a light reports into the colour it
+/// is showing. Devices disagree on format — CIE xy, hue/saturation on
+/// several scales, RGB, hex strings, colour temperature in mireds or kelvin
+/// — so every surface that draws a light's colour goes through here.
 enum LightDisplayColor {
+    /// For views that always need a colour; falls back to the accent colour.
     static func resolve(colorValue: JSONValue?, colorTemperature: Double?, colorMode: String?) -> Color {
+        resolvedColor(colorValue: colorValue, colorTemperature: colorTemperature, colorMode: colorMode) ?? .accentColor
+    }
+
+    /// The colour from a full device state snapshot, or nil when the state
+    /// carries no colour information at all.
+    static func resolve(state: [String: JSONValue]) -> Color? {
+        let temperature = temperatureKeys.lazy.compactMap { state[$0]?.numberValue }.first
+        return resolvedColor(
+            colorValue: state["color"] ?? state["colour"],
+            colorTemperature: temperature,
+            colorMode: state["color_mode"]?.stringValue
+        )
+    }
+
+    /// The colour a single reported property describes: a colour object or
+    /// hex string for `color`, a number for colour temperature properties.
+    static func color(property: String, value: JSONValue) -> Color? {
+        let key = property.lowercased()
+        if key.contains("temp") {
+            return value.numberValue.map(temperatureColor(whiteValue:))
+        }
+        return colorObjectColor(value, preferred: nil)
+    }
+
+    static func resolvedColor(colorValue: JSONValue?, colorTemperature: Double?, colorMode: String?) -> Color? {
+        let mode = colorMode?.lowercased()
         // Trust color_mode as the authoritative signal — z2m sets it
-        // deliberately to one of "xy", "hs", or "color_temp" to describe
-        // what the bulb is actively rendering. A bulb in color_temp mode
-        // can also publish a stale color object (notably Hue with
-        // hue_native_control), but the true output is the temperature.
-        if colorMode == "color_temp", let colorTemperature {
-            return temperatureColor(mireds: colorTemperature)
+        // deliberately to describe what the bulb is actively rendering. A
+        // bulb in color_temp mode can also publish a stale color object
+        // (notably Hue with hue_native_control), but the true output is the
+        // temperature.
+        if mode == "color_temp", let colorTemperature {
+            return temperatureColor(whiteValue: colorTemperature)
         }
-
-        if let color = colorValue?.object {
-            if let x = color["x"]?.numberValue, let y = color["y"]?.numberValue {
-                return xyColor(x: x, y: y)
-            }
-
-            let hue = color["hue"]?.numberValue ?? color["h"]?.numberValue
-            let saturation = color["saturation"]?.numberValue ?? color["s"]?.numberValue
-            if let hue, let saturation {
-                return Color(hue: hue / 360.0, saturation: saturation / 100.0, brightness: 1)
-            }
-
-            if let r = color["r"]?.numberValue, let g = color["g"]?.numberValue, let b = color["b"]?.numberValue {
-                return Color(red: r / 255.0, green: g / 255.0, blue: b / 255.0)
-            }
+        if let colorValue, let color = colorObjectColor(colorValue, preferred: mode) {
+            return color
         }
+        return colorTemperature.map(temperatureColor(whiteValue:))
+    }
 
-        if let colorTemperature {
-            return temperatureColor(mireds: colorTemperature)
+    // MARK: - Colour formats
+
+    private static let temperatureKeys = ["color_temp", "color_temperature", "colour_temp", "color_temp_kelvin"]
+
+    /// Reads any colour object shape. `preferred` ("xy" or "hs") picks which
+    /// representation wins when a device reports several at once.
+    private static func colorObjectColor(_ value: JSONValue, preferred mode: String?) -> Color? {
+        if let hex = value.stringValue { return hexColor(hex) }
+        guard let color = value.object else { return nil }
+
+        let readers: [([String: JSONValue]) -> Color?] = mode == "hs"
+            ? [hueSaturationColor, { xyColor($0) }, rgbColor, hexField]
+            : [{ xyColor($0) }, hueSaturationColor, rgbColor, hexField]
+        return readers.lazy.compactMap { $0(color) }.first
+    }
+
+    private static func xyColor(_ color: [String: JSONValue]) -> Color? {
+        guard let x = color["x"]?.numberValue, let y = color["y"]?.numberValue else { return nil }
+        return xyColor(x: x, y: y)
+    }
+
+    /// Hue arrives as degrees (0–360) or as Zigbee's enhanced hue (0–65535);
+    /// saturation as a percentage, a Zigbee byte (0–254) or Tuya's 0–1000.
+    /// A device that reports hue alone is shown fully saturated.
+    private static func hueSaturationColor(_ color: [String: JSONValue]) -> Color? {
+        guard let rawHue = color["hue"]?.numberValue ?? color["h"]?.numberValue else { return nil }
+        let hue = rawHue > 360 ? rawHue / 65_535 : rawHue / 360
+        let rawSaturation = color["saturation"]?.numberValue ?? color["s"]?.numberValue ?? 100
+        let saturation: Double
+        switch rawSaturation {
+        case ...100: saturation = rawSaturation / 100
+        case ...254: saturation = rawSaturation / 254
+        default: saturation = rawSaturation / 1_000
         }
+        return Color(hue: min(max(hue, 0), 1), saturation: min(max(saturation, 0), 1), brightness: 1)
+    }
 
-        return .accentColor
+    /// RGB as bytes (0–255) or, when every channel is at most 1, fractions.
+    private static func rgbColor(_ color: [String: JSONValue]) -> Color? {
+        guard let red = color["r"]?.numberValue ?? color["red"]?.numberValue,
+              let green = color["g"]?.numberValue ?? color["green"]?.numberValue,
+              let blue = color["b"]?.numberValue ?? color["blue"]?.numberValue else { return nil }
+        let scale = max(red, green, blue) <= 1 ? 1.0 : 255.0
+        return Color(red: red / scale, green: green / scale, blue: blue / scale)
+    }
+
+    private static func hexField(_ color: [String: JSONValue]) -> Color? {
+        (color["hex"]?.stringValue).flatMap(hexColor)
+    }
+
+    /// "#6874ff", "6874FF" or the short "#67f".
+    private static func hexColor(_ string: String) -> Color? {
+        var hex = string.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        if hex.count == 3 { hex = hex.map { "\($0)\($0)" }.joined() }
+        guard hex.count == 6, let rgb = UInt32(hex, radix: 16) else { return nil }
+        return Color(
+            red: Double((rgb >> 16) & 0xFF) / 255,
+            green: Double((rgb >> 8) & 0xFF) / 255,
+            blue: Double(rgb & 0xFF) / 255
+        )
+    }
+
+    /// Colour temperature arrives in mireds (Z2M's `color_temp`, 150–500)
+    /// or, from some devices, in kelvin (2000–6500). Anything above 1000
+    /// can only be kelvin.
+    static func temperatureColor(whiteValue: Double) -> Color {
+        temperatureColor(mireds: whiteValue > 1_000 ? 1_000_000 / whiteValue : whiteValue)
     }
 
     /// Convert mireds to a representative RGB color using Tanner Helland's
@@ -81,8 +163,8 @@ enum LightDisplayColor {
         max(0, min(255, value))
     }
 
-    private static func xyColor(x: Double, y: Double) -> Color {
-        guard y > 0 else { return .accentColor }
+    private static func xyColor(x: Double, y: Double) -> Color? {
+        guard y > 0 else { return nil }
 
         let z = max(0, 1 - x - y)
         let luminance = 1.0

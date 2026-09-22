@@ -169,6 +169,10 @@ enum ActivityInstrumentGalleryCatalog {
         change("brightness-off", "Brightness Zero", "brightness", from: .int(40), to: .int(0)),
         change("colour", "Colour", "color", from: nil, to: .object(["x": .double(0.17), "y": .double(0.12)])),
         change("colour-hex", "Colour (Hex)", "color", from: nil, to: .string("#ff4f6d")),
+        change(
+            "colour-split", "Colour (Split X/Y)", "color.x", from: .double(0.36), to: .double(0.63),
+            state: ["color": .object(["x": .double(0.63), "y": .double(0.28)]), "color_mode": .string("xy")]
+        ),
         change("colour-temperature", "Colour Temperature", "color_temp", from: .int(250), to: .int(370)),
         change("temperature", "Temperature", "temperature", from: .double(20.8), to: .double(21.4)),
         change("temperature-cold", "Temperature Cold", "temperature", from: .double(5.2), to: .double(4.1)),
@@ -210,13 +214,14 @@ enum ActivityInstrumentGalleryCatalog {
     /// Runs through the live resolver, so the gallery shows exactly what
     /// the Activity feed would draw for that report.
     private static func change(
-        _ id: String, _ title: String, _ property: String, from: JSONValue?, to: JSONValue
+        _ id: String, _ title: String, _ property: String, from: JSONValue?, to: JSONValue,
+        state: [String: JSONValue]? = nil
     ) -> ActivityInstrumentGallerySample {
         let detail = [from?.stringified, to.stringified].compactMap { $0 }.joined(separator: " → ")
         return ActivityInstrumentGallerySample(
             "change.\(id)", scope: .changes, section: "State Changes", title: title,
             detail: "\(property): \(detail)",
-            instrument: ActivityInstrumentResolver.instrument(forProperty: property, from: from, to: to),
+            instrument: ActivityInstrumentResolver.instrument(forProperty: property, from: from, to: to, state: state),
             logCategory: .stateChange,
             change: ActivityAccessoryChange(label: title, from: from?.stringified, to: to.stringified)
         )

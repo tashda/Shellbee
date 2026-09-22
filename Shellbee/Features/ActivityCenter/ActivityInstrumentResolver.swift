@@ -10,7 +10,7 @@ enum ActivityInstrumentResolver {
         if entry.category == .stateChange,
            let changes = entry.context?.stateChanges,
            !changes.isEmpty {
-            return stateInstrument(for: changes, entrySeverity: severity(for: entry))
+            return stateInstrument(for: changes, payload: entry.context?.payload, entrySeverity: severity(for: entry))
         }
 
         if let bridgeInstrument = bridgeInstrument(for: entry) {
@@ -57,6 +57,7 @@ enum ActivityInstrumentResolver {
         forProperty property: String,
         from: JSONValue? = nil,
         to: JSONValue,
+        state: [String: JSONValue]? = nil,
         severity entrySeverity: ActivityInstrumentSeverity = .routine
     ) -> ActivityInstrument {
         let key = canonical(property)
@@ -71,7 +72,7 @@ enum ActivityInstrumentResolver {
             trend: trend(from: from, to: to),
             severity: entrySeverity == .routine ? propertySeverity : entrySeverity,
             variant: variant(for: key),
-            swatch: kind == .colour ? swatch(property: key, value: to) : nil
+            swatch: kind == .colour ? swatch(property: key, value: to, state: state) : nil
         )
     }
 
@@ -87,6 +88,7 @@ enum ActivityInstrumentResolver {
 
     private static func stateInstrument(
         for changes: [LogContext.StateChange],
+        payload: [String: JSONValue]?,
         entrySeverity: ActivityInstrumentSeverity
     ) -> ActivityInstrument {
         guard let primary = headline(of: changes) else {
@@ -96,6 +98,7 @@ enum ActivityInstrumentResolver {
             forProperty: primary.property,
             from: primary.from,
             to: primary.to,
+            state: payload,
             severity: entrySeverity
         )
     }
@@ -158,22 +161,14 @@ enum ActivityInstrumentResolver {
         }
     }
 
-    /// The colour a light was set to: an xy/hs/rgb object, a hex string,
-    /// or a colour temperature in mireds.
-    private static func swatch(property: String, value: JSONValue) -> Color? {
-        if property.contains("color_temp") || property.contains("colour_temp") {
-            return value.numberValue.map { LightDisplayColor.temperatureColor(mireds: $0) }
-        }
-        if value.object != nil {
-            return LightDisplayColor.resolve(colorValue: value, colorTemperature: nil, colorMode: nil)
-        }
-        guard let hex = value.stringValue?.trimmingCharacters(in: CharacterSet(charactersIn: "#")),
-              hex.count == 6, let rgb = UInt32(hex, radix: 16) else { return nil }
-        return Color(
-            red: Double((rgb >> 16) & 0xFF) / 255,
-            green: Double((rgb >> 8) & 0xFF) / 255,
-            blue: Double(rgb & 0xFF) / 255
-        )
+    /// The colour the light is actually showing, from the full state snapshot
+    /// the log entry carries, so split reports (`color.x` and `color.y`
+    /// arriving as separate changes) still draw the finished colour. Falls
+    /// back to the changed value itself. Both go through the same translator
+    /// the light controls use.
+    private static func swatch(property: String, value: JSONValue, state: [String: JSONValue]?) -> Color? {
+        state.flatMap(LightDisplayColor.resolve(state:))
+            ?? LightDisplayColor.color(property: property, value: value)
     }
 
     private static func normalized(value: JSONValue, property: String) -> Double {
