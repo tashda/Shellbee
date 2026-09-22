@@ -238,10 +238,22 @@ struct DeviceDetailView: View {
 
     @ViewBuilder
     private func genericExposeSection(device: Device, state: [String: JSONValue], send: @escaping (JSONValue) -> Void) -> some View {
-        Section {
-            ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
+        let hasPrimaryCard = ExposeCardView.hasPrimaryCard(device: device, state: state)
+        if hasPrimaryCard {
+            Section {
+                ExposeCardView(device: device, state: state, mode: .interactive, onSend: send,
+                               includesGenericRows: false)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+        }
+        // Typed cards own their features; only a sensor card leaves its
+        // writable settings to the generic rows, and a device with no typed
+        // card gets every row.
+        if !hasPrimaryCard {
+            GenericExposeSections(device: device, state: state, onSend: send)
+        } else if device.category == .sensor {
+            GenericExposeSections(device: device, state: state, writableOnly: true, onSend: send)
         }
     }
 

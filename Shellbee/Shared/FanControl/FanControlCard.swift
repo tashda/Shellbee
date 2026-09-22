@@ -95,14 +95,16 @@ struct FanControlCard: View {
     private var airQualityExpose: Expose? { context.extras.first { $0.property == "air_quality" } }
     private var hasAirSensors: Bool { airQualityExpose != nil || pm25Expose != nil }
 
+    /// Purifiers report -1 while the sensor isn't running; treat it as missing.
     private var pm25Value: Double? {
-        guard let p = pm25Expose?.property else { return nil }
-        return context.state[p]?.numberValue
+        guard let p = pm25Expose?.property, let v = context.state[p]?.numberValue, v >= 0 else { return nil }
+        return v
     }
     private var pm25Unit: String { pm25Expose?.unit ?? "µg/m³" }
     private var airQualityText: String? {
-        guard let p = airQualityExpose?.property else { return nil }
-        return context.state[p]?.stringValue
+        guard let p = airQualityExpose?.property,
+              let v = context.state[p]?.stringValue, v.lowercased() != "unknown" else { return nil }
+        return v
     }
 
     /// The single state-derived color that drives the hero gradient, eyebrow,
@@ -237,6 +239,7 @@ struct FanControlCard: View {
                     }
                     .pickerStyle(.menu)
                     .labelsHidden()
+                    .tint(.secondary)
                 }
             }
         } else {

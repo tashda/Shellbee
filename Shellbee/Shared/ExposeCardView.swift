@@ -7,6 +7,9 @@ struct ExposeCardView: View {
     let state: [String: JSONValue]
     let mode: CardDisplayMode
     var onSend: (JSONValue) -> Void = { _ in }
+    /// When false, the generic fallback rows are left out so the caller can
+    /// draw them as native List sections (`GenericExposeSections`).
+    var includesGenericRows: Bool = true
 
     var body: some View {
         switch device.category {
@@ -22,7 +25,7 @@ struct ExposeCardView: View {
         case .switchPlug:
             let switchContexts = SwitchControlContext.contexts(for: device, state: state)
             if switchContexts.isEmpty {
-                GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+                genericRows()
             } else {
                 VStack(spacing: DesignTokens.Spacing.lg) {
                     ForEach(switchContexts) { ctx in
@@ -36,23 +39,23 @@ struct ExposeCardView: View {
             if hasReadings && hasWritableExtras {
                 VStack(spacing: DesignTokens.Spacing.lg) {
                     SensorCard(device: device, state: state, mode: mode)
-                    GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend, writableOnly: true)
+                    genericRows(writableOnly: true)
                 }
             } else if hasReadings {
                 SensorCard(device: device, state: state, mode: mode)
             } else {
-                GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+                genericRows()
             }
         case .climate:
             if let ctx = ClimateControlContext(device: device, state: state) {
                 ClimateControlCard(context: ctx, mode: mode, onSend: onSend)
             } else {
-                GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+                genericRows()
             }
         case .cover:
             let coverContexts = CoverControlContext.contexts(for: device, state: state)
             if coverContexts.isEmpty {
-                GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+                genericRows()
             } else {
                 VStack(spacing: DesignTokens.Spacing.lg) {
                     ForEach(coverContexts) { ctx in
@@ -64,18 +67,41 @@ struct ExposeCardView: View {
             if let ctx = LockControlContext(device: device, state: state) {
                 LockControlCard(context: ctx, mode: mode, onSend: onSend)
             } else {
-                GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+                genericRows()
             }
         case .fan:
             if let ctx = FanControlContext(device: device, state: state) {
                 FanControlCard(context: ctx, mode: mode, onSend: onSend)
             } else {
-                GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+                genericRows()
             }
         case .remote:
             RemoteCard(device: device, state: state, mode: mode)
         case .other:
-            GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend)
+            genericRows()
+        }
+    }
+
+    @ViewBuilder
+    private func genericRows(writableOnly: Bool = false) -> some View {
+        if includesGenericRows {
+            GenericExposeCard(device: device, state: state, mode: mode, onSend: onSend, writableOnly: writableOnly)
+        }
+    }
+
+    /// Whether the device gets a typed control card, as opposed to only
+    /// generic rows.
+    static func hasPrimaryCard(device: Device, state: [String: JSONValue]) -> Bool {
+        switch device.category {
+        case .light: return !LightControlContext.contexts(for: device, state: state).isEmpty
+        case .switchPlug: return !SwitchControlContext.contexts(for: device, state: state).isEmpty
+        case .sensor: return SensorCard.hasReadings(device: device, state: state)
+        case .climate: return ClimateControlContext(device: device, state: state) != nil
+        case .cover: return !CoverControlContext.contexts(for: device, state: state).isEmpty
+        case .lock: return LockControlContext(device: device, state: state) != nil
+        case .fan: return FanControlContext(device: device, state: state) != nil
+        case .remote: return true
+        case .other: return false
         }
     }
 }

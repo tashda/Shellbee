@@ -191,6 +191,7 @@ struct ClimateControlCard: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
+                .tint(.secondary)
             }
         }
     }
