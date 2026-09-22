@@ -34,18 +34,9 @@ struct ExposeCardView: View {
                 }
             }
         case .sensor:
-            let hasReadings = SensorCard.hasReadings(device: device, state: state)
-            let hasWritableExtras = GenericExposeCard.hasWritableRows(device: device, state: state)
-            if hasReadings && hasWritableExtras {
-                VStack(spacing: DesignTokens.Spacing.lg) {
-                    SensorCard(device: device, state: state, mode: mode)
-                    genericRows(writableOnly: true)
-                }
-            } else if hasReadings {
-                SensorCard(device: device, state: state, mode: mode)
-            } else {
-                genericRows()
-            }
+            // Readings are native List sections (SensorSections), drawn by
+            // DeviceDetailView; only the generic rows fit in a card.
+            genericRows()
         case .climate:
             if let ctx = ClimateControlContext(device: device, state: state) {
                 ClimateControlCard(context: ctx, mode: mode, onSend: onSend)
@@ -95,7 +86,7 @@ struct ExposeCardView: View {
         switch device.category {
         case .light: return !LightControlContext.contexts(for: device, state: state).isEmpty
         case .switchPlug: return !SwitchControlContext.contexts(for: device, state: state).isEmpty
-        case .sensor: return SensorCard.hasReadings(device: device, state: state)
+        case .sensor: return false
         case .climate: return ClimateControlContext(device: device, state: state) != nil
         case .cover: return !CoverControlContext.contexts(for: device, state: state).isEmpty
         case .lock: return LockControlContext(device: device, state: state) != nil

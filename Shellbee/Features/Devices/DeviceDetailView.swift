@@ -231,6 +231,10 @@ struct DeviceDetailView: View {
                 genericExposeSection(device: device, state: state, send: send)
             }
 
+        case .sensor where SensorSections.hasReadings(device: device, state: state):
+            SensorSections(device: device, state: state)
+            GenericExposeSections(device: device, state: state, writableOnly: true, onSend: send)
+
         default:
             genericExposeSection(device: device, state: state, send: send)
         }
@@ -247,13 +251,10 @@ struct DeviceDetailView: View {
                     .listRowBackground(Color.clear)
             }
         }
-        // Typed cards own their features; only a sensor card leaves its
-        // writable settings to the generic rows, and a device with no typed
-        // card gets every row.
+        // Typed cards own their features; a device with no typed card gets
+        // every row.
         if !hasPrimaryCard {
             GenericExposeSections(device: device, state: state, onSend: send)
-        } else if device.category == .sensor {
-            GenericExposeSections(device: device, state: state, writableOnly: true, onSend: send)
         }
     }
 

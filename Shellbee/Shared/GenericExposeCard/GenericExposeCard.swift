@@ -5,7 +5,7 @@ struct GenericExposeCard: View {
     let state: [String: JSONValue]
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
-    /// When true, only writable exposes are shown — used alongside SensorCard
+    /// When true, only writable exposes are shown — used alongside SensorSections
     /// so read-only readings (temperature, humidity, …) aren't duplicated.
     var writableOnly: Bool = false
 
@@ -125,7 +125,7 @@ struct GenericExposeCard: View {
     }
 
     /// Whether this device has any writable exposes worth showing alongside
-    /// (or instead of) a read-only SensorCard.
+    /// (or instead of) read-only SensorSections.
     static func hasWritableRows(device: Device, state: [String: JSONValue]) -> Bool {
         !rows(for: device, state: state, writableOnly: true).isEmpty
     }

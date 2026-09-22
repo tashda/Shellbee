@@ -1,119 +1,72 @@
 import SwiftUI
 
-struct SensorCard: View {
+/// A sensor's readings as native List sections: Readings, with when it
+/// last reported as the footer, then Diagnostics for the values z2m marks
+/// as diagnostic (device temperature, voltage, power outage count).
+/// Place inside an inset-grouped `List`.
+struct SensorSections: View {
     let device: Device
     let state: [String: JSONValue]
-    let mode: CardDisplayMode
 
     private static let skipKeys: Set<String> = ["linkquality", "last_seen", "update", "update_available", "battery", "battery_low"]
+    /// Diagnostic properties for devices whose definitions predate z2m's
+    /// `category` field.
+    private static let fallbackDiagnostics: Set<String> = ["device_temperature", "power_outage_count", "voltage"]
 
-    @ViewBuilder
     var body: some View {
-        if mode == .snapshot {
-            snapshotContent
-        } else {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                CardHeader(
-                    systemImage: "sensor.fill",
-                    title: "Sensor",
-                    value: DeviceStatus.lastSeenText(state.lastSeen).map { "Updated \($0)" },
-                    tint: .blue
-                )
-                let readings = makeReadings()
-                if readings.isEmpty {
-                    Text("No sensor data available")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    readingsGrid(readings)
+        let readings = Self.readings(device: device, state: state)
+        let primary = readings.filter { !isDiagnostic($0) }
+        let diagnostics = readings.filter(isDiagnostic)
+
+        if !primary.isEmpty {
+            Section {
+                ForEach(primary, id: \.property) { SensorReadingRow(reading: $0) }
+            } header: {
+                Text("Readings")
+            } footer: {
+                if let updated = DeviceStatus.lastSeenText(state.lastSeen) {
+                    Text("Updated \(updated)")
                 }
             }
-            .cardSurface()
         }
-    }
-
-    // MARK: - Snapshot
-
-    /// Compact log-row rendering. Sensor glyph + "Sensor" + 1–3 reading
-    /// summary. Fits the same scale as the device card stacked above it
-    /// in the log detail view.
-    private var snapshotContent: some View {
-        CompactSnapshotCard {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-                Image(systemName: "sensor.fill")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.tint)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Sensor")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    let summary = snapshotSummary
-                    if !summary.isEmpty {
-                        Text(summary)
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    } else {
-                        Text("No data")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-
-                Spacer(minLength: DesignTokens.Spacing.sm)
+        if !diagnostics.isEmpty {
+            Section("Diagnostics") {
+                ForEach(diagnostics, id: \.property) { SensorReadingRow(reading: $0) }
             }
         }
     }
 
-    /// First three readings as `value · value · value`. The snapshot row
-    /// is one line, so we cap at three and let the device-detail screen
-    /// show the full grid.
-    private var snapshotSummary: String {
-        let readings = makeReadings().prefix(3)
-        return readings.map(\.displayValue).joined(separator: " · ")
-    }
-
-    private func readingsGrid(_ readings: [SensorReading]) -> some View {
-        let columns = [
-            GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
-            GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
-        ]
-        return LazyVGrid(columns: columns,
-                         alignment: .leading,
-                         spacing: DesignTokens.Spacing.xl) {
-            ForEach(readings, id: \.label) { reading in
-                SensorReadingTile(reading: reading)
-            }
-        }
+    private func isDiagnostic(_ reading: SensorReading) -> Bool {
+        reading.expose.isDiagnostic || (reading.expose.category == nil && Self.fallbackDiagnostics.contains(reading.property))
     }
 
     static func hasReadings(device: Device, state: [String: JSONValue]) -> Bool {
-        let flat = device.definition?.exposes.flatMap { [$0] + ($0.features ?? []) } ?? []
-        return flat.contains { expose in
-            let prop = expose.property ?? expose.name ?? ""
-            guard !skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return false }
-            guard expose.type == "numeric" || expose.type == "binary" else { return false }
-            return state[prop] != nil
-        }
+        !readings(device: device, state: state).isEmpty
     }
 
-    private func makeReadings() -> [SensorReading] {
-        let exposes = device.definition?.exposes ?? []
-        let flat = exposes.flattened
-        return flat.compactMap { expose in
+    private static func readings(device: Device, state: [String: JSONValue]) -> [SensorReading] {
+        (device.definition?.exposes ?? []).flattened.compactMap { expose in
             let prop = expose.property ?? expose.name ?? ""
-            guard !Self.skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return nil }
+            guard !skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return nil }
             guard expose.type == "numeric" || expose.type == "binary" else { return nil }
             guard let value = state[prop] else { return nil }
             return SensorReading(expose: expose, property: prop, value: value)
         }
     }
+}
 
+private struct SensorReadingRow: View {
+    let reading: SensorReading
+
+    var body: some View {
+        LabeledContent {
+            Text(reading.displayValue)
+                .monospacedDigit()
+                .foregroundStyle(reading.valueColor == .primary ? .secondary : reading.valueColor)
+        } label: {
+            Text(reading.label)
+        }
+    }
 }
 
 struct SensorReading {
@@ -137,53 +90,6 @@ struct SensorReading {
             return expose.unit.map { "\(formatted) \($0)" } ?? formatted
         default:
             return value.stringified
-        }
-    }
-
-    var numericDisplayValue: String {
-        switch expose.type {
-        case "binary":
-            return binaryLabel(isTrue: isTrue)
-        case "numeric":
-            guard let num = value.numberValue else { return value.stringified }
-            return num.truncatingRemainder(dividingBy: 1) == 0
-                ? String(format: "%.0f", num)
-                : String(format: "%.1f", num)
-        default:
-            return value.stringified
-        }
-    }
-
-    var unitDisplay: String? {
-        guard expose.type == "numeric" else { return nil }
-        return expose.unit
-    }
-
-    var icon: String {
-        switch property {
-        case "temperature": return "thermometer.medium"
-        case "humidity": return "humidity"
-        case "pressure": return "gauge.medium"
-        case "co2": return "aqi.medium"
-        case "carbon_monoxide": return "aqi.high"
-        case "pm25", "pm10": return "aqi.high"
-        case "illuminance", "illuminance_lux": return "sun.max"
-        case "motion", "occupancy", "presence": return "figure.walk"
-        case "moving": return "arrow.left.arrow.right"
-        case "contact": return isTrue ? "door.sliding.left.hand.closed" : "door.sliding.left.hand.open"
-        case "window_open": return isTrue ? "window.vertical.open" : "window.vertical.closed"
-        case "water_leak": return "drop.triangle"
-        case "smoke": return "smoke"
-        case "gas": return "exclamationmark.triangle"
-        case "vibration": return "waveform.path"
-        case "voltage": return "bolt"
-        case "current": return "bolt.ring.closed"
-        case "power": return "plug"
-        case "energy": return "chart.line.uptrend.xyaxis"
-        case "tamper": return "lock.open.trianglebadge.exclamationmark"
-        case "alarm", "sos": return "exclamationmark.triangle.fill"
-        case "child_lock": return "lock.fill"
-        default: return "sensor"
         }
     }
 
@@ -238,58 +144,13 @@ struct SensorReading {
 
 }
 
-private struct SensorReadingTile: View {
-    let reading: SensorReading
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Label(reading.label, systemImage: reading.icon)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .labelStyle(.titleAndIcon)
-                .symbolRenderingMode(.hierarchical)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                Text(reading.numericDisplayValue)
-                    .font(DesignTokens.Typography.featureTileValue)
-                    .monospacedDigit()
-                    .foregroundStyle(reading.valueColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
-                if let unit = reading.unitDisplay {
-                    Text(unit)
-                        .font(DesignTokens.Typography.featureTileUnit)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-    }
-}
-
 #Preview {
-    ScrollView {
-        VStack(spacing: DesignTokens.Spacing.lg) {
-            SensorCard(device: .preview, state: [
-                "temperature": .double(21.5),
-                "humidity": .double(55),
-                "occupancy": .bool(true),
-                "contact": .bool(false)
-            ], mode: .interactive)
-            SensorCard(device: .preview, state: [
-                "temperature": .double(21.5),
-                "humidity": .double(55),
-                "contact": .bool(true),
-                "water_leak": .bool(true),
-                "motion": .bool(true),
-                "tamper": .bool(false)
-            ], mode: .snapshot)
-        }
-        .padding()
+    List {
+        SensorSections(device: .preview, state: [
+            "temperature": .double(21.5),
+            "humidity": .double(55),
+            "occupancy": .bool(false),
+            "water_leak": .bool(true)
+        ])
     }
-    .background(Color(.systemGroupedBackground))
 }
