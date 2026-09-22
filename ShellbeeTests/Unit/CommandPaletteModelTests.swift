@@ -54,9 +54,16 @@ final class CommandPaletteModelTests: XCTestCase {
         XCTAssertEqual(navigation.map(\.title), AppTab.keyboardSections.map(\.title))
     }
 
+    func testNetworkMapCommandsAreHiddenWhenUnsupported() {
+        let model = makeModel(includesNetworkMap: false)
+
+        XCTAssertFalse(model.items.contains { $0.category == .networkMap })
+    }
+
     private func makeModel(
         secondBridgeConnected: Bool = true,
-        includeDuplicate: Bool = false
+        includeDuplicate: Bool = false,
+        includesNetworkMap: Bool = true
     ) -> CommandPaletteModel {
         let bridges = [
             CommandPaletteBridge(id: bridgeA, name: "Home", isConnected: true, isPermitJoinOpen: false),
@@ -76,6 +83,11 @@ final class CommandPaletteModelTests: XCTestCase {
                 device: DeviceFixture.sensor(ieee: "0x00158d0007654321", name: "Office Sensor")
             ))
         }
-        return CommandPaletteModel(bridges: bridges, devices: devices, groups: [])
+        return CommandPaletteModel(
+            bridges: bridges,
+            devices: devices,
+            groups: [],
+            includesNetworkMap: includesNetworkMap
+        )
     }
 }
