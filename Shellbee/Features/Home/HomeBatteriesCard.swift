@@ -82,8 +82,9 @@ struct HomeBatteriesCard: View {
             Text("\(reading.percent) %")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(reading.isLow ? .red : .primary)
-                .frame(width: DesignTokens.Size.batteryPercentColumn, alignment: .trailing)
+                .frame(minWidth: DesignTokens.Size.batteryPercentColumn, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
     }

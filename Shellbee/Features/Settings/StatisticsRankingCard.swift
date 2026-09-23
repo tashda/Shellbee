@@ -4,6 +4,7 @@ import SwiftUI
 struct StatisticsRankingCard: View {
     let title: String
     let systemImage: String
+    var assetImage: String? = nil
     let items: [DeviceStatisticsSnapshot.Count]
     let distinctCount: Int
     let noun: String
@@ -23,11 +24,19 @@ struct StatisticsRankingCard: View {
                     hasMore: items.count > Self.visibleCount,
                     itemName: noun
                 ) {
-                    CardHeader(
-                        systemImage: systemImage,
-                        title: title,
-                        value: "\(distinctCount) \(noun)"
-                    )
+                    if let assetImage {
+                        CardHeader(
+                            assetImage: assetImage,
+                            title: title,
+                            value: "\(distinctCount) \(noun)"
+                        )
+                    } else {
+                        CardHeader(
+                            systemImage: systemImage,
+                            title: title,
+                            value: "\(distinctCount) \(noun)"
+                        )
+                    }
                 }
                 ExpandableCardRows(
                     isExpanded: $isExpanded,

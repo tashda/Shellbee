@@ -27,7 +27,7 @@ struct HomeVendorsCard: View {
                         itemName: "vendors"
                     ) {
                         CardHeader(
-                            systemImage: "building.2",
+                            assetImage: "shellbee.vendors",
                             title: "Vendors",
                             value: makers.isEmpty ? nil : "\(makers.count) maker\(makers.count == 1 ? "" : "s")"
                         )

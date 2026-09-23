@@ -49,7 +49,8 @@ struct DeviceStatisticsView: View {
                     powerSourcesCard
                     StatisticsRankingCard(
                         title: "Vendors",
-                        systemImage: "building.2",
+                        systemImage: "",
+                        assetImage: "shellbee.vendors",
                         items: stats.vendors,
                         distinctCount: stats.distinctVendors,
                         noun: "makers"

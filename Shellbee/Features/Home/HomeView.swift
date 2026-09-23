@@ -347,60 +347,44 @@ struct HomeView: View {
 
     @ViewBuilder
     private var optionalCards: some View {
-        if showsNetworkCard {
-            cardSection {
-                HomeNetworkCard(snapshot: snapshot) {
-                    sceneNavigation.selectedTab = .networkMap
-                }
-            }
-        }
-        if showsLinkQualityCard {
-            cardSection {
-                HomeLinkQualityCard(snapshot: snapshot) {
-                    showDevices(filter: .weakSignal)
-                }
-            }
-        }
-        if showsBatteriesCard {
-            cardSection {
-                HomeBatteriesCard(snapshot: snapshot)
-            }
-        }
-        if showsVendorsCard {
-            cardSection {
-                // Merged across bridges, like every other card here. The
-                // statistics screen it opens is per-bridge by design, so it
-                // opens on the selected one.
-                HomeVendorsCard(devices: environment.allDevices.map(\.device)) {
-                    showingStatistics = true
-                }
-            }
-        }
-        if showsBridgeHealthCard {
-            if bridgeCardEntries.count >= 2 {
-                cardSection {
-                    HomeBridgeHealthGroupCard(entries: bridgeCardEntries) { bridgeID in
-                        presentedSheet = .bridge(bridgeID)
+        if showsNetworkCard || showsLinkQualityCard || showsBatteriesCard
+            || showsVendorsCard || (showsBridgeHealthCard && !bridgeCardEntries.isEmpty) {
+            Section {
+                VStack(spacing: DesignTokens.Spacing.xxl) {
+                    if showsNetworkCard {
+                        HomeNetworkCard(snapshot: snapshot) {
+                            sceneNavigation.selectedTab = .networkMap
+                        }
+                    }
+                    if showsLinkQualityCard {
+                        HomeLinkQualityCard(snapshot: snapshot) {
+                            showDevices(filter: .weakSignal)
+                        }
+                    }
+                    if showsBatteriesCard {
+                        HomeBatteriesCard(snapshot: snapshot)
+                    }
+                    if showsVendorsCard {
+                        HomeVendorsCard(devices: environment.allDevices.map(\.device)) {
+                            showingStatistics = true
+                        }
+                    }
+                    if showsBridgeHealthCard {
+                        if bridgeCardEntries.count >= 2 {
+                            HomeBridgeHealthGroupCard(entries: bridgeCardEntries) { bridgeID in
+                                presentedSheet = .bridge(bridgeID)
+                            }
+                        } else if let entry = bridgeCardEntries.first {
+                            HomeBridgeHealthCard(entry: entry) {
+                                presentedSheet = .bridge(entry.id)
+                            }
+                        }
                     }
                 }
-            } else if let entry = bridgeCardEntries.first {
-                cardSection {
-                    HomeBridgeHealthCard(entry: entry) {
-                        presentedSheet = .bridge(entry.id)
-                    }
-                }
-            }
-        }
-    }
-
-    /// A card sits in its own section so the List draws no row chrome
-    /// around it — the card is the surface.
-    private func cardSection<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        Section {
-            content()
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+            }
         }
     }
 

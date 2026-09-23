@@ -79,12 +79,15 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
                 ForEach(Array(items.prefix(previewCount).enumerated()), id: \.element.id) { index, item in
                     row(item, index)
                         .frame(height: rowHeight)
+                        .blur(radius: !isExpanded && !extra.isEmpty
+                            && index == min(items.count, previewCount) - 1
+                                ? DesignTokens.Size.cardPreviewBlurRadius : 0)
                 }
             }
 
             if !extra.isEmpty {
                 ScrollView(.vertical) {
-                    LazyVStack(spacing: spacing) {
+                    VStack(spacing: spacing) {
                         ForEach(Array(extra.enumerated()), id: \.element.id) { index, item in
                             row(item, index + previewCount)
                                 .frame(height: rowHeight)
@@ -102,7 +105,7 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
     }
 }
 
-/// The fade and centered chevron occupy the card's full bottom edge.
+/// The fade crosses the final preview row while the centered chevron remains tappable.
 struct ExpandableCardSurface<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var isExpanded: Bool
@@ -128,6 +131,26 @@ struct ExpandableCardSurface<Content: View>: View {
             .cardSurface()
             .overlay(alignment: .bottom) {
                 if hasMore {
+                    Rectangle()
+                        .fill(Color(.secondarySystemGroupedBackground))
+                        .frame(height: DesignTokens.Size.cardRevealHeight)
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0),
+                                    .init(color: .white.opacity(0.7), location: 0.5),
+                                    .init(color: .white, location: 1),
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .opacity(isExpanded ? 0 : 1)
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if hasMore {
                     Button {
                         CardExpansion.toggle($isExpanded, reduceMotion: reduceMotion)
                     } label: {
@@ -136,21 +159,8 @@ struct ExpandableCardSurface<Content: View>: View {
                             .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(isExpanded ? 180 : 0))
                             .frame(maxWidth: .infinity)
-                            .frame(height: DesignTokens.Size.cardRevealHeight)
+                            .frame(height: DesignTokens.Size.cardRevealChevronHeight)
                             .contentShape(Rectangle())
-                    }
-                    .background {
-                        if !isExpanded {
-                            Rectangle()
-                                .fill(.ultraThinMaterial)
-                                .mask(
-                                    LinearGradient(
-                                        colors: [.clear, .white],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                        }
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("card-expand-footer-\(itemName)")

@@ -21,13 +21,20 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
             app.swipeUp()
         }
         XCTAssertTrue(header.isHittable, "Batteries card did not become visible")
+        let headerTop = header.frame.minY
         let collapsed = XCTAttachment(screenshot: app.screenshot())
         collapsed.name = "Batteries collapsed"
         collapsed.lifetime = .keepAlways
         add(collapsed)
         header.tap()
         XCTAssertTrue(app.buttons["card-expand-footer-batteries"].exists)
+        let opening = XCTAttachment(screenshot: app.screenshot())
+        opening.name = "Batteries opening"
+        opening.lifetime = .keepAlways
+        add(opening)
         Thread.sleep(forTimeInterval: 1)
+        XCTAssertLessThan(abs(header.frame.minY - headerTop), 24,
+                          "Expanding the card moved its header instead of growing below it")
         let expanded = XCTAttachment(screenshot: app.screenshot())
         expanded.name = "Batteries expanded"
         expanded.lifetime = .keepAlways
@@ -39,7 +46,9 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
             app.swipeUp()
         }
         statisticsButton.tapWhenReady()
-        XCTAssertTrue(app.navigationBars["Device Statistics"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Statistics for All"].waitForExistence(timeout: 5))
+        let statisticsOpened = app.navigationBars["Device Statistics"].waitForExistence(timeout: 5)
+        let allBridgesAvailable = app.buttons["Statistics for All"].waitForExistence(timeout: 5)
+        XCTAssertTrue(statisticsOpened)
+        XCTAssertTrue(allBridgesAvailable)
     }
 }
