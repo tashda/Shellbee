@@ -2,18 +2,27 @@ import SwiftUI
 
 struct AppAppearanceSettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
+    @AppStorage(ShellbeeTheme.storageKey) private var themeRawValue = ShellbeeTheme.defaultTheme.rawValue
     @AppStorage(BridgeGradientMode.storageKey) private var indicatorModeRaw = BridgeGradientMode.default.rawValue
 
     var body: some View {
         Form {
             Section {
-                Picker("Theme", selection: $appearanceMode) {
+                Picker("Appearance", selection: $appearanceMode) {
                     Text("System").tag(AppearanceMode.system)
                     Text("Light").tag(AppearanceMode.light)
                     Text("Dark").tag(AppearanceMode.dark)
                 }
+                Picker("Color theme", selection: $themeRawValue) {
+                    ForEach(ShellbeeTheme.allCases, id: \.self) { theme in
+                        Text(theme.displayName).tag(theme.rawValue)
+                    }
+                }
+                .tint(.secondary)
             } header: {
                 Text("Theme")
+            } footer: {
+                Text("Color themes currently change the Home background and accent.")
             }
 
             Section("Home") {
