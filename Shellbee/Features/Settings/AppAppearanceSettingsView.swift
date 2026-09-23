@@ -13,12 +13,13 @@ struct AppAppearanceSettingsView: View {
                     Text("Light").tag(AppearanceMode.light)
                     Text("Dark").tag(AppearanceMode.dark)
                 }
-                Picker("Color theme", selection: $themeRawValue) {
-                    ForEach(ShellbeeTheme.allCases, id: \.self) { theme in
-                        Text(theme.displayName).tag(theme.rawValue)
+                NavigationLink {
+                    HomeThemePickerView()
+                } label: {
+                    LabeledContent("Color theme") {
+                        Text(ShellbeeTheme.stored(themeRawValue).displayName)
                     }
                 }
-                .tint(.secondary)
             } header: {
                 Text("Theme")
             } footer: {
