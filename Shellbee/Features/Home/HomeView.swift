@@ -150,6 +150,11 @@ struct HomeView: View {
                 activitySection
             }
             .listStyle(.insetGrouped)
+            .transaction { transaction in
+                if #available(iOS 18.0, *) {
+                    transaction.scrollContentOffsetAdjustmentBehavior = .disabled
+                }
+            }
             .navigationDestination(isPresented: $showingStatistics) {
                 if let bridgeID = selectedBridgeID {
                     DeviceStatisticsView(bridgeID: bridgeID, defaultsToAllBridges: true)
@@ -350,42 +355,45 @@ struct HomeView: View {
         if showsNetworkCard || showsLinkQualityCard || showsBatteriesCard
             || showsVendorsCard || (showsBridgeHealthCard && !bridgeCardEntries.isEmpty) {
             Section {
-                VStack(spacing: DesignTokens.Spacing.xxl) {
-                    if showsNetworkCard {
-                        HomeNetworkCard(snapshot: snapshot) {
-                            sceneNavigation.selectedTab = .networkMap
-                        }
-                    }
-                    if showsLinkQualityCard {
-                        HomeLinkQualityCard(snapshot: snapshot) {
-                            showDevices(filter: .weakSignal)
-                        }
-                    }
-                    if showsBatteriesCard {
-                        HomeBatteriesCard(snapshot: snapshot)
-                    }
-                    if showsVendorsCard {
-                        HomeVendorsCard(devices: environment.allDevices.map(\.device)) {
-                            showingStatistics = true
-                        }
-                    }
-                    if showsBridgeHealthCard {
-                        if bridgeCardEntries.count >= 2 {
-                            HomeBridgeHealthGroupCard(entries: bridgeCardEntries) { bridgeID in
-                                presentedSheet = .bridge(bridgeID)
-                            }
-                        } else if let entry = bridgeCardEntries.first {
-                            HomeBridgeHealthCard(entry: entry) {
-                                presentedSheet = .bridge(entry.id)
-                            }
-                        }
+                if showsNetworkCard {
+                    optionalCardRow(HomeNetworkCard(snapshot: snapshot) {
+                        sceneNavigation.selectedTab = .networkMap
+                    })
+                }
+                if showsLinkQualityCard {
+                    optionalCardRow(HomeLinkQualityCard(snapshot: snapshot) {
+                        showDevices(filter: .weakSignal)
+                    })
+                }
+                if showsBatteriesCard {
+                    optionalCardRow(HomeBatteriesCard(snapshot: snapshot))
+                }
+                if showsVendorsCard {
+                    optionalCardRow(HomeVendorsCard(devices: environment.allDevices.map(\.device)) {
+                        showingStatistics = true
+                    })
+                }
+                if showsBridgeHealthCard {
+                    if bridgeCardEntries.count >= 2 {
+                        optionalCardRow(HomeBridgeHealthGroupCard(entries: bridgeCardEntries) { bridgeID in
+                            presentedSheet = .bridge(bridgeID)
+                        })
+                    } else if let entry = bridgeCardEntries.first {
+                        optionalCardRow(HomeBridgeHealthCard(entry: entry) {
+                            presentedSheet = .bridge(entry.id)
+                        })
                     }
                 }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
             }
         }
+    }
+
+    private func optionalCardRow<Content: View>(_ content: Content) -> some View {
+        content
+            .padding(.bottom, DesignTokens.Spacing.xxl)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
     }
 
     @ViewBuilder

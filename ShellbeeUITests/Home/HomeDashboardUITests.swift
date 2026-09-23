@@ -40,6 +40,9 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
         expanded.lifetime = .keepAlways
         add(expanded)
         header.tap()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertLessThan(abs(header.frame.minY - headerTop), 24,
+                          "Collapsing the card moved its header")
 
         let preview = app.buttons["card-expand-preview-batteries"]
         for _ in 0..<8 where !preview.isHittable {
@@ -56,6 +59,9 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
         XCTAssertLessThan(abs(header.frame.minY - previewHeaderTop), 24,
                           "Tapping the faded row moved the card upward")
         preview.tap()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertLessThan(abs(header.frame.minY - previewHeaderTop), 24,
+                          "Collapsing from the faded row moved the card header")
 
         let statisticsButton = app.buttons["Open Device Statistics"]
         for _ in 0..<8 where !statisticsButton.isHittable {

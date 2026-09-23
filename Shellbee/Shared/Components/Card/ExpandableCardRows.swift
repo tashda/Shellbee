@@ -2,12 +2,16 @@ import SwiftUI
 
 @MainActor
 private enum CardExpansion {
-    static func toggle(_ expanded: Binding<Bool>) {
+    static func withoutAnimation(_ changes: () -> Void) {
         var transaction = Transaction(animation: nil)
         if #available(iOS 18.0, *) {
             transaction.scrollContentOffsetAdjustmentBehavior = .disabled
         }
-        withTransaction(transaction) {
+        withTransaction(transaction, changes)
+    }
+
+    static func toggle(_ expanded: Binding<Bool>) {
+        withoutAnimation {
             expanded.wrappedValue.toggle()
         }
     }
@@ -54,6 +58,8 @@ struct ExpandableCardHeader<Content: View>: View {
 struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var isExpanded: Bool
+    @State private var revealHeight: CGFloat = 0
+    @State private var revealOpacity = 0.0
     let items: [Item]
     let itemName: String
     let previewCount: Int
@@ -126,16 +132,56 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
                         ForEach(Array(extra.enumerated()), id: \.element.id) { index, item in
                             row(item, index + previewCount)
                                 .frame(height: rowHeight)
+                                .opacity(index < 12 ? revealOpacity : 1)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, spacing)
                 }
-                .frame(height: isExpanded ? expandedHeight : 0)
-                .animation(reduceMotion ? nil : .smooth(duration: 0.42), value: isExpanded)
+                .frame(height: revealHeight)
                 .clipped()
                 .accessibilityHidden(!isExpanded)
+            }
+        }
+        .onAppear {
+            if isExpanded {
+                revealHeight = expandedHeight
+                revealOpacity = 1
+            }
+        }
+        .onChange(of: isExpanded) { _, expanded in
+            animateReveal(expanded)
+        }
+        .transaction { transaction in
+            if #available(iOS 18.0, *) {
+                transaction.scrollContentOffsetAdjustmentBehavior = .disabled
+            }
+        }
+    }
+
+    private func animateReveal(_ expanded: Bool) {
+        if reduceMotion {
+            CardExpansion.withoutAnimation {
+                revealHeight = expanded ? expandedHeight : 0
+                revealOpacity = expanded ? 1 : 0
+            }
+            return
+        }
+
+        if expanded {
+            withAnimation(.easeIn(duration: 0.85)) {
+                revealHeight = expandedHeight
+            }
+            withAnimation(.easeOut(duration: 0.35)) {
+                revealOpacity = 1
+            }
+        } else {
+            withAnimation(.easeOut(duration: 0.72)) {
+                revealHeight = 0
+            }
+            withAnimation(.easeIn(duration: 0.28).delay(0.32)) {
+                revealOpacity = 0
             }
         }
     }
