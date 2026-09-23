@@ -9,7 +9,7 @@ struct ActivityFeedView: View {
     let selection: Binding<LogsPaneRoute?>?
     @State private var expandedStackID: String?
     @State private var presentedEntry: PresentedEntry?
-    @State private var showsClearAttentionConfirmation = false
+    @State private var isClearAttentionArmed = false
     @State private var liveFeed = LiveFeedState<ActivityFeedSection>()
     @AppStorage(ActivityAttentionClearance.storageKey) private var clearanceRaw = ""
 
@@ -62,20 +62,11 @@ struct ActivityFeedView: View {
         .sheet(item: $presentedEntry) { presented in
             ActivityLogSheet(route: presented.route)
         }
-        .confirmationDialog(
-            "Clear Needs Attention?",
-            isPresented: $showsClearAttentionConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Clear All", role: .destructive) {
-                let bridgeIDs = Set(feedSections()
-                    .first(where: { $0.kind == .needsAttention })?
-                    .stacks
-                    .map(\.bridgeID) ?? [])
-                updateClearance { $0.clear(bridgeIDs: bridgeIDs) }
-            }
-        } message: {
-            Text("These events will move to Recent. No log data is deleted.")
+        .task(id: isClearAttentionArmed) {
+            guard isClearAttentionArmed else { return }
+            try? await Task.sleep(for: .seconds(DesignTokens.Duration.activityClearConfirmWindow))
+            guard !Task.isCancelled else { return }
+            withAnimation(.smooth) { isClearAttentionArmed = false }
         }
     }
 
@@ -88,12 +79,27 @@ struct ActivityFeedView: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             if section.kind == .needsAttention {
-                Button("Clear All", systemImage: "xmark") {
-                    showsClearAttentionConfirmation = true
+                Button {
+                    if isClearAttentionArmed {
+                        let bridgeIDs = Set(section.stacks.map(\.bridgeID))
+                        withAnimation(.smooth) { isClearAttentionArmed = false }
+                        updateClearance { $0.clear(bridgeIDs: bridgeIDs) }
+                    } else {
+                        withAnimation(.smooth) { isClearAttentionArmed = true }
+                    }
+                } label: {
+                    HStack(spacing: DesignTokens.Spacing.xs) {
+                        Image(systemName: "xmark")
+                            .contentTransition(.symbolEffect(.replace))
+                        if isClearAttentionArmed {
+                            Text("Clear all")
+                                .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
+                        }
+                    }
                 }
                 .font(.subheadline.weight(.semibold))
                 .glassButtonStyleIfAvailable()
-                .accessibilityLabel("Clear Needs Attention")
+                .accessibilityLabel(isClearAttentionArmed ? "Clear all needs attention" : "Clear needs attention")
             }
         }
         .padding(.horizontal, DesignTokens.Spacing.xs)

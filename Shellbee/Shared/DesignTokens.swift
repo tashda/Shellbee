@@ -437,7 +437,7 @@ nonisolated enum DesignTokens {
         static let networkMapStatusRefresh: Double = 1
         static let hubAnimation: Double = 0.36
         static let liveActivitySuccess: Double = 3
-        /// How long the Needs Attention ✕ waits in its "Clear" state.
+        /// How long the Needs Attention ✕ stays expanded as "Clear all".
         static let activityClearConfirmWindow: Double = 3
         /// How long a cover keeps offering Stop after Open or Close is
         /// tapped, for motors that never report OPENING/CLOSING.
