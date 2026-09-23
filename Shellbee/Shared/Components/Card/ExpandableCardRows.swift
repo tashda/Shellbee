@@ -49,8 +49,8 @@ struct ExpandableCardHeader<Content: View>: View {
     }
 }
 
-/// Keeps a card's first rows fixed while a bounded viewport reveals the rest.
-/// Only the extra rows' viewport animates, keeping the List row anchored.
+/// Keeps a card's first rows fixed while revealing the rest in the page's scroll view.
+/// Only the extra rows' viewport animates, keeping the card header anchored.
 struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var isExpanded: Bool
@@ -65,12 +65,9 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
     private var finalPreviewIndex: Int { min(items.count, previewCount) - 1 }
 
     private var expandedHeight: CGFloat {
-        min(
-            CGFloat(extra.count) * rowHeight
-                + CGFloat(max(extra.count - 1, 0)) * spacing
-                + spacing,
-            DesignTokens.Size.cardExpandedMaxHeight
-        )
+        CGFloat(extra.count) * rowHeight
+            + CGFloat(max(extra.count - 1, 0)) * spacing
+            + spacing
     }
 
     var body: some View {
@@ -83,13 +80,16 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
                         } label: {
                             row(item, index)
                                 .frame(height: rowHeight)
-                                .blur(radius: isExpanded ? 0 : DesignTokens.Size.cardPreviewBlurRadius)
                                 .overlay {
-                                    Rectangle()
-                                        .fill(Color(.secondarySystemGroupedBackground))
+                                    row(item, index)
+                                        .frame(height: rowHeight)
+                                        .blur(radius: DesignTokens.Size.cardPreviewBlurRadius)
                                         .mask(
                                             LinearGradient(
-                                                colors: [.clear, .white.opacity(0.8)],
+                                                stops: [
+                                                    .init(color: .clear, location: 0),
+                                                    .init(color: .white, location: 1),
+                                                ],
                                                 startPoint: .top,
                                                 endPoint: .bottom
                                             )
@@ -97,6 +97,16 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
                                         .opacity(isExpanded ? 0 : 1)
                                         .allowsHitTesting(false)
                                 }
+                                .mask(
+                                    LinearGradient(
+                                        stops: [
+                                            .init(color: .white, location: 0),
+                                            .init(color: .white.opacity(isExpanded ? 1 : 0.12), location: 1),
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
                                 .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isExpanded)
                                 .contentShape(Rectangle())
                         }
@@ -111,20 +121,20 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
             }
 
             if !extra.isEmpty {
-                ScrollView(.vertical) {
+                GeometryReader { _ in
                     VStack(spacing: spacing) {
                         ForEach(Array(extra.enumerated()), id: \.element.id) { index, item in
                             row(item, index + previewCount)
                                 .frame(height: rowHeight)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, spacing)
                 }
                 .frame(height: isExpanded ? expandedHeight : 0)
                 .animation(reduceMotion ? nil : .smooth(duration: 0.42), value: isExpanded)
                 .clipped()
-                .scrollDisabled(!isExpanded || expandedHeight < DesignTokens.Size.cardExpandedMaxHeight)
-                .scrollIndicators(isExpanded ? .visible : .hidden)
                 .accessibilityHidden(!isExpanded)
             }
         }

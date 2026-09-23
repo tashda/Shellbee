@@ -77,5 +77,8 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
         Thread.sleep(forTimeInterval: 1)
         XCTAssertLessThan(abs(makersHeader.frame.minY - makersTop), 24,
                           "Expanding Vendors moved its header upward")
+        app.swipeUp()
+        XCTAssertLessThan(makersHeader.frame.minY, makersTop - 40,
+                          "Scrolling expanded Vendors should move the whole page")
     }
 }

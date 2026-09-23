@@ -54,7 +54,6 @@ nonisolated enum DesignTokens {
         static let linkQualityChart: CGFloat = 92
         static let linkQualityBarMinimum: CGFloat = 3
         static let cardPreviewBlurRadius: CGFloat = 2
-        static let cardExpandedMaxHeight: CGFloat = 360
         static let dashboardCompactRow: CGFloat = 32
         /// Right-aligned percentage column in the Batteries card.
         static let batteryPercentColumn: CGFloat = 56
