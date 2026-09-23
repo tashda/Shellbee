@@ -65,4 +65,32 @@ final class DeviceStatisticsSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.distinctVendors, 2)
         XCTAssertEqual(snapshot.distinctModels, 3)
     }
+
+    func testAllBridgesKeepsSameNamedDevicesAndWeightsLinkQuality() {
+        let first = DeviceFixture.light(name: "Hall Light", vendor: "Acme")
+        let second = DeviceFixture.light(ieee: "0xB", name: "Hall Light", vendor: "Acme")
+        let third = DeviceFixture.sensor(name: "Door Sensor")
+
+        let primary = DeviceStatisticsSnapshot(
+            devices: [first],
+            availability: ["Hall Light": true],
+            states: ["Hall Light": ["linkquality": .int(200)]]
+        )
+        let secondary = DeviceStatisticsSnapshot(
+            devices: [second, third],
+            availability: ["Hall Light": false, "Door Sensor": true],
+            states: [
+                "Hall Light": ["linkquality": .int(50)],
+                "Door Sensor": ["linkquality": .int(100)],
+            ]
+        )
+
+        let all = DeviceStatisticsSnapshot(merging: [primary, secondary])
+
+        XCTAssertEqual(all.totalDevices, 3)
+        XCTAssertEqual(all.onlineDevices, 2)
+        XCTAssertEqual(all.offlineDevices, 1)
+        XCTAssertEqual(all.averageLinkQuality, 116)
+        XCTAssertEqual(all.vendors.first(where: { $0.title == "Acme" })?.count, 2)
+    }
 }

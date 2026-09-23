@@ -6,18 +6,9 @@ import SwiftUI
 /// to put in the shopping basket.
 struct HomeBatteriesCard: View {
     let snapshot: HomeSnapshot
-    let onTap: () -> Void
     @State private var isExpanded = false
 
-    private static let minimumVisibleCount = 5
-
-    private var readings: [HomeSnapshot.BatteryReading] {
-        if isExpanded { return snapshot.batteryReadings }
-        return Array(snapshot.batteryReadings.prefix(visibleCount))
-    }
-
-    private var visibleCount: Int { max(Self.minimumVisibleCount, snapshot.lowBatteryDevices) }
-    private var remainingCount: Int { max(snapshot.batteryReadings.count - visibleCount, 0) }
+    private static let visibleCount = 5
 
     private var headerValue: String? {
         guard snapshot.lowBatteryDevices > 0 else { return nil }
@@ -25,42 +16,41 @@ struct HomeBatteriesCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            CardHeader(
-                instrument: .init(
-                    kind: .battery,
-                    normalizedValue: Double(snapshot.batteryReadings.first?.percent ?? 50) / 100
-                ),
-                title: "Batteries",
-                value: headerValue,
-                valueColor: snapshot.lowBatteryDevices > 0 ? .red : .secondary
-            )
+        ExpandableCardSurface(
+            isExpanded: $isExpanded,
+            hasMore: snapshot.batteryReadings.count > Self.visibleCount,
+            itemName: "batteries"
+        ) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                ExpandableCardHeader(
+                    isExpanded: $isExpanded,
+                    hasMore: snapshot.batteryReadings.count > Self.visibleCount,
+                    itemName: "batteries"
+                ) {
+                    CardHeader(
+                        instrument: .init(
+                            kind: .battery,
+                            normalizedValue: snapshot.lowBatteryDevices == 0
+                                ? 1
+                                : Double(snapshot.batteryReadings.first?.percent ?? 0) / 100
+                        ),
+                        title: "Batteries",
+                        value: headerValue,
+                        valueColor: snapshot.lowBatteryDevices > 0 ? .red : .secondary
+                    )
+                }
 
-            VStack(spacing: DesignTokens.Spacing.sm) {
-                ForEach(readings) { reading in
+                ExpandableCardRows(
+                    isExpanded: $isExpanded,
+                    items: snapshot.batteryReadings,
+                    previewCount: Self.visibleCount,
+                    rowHeight: DesignTokens.Size.dashboardCompactRow,
+                    spacing: DesignTokens.Spacing.xs
+                ) { reading, _ in
                     row(reading)
                 }
             }
-            .overlay(alignment: .bottom) {
-                if !isExpanded && remainingCount > 0 { ExpandableCardFade() }
-            }
-
-            if remainingCount > 0 {
-                ExpandableCardFooter(
-                    isExpanded: $isExpanded,
-                    remainingCount: remainingCount,
-                    itemName: "batteries"
-                )
-            }
-
-            if snapshot.lowBatteryDevices > 0 {
-                Button("View low batteries in Devices", action: onTap)
-                    .font(.footnote)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.red)
-            }
         }
-        .cardSurface()
     }
 
     /// The discrete battery symbols read correctly at every level; the
@@ -100,7 +90,7 @@ struct HomeBatteriesCard: View {
 }
 
 #Preview {
-    HomeBatteriesCard(snapshot: .preview, onTap: {})
+    HomeBatteriesCard(snapshot: .preview)
         .padding()
         .background(Color(.systemGroupedBackground))
 }

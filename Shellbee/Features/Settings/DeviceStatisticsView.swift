@@ -3,19 +3,34 @@ import SwiftUI
 
 struct DeviceStatisticsView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var expandedRankings: Set<String> = []
-    /// Statistics are per-bridge: each Z2M instance has its own device list,
-    /// so aggregating across bridges would conflate two networks. The Server
-    /// page links here from a specific bridge's detail.
     let bridgeID: UUID
+    @State private var selectedBridgeID: UUID?
+
+    init(bridgeID: UUID, defaultsToAllBridges: Bool = false) {
+        self.bridgeID = bridgeID
+        _selectedBridgeID = State(initialValue: defaultsToAllBridges ? nil : bridgeID)
+    }
+
+    private var bridges: [BridgeSession] {
+        let connected = environment.registry.orderedSessions.filter(\.isConnected)
+        return connected.isEmpty ? environment.registry.orderedSessions : connected
+    }
 
     private var stats: DeviceStatisticsSnapshot {
-        let store = environment.scope(for: bridgeID).store
-        return DeviceStatisticsSnapshot(
-            devices: store.devices,
-            availability: store.deviceAvailability,
-            states: store.deviceStates
-        )
+        let sources: [BridgeSession]
+        if let selectedBridgeID {
+            sources = environment.registry.session(for: selectedBridgeID).map { [$0] } ?? []
+        } else {
+            sources = bridges
+        }
+        let snapshots = sources.map { session in
+            DeviceStatisticsSnapshot(
+                devices: session.store.devices,
+                availability: session.store.deviceAvailability,
+                states: session.store.deviceStates
+            )
+        }
+        return DeviceStatisticsSnapshot(merging: snapshots)
     }
 
     var body: some View {
@@ -32,16 +47,16 @@ struct DeviceStatisticsView: View {
                     overviewCard
                     compositionCard
                     powerSourcesCard
-                    rankingCard(
+                    StatisticsRankingCard(
                         title: "Vendors",
-                        assetImage: "shellbee.vendors",
+                        systemImage: "building.2",
                         items: stats.vendors,
                         distinctCount: stats.distinctVendors,
                         noun: "makers"
                     )
-                    rankingCard(
+                    StatisticsRankingCard(
                         title: "Models",
-                        assetImage: "shellbee.models",
+                        systemImage: "square.stack.3d.up",
                         items: stats.models,
                         distinctCount: stats.distinctModels,
                         noun: "models"
@@ -55,6 +70,49 @@ struct DeviceStatisticsView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Device Statistics")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if bridges.count > 1 {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            selectedBridgeID = nil
+                        } label: {
+                            if selectedBridgeID == nil { Label("All", systemImage: "checkmark") }
+                            else { Text("All") }
+                        }
+                        ForEach(bridges, id: \.bridgeID) { bridge in
+                            Button {
+                                selectedBridgeID = bridge.bridgeID
+                            } label: {
+                                if selectedBridgeID == bridge.bridgeID {
+                                    Label(bridgeName(bridge), systemImage: "checkmark")
+                                } else {
+                                    Text(bridgeName(bridge))
+                                }
+                            }
+                        }
+                    } label: {
+                        Label(selectionTitle, systemImage: "point.3.connected.trianglepath.dotted")
+                    }
+                    .accessibilityLabel("Statistics for \(selectionTitle)")
+                }
+            }
+        }
+    }
+
+    private var selectionTitle: String {
+        guard let selectedBridgeID,
+              let bridge = bridges.first(where: { $0.bridgeID == selectedBridgeID }) else {
+            return "All"
+        }
+        return bridgeName(bridge)
+    }
+
+    private func bridgeName(_ bridge: BridgeSession) -> String {
+        guard bridges.filter({ $0.displayName == bridge.displayName }).count > 1 else {
+            return bridge.displayName
+        }
+        return "\(bridge.displayName) · \(bridge.config.port)"
     }
 
     private var overviewCard: some View {
@@ -165,77 +223,6 @@ struct DeviceStatisticsView: View {
             }
         }
         .cardSurface()
-    }
-
-    private func rankingCard(
-        title: String,
-        assetImage: String,
-        items: [DeviceStatisticsSnapshot.Count],
-        distinctCount: Int,
-        noun: String
-    ) -> some View {
-        let visibleLimit = 7
-        let isExpanded = expandedRankings.contains(title)
-        let visible = isExpanded ? items : Array(items.prefix(visibleLimit))
-        let remainder = items.dropFirst(visibleLimit).reduce(0) { $0 + $1.count }
-
-        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            CardHeader(
-                assetImage: assetImage,
-                title: title,
-                value: "\(distinctCount) \(noun)"
-            )
-            horizontalBarChart(visible, visibleLimit: visibleLimit)
-                .overlay(alignment: .bottom) {
-                    if !isExpanded && remainder > 0 { ExpandableCardFade() }
-                }
-            if remainder > 0 {
-                ExpandableCardFooter(
-                    isExpanded: Binding(
-                        get: { expandedRankings.contains(title) },
-                        set: { newValue in
-                            if newValue { expandedRankings.insert(title) }
-                            else { expandedRankings.remove(title) }
-                        }
-                    ),
-                    remainingCount: remainder,
-                    itemName: noun
-                )
-            }
-        }
-        .cardSurface()
-    }
-
-    private func horizontalBarChart(
-        _ items: [DeviceStatisticsSnapshot.Count],
-        visibleLimit: Int
-    ) -> some View {
-        Chart(Array(items.enumerated()), id: \.element.id) { index, item in
-            BarMark(
-                x: .value("Devices", item.count),
-                y: .value("Name", item.title)
-            )
-            .foregroundStyle(chartColor(index: index, total: max(items.count, visibleLimit)))
-            .cornerRadius(DesignTokens.CornerRadius.sm)
-            .annotation(position: .trailing, alignment: .leading) {
-                Text("\(item.count)")
-                    .font(.caption.weight(.semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis {
-            AxisMarks { _ in
-                AxisValueLabel()
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(height: max(
-            DesignTokens.Size.statisticsMinimumBarChart,
-            CGFloat(items.count) * DesignTokens.Size.statisticsBarRow
-        ))
     }
 
     private func legend(_ items: [DeviceStatisticsSnapshot.Count]) -> some View {

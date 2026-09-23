@@ -19,6 +19,7 @@ struct DeviceStatisticsSnapshot: Sendable {
     let batteryDevices: Int
     let devicesReportingLinkQuality: Int
     let averageLinkQuality: Int?
+    private let linkQualityTotal: Int
     let deviceTypes: [Count]
     let powerSources: [Count]
     let vendors: [Count]
@@ -51,13 +52,42 @@ struct DeviceStatisticsSnapshot: Sendable {
         supportedDevices = devices.filter(\.supported).count
         batteryDevices = devices.filter { Self.powerSourceLabel($0) == "Battery" }.count
         devicesReportingLinkQuality = linkQualityValues.count
+        linkQualityTotal = linkQualityValues.reduce(0, +)
         averageLinkQuality = linkQualityValues.isEmpty
             ? nil
-            : linkQualityValues.reduce(0, +) / linkQualityValues.count
+            : linkQualityTotal / linkQualityValues.count
         deviceTypes = Self.counts(devices.map(Self.deviceTypeLabel))
         powerSources = Self.counts(devices.map(Self.powerSourceLabel))
         vendors = Self.counts(devices.map(Self.vendorLabel))
         models = Self.counts(devices.map(Self.modelLabel))
+    }
+
+    /// Sum bridge-scoped snapshots so duplicate friendly names never share
+    /// availability or state across bridges.
+    init(merging snapshots: [DeviceStatisticsSnapshot]) {
+        totalDevices = snapshots.reduce(0) { $0 + $1.totalDevices }
+        onlineDevices = snapshots.reduce(0) { $0 + $1.onlineDevices }
+        offlineDevices = snapshots.reduce(0) { $0 + $1.offlineDevices }
+        untrackedDevices = snapshots.reduce(0) { $0 + $1.untrackedDevices }
+        supportedDevices = snapshots.reduce(0) { $0 + $1.supportedDevices }
+        batteryDevices = snapshots.reduce(0) { $0 + $1.batteryDevices }
+        devicesReportingLinkQuality = snapshots.reduce(0) { $0 + $1.devicesReportingLinkQuality }
+        linkQualityTotal = snapshots.reduce(0) { $0 + $1.linkQualityTotal }
+        averageLinkQuality = devicesReportingLinkQuality == 0
+            ? nil : linkQualityTotal / devicesReportingLinkQuality
+        deviceTypes = Self.mergeCounts(snapshots.flatMap(\.deviceTypes))
+        powerSources = Self.mergeCounts(snapshots.flatMap(\.powerSources))
+        vendors = Self.mergeCounts(snapshots.flatMap(\.vendors))
+        models = Self.mergeCounts(snapshots.flatMap(\.models))
+    }
+
+    private static func mergeCounts(_ counts: [Count]) -> [Count] {
+        Dictionary(grouping: counts, by: \.title)
+            .map { Count(title: $0.key, count: $0.value.reduce(0) { $0 + $1.count }) }
+            .sorted {
+                if $0.count == $1.count { return $0.title < $1.title }
+                return $0.count > $1.count
+            }
     }
 
     private static func counts(_ values: [String]) -> [Count] {

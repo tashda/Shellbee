@@ -152,7 +152,7 @@ struct HomeView: View {
             .listStyle(.insetGrouped)
             .navigationDestination(isPresented: $showingStatistics) {
                 if let bridgeID = selectedBridgeID {
-                    DeviceStatisticsView(bridgeID: bridgeID)
+                    DeviceStatisticsView(bridgeID: bridgeID, defaultsToAllBridges: true)
                         .environment(environment)
                 }
             }
@@ -363,9 +363,7 @@ struct HomeView: View {
         }
         if showsBatteriesCard {
             cardSection {
-                HomeBatteriesCard(snapshot: snapshot) {
-                    showDevices(filter: .batteryLow)
-                }
+                HomeBatteriesCard(snapshot: snapshot)
             }
         }
         if showsVendorsCard {
