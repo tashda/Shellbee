@@ -85,15 +85,16 @@ struct ActivityTabBarAccessory: View {
     }
 
     private func openActivity() {
+        guard !sceneNavigation.isActivityCenterPresented else { return }
         sceneNavigation.isActivityCenterPresented = true
     }
 
     private var openActivityGesture: some Gesture {
         DragGesture(minimumDistance: DesignTokens.Spacing.xs)
-            .onEnded { value in
+            .onChanged { value in
                 let horizontal = value.translation.width
                 let vertical = value.translation.height
-                guard abs(vertical) > abs(horizontal), vertical < -DesignTokens.Spacing.xxl else { return }
+                guard abs(vertical) > abs(horizontal), vertical < -DesignTokens.Spacing.sm else { return }
                 openActivity()
             }
     }

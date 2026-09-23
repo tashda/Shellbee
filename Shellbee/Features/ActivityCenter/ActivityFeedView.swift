@@ -88,12 +88,11 @@ struct ActivityFeedView: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             if section.kind == .needsAttention {
-                Button {
+                Button("Clear All", systemImage: "xmark") {
                     showsClearAttentionConfirmation = true
-                } label: {
-                    Image(systemName: "trash")
                 }
-                .buttonStyle(.borderless)
+                .font(.subheadline.weight(.semibold))
+                .glassButtonStyleIfAvailable()
                 .accessibilityLabel("Clear Needs Attention")
             }
         }
