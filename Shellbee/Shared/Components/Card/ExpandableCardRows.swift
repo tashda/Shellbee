@@ -60,6 +60,7 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
     @Binding var isExpanded: Bool
     @State private var revealHeight: CGFloat = 0
     @State private var revealOpacity = 0.0
+    @State private var previewIsFaded = true
     let items: [Item]
     let itemName: String
     let previewCount: Int
@@ -100,20 +101,19 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
                                                 endPoint: .bottom
                                             )
                                         )
-                                        .opacity(isExpanded ? 0 : 1)
+                                        .opacity(previewIsFaded ? 1 : 0)
                                         .allowsHitTesting(false)
                                 }
                                 .mask(
                                     LinearGradient(
                                         stops: [
                                             .init(color: .white, location: 0),
-                                            .init(color: .white.opacity(isExpanded ? 1 : 0.12), location: 1),
+                                            .init(color: .white.opacity(previewIsFaded ? 0.12 : 1), location: 1),
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
                                     )
                                 )
-                                .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isExpanded)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -145,6 +145,7 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
             }
         }
         .onAppear {
+            previewIsFaded = !isExpanded
             if isExpanded {
                 revealHeight = expandedHeight
                 revealOpacity = 1
@@ -165,11 +166,15 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
             CardExpansion.withoutAnimation {
                 revealHeight = expanded ? expandedHeight : 0
                 revealOpacity = expanded ? 1 : 0
+                previewIsFaded = !expanded
             }
             return
         }
 
         if expanded {
+            withAnimation(.easeOut(duration: 0.12)) {
+                previewIsFaded = false
+            }
             withAnimation(.easeIn(duration: 0.85)) {
                 revealHeight = expandedHeight
             }
@@ -177,8 +182,13 @@ struct ExpandableCardRows<Item: Identifiable, Row: View>: View {
                 revealOpacity = 1
             }
         } else {
-            withAnimation(.easeOut(duration: 0.72)) {
+            withAnimation(.easeOut(duration: 0.72), completionCriteria: .logicallyComplete) {
                 revealHeight = 0
+            } completion: {
+                guard !isExpanded else { return }
+                withAnimation(.easeOut(duration: 0.18)) {
+                    previewIsFaded = true
+                }
             }
             withAnimation(.easeIn(duration: 0.28).delay(0.32)) {
                 revealOpacity = 0

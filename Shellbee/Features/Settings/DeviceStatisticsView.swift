@@ -43,7 +43,7 @@ struct DeviceStatisticsView: View {
                 )
                 .padding(.top, DesignTokens.Spacing.xxl)
             } else {
-                LazyVStack(spacing: DesignTokens.Spacing.lg) {
+                VStack(spacing: DesignTokens.Spacing.lg) {
                     overviewCard
                     compositionCard
                     powerSourcesCard

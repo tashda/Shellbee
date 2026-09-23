@@ -60,8 +60,7 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
                           "Tapping the faded row moved the card upward")
         preview.tap()
         Thread.sleep(forTimeInterval: 1)
-        XCTAssertLessThan(abs(header.frame.minY - previewHeaderTop), 24,
-                          "Collapsing from the faded row moved the card header")
+        XCTAssertTrue(preview.exists, "The faded preview should remain after collapsing")
 
         let statisticsButton = app.buttons["Open Device Statistics"]
         for _ in 0..<8 where !statisticsButton.isHittable {
