@@ -379,12 +379,15 @@ struct HomeView: View {
             }
         }
         if showsBridgeHealthCard {
-            ForEach(bridgeCardEntries) { entry in
+            if bridgeCardEntries.count >= 2 {
                 cardSection {
-                    HomeBridgeHealthCard(
-                        entry: entry,
-                        namesBridge: bridgeCardEntries.count >= 2
-                    ) {
+                    HomeBridgeHealthGroupCard(entries: bridgeCardEntries) { bridgeID in
+                        presentedSheet = .bridge(bridgeID)
+                    }
+                }
+            } else if let entry = bridgeCardEntries.first {
+                cardSection {
+                    HomeBridgeHealthCard(entry: entry) {
                         presentedSheet = .bridge(entry.id)
                     }
                 }

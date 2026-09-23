@@ -15,7 +15,7 @@ struct HomeLinkQualityCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             CardHeader(
-                systemImage: "chart.bar.fill",
+                instrument: .init(kind: .signal, normalizedValue: Double(snapshot.averageLinkQuality ?? 0) / 255),
                 title: "Link quality",
                 value: snapshot.averageLinkQuality.map { "\($0) average" }
             )

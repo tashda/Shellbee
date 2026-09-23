@@ -32,7 +32,7 @@ struct HomeVendorsCard: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 CardHeader(
-                    systemImage: "building.2",
+                    assetImage: "shellbee.vendors",
                     title: "Vendors",
                     value: makerCount > 0 ? "\(makerCount) maker\(makerCount == 1 ? "" : "s")" : nil
                 ) {

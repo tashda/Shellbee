@@ -7,14 +7,17 @@ import SwiftUI
 struct HomeBatteriesCard: View {
     let snapshot: HomeSnapshot
     let onTap: () -> Void
+    @State private var isExpanded = false
 
-    /// Four fits without turning the card into a list. The rest are one tap
-    /// away in Devices.
-    private static let visibleCount = 4
+    private static let minimumVisibleCount = 5
 
     private var readings: [HomeSnapshot.BatteryReading] {
-        Array(snapshot.batteryReadings.prefix(Self.visibleCount))
+        if isExpanded { return snapshot.batteryReadings }
+        return Array(snapshot.batteryReadings.prefix(visibleCount))
     }
+
+    private var visibleCount: Int { max(Self.minimumVisibleCount, snapshot.lowBatteryDevices) }
+    private var remainingCount: Int { max(snapshot.batteryReadings.count - visibleCount, 0) }
 
     private var headerValue: String? {
         guard snapshot.lowBatteryDevices > 0 else { return nil }
@@ -22,35 +25,42 @@ struct HomeBatteriesCard: View {
     }
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                CardHeader(
-                    systemImage: "battery.50",
-                    title: "Batteries",
-                    value: headerValue,
-                    valueColor: snapshot.lowBatteryDevices > 0 ? .red : .secondary
-                ) {
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            CardHeader(
+                instrument: .init(
+                    kind: .battery,
+                    normalizedValue: Double(snapshot.batteryReadings.first?.percent ?? 50) / 100
+                ),
+                title: "Batteries",
+                value: headerValue,
+                valueColor: snapshot.lowBatteryDevices > 0 ? .red : .secondary
+            )
 
-                VStack(spacing: DesignTokens.Spacing.sm) {
-                    ForEach(readings) { reading in
-                        row(reading)
-                    }
-                }
-
-                if snapshot.batteryReadings.count > readings.count {
-                    Text("\(snapshot.batteryReadings.count) devices on batteries")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+            VStack(spacing: DesignTokens.Spacing.sm) {
+                ForEach(readings) { reading in
+                    row(reading)
                 }
             }
-            .cardSurface()
-            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) {
+                if !isExpanded && remainingCount > 0 { ExpandableCardFade() }
+            }
+
+            if remainingCount > 0 {
+                ExpandableCardFooter(
+                    isExpanded: $isExpanded,
+                    remainingCount: remainingCount,
+                    itemName: "batteries"
+                )
+            }
+
+            if snapshot.lowBatteryDevices > 0 {
+                Button("View low batteries in Devices", action: onTap)
+                    .font(.footnote)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
+            }
         }
-        .buttonStyle(.plain)
+        .cardSurface()
     }
 
     /// The discrete battery symbols read correctly at every level; the

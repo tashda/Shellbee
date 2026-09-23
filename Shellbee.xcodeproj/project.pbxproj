@@ -237,6 +237,7 @@
 				Features/Home/HomeBatteriesCard.swift,
 				Features/Home/HomeBridgeCardEntry.swift,
 				Features/Home/HomeBridgeHealthCard.swift,
+				Features/Home/HomeBridgeHealthGroupCard.swift,
 				Features/Home/HomeBridgeRow.swift,
 				Features/Home/HomeCardKind.swift,
 				Features/Home/HomeLinkQualityCard.swift,

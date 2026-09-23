@@ -9,15 +9,30 @@ struct CardHeader<Accessory: View>: View {
     var value: String? = nil
     var tint: Color = .secondary
     var valueColor: Color = .secondary
+    var instrument: ActivityInstrument? = nil
+    var assetImage: String? = nil
     @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: systemImage)
-                .font(DesignTokens.Typography.cardHeaderSymbol)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(tint)
-                .contentTransition(.symbolEffect(.replace))
+            SwiftUI.Group {
+                if let instrument {
+                    ActivityInstrumentView(instrument: instrument, size: DesignTokens.Size.cardSymbol)
+                } else if let assetImage {
+                    Image(assetImage)
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .frame(width: DesignTokens.Size.cardSymbol, height: DesignTokens.Size.cardSymbol)
+                        .foregroundStyle(tint)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(DesignTokens.Typography.cardHeaderSymbol)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(tint)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+            }
 
             Text(title)
                 .font(DesignTokens.Typography.cardHeaderTitle)
@@ -47,6 +62,32 @@ extension CardHeader where Accessory == EmptyView {
          tint: Color = .secondary, valueColor: Color = .secondary) {
         self.init(systemImage: systemImage, title: title, value: value,
                   tint: tint, valueColor: valueColor) { EmptyView() }
+    }
+}
+
+extension CardHeader {
+    init(instrument: ActivityInstrument, title: String, value: String? = nil,
+         valueColor: Color = .secondary, @ViewBuilder accessory: @escaping () -> Accessory) {
+        self.init(systemImage: "", title: title, value: value,
+                  valueColor: valueColor, instrument: instrument, accessory: accessory)
+    }
+
+    init(assetImage: String, title: String, value: String? = nil,
+         @ViewBuilder accessory: @escaping () -> Accessory) {
+        self.init(systemImage: "", title: title, value: value,
+                  assetImage: assetImage, accessory: accessory)
+    }
+}
+
+extension CardHeader where Accessory == EmptyView {
+    init(instrument: ActivityInstrument, title: String, value: String? = nil,
+         valueColor: Color = .secondary) {
+        self.init(instrument: instrument, title: title, value: value,
+                  valueColor: valueColor) { EmptyView() }
+    }
+
+    init(assetImage: String, title: String, value: String? = nil) {
+        self.init(assetImage: assetImage, title: title, value: value) { EmptyView() }
     }
 }
 

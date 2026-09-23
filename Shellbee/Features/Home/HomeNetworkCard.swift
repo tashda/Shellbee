@@ -11,11 +11,7 @@ struct HomeNetworkCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                CardHeader(systemImage: "chart.bar.doc.horizontal", title: "Network") {
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
+                CardHeader(instrument: .init(kind: .network), title: "Network")
 
                 StatStrip(items: [
                     StatStripItem(value: "\(snapshot.totalDevices)", caption: "Devices"),

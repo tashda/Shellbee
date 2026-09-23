@@ -3,6 +3,7 @@ import SwiftUI
 
 struct DeviceStatisticsView: View {
     @Environment(AppEnvironment.self) private var environment
+    @State private var expandedRankings: Set<String> = []
     /// Statistics are per-bridge: each Z2M instance has its own device list,
     /// so aggregating across bridges would conflate two networks. The Server
     /// page links here from a specific bridge's detail.
@@ -33,14 +34,14 @@ struct DeviceStatisticsView: View {
                     powerSourcesCard
                     rankingCard(
                         title: "Vendors",
-                        systemImage: "building.2",
+                        assetImage: "shellbee.vendors",
                         items: stats.vendors,
                         distinctCount: stats.distinctVendors,
                         noun: "makers"
                     )
                     rankingCard(
                         title: "Models",
-                        systemImage: "square.stack.3d.up",
+                        assetImage: "shellbee.models",
                         items: stats.models,
                         distinctCount: stats.distinctModels,
                         noun: "models"
@@ -58,7 +59,7 @@ struct DeviceStatisticsView: View {
 
     private var overviewCard: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            CardHeader(systemImage: "chart.bar.doc.horizontal", title: "Network overview")
+            CardHeader(instrument: .init(kind: .network), title: "Network overview")
 
             HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
                 Text("\(stats.totalDevices)")
@@ -88,114 +89,79 @@ struct DeviceStatisticsView: View {
                 ),
             ])
 
-            availabilityChart
         }
         .cardSurface()
-    }
-
-    private var availabilityChart: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack {
-                Text("Availability")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text("\(stats.supportedDevices) supported · \(stats.devicesReportingLinkQuality) with LQI")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMild)
-            }
-
-            Chart(stats.availability) { item in
-                BarMark(
-                    x: .value("Devices", item.count),
-                    stacking: .normalized
-                )
-                .foregroundStyle(availabilityColor(item.title))
-                .cornerRadius(DesignTokens.CornerRadius.sm)
-            }
-            .chartXAxis(.hidden)
-            .chartYAxis(.hidden)
-            .frame(height: DesignTokens.Size.statisticsAvailabilityChart)
-
-            HStack(spacing: DesignTokens.Spacing.md) {
-                ForEach(stats.availability) { item in
-                    Label {
-                        Text("\(item.title) \(item.count)")
-                    } icon: {
-                        Circle()
-                            .fill(availabilityColor(item.title))
-                            .frame(width: DesignTokens.Size.statusDotInline,
-                                   height: DesignTokens.Size.statusDotInline)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .accessibilityElement(children: .combine)
-        }
     }
 
     private var compositionCard: some View {
         breakdownCard(
             title: "Device types",
-            systemImage: "point.3.connected.trianglepath.dotted",
-            items: stats.deviceTypes,
-            chartStyle: .donut
+            instrument: .init(kind: .network),
+            items: stats.deviceTypes
         )
     }
 
     private var powerSourcesCard: some View {
-        breakdownCard(
-            title: "Power sources",
-            systemImage: "bolt.fill",
-            items: stats.powerSources,
-            chartStyle: .bars
-        )
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+            CardHeader(instrument: .init(kind: .energy), title: "Power sources")
+            HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+                ForEach(stats.powerSources) { item in
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                        ActivityInstrumentView(
+                            instrument: powerInstrument(for: item.title),
+                            size: DesignTokens.Size.heroSymbol
+                        )
+                        Text("\(item.count)")
+                            .font(.title2.weight(.bold))
+                            .monospacedDigit()
+                        Text(item.title)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .cardSurface()
     }
-
-    private enum BreakdownChartStyle { case donut, bars }
 
     private func breakdownCard(
         title: String,
-        systemImage: String,
-        items: [DeviceStatisticsSnapshot.Count],
-        chartStyle: BreakdownChartStyle
+        instrument: ActivityInstrument,
+        items: [DeviceStatisticsSnapshot.Count]
     ) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            CardHeader(systemImage: systemImage, title: title)
+            CardHeader(instrument: instrument, title: title)
 
-            if chartStyle == .donut {
-                HStack(spacing: DesignTokens.Spacing.xl) {
-                    ZStack {
-                        Chart(Array(items.enumerated()), id: \.element.id) { index, item in
-                            SectorMark(
-                                angle: .value("Devices", item.count),
-                                innerRadius: .ratio(DesignTokens.Ratio.statisticsDonutInnerRadius),
-                                angularInset: DesignTokens.Spacing.xxs
-                            )
-                            .cornerRadius(DesignTokens.CornerRadius.sm)
-                            .foregroundStyle(chartColor(index: index, total: items.count))
-                        }
-                        .chartLegend(.hidden)
-
-                        VStack(spacing: 0) {
-                            Text("\(items.reduce(0) { $0 + $1.count })")
-                                .font(.title2.weight(.bold))
-                                .monospacedDigit()
-                            Text("devices")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        .accessibilityHidden(true)
+            HStack(spacing: DesignTokens.Spacing.xl) {
+                ZStack {
+                    Chart(Array(items.enumerated()), id: \.element.id) { index, item in
+                        SectorMark(
+                            angle: .value("Devices", item.count),
+                            innerRadius: .ratio(DesignTokens.Ratio.statisticsDonutInnerRadius),
+                            angularInset: DesignTokens.Spacing.xxs
+                        )
+                        .cornerRadius(DesignTokens.CornerRadius.sm)
+                        .foregroundStyle(chartColor(index: index, total: items.count))
                     }
-                    .frame(width: DesignTokens.Size.statisticsDonut,
-                           height: DesignTokens.Size.statisticsDonut)
+                    .chartLegend(.hidden)
 
-                    legend(items)
+                    VStack(spacing: 0) {
+                        Text("\(items.reduce(0) { $0 + $1.count })")
+                            .font(.title2.weight(.bold))
+                            .monospacedDigit()
+                        Text("devices")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityHidden(true)
                 }
-            } else {
-                horizontalBarChart(items, visibleLimit: items.count)
+                .frame(width: DesignTokens.Size.statisticsDonut,
+                       height: DesignTokens.Size.statisticsDonut)
+
+                legend(items)
             }
         }
         .cardSurface()
@@ -203,26 +169,38 @@ struct DeviceStatisticsView: View {
 
     private func rankingCard(
         title: String,
-        systemImage: String,
+        assetImage: String,
         items: [DeviceStatisticsSnapshot.Count],
         distinctCount: Int,
         noun: String
     ) -> some View {
         let visibleLimit = 7
-        let visible = Array(items.prefix(visibleLimit))
+        let isExpanded = expandedRankings.contains(title)
+        let visible = isExpanded ? items : Array(items.prefix(visibleLimit))
         let remainder = items.dropFirst(visibleLimit).reduce(0) { $0 + $1.count }
 
         return VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
             CardHeader(
-                systemImage: systemImage,
+                assetImage: assetImage,
                 title: title,
                 value: "\(distinctCount) \(noun)"
             )
             horizontalBarChart(visible, visibleLimit: visibleLimit)
+                .overlay(alignment: .bottom) {
+                    if !isExpanded && remainder > 0 { ExpandableCardFade() }
+                }
             if remainder > 0 {
-                Text("\(remainder) more devices across \(items.count - visibleLimit) \(noun)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                ExpandableCardFooter(
+                    isExpanded: Binding(
+                        get: { expandedRankings.contains(title) },
+                        set: { newValue in
+                            if newValue { expandedRankings.insert(title) }
+                            else { expandedRankings.remove(title) }
+                        }
+                    ),
+                    remainingCount: remainder,
+                    itemName: noun
+                )
             }
         }
         .cardSurface()
@@ -283,18 +261,20 @@ struct DeviceStatisticsView: View {
     }
 
     private func chartColor(index: Int, total: Int) -> Color {
+        if total <= 3 {
+            let palette: [Color] = [.blue, .orange, .gray]
+            return palette[min(index, palette.count - 1)]
+        }
         let progress = total <= 1 ? 0 : Double(index) / Double(total - 1)
-        return Color.accentColor.opacity(
-            DesignTokens.Opacity.statisticsChartHigh
-                - progress * DesignTokens.Opacity.statisticsChartRange
-        )
+        return Color.accentColor.opacity(DesignTokens.Opacity.statisticsChartHigh
+            - progress * DesignTokens.Opacity.statisticsChartRange)
     }
 
-    private func availabilityColor(_ title: String) -> Color {
+    private func powerInstrument(for title: String) -> ActivityInstrument {
         switch title {
-        case "Online": .green
-        case "Offline": .red
-        default: Color(.tertiaryLabel)
+        case "Mains": .init(kind: .energy)
+        case "Battery": .init(kind: .battery, normalizedValue: 0.7)
+        default: .init(kind: .unknown)
         }
     }
 }

@@ -7,12 +7,9 @@ import SwiftUI
 /// whether the machine under the stairs is happy — and a memory figure
 /// climbing all week is the earliest warning this app can give.
 ///
-/// One card per bridge, so there is never any doubt which one it is about.
+/// The detailed card for a single saved bridge.
 struct HomeBridgeHealthCard: View {
     let entry: HomeBridgeCardEntry
-    /// True once more than one bridge is connected, when the card takes the
-    /// bridge's name as its title instead of a generic one.
-    let namesBridge: Bool
     let onTap: () -> Void
 
     private var health: BridgeHealth? { entry.health }
@@ -52,8 +49,9 @@ struct HomeBridgeHealthCard: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
                 CardHeader(
-                    systemImage: "heart.text.square",
-                    title: namesBridge ? entry.name : "Bridge health",
+                    instrument: .init(kind: .health,
+                                      severity: statusColor == .orange ? .warning : .routine),
+                    title: "Bridge health",
                     value: statusTitle,
                     valueColor: statusColor
                 ) {
@@ -87,7 +85,7 @@ struct HomeBridgeHealthCard: View {
 }
 
 #Preview {
-    HomeBridgeHealthCard(entry: .preview(name: "Home Bridge"), namesBridge: false, onTap: {})
+    HomeBridgeHealthCard(entry: .preview(name: "Home Bridge"), onTap: {})
         .padding()
         .background(Color(.systemGroupedBackground))
 }
