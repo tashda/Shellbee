@@ -14,11 +14,11 @@ struct HomeBridgeHealthGroupCard: View {
                 value: "\(entries.count) bridges"
             )
 
-            ForEach(entries) { entry in
+            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                 Button { onTap(entry.id) } label: {
                     HStack(spacing: DesignTokens.Spacing.md) {
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                            Text(entry.name)
+                            Text(displayName(for: entry, index: index))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.primary)
                             Text(metrics(for: entry))
@@ -58,12 +58,17 @@ struct HomeBridgeHealthGroupCard: View {
 
     private func metrics(for entry: HomeBridgeCardEntry) -> String {
         let health = entry.health
-        return [
+        let values = [
             health?.process?.uptimeFormatted.map { "\($0) uptime" },
             health?.process?.rssMB.map { "\($0) memory" },
             health?.mqtt?.published.map { "\(HomeBridgeHealthCard.compact($0)) messages" },
         ]
         .compactMap { $0 }
-        .joined(separator: " · ")
+        return values.isEmpty ? "Waiting for a health check" : values.joined(separator: " · ")
+    }
+
+    private func displayName(for entry: HomeBridgeCardEntry, index: Int) -> String {
+        guard entries.filter({ $0.name == entry.name }).count > 1 else { return entry.name }
+        return "\(entry.name) · Bridge \(index + 1)"
     }
 }
