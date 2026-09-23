@@ -509,8 +509,26 @@ final class IconGalleryUITests: ShellbeeUITestCase {
         XCTAssertTrue(app.staticTexts["16 pt"].firstMatch.exists)
 
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Icon Gallery instruments"
+        screenshot.name = "Icon Gallery card instruments"
         screenshot.lifetime = .keepAlways
         add(screenshot)
+
+        let models = app.staticTexts["Models"].firstMatch
+        for _ in 0..<4 where !models.isHittable { app.swipeUp() }
+        XCTAssertTrue(models.isHittable)
+
+        let lowerScreenshot = XCTAttachment(screenshot: app.screenshot())
+        lowerScreenshot.name = "Icon Gallery lower card instruments"
+        lowerScreenshot.lifetime = .keepAlways
+        add(lowerScreenshot)
+
+        let pairing = app.staticTexts["Pairing"].firstMatch
+        for _ in 0..<3 where !pairing.isHittable { app.swipeUp() }
+        XCTAssertTrue(pairing.isHittable)
+
+        let stateScreenshot = XCTAttachment(screenshot: app.screenshot())
+        stateScreenshot.name = "Icon Gallery pairing and update"
+        stateScreenshot.lifetime = .keepAlways
+        add(stateScreenshot)
     }
 }

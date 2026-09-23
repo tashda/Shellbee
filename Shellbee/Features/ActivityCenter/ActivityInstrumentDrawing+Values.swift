@@ -69,10 +69,7 @@ extension ActivityInstrumentDrawing {
     }
 
     func drawEnergy() {
-        let bolt = ActivityInstrumentPen.polygon([
-            p(28.5, 4), p(11.5, 27.5), p(22.5, 27.5), p(19, 44), p(36.5, 19.5), p(25.5, 19.5)
-        ])
-        pen.liquidFill(bolt, level: value, bottom: .orange, top: .yellow, span: 4...44)
+        pen.polyline([p(29, 6), p(14, 25), p(25, 25), p(20, 42), p(35, 21)], tint)
     }
 
     // MARK: - Temperature
@@ -180,14 +177,13 @@ extension ActivityInstrumentDrawing {
 
     /// Solid rounded bars on a common baseline, like SF `cellularbars`.
     func drawSignal() {
-        for index in 0..<4 {
-            let height = 8 + CGFloat(index) * 7
-            let active = Double(index + 1) / 4 <= value + 0.12
-            pen.fill(
-                ActivityInstrumentPen.rounded(7 + CGFloat(index) * 9.2, 40 - height, 6.4, height, radius: 2.2),
-                tint, opacity: active ? 1 : ActivityInstrumentPen.trackOpacity
-            )
-        }
+        let steps = [
+            p(7, 38), p(14, 38), p(14, 30), p(23, 30),
+            p(23, 22), p(32, 22), p(32, 11), p(41, 11)
+        ]
+        pen.polyline(steps, tint, opacity: ActivityInstrumentPen.trackOpacity)
+        let activeSteps = min(max(Int(ceil(value * 4)), 1), 4)
+        pen.polyline(Array(steps.prefix(activeSteps * 2)), tint)
     }
 
     /// The iOS status-bar battery: neutral shell, solid nub, even gap.

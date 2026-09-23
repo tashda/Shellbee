@@ -5,53 +5,34 @@ import SwiftUI
 extension ActivityInstrumentDrawing {
     // MARK: - Firmware
 
-    /// App Store download ring; a green check when done, a red "!" on failure.
+    /// One upward mark with a quiet progress line; outcomes keep the same
+    /// open-stroke language as the health pulse.
     func drawUpdate() {
         if instrument.severity == .failure {
-            pen.dot(p(24, 24), radius: 17, tint)
-            pen.line(p(24, 14.5), p(24, 26), .white, width: 3.8)
-            pen.dot(p(24, 32), radius: 2.3, .white)
+            pen.line(p(24, 10), p(24, 29), tint)
+            pen.dot(p(24, 38), radius: 2.8, tint)
         } else if value >= 1 {
-            pen.dot(p(24, 24), radius: 17, .green)
-            pen.polyline([p(16, 24.5), p(21.5, 30), p(32, 18.5)], .white, width: 3.8)
+            pen.polyline([p(10, 25), p(20, 35), p(39, 13)], .green)
         } else {
-            pen.ring(p(24, 24), radius: 16, tint, opacity: ActivityInstrumentPen.trackOpacity)
-            pen.arc(p(24, 24), radius: 16, from: -90, to: -90 + 360 * value, tint)
-            pen.fill(ActivityInstrumentPen.rounded(19.5, 19.5, 9, 9, radius: 2), tint)
+            pen.polyline([p(14, 22), p(24, 12), p(34, 22)], tint)
+            pen.line(p(24, 13), p(24, 33), tint)
+            pen.line(p(9, 39), p(39, 39), tint, opacity: ActivityInstrumentPen.trackOpacity)
+            if value > 0 {
+                pen.line(p(9, 39), p(9 + 30 * value, 39), tint)
+            }
         }
     }
 
     // MARK: - Pairing
 
     func drawPairing() {
-        if instrument.variant == .permitJoin {
-            drawRadioWaves()
-        } else {
-            drawChainLink()
-        }
-    }
-
-    private func drawChainLink() {
-        let first = ActivityInstrumentPen.rounded(4, 19, 23, 11, radius: 5.5)
-            .applying(rotation(-45, around: p(15.5, 24.5)))
-        let second = ActivityInstrumentPen.rounded(21, 18, 23, 11, radius: 5.5)
-            .applying(rotation(-45, around: p(32.5, 23.5)))
-        pen.stroke(first, tint)
-        pen.stroke(second, tint)
-    }
-
-    /// Permit join: waves when open, gray with a slash when closed.
-    private func drawRadioWaves() {
-        pen.dot(p(24, 24), radius: 4.5, tint)
-        for (index, radius) in [10, 17].enumerated() {
-            let opacity = 1 - Double(index) * 0.35
-            pen.arc(p(24, 24), radius: CGFloat(radius), from: -40, to: 40, tint, width: 3, opacity: opacity)
-            pen.arc(p(24, 24), radius: CGFloat(radius), from: 140, to: 220, tint, width: 3, opacity: opacity)
-        }
-        if !instrument.isOn {
-            pen.knockoutLine(p(9, 39), p(39, 9), width: 6.5)
-            pen.line(p(9, 39), p(39, 9), tint, width: 3)
-        }
+        let connected = instrument.variant != .permitJoin || instrument.isOn
+        pen.dot(p(9, 30), radius: 4.5, tint)
+        pen.dot(p(39, 30), radius: 4.5, tint)
+        pen.polyline(
+            [p(15, 29), p(21, 21), p(27, 21), p(33, 29)],
+            tint, opacity: connected ? 1 : ActivityInstrumentPen.trackOpacity
+        )
     }
 
     // MARK: - Group and network
@@ -65,19 +46,14 @@ extension ActivityInstrumentDrawing {
         }
     }
 
-    /// A coordinator with a halo and four routers around it.
+    /// Three spokes and one coordinator, with no diagram-like cross-links.
     func drawNetwork() {
-        let center = p(24, 24)
-        let routers = [p(9, 14), p(39, 12), p(37, 37), p(11, 36)]
-        for router in routers {
-            pen.line(center, router, tint, width: 2.4, opacity: 0.45)
+        let center = p(24, 23)
+        let devices = [p(9, 12), p(39, 12), p(24, 41)]
+        for device in devices {
+            pen.line(center, device, tint, opacity: 0.65)
+            pen.dot(device, radius: 4.2, tint)
         }
-        pen.line(routers[0], routers[3], tint, width: 2, opacity: 0.3)
-        pen.line(routers[1], routers[2], tint, width: 2, opacity: 0.3)
-        for router in routers {
-            pen.dot(router, radius: 4, tint)
-        }
-        pen.dot(center, radius: 9, tint, opacity: 0.22)
         pen.dot(center, radius: 6, tint)
     }
 
@@ -89,11 +65,12 @@ extension ActivityInstrumentDrawing {
         }
     }
 
-    /// Three device forms, drawn like the other tiny Activity marks.
+    /// Three distinct device silhouettes: a narrow plug, a light, a sensor.
     func drawModels() {
-        pen.stroke(ActivityInstrumentPen.rounded(5, 18, 11, 21, radius: 3), tint, width: 3)
-        pen.stroke(ActivityInstrumentPen.rounded(20, 8, 12, 31, radius: 3), tint, width: 3)
-        pen.stroke(ActivityInstrumentPen.rounded(36, 22, 8, 17, radius: 2.5), tint, width: 3)
+        pen.fill(ActivityInstrumentPen.rounded(5, 18, 10, 21, radius: 3), tint, opacity: 0.65)
+        pen.dot(p(24, 15), radius: 6, tint)
+        pen.line(p(24, 22), p(24, 39), tint, width: 4)
+        pen.fill(ActivityInstrumentPen.rounded(34, 25, 9, 14, radius: 3), tint, opacity: 0.8)
     }
 
     func drawTouchlink() {
