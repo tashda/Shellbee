@@ -6,7 +6,6 @@ struct GroupCard: View {
     let state: [String: JSONValue]
     var bridgeID: UUID? = nil
     var bridgeName: String? = nil
-    var bridgeAttributionStyle: BridgeAttributionStyle = .badge
     /// How many members report ON, for "2 of 3 on".
     var membersOnCount: Int? = nil
     var onRenameTapped: (() -> Void)? = nil
@@ -77,7 +76,6 @@ struct GroupCard: View {
             subtitle: "Group · \(membersText)",
             bridgeID: bridgeID,
             bridgeName: bridgeName,
-            bridgeAttributionStyle: bridgeAttributionStyle,
             isListRow: true
         ) {
             GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceRowImage)

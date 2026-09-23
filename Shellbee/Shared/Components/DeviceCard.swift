@@ -17,7 +17,6 @@ struct DeviceCard: View {
     /// Only set when more than one bridge is saved; see
     /// `AppEnvironment.attributionBridgeName(for:)`.
     var bridgeName: String? = nil
-    var bridgeAttributionStyle: BridgeAttributionStyle = .badge
     var lastSeenEnabled: Bool = true
     var onRenameTapped: (() -> Void)? = nil
     var onNameHiddenChange: ((Bool) -> Void)? = nil
@@ -81,7 +80,6 @@ struct DeviceCard: View {
             subtitle: device.cardSubtitle,
             bridgeID: bridgeID,
             bridgeName: bridgeName,
-            bridgeAttributionStyle: bridgeAttributionStyle,
             status: status,
             isListRow: true
         ) {
