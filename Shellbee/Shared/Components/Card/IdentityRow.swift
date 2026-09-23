@@ -28,20 +28,7 @@ struct IdentityRow<Artwork: View>: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 if let bridgeID, let bridgeName, !bridgeName.isEmpty {
-                    HStack(spacing: DesignTokens.Spacing.xs) {
-                        Circle()
-                            .fill(DesignTokens.Bridge.color(for: bridgeID))
-                            .frame(
-                                width: DesignTokens.Size.statusDotHero,
-                                height: DesignTokens.Size.statusDotHero
-                            )
-                        Text(bridgeName)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Bridge: \(bridgeName)")
+                    BridgeAttributionLine(bridgeID: bridgeID, bridgeName: bridgeName)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -15,7 +15,7 @@ struct IdentityChip: Identifiable {
 /// Header for Device and Group detail, like the top of a contact or Apple
 /// Account page: the image on the left, the name and a readable
 /// description beside it, and one line of neutral status capsules below.
-/// The bridge shows as the last capsule, only when several are saved.
+/// The bridge appears under the description when several are saved.
 struct IdentityHero<Artwork: View>: View {
     let name: String
     let subtitle: String
@@ -44,21 +44,19 @@ struct IdentityHero<Artwork: View>: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
+                    if let bridgeID, let bridgeName, !bridgeName.isEmpty {
+                        BridgeAttributionLine(bridgeID: bridgeID, bridgeName: bridgeName)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if !allChips.isEmpty {
-                FlowChips(chips: allChips)
+            if !chips.isEmpty {
+                FlowChips(chips: chips)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignTokens.Spacing.xs)
-    }
-
-    private var allChips: [IdentityChip] {
-        guard let bridgeID, let bridgeName, !bridgeName.isEmpty else { return chips }
-        return chips + [IdentityChip(title: bridgeName, color: DesignTokens.Bridge.color(for: bridgeID))]
     }
 
     @ViewBuilder
