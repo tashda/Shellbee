@@ -88,13 +88,12 @@ struct ActivityFeedView: View {
                         withAnimation(.smooth) { isClearAttentionArmed = true }
                     }
                 } label: {
-                    HStack(spacing: DesignTokens.Spacing.xs) {
+                    if isClearAttentionArmed {
+                        Text("Clear all")
+                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                    } else {
                         Image(systemName: "xmark")
-                            .contentTransition(.symbolEffect(.replace))
-                        if isClearAttentionArmed {
-                            Text("Clear all")
-                                .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
-                        }
+                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
                     }
                 }
                 .font(.subheadline.weight(.semibold))
