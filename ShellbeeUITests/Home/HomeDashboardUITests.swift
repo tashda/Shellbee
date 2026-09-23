@@ -27,7 +27,7 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
         collapsed.lifetime = .keepAlways
         add(collapsed)
         header.tap()
-        XCTAssertTrue(app.buttons["card-expand-footer-batteries"].exists)
+        XCTAssertTrue(app.buttons["card-expand-preview-batteries"].exists)
         let opening = XCTAttachment(screenshot: app.screenshot())
         opening.name = "Batteries opening"
         opening.lifetime = .keepAlways
@@ -41,6 +41,22 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
         add(expanded)
         header.tap()
 
+        let preview = app.buttons["card-expand-preview-batteries"]
+        for _ in 0..<8 where !preview.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(preview.isHittable)
+        let previewHeaderTop = header.frame.minY
+        preview.tap()
+        let previewOpening = XCTAttachment(screenshot: app.screenshot())
+        previewOpening.name = "Batteries opening from faded row"
+        previewOpening.lifetime = .keepAlways
+        add(previewOpening)
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertLessThan(abs(header.frame.minY - previewHeaderTop), 24,
+                          "Tapping the faded row moved the card upward")
+        preview.tap()
+
         let statisticsButton = app.buttons["Open Device Statistics"]
         for _ in 0..<8 where !statisticsButton.isHittable {
             app.swipeUp()
@@ -50,5 +66,16 @@ final class HomeDashboardUITests: ShellbeeUITestCase {
         let allBridgesAvailable = app.buttons["Statistics for All"].waitForExistence(timeout: 5)
         XCTAssertTrue(statisticsOpened)
         XCTAssertTrue(allBridgesAvailable)
+
+        let makersHeader = app.buttons["card-expand-header-makers"]
+        for _ in 0..<10 where !makersHeader.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(makersHeader.isHittable)
+        let makersTop = makersHeader.frame.minY
+        makersHeader.tap()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertLessThan(abs(makersHeader.frame.minY - makersTop), 24,
+                          "Expanding Vendors moved its header upward")
     }
 }

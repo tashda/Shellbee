@@ -17,12 +17,12 @@ extension ActivityInstrument {
         switch kind {
         case .level: return variant == .fan ? .teal : .yellow
         case .binary: return binaryTint
-        case .trend, .position, .group: return .indigo
+        case .trend, .position, .group, .vendors: return .indigo
         case .temperature:
             // Weather-app bands over -10…40 °C: under 12 °C cool, over 26 °C hot.
             if normalizedValue < 0.44 { return .cyan }
             return normalizedValue < 0.72 ? .orange : .red
-        case .humidity, .backup, .update, .pairing: return .blue
+        case .humidity, .backup, .update, .pairing, .models: return .blue
         case .airQuality:
             if normalizedValue < 0.34 { return .green }
             return normalizedValue < 0.67 ? .yellow : .red

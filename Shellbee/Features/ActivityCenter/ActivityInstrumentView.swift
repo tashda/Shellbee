@@ -47,6 +47,8 @@ struct ActivityInstrumentDrawing {
         case .safety: drawSafety()
         case .action: drawAction()
         case .network: drawNetwork()
+        case .vendors: drawVendors()
+        case .models: drawModels()
         case .health: drawHealth()
         case .backup: drawBackup()
         case .restart: drawRestart()

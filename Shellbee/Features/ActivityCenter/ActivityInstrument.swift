@@ -19,6 +19,8 @@ enum ActivityInstrumentKind: String, CaseIterable, Identifiable, Sendable {
     case safety
     case action
     case network
+    case vendors
+    case models
     case health
     case backup
     case restart

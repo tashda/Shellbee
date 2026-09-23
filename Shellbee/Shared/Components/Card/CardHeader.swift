@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Header row shared by every control card: a tinted SF Symbol, a
+/// Header row shared by every control card: an Activity instrument or SF Symbol, a
 /// sentence-case title, the current value in secondary text, and optional
 /// trailing accessories (a toggle or glass buttons).
 struct CardHeader<Accessory: View>: View {
@@ -10,7 +10,6 @@ struct CardHeader<Accessory: View>: View {
     var tint: Color = .secondary
     var valueColor: Color = .secondary
     var instrument: ActivityInstrument? = nil
-    var assetImage: String? = nil
     @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
@@ -18,13 +17,6 @@ struct CardHeader<Accessory: View>: View {
             SwiftUI.Group {
                 if let instrument {
                     ActivityInstrumentView(instrument: instrument, size: DesignTokens.Size.cardSymbol)
-                } else if let assetImage {
-                    Image(assetImage)
-                        .resizable()
-                        .renderingMode(.template)
-                        .scaledToFit()
-                        .frame(width: DesignTokens.Size.cardSymbol, height: DesignTokens.Size.cardSymbol)
-                        .foregroundStyle(tint)
                 } else {
                     Image(systemName: systemImage)
                         .font(DesignTokens.Typography.cardHeaderSymbol)
@@ -71,12 +63,6 @@ extension CardHeader {
         self.init(systemImage: "", title: title, value: value,
                   valueColor: valueColor, instrument: instrument, accessory: accessory)
     }
-
-    init(assetImage: String, title: String, value: String? = nil,
-         @ViewBuilder accessory: @escaping () -> Accessory) {
-        self.init(systemImage: "", title: title, value: value,
-                  assetImage: assetImage, accessory: accessory)
-    }
 }
 
 extension CardHeader where Accessory == EmptyView {
@@ -84,10 +70,6 @@ extension CardHeader where Accessory == EmptyView {
          valueColor: Color = .secondary) {
         self.init(instrument: instrument, title: title, value: value,
                   valueColor: valueColor) { EmptyView() }
-    }
-
-    init(assetImage: String, title: String, value: String? = nil) {
-        self.init(assetImage: assetImage, title: title, value: value) { EmptyView() }
     }
 }
 

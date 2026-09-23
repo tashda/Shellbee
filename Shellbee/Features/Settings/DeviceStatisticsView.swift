@@ -49,15 +49,14 @@ struct DeviceStatisticsView: View {
                     powerSourcesCard
                     StatisticsRankingCard(
                         title: "Vendors",
-                        systemImage: "",
-                        assetImage: "shellbee.vendors",
+                        instrument: .init(kind: .vendors),
                         items: stats.vendors,
                         distinctCount: stats.distinctVendors,
                         noun: "makers"
                     )
                     StatisticsRankingCard(
                         title: "Models",
-                        systemImage: "square.stack.3d.up",
+                        instrument: .init(kind: .models),
                         items: stats.models,
                         distinctCount: stats.distinctModels,
                         noun: "models"

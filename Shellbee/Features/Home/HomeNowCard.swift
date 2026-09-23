@@ -54,7 +54,7 @@ struct HomeNowCard: View {
             if interviewingCount > 0 {
                 if !permitJoins.isEmpty || updatingCount > 0 { Divider() }
                 CardHeader(
-                    systemImage: "waveform.path.ecg",
+                    instrument: .init(kind: .pairing),
                     title: "Interviewing",
                     value: deviceCount(interviewingCount)
                 ) {
@@ -72,7 +72,7 @@ struct HomeNowCard: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let remaining = max(Int(join.endsAt.timeIntervalSince(context.date)), 0)
             CardHeader(
-                systemImage: "person.crop.circle.badge.plus",
+                instrument: .init(kind: .pairing, normalizedValue: 1, variant: .permitJoin),
                 // With one bridge there's room to say what the clock means.
                 // With several, the bridge's name is the more useful half
                 // and a countdown beside a Stop button reads as time left.
@@ -80,7 +80,7 @@ struct HomeNowCard: View {
                 value: join.namesBridge
                     ? Self.clock(remaining)
                     : "Closes in \(Self.clock(remaining))",
-                tint: .orange
+                valueColor: .orange
             ) {
                 Button("Stop") { onStopPermitJoin(join.bridgeID) }
                     .font(.subheadline.weight(.semibold))
@@ -101,10 +101,10 @@ struct HomeNowCard: View {
         Button(action: onOpenUpdates) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
                 CardHeader(
-                    systemImage: "arrow.up.circle.fill",
+                    instrument: .init(kind: .update, normalizedValue: updateProgress ?? 0),
                     title: "Updating",
                     value: updateValue,
-                    tint: .green
+                    valueColor: .green
                 ) {
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))

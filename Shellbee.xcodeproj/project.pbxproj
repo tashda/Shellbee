@@ -375,7 +375,7 @@
 				Shared/Components/Card/CardHeader.swift,
 				Shared/Components/Card/CardSurface.swift,
 				Shared/Components/Card/DeviceStatus.swift,
-				Shared/Components/Card/ExpandableCardSurface.swift,
+				Shared/Components/Card/ExpandableCardRows.swift,
 				Shared/Components/Card/IdentityHero.swift,
 				Shared/Components/Card/IdentityRow.swift,
 				Shared/Components/Card/RankedBarRow.swift,

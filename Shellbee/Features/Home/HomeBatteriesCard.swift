@@ -16,41 +16,37 @@ struct HomeBatteriesCard: View {
     }
 
     var body: some View {
-        ExpandableCardSurface(
-            isExpanded: $isExpanded,
-            hasMore: snapshot.batteryReadings.count > Self.visibleCount,
-            itemName: "batteries"
-        ) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                ExpandableCardHeader(
-                    isExpanded: $isExpanded,
-                    hasMore: snapshot.batteryReadings.count > Self.visibleCount,
-                    itemName: "batteries"
-                ) {
-                    CardHeader(
-                        instrument: .init(
-                            kind: .battery,
-                            normalizedValue: snapshot.lowBatteryDevices == 0
-                                ? 1
-                                : Double(snapshot.batteryReadings.first?.percent ?? 0) / 100
-                        ),
-                        title: "Batteries",
-                        value: headerValue,
-                        valueColor: snapshot.lowBatteryDevices > 0 ? .red : .secondary
-                    )
-                }
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            ExpandableCardHeader(
+                isExpanded: $isExpanded,
+                hasMore: snapshot.batteryReadings.count > Self.visibleCount,
+                itemName: "batteries"
+            ) {
+                CardHeader(
+                    instrument: .init(
+                        kind: .battery,
+                        normalizedValue: snapshot.lowBatteryDevices == 0
+                            ? 1
+                            : Double(snapshot.batteryReadings.first?.percent ?? 0) / 100
+                    ),
+                    title: "Batteries",
+                    value: headerValue,
+                    valueColor: snapshot.lowBatteryDevices > 0 ? .red : .secondary
+                )
+            }
 
-                ExpandableCardRows(
-                    isExpanded: $isExpanded,
-                    items: snapshot.batteryReadings,
-                    previewCount: Self.visibleCount,
-                    rowHeight: DesignTokens.Size.dashboardCompactRow,
-                    spacing: DesignTokens.Spacing.xs
-                ) { reading, _ in
-                    row(reading)
-                }
+            ExpandableCardRows(
+                isExpanded: $isExpanded,
+                items: snapshot.batteryReadings,
+                itemName: "batteries",
+                previewCount: Self.visibleCount,
+                rowHeight: DesignTokens.Size.dashboardCompactRow,
+                spacing: DesignTokens.Spacing.xs
+            ) { reading, _ in
+                row(reading)
             }
         }
+        .cardSurface()
     }
 
     /// The discrete battery symbols read correctly at every level; the

@@ -81,6 +81,21 @@ extension ActivityInstrumentDrawing {
         pen.dot(center, radius: 6, tint)
     }
 
+    /// Three makers, each a distinct mark on the same baseline.
+    func drawVendors() {
+        for (x, top, opacity) in [(10.0, 17.0, 0.65), (24.0, 12.0, 1.0), (38.0, 19.0, 0.8)] {
+            pen.dot(p(x, top), radius: 4.2, tint, opacity: opacity)
+            pen.line(p(x, top + 7), p(x, 38), tint, width: 4, opacity: opacity)
+        }
+    }
+
+    /// Three device forms, drawn like the other tiny Activity marks.
+    func drawModels() {
+        pen.stroke(ActivityInstrumentPen.rounded(5, 18, 11, 21, radius: 3), tint, width: 3)
+        pen.stroke(ActivityInstrumentPen.rounded(20, 8, 12, 31, radius: 3), tint, width: 3)
+        pen.stroke(ActivityInstrumentPen.rounded(36, 22, 8, 17, radius: 2.5), tint, width: 3)
+    }
+
     func drawTouchlink() {
         pen.dot(p(12, 24), radius: 4.2, tint)
         for (index, radius) in [9, 16, 23].enumerated() {

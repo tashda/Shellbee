@@ -14,47 +14,43 @@ struct HomeVendorsCard: View {
 
     var body: some View {
         let makers = makers
-        ExpandableCardSurface(
-            isExpanded: $isExpanded,
-            hasMore: makers.count > Self.visibleCount,
-            itemName: "vendors"
-        ) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    ExpandableCardHeader(
-                        isExpanded: $isExpanded,
-                        hasMore: makers.count > Self.visibleCount,
-                        itemName: "vendors"
-                    ) {
-                        CardHeader(
-                            assetImage: "shellbee.vendors",
-                            title: "Vendors",
-                            value: makers.isEmpty ? nil : "\(makers.count) maker\(makers.count == 1 ? "" : "s")"
-                        )
-                    }
-                    CardAccessoryButton(
-                        systemImage: "arrow.up.right",
-                        accessibilityLabel: "Open Device Statistics",
-                        action: onTap
-                    )
-                }
-
-                ExpandableCardRows(
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                ExpandableCardHeader(
                     isExpanded: $isExpanded,
-                    items: makers,
-                    previewCount: Self.visibleCount,
-                    rowHeight: DesignTokens.Size.dashboardCompactRow,
-                    spacing: DesignTokens.Spacing.xs
-                ) { item, rank in
-                    RankedBarRow(
-                        title: item.title,
-                        count: item.count,
-                        rank: rank,
-                        peak: makers.first?.count ?? 1
+                    hasMore: makers.count > Self.visibleCount,
+                    itemName: "vendors"
+                ) {
+                    CardHeader(
+                        instrument: .init(kind: .vendors),
+                        title: "Vendors",
+                        value: makers.isEmpty ? nil : "\(makers.count) maker\(makers.count == 1 ? "" : "s")"
                     )
                 }
+                CardAccessoryButton(
+                    systemImage: "arrow.up.right",
+                    accessibilityLabel: "Open Device Statistics",
+                    action: onTap
+                )
+            }
+
+            ExpandableCardRows(
+                isExpanded: $isExpanded,
+                items: makers,
+                itemName: "vendors",
+                previewCount: Self.visibleCount,
+                rowHeight: DesignTokens.Size.dashboardCompactRow,
+                spacing: DesignTokens.Spacing.xs
+            ) { item, rank in
+                RankedBarRow(
+                    title: item.title,
+                    count: item.count,
+                    rank: rank,
+                    peak: makers.first?.count ?? 1
+                )
             }
         }
+        .cardSurface()
     }
 }
 
