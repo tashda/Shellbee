@@ -322,6 +322,8 @@
 				Features/Settings/Developer/CardGalleryView.swift,
 				Features/Settings/Developer/DeveloperSettings.swift,
 				Features/Settings/Developer/DeveloperSettingsView.swift,
+				Features/Settings/Developer/IconGalleryCatalog.swift,
+				Features/Settings/Developer/IconGalleryView.swift,
 				Features/Settings/Developer/LiveActivityGalleryMoreSamples.swift,
 				Features/Settings/Developer/LiveActivityGallerySamples.swift,
 				Features/Settings/Developer/LiveActivityGalleryView.swift,

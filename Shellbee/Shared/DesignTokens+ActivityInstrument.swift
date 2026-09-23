@@ -1,6 +1,13 @@
 import SwiftUI
 
 extension DesignTokens {
+    nonisolated enum IconGallery {
+        static let heroSize: CGFloat = 48
+        static let heroTile: CGFloat = 72
+        static let sampleSizes: [CGFloat] = [16, 22, 30, 40]
+        static let sampleHeight: CGFloat = 44
+    }
+
     nonisolated enum ActivityInstrument {
         static let size: CGFloat = 48
         static let rowVerticalPadding: CGFloat = DesignTokens.Spacing.sm

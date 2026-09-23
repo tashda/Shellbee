@@ -10,6 +10,16 @@ struct ShellbeeDeveloperView: View {
     var body: some View {
         Form {
             Section {
+                NavigationLink("Icon Gallery") {
+                    IconGalleryView()
+                }
+            } header: {
+                Text("Iconography")
+            } footer: {
+                Text("See every custom Shellbee symbol and drawn instrument at the sizes used throughout the app.")
+            }
+
+            Section {
                 NavigationLink("Live Activity Gallery") {
                     LiveActivityGalleryView()
                 }

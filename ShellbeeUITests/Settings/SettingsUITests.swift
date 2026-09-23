@@ -484,3 +484,33 @@ final class ActivityInstrumentGalleryUITests: ShellbeeUITestCase {
         }
     }
 }
+
+final class IconGalleryUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += ["-activityCenterEnabled", "NO", "-developerModeEnabled", "YES"]
+    }
+
+    func testCustomSymbolsAndCardInstrumentsAppear() {
+        waitForMainTab()
+        app.tapSettingsTab()
+
+        let developer = app.buttons["Developer"].firstMatch
+        for _ in 0..<4 where !developer.exists { app.swipeUp() }
+        developer.tapWhenReady()
+        app.buttons["Shellbee"].firstMatch.tapWhenReady()
+        app.buttons["Icon Gallery"].firstMatch.tapWhenReady()
+
+        XCTAssertTrue(app.navigationBars["Icon Gallery"].waitForExistence(timeout: 5))
+        app.segmentedControls.buttons["Symbols"].firstMatch.tapWhenReady()
+        XCTAssertTrue(app.staticTexts["shellbee.home"].exists)
+
+        app.segmentedControls.buttons["Instruments"].firstMatch.tapWhenReady()
+        XCTAssertTrue(app.staticTexts["Health"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["16 pt"].firstMatch.exists)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Icon Gallery instruments"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+}
