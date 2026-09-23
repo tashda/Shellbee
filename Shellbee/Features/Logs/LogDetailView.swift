@@ -107,6 +107,7 @@ struct LogDetailView: View {
                     state: [:],
                     bridgeID: bridgeID,
                     bridgeName: environment.attributionBridgeName(for: bridgeID),
+                    bridgeAttributionStyle: .plain,
                     displayMode: .compact
                 )
             }
@@ -127,6 +128,7 @@ struct LogDetailView: View {
                     otaStatus: scope.store.otaStatus(for: device.friendlyName),
                     bridgeID: bridgeID,
                     bridgeName: environment.attributionBridgeName(for: bridgeID),
+                    bridgeAttributionStyle: .plain,
                     displayMode: .compact
                 )
             }

@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum BridgeAttributionStyle {
+    case badge
+    case plain
+}
+
 /// Compact identity row, like an account or contact row in Settings: the
 /// image, the full name, a readable description and a chevron. A status
 /// only appears when it needs attention. Inside a `List` it draws no
@@ -10,6 +15,7 @@ struct IdentityRow<Artwork: View>: View {
     let subtitle: String
     var bridgeID: UUID? = nil
     var bridgeName: String? = nil
+    var bridgeAttributionStyle: BridgeAttributionStyle = .badge
     var status: DeviceStatus? = nil
     var isListRow: Bool = false
     @ViewBuilder let artwork: () -> Artwork
@@ -28,8 +34,26 @@ struct IdentityRow<Artwork: View>: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 if let bridgeID, let bridgeName, !bridgeName.isEmpty {
-                    BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
-                        .padding(.top, DesignTokens.Spacing.xxs)
+                    switch bridgeAttributionStyle {
+                    case .badge:
+                        BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
+                            .padding(.top, DesignTokens.Spacing.xxs)
+                    case .plain:
+                        HStack(spacing: DesignTokens.Spacing.xs) {
+                            Circle()
+                                .fill(DesignTokens.Bridge.color(for: bridgeID))
+                                .frame(
+                                    width: DesignTokens.Size.statusDotHero,
+                                    height: DesignTokens.Size.statusDotHero
+                                )
+                            Text(bridgeName)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Bridge: \(bridgeName)")
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
