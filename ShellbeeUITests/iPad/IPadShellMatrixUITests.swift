@@ -18,7 +18,7 @@ final class IPadShellMatrixUITests: XCTestCase {
     @MainActor
     func testPrimaryWorkspacesAndDeviceLibraryAreReachable() {
         waitForBothBridges()
-        app.staticTexts["Total"].firstMatch.assertExists(timeout: 20)
+        app.navigationBars["Home"].assertExists(timeout: 20)
 
         openSidebarSection("Devices", expectedTitle: "Devices")
         app.cells.containing(.staticText, identifier: "Living Room Light")
@@ -108,7 +108,8 @@ final class IPadShellMatrixUITests: XCTestCase {
 
     @MainActor
     private func assertSecondaryDetail(title: String) {
-        app.navigationBars[title].assertExists(timeout: 15)
+        let identity = app.buttons.matching(NSPredicate(format: "value == %@", title)).firstMatch
+        identity.assertExists(timeout: 15)
         app.descendants(matching: .any)["Bridge: Secondary"].assertExists(timeout: 15)
     }
 

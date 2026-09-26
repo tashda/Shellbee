@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class GroupDeviceDropPolicyTests: XCTestCase {
-    func testSameBridgeDropBuildsOneExactAddMemberRequest() {
+    func testSameBridgeDropBuildsOneExactAddMemberRequest() async {
         let bridgeID = UUID()
         var device = makeDevice(ieee: "0x01")
         device.endpoints = ["2": .object([:])]
@@ -30,7 +30,7 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         )
     }
 
-    func testCrossBridgeDropIsRejected() {
+    func testCrossBridgeDropIsRejected() async {
         let device = makeDevice(ieee: "0x01")
         let payload = DeviceTransferPayload(device: device, bridgeID: UUID(), bridgeName: "Home")
 
@@ -47,7 +47,7 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         XCTAssertTrue(reason.contains("same bridge"))
     }
 
-    func testDuplicateMembershipDoesNotBuildRequest() {
+    func testDuplicateMembershipDoesNotBuildRequest() async {
         let bridgeID = UUID()
         let device = makeDevice(ieee: "0x01")
         let payload = DeviceTransferPayload(device: device, bridgeID: bridgeID, bridgeName: "Home")
@@ -65,7 +65,7 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         )
     }
 
-    func testMissingSourceBridgeAndMissingDeviceAreRejected() {
+    func testMissingSourceBridgeAndMissingDeviceAreRejected() async {
         let device = makeDevice(ieee: "0x01")
         let noBridge = DeviceTransferPayload(device: device, bridgeID: nil, bridgeName: nil)
         let bridgeID = UUID()
