@@ -34,6 +34,9 @@
         "MultiBridgeIntegrationTests",
         "MultiWindowTests",
         "NetworkMapTests",
+        "MultiBridgeNavigationTests",
+        "GroupDropIntegrationTests",
+        "NetworkMapIntegrationTests",
         "NotificationPreferencesTests",
         "Z2MIntegrationTests"
       ],

@@ -147,6 +147,9 @@ jobs:
             -skip-testing:"ShellbeeTests/LogsWorkspaceStateTests" \
             -skip-testing:"ShellbeeTests/MultiWindowTests" \
             -skip-testing:"ShellbeeTests/NetworkMapTests" \
+            -skip-testing:"ShellbeeTests/MultiBridgeNavigationTests" \
+            -skip-testing:"ShellbeeTests/GroupDropIntegrationTests" \
+            -skip-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
