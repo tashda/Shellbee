@@ -102,7 +102,7 @@ final class IPadShellMatrixUITests: XCTestCase {
     @MainActor
     private func selectSecondaryBridgeFilter() {
         let options = app.descendants(matching: .any)
-            .matching(identifier: "Secondary")
+            .matching(NSPredicate(format: "label == %@", "Secondary"))
             .allElementsBoundByIndex
         guard let option = options.last else {
             return XCTFail("The Secondary bridge filter option was not found")
