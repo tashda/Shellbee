@@ -9,7 +9,7 @@ final class MultiBridgeAggregationTests: MultiBridgeTestCase {
     // MARK: - AppEnvironment.allDevices
 
     @MainActor
-    func testAllDevicesAggregatesAcrossSessions() {
+    func testAllDevicesAggregatesAcrossSessions() async {
         let env = makeEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
@@ -33,7 +33,7 @@ final class MultiBridgeAggregationTests: MultiBridgeTestCase {
     }
 
     @MainActor
-    func testAllDevicesIDNamespacingAvoidsCollision() {
+    func testAllDevicesIDNamespacingAvoidsCollision() async {
         let env = makeEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
@@ -54,7 +54,7 @@ final class MultiBridgeAggregationTests: MultiBridgeTestCase {
     // MARK: - AppEnvironment.allLogEntries
 
     @MainActor
-    func testAllLogEntriesSortedNewestFirst() {
+    func testAllLogEntriesSortedNewestFirst() async {
         let env = makeEnvironment()
         let cfgA = makeConfig(name: "Main")
         let cfgB = makeConfig(name: "Lab")
@@ -78,7 +78,7 @@ final class MultiBridgeAggregationTests: MultiBridgeTestCase {
     // MARK: - bridge(forDevice:)
 
     @MainActor
-    func testAllDevicesAttributesEachToItsBridge() {
+    func testAllDevicesAttributesEachToItsBridge() async {
         // Phase 3 multi-bridge: `environment.bridge(forDevice:)` is gone —
         // name-based lookup was ambiguous when two bridges share a name.
         // The replacement is `allDevices`: every entry already carries its
