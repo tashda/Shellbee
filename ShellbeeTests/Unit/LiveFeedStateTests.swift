@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class LiveFeedStateTests: XCTestCase {
-    func testFollowingLiveUsesTheCurrentItems() {
+    func testFollowingLiveUsesTheCurrentItems() async {
         let state = LiveFeedState<Item>()
         let live = [Item(id: 1), Item(id: 2)]
 
@@ -11,7 +11,7 @@ final class LiveFeedStateTests: XCTestCase {
         XCTAssertFalse(state.isReadingHistory)
     }
 
-    func testReadingHistoryKeepsTheSnapshotStableAsItemsArrive() {
+    func testReadingHistoryKeepsTheSnapshotStableAsItemsArrive() async {
         let state = LiveFeedState<Item>()
         let history = [Item(id: 2), Item(id: 1)]
         let live = [Item(id: 3)] + history
@@ -22,7 +22,7 @@ final class LiveFeedStateTests: XCTestCase {
         XCTAssertEqual(state.displayedItems(from: live), history)
     }
 
-    func testFollowLiveDropsTheSnapshotAndShowsNewItems() {
+    func testFollowLiveDropsTheSnapshotAndShowsNewItems() async {
         let state = LiveFeedState<Item>()
         let history = [Item(id: 2), Item(id: 1)]
         let live = [Item(id: 3)] + history
@@ -34,7 +34,7 @@ final class LiveFeedStateTests: XCTestCase {
         XCTAssertEqual(state.displayedItems(from: live), live)
     }
 
-    func testSecondReadingGestureDoesNotReplaceTheOriginalSnapshot() {
+    func testSecondReadingGestureDoesNotReplaceTheOriginalSnapshot() async {
         let state = LiveFeedState<Item>()
         let history = [Item(id: 2), Item(id: 1)]
 
