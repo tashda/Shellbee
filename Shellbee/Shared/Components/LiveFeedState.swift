@@ -1,6 +1,27 @@
 import Observation
 import SwiftUI
 
+/// Value-only feed state so snapshot behavior can be tested without creating
+/// an observable main-actor object inside XCTest.
+nonisolated struct LiveFeedSnapshotState<Item: Identifiable> where Item.ID: Hashable {
+    private(set) var frozenItems: [Item]?
+
+    var isReadingHistory: Bool { frozenItems != nil }
+
+    func displayedItems(from liveItems: [Item]) -> [Item] {
+        frozenItems ?? liveItems
+    }
+
+    mutating func beginReadingHistory(with liveItems: [Item]) {
+        guard frozenItems == nil else { return }
+        frozenItems = liveItems
+    }
+
+    mutating func followLive() {
+        frozenItems = nil
+    }
+}
+
 /// Keeps a live feed stable once the user starts reading older content.
 ///
 /// A feed supplies its current snapshot on every render. The first deliberate
@@ -9,24 +30,24 @@ import SwiftUI
 @MainActor
 @Observable
 final class LiveFeedState<Item: Identifiable> where Item.ID: Hashable {
-    private(set) var frozenItems: [Item]?
+    private var snapshot = LiveFeedSnapshotState<Item>()
+    var frozenItems: [Item]? { snapshot.frozenItems }
     /// Bumped by Follow Live. The feed's scroll tracking watches it and
     /// scrolls to the newest entry.
     private(set) var returnToLiveRequest = 0
 
-    var isReadingHistory: Bool { frozenItems != nil }
+    var isReadingHistory: Bool { snapshot.isReadingHistory }
 
     func displayedItems(from liveItems: [Item]) -> [Item] {
-        frozenItems ?? liveItems
+        snapshot.displayedItems(from: liveItems)
     }
 
     func beginReadingHistory(with liveItems: [Item]) {
-        guard frozenItems == nil else { return }
-        frozenItems = liveItems
+        snapshot.beginReadingHistory(with: liveItems)
     }
 
     func followLive() {
-        frozenItems = nil
+        snapshot.followLive()
     }
 
     /// Hides Follow Live straight away and asks the feed to scroll to the

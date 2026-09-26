@@ -1,18 +1,17 @@
 import XCTest
 @testable import Shellbee
 
-@MainActor
 final class LiveFeedStateTests: XCTestCase {
-    func testFollowingLiveUsesTheCurrentItems() async {
-        let state = LiveFeedState<Item>()
+    func testFollowingLiveUsesTheCurrentItems() {
+        let state = LiveFeedSnapshotState<Item>()
         let live = [Item(id: 1), Item(id: 2)]
 
         XCTAssertEqual(state.displayedItems(from: live), live)
         XCTAssertFalse(state.isReadingHistory)
     }
 
-    func testReadingHistoryKeepsTheSnapshotStableAsItemsArrive() async {
-        let state = LiveFeedState<Item>()
+    func testReadingHistoryKeepsTheSnapshotStableAsItemsArrive() {
+        var state = LiveFeedSnapshotState<Item>()
         let history = [Item(id: 2), Item(id: 1)]
         let live = [Item(id: 3)] + history
 
@@ -22,8 +21,8 @@ final class LiveFeedStateTests: XCTestCase {
         XCTAssertEqual(state.displayedItems(from: live), history)
     }
 
-    func testFollowLiveDropsTheSnapshotAndShowsNewItems() async {
-        let state = LiveFeedState<Item>()
+    func testFollowLiveDropsTheSnapshotAndShowsNewItems() {
+        var state = LiveFeedSnapshotState<Item>()
         let history = [Item(id: 2), Item(id: 1)]
         let live = [Item(id: 3)] + history
 
@@ -34,8 +33,8 @@ final class LiveFeedStateTests: XCTestCase {
         XCTAssertEqual(state.displayedItems(from: live), live)
     }
 
-    func testSecondReadingGestureDoesNotReplaceTheOriginalSnapshot() async {
-        let state = LiveFeedState<Item>()
+    func testSecondReadingGestureDoesNotReplaceTheOriginalSnapshot() {
+        var state = LiveFeedSnapshotState<Item>()
         let history = [Item(id: 2), Item(id: 1)]
 
         state.beginReadingHistory(with: history)
