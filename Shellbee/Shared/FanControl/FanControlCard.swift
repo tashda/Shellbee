@@ -4,198 +4,94 @@ struct FanControlCard: View {
     let context: FanControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
-    /// When `false`, the feature sections (Behaviour / Indicators / etc.) are
-    /// suppressed so the caller can render them as native `List` sections.
-    /// Defaults to `true` to preserve inline rendering for snapshot contexts
-    /// (e.g. LogDetailView) that aren't backed by a List.
-    var rendersSectionsInline: Bool = true
 
     @State private var speedDraft: Double = 0
-    @State private var presentedGroup: IndexedGroup?
 
-    private let rowHorizontalPadding: CGFloat = DesignTokens.Spacing.lg
-    private let rowVerticalPadding: CGFloat = DesignTokens.Spacing.md
-    private let rowIconWidth: CGFloat = DesignTokens.Size.cardSymbol
+    private var air: FanAirReadings { FanAirReadings(context: context) }
+    private var hasAirSensors: Bool { air.hasAirSensors }
 
+    /// The controls only: power, mode and speed. Air readings and filter
+    /// health are rows beneath it (`FanReadingsSections`).
+    @ViewBuilder
     var body: some View {
-        VStack(spacing: DesignTokens.Spacing.lg) {
+        if mode == .snapshot {
+            snapshotContent
+        } else {
             heroCard
-            if hasFilterSection { filterCard }
-            if rendersSectionsInline {
-                ForEach(sections) { section in
-                    sectionView(section)
-                }
+        }
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Shared CompactSnapshotCard chrome,
+    /// single row: fan glyph, "Fan", speed/mode summary, ON/OFF pill.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            CompactControlSnapshotRow(
+                systemImage: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"),
+                title: hasAirSensors ? "Air Quality" : "Fan",
+                subtitle: snapshotSecondaryText,
+                tint: heroTint
+            ) {
+                statePill
             }
         }
-        .sheet(item: $presentedGroup) { group in
-            FeatureDetailSheet(title: group.label) {
-                ForEach(Array(group.members.enumerated()), id: \.element.property) { idx, e in
-                    if idx > 0 { rowDivider }
-                    FanExtraRow(expose: e, state: context.state, mode: mode,
-                                horizontalPadding: rowHorizontalPadding,
-                                verticalPadding: rowVerticalPadding,
-                                iconWidth: rowIconWidth,
-                                onSend: onSend)
-                }
-            }
+    }
+
+    /// Best one-line summary for the current state. Air-quality fans get
+    /// the AQ reading; plain fans get speed or mode if available.
+    private var snapshotSecondaryText: String? {
+        if hasAirSensors {
+            var parts: [String] = []
+            if let pm = air.pm25 { parts.append("\(Int(pm.rounded())) \(air.pm25Unit)") }
+            if let aq = air.airQuality { parts.append(prettify(aq)) }
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
         }
-    }
-
-    // MARK: - Sectioning
-
-    private var eligibleExtras: [Expose] {
-        let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
-        return context.extras.filter { e in
-            guard let prop = e.property else { return false }
-            return !claimed.contains(prop)
+        guard context.isOn else { return nil }
+        if let modeName = context.fanModeFeature?.property,
+           let mode = context.state[modeName]?.stringValue, !mode.isEmpty {
+            return prettify(mode)
         }
-    }
-
-    private var sections: [LayoutSection] {
-        FeatureLayout.sections(from: eligibleExtras)
-    }
-
-    private let filterProps: Set<String> = ["replace_filter", "filter_age", "device_age"]
-    private var hasFilterSection: Bool {
-        context.extras.contains { filterProps.contains($0.property ?? "") }
-    }
-
-    // MARK: - Hero data
-
-    private var pm25Expose: Expose? { context.extras.first { $0.property == "pm25" } }
-    private var airQualityExpose: Expose? { context.extras.first { $0.property == "air_quality" } }
-    private var hasAirSensors: Bool { airQualityExpose != nil || pm25Expose != nil }
-
-    private var pm25Value: Double? {
-        guard let p = pm25Expose?.property else { return nil }
-        return context.state[p]?.numberValue
-    }
-    private var pm25Unit: String { pm25Expose?.unit ?? "µg/m³" }
-    private var airQualityText: String? {
-        guard let p = airQualityExpose?.property else { return nil }
-        return context.state[p]?.stringValue
+        if let speedProp = context.speedFeature?.property,
+           let speed = context.state[speedProp]?.numberValue {
+            return "Speed \(Int(speed))"
+        }
+        return nil
     }
 
     /// The single state-derived color that drives the hero gradient, eyebrow,
     /// and any state-text inside the hero. Air-quality devices use an AQI
     /// scale; plain fans use teal when on, neutral when off.
     private var heroTint: Color {
-        if hasAirSensors { return airQualityTint }
+        if hasAirSensors { return air.airQualityTint }
         return context.isOn ? .teal : Color(.tertiaryLabel)
-    }
-
-    private var airQualityTint: Color {
-        if let aq = airQualityText {
-            switch aq.lowercased() {
-            case "excellent": return .green
-            case "good": return .mint
-            case "moderate", "fair": return .yellow
-            case "poor": return .orange
-            case "unhealthy", "very_poor", "very poor", "hazardous", "bad": return .red
-            default: break
-            }
-        }
-        if let pm = pm25Value {
-            switch pm {
-            case ..<12: return .green
-            case ..<35: return .mint
-            case ..<55: return .yellow
-            case ..<150: return .orange
-            default: return .red
-            }
-        }
-        return .teal
     }
 
     // MARK: - Hero card
 
-    @ViewBuilder
     private var heroCard: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            heroHeadline
-            if hasModeControl || hasSpeedControl {
-                hairline
-                if hasModeControl { heroModeRow }
-                if hasModeControl && hasSpeedControl { hairline }
-                if hasSpeedControl { heroSpeedRow }
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+            CardHeader(
+                systemImage: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"),
+                title: hasAirSensors ? "Air Purifier" : "Fan",
+                value: headerValue,
+                tint: heroTint
+            ) {
+                powerControl
             }
+            if hasModeControl { modeControl }
+            if hasSpeedControl { speedControl }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
+        .cardSurface()
     }
 
-    private var heroBackground: some View {
-        ZStack {
-            Color(.secondarySystemGroupedBackground)
-            LinearGradient(
-                colors: [
-                    heroTint.opacity(hasAirSensors ? 0.20 : (context.isOn ? 0.18 : 0.06)),
-                    heroTint.opacity(DesignTokens.Opacity.subtleFade)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-
-    private var heroHeadline: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                heroEyebrow
-                heroValue
-            }
-            Spacer(minLength: 0)
-            powerControl
-        }
-    }
-
-    private var heroEyebrow: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: hasAirSensors ? "aqi.medium" : (context.isOn ? "fan.fill" : "fan"))
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .symbolRenderingMode(.hierarchical)
-            Text(hasAirSensors ? "Air Quality" : "Fan")
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-        }
-        .foregroundStyle(heroTint)
-    }
-
-    @ViewBuilder
-    private var heroValue: some View {
-        if hasAirSensors {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                if let pm = pm25Value {
-                    HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                        Text(Int(pm.rounded()).formatted())
-                            .font(DesignTokens.Typography.heroValue)
-                            .monospacedDigit()
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
-                        Text(pm25Unit)
-                            .font(DesignTokens.Typography.heroUnit)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if let aq = airQualityText {
-                    Text(prettify(aq))
-                        .font(DesignTokens.Typography.heroSubtitle)
-                        .foregroundStyle(heroTint)
-                        .lineLimit(1)
-                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
-                }
-            }
-        } else {
-            Text(context.isOn ? "On" : "Off")
-                .font(DesignTokens.Typography.heroStateText)
-                .foregroundStyle(heroTint)
-        }
+    /// "On · Speed 3", "Off", or for purifiers without a power state the
+    /// air quality in words.
+    private var headerValue: String {
+        guard context.stateFeature != nil else { return air.airQuality.map(prettify) ?? "" }
+        guard context.isOn else { return "Off" }
+        if hasSpeedControl, !hasAirSensors { return "On · Speed \(Int(speedDraft.rounded()))" }
+        return "On"
     }
 
     @ViewBuilder
@@ -206,16 +102,8 @@ struct FanControlCard: View {
                 set: { _ in if let p = context.togglePayload() { onSend(p) } }
             ))
             .labelsHidden()
-            .tint(toggleTint)
-        } else {
-            statePill
+            .tint(.teal)
         }
-    }
-
-    /// Toggles get the live state tint while the fan is on, and a sane teal
-    /// while off (so they read as "tappable to turn on" rather than disabled).
-    private var toggleTint: Color {
-        context.isOn ? heroTint : .teal
     }
 
     private var statePill: some View {
@@ -231,13 +119,7 @@ struct FanControlCard: View {
             )
     }
 
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
-            .frame(height: DesignTokens.Size.hairline)
-    }
-
-    // MARK: - Hero mode row
+    // MARK: - Mode
 
     private var hasModeControl: Bool {
         guard let f = context.fanModeFeature, let v = f.values else { return false }
@@ -246,273 +128,66 @@ struct FanControlCard: View {
 
     private var hasSpeedControl: Bool { context.speedFeature?.range != nil }
 
-    private var heroModeRow: some View {
-        HStack {
-            Text("Mode").font(.body).foregroundStyle(.primary)
-            Spacer()
-            if mode == .interactive, let f = context.fanModeFeature, f.isWritable, let modes = f.values {
-                Menu {
-                    ForEach(modes, id: \.self) { m in
-                        Button {
-                            if let p = context.fanModePayload(m) { onSend(p) }
-                        } label: {
-                            if context.fanMode == m {
-                                Label(prettify(m), systemImage: "checkmark")
-                            } else {
-                                Text(prettify(m))
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: DesignTokens.Spacing.xs) {
-                        Text(prettify(context.fanMode ?? "—"))
-                            .foregroundStyle(.primary)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
+    /// Segmented for up to four modes, a menu picker beyond that.
+    @ViewBuilder
+    private var modeControl: some View {
+        if mode == .interactive, let f = context.fanModeFeature, f.isWritable, let modes = f.values {
+            let selection = Binding<String>(
+                get: { context.fanMode ?? "" },
+                set: { m in if let p = context.fanModePayload(m) { onSend(p) } }
+            )
+            if modes.count <= DesignTokens.Count.segmentedMaxOptions {
+                Picker("Mode", selection: selection) {
+                    ForEach(modes, id: \.self) { Text(prettify($0)).tag($0) }
                 }
-                .tint(.primary)
+                .pickerStyle(.segmented)
             } else {
+                HStack {
+                    Text("Mode")
+                    Spacer()
+                    Picker("Mode", selection: selection) {
+                        ForEach(modes, id: \.self) { Text(prettify($0)).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .tint(.secondary)
+                }
+            }
+        } else {
+            HStack {
+                Text("Mode")
+                Spacer()
                 Text(prettify(context.fanMode ?? "—")).foregroundStyle(.secondary)
             }
         }
     }
 
-    // MARK: - Hero speed row
+    // MARK: - Speed
 
     @ViewBuilder
-    private var heroSpeedRow: some View {
+    private var speedControl: some View {
         let f = context.speedFeature
         let range = f?.range ?? 0...100
-        let unit = f?.unit ?? "%"
         let current = context.speedPercent ?? range.lowerBound
 
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack {
-                Text("Speed").font(.body).foregroundStyle(.primary)
-                Spacer()
-                Text("\(Int(speedDraft.rounded()))\(unit.isEmpty ? "" : " \(unit)")")
-                    .font(.body.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
+        SwiftUI.Group {
             if mode == .interactive, let f, f.isWritable {
                 Slider(value: $speedDraft, in: range, step: f.step ?? 1) { editing in
                     guard !editing else { return }
                     if let p = context.speedPayload(speedDraft) { onSend(p) }
                 }
-                .tint(toggleTint)
+                .tint(.teal)
+                .accessibilityLabel("Speed")
             }
         }
         .onAppear { speedDraft = current }
         .onChange(of: current) { _, v in speedDraft = v }
     }
 
-    // MARK: - Filter card
-
-    private var replaceFilterValue: Bool? {
-        guard let e = context.extras.first(where: { $0.property == "replace_filter" }),
-              let p = e.property else { return nil }
-        let v = context.state[p]
-        if v == e.valueOn { return true }
-        if v == e.valueOff { return false }
-        return v?.boolValue
-    }
-
-    private var filterAgeMinutes: Double? { context.state["filter_age"]?.numberValue }
-    private var deviceAgeMinutes: Double? { context.state["device_age"]?.numberValue }
-
-    private var filterCard: some View {
-        let needsReplace = replaceFilterValue ?? false
-        let tint: Color = needsReplace ? .orange : .green
-        let title = needsReplace ? "Replace" : "Healthy"
-        let icon = needsReplace ? "exclamationmark.triangle.fill" : "checkmark.seal.fill"
-
-        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    Image(systemName: icon)
-                        .font(DesignTokens.Typography.eyebrowIcon)
-                        .symbolRenderingMode(.hierarchical)
-                    Text("Filter")
-                        .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(DesignTokens.Typography.eyebrowTracking)
-                        .textCase(.uppercase)
-                }
-                .foregroundStyle(tint)
-
-                Text(title)
-                    .font(DesignTokens.Typography.featureTileValue)
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
-            }
-
-            if filterAgeMinutes != nil || deviceAgeMinutes != nil {
-                LazyVGrid(columns: [
-                    GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
-                    GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
-                ], alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-                    if let v = filterAgeMinutes {
-                        ageTile(label: "Filter Age", minutes: v, icon: "calendar")
-                    }
-                    if let v = deviceAgeMinutes {
-                        ageTile(label: "Device Age", minutes: v, icon: "clock")
-                    }
-                }
-            }
-        }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            ZStack {
-                Color(.secondarySystemGroupedBackground)
-                LinearGradient(
-                    colors: [tint.opacity(DesignTokens.Opacity.lightOpaque), tint.opacity(DesignTokens.Opacity.veryFaint)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
-    }
-
-    private func ageTile(label: String, minutes: Double, icon: String) -> some View {
-        let parts = formatDurationParts(minutes)
-        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(label)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(.secondary)
-
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                Text(parts.value)
-                    .font(DesignTokens.Typography.featureTileValue)
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
-                Text(parts.unit)
-                    .font(DesignTokens.Typography.featureTileUnit)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    // MARK: - Section rendering
-
-    @ViewBuilder
-    private func sectionView(_ section: LayoutSection) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text(section.title)
-                .font(DesignTokens.Typography.sectionHeaderLabel)
-                .tracking(DesignTokens.Typography.sectionHeaderTracking)
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
-                .padding(.leading, DesignTokens.Spacing.md)
-
-            VStack(spacing: 0) {
-                ForEach(Array(section.items.enumerated()), id: \.element.id) { idx, item in
-                    if idx > 0 { rowDivider }
-                    itemView(item)
-                }
-            }
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-            .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                    radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
-        }
-    }
-
-    @ViewBuilder
-    private func itemView(_ item: LayoutItem) -> some View {
-        switch item {
-        case .row(let expose):
-            FanExtraRow(expose: expose, state: context.state, mode: mode,
-                        horizontalPadding: rowHorizontalPadding,
-                        verticalPadding: rowVerticalPadding,
-                        iconWidth: rowIconWidth,
-                        onSend: onSend)
-        case .indexedGroup(let group):
-            DisclosureRow(
-                symbol: group.symbol,
-                label: group.label,
-                trailingSummary: "\(group.members.count)",
-                horizontalPadding: rowHorizontalPadding,
-                verticalPadding: rowVerticalPadding,
-                iconWidth: rowIconWidth
-            ) { presentedGroup = group }
-        }
-    }
-
     // MARK: - Helpers
 
-    private var rowDivider: some View {
-        Divider().padding(.leading, rowHorizontalPadding + rowIconWidth + DesignTokens.Spacing.md)
-    }
-
-    private func prettify(_ s: String) -> String {
-        s.replacingOccurrences(of: "_", with: " ").capitalized
-    }
-
-    private func formatDurationParts(_ minutes: Double) -> (value: String, unit: String) {
-        let total = Int(minutes.rounded())
-        if total < 60 { return ("\(total)", "min") }
-        let hours = total / 60
-        if hours < 48 { return ("\(hours)", "h") }
-        let days = hours / 24
-        if days < 60 { return ("\(days)", "d") }
-        let months = days / 30
-        return ("\(months)", "mo")
-    }
+    private func prettify(_ s: String) -> String { FanAirReadings.prettify(s) }
 }
-
-// MARK: - Disclosure row (monochrome, local to fan card)
-
-private struct DisclosureRow: View {
-    let symbol: String
-    let label: String
-    let trailingSummary: String?
-    let horizontalPadding: CGFloat
-    let verticalPadding: CGFloat
-    let iconWidth: CGFloat
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: DesignTokens.Spacing.md) {
-                Image(systemName: symbol)
-                    .font(DesignTokens.Typography.formRowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-                    .frame(width: iconWidth)
-                Text(label).font(.body).foregroundStyle(.primary)
-                Spacer()
-                if let trailingSummary {
-                    Text(trailingSummary).font(.body).foregroundStyle(.secondary)
-                }
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, verticalPadding)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 
 #Preview {
     ScrollView {

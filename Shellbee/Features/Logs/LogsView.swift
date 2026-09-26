@@ -2,22 +2,35 @@ import SwiftUI
 
 struct LogsView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var mode: LogMode = .activity
-    @State private var activityVM = LogsViewModel()
-    @State private var bridgeVM = BridgeLogViewModel()
+    @State private var workspace: LogsWorkspaceState
     @State private var autoOpenedEntry: LogRoute?
+    @State private var showingClearConfirmation = false
+    @State private var showingDeviceFilter = false
     let initialEntryFilter: Set<UUID>?
     private let notificationSheetStyle: Bool
+    /// Activity Center shows Activity as notification-style stacks instead
+    /// of the plain log list used everywhere else.
+    private let usesActivityFeed: Bool
+    private let navigationTitle: String
     private let onDone: (() -> Void)?
+    private let selection: Binding<LogsPaneRoute?>?
 
     init(
         initialEntryFilter: Set<UUID>? = nil,
         notificationSheetStyle: Bool = false,
-        onDone: (() -> Void)? = nil
+        usesActivityFeed: Bool = false,
+        navigationTitle: String = "Logs",
+        onDone: (() -> Void)? = nil,
+        selection: Binding<LogsPaneRoute?>? = nil,
+        workspace: LogsWorkspaceState? = nil
     ) {
         self.initialEntryFilter = initialEntryFilter
         self.notificationSheetStyle = notificationSheetStyle
+        self.usesActivityFeed = usesActivityFeed
+        self.navigationTitle = navigationTitle
         self.onDone = onDone
+        self.selection = selection
+        _workspace = State(initialValue: workspace ?? LogsWorkspaceState())
     }
 
     enum LogMode: String, CaseIterable, Hashable {
@@ -26,8 +39,8 @@ struct LogsView: View {
     }
 
     var body: some View {
-        // Intentionally NOT wrapped in its own NavigationStack. LogsView is
-        // never a tab root — every entry point already provides a stack:
+        // Intentionally NOT wrapped in its own NavigationStack. Each host
+        // provides the stack:
         //  - Settings → Logs and BridgeSettings → Logs push LogsView onto
         //    that tab's stack via NavigationLink.
         //  - LogSheetHost (Home → Recent Events, notification taps) wraps
@@ -37,8 +50,8 @@ struct LogsView: View {
         // could land on either stack, depending on iOS version, leaving the
         // user dropped back to a parent screen with nothing pushed.
         if notificationSheetStyle {
-            ActivityLogContent(viewModel: activityVM)
-                .navigationTitle("Logs")
+            ActivityLogContent(viewModel: workspace.activity, selection: nil)
+                .navigationTitle(navigationTitle)
                 .navigationBarTitleDisplayMode(.inline)
                 .onAppear { applyInitialFilter(autoOpenSingle: false) }
                 .toolbar {
@@ -51,62 +64,111 @@ struct LogsView: View {
                 }
         } else {
             modeContent
-            .navigationTitle("Logs")
+            .modifier(ActivityFeedSearch(
+                isEnabled: usesActivityFeed,
+                text: workspace.mode == .activity
+                    ? $workspace.activity.searchText
+                    : $workspace.bridge.searchText
+            ))
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: searchBinding, prompt: searchPrompt)
             .onAppear { applyInitialFilter(autoOpenSingle: true) }
             .navigationDestination(item: $autoOpenedEntry) { route in
                 LogDetailView(bridgeID: route.bridgeID, entry: route.entry)
             }
-            .minimizeSearchToolbarIfAvailable()
             .toolbar(.hidden, for: .tabBar)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("Mode", selection: $mode) {
-                        ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                }
-                if mode == .activity {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        LogFilterMenu(viewModel: activityVM)
-                    }
-                } else {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        BridgeLevelFilterMenu(viewModel: bridgeVM)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(role: .destructive) {
-                        // Phase 1 multi-bridge: always clear across every
-                        // connected session — the activity tab merges by
-                        // default, and per-bridge clearing belongs in a
-                        // future per-bridge logs picker.
-                        for session in environment.registry.orderedSessions {
-                            session.store.clearLogs()
+                if !AdaptiveLayout.isPad {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Picker("Mode", selection: $workspace.mode) {
+                            ForEach(LogMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                         }
+                        .pickerStyle(.menu)
+                        .tint(.primary)
+                    }
+                }
+                if AdaptiveLayout.isPad {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        OpenInNewWindowButton(destination: .activity)
+                        if activeModeHasFilter {
+                            ClearFiltersToolbarButton(action: clearActiveModeFilters)
+                        }
+                    }
+                    TrailingToolbarGroupSpacer()
+                } else {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if activeModeHasFilter {
+                            ClearFiltersToolbarButton(action: clearActiveModeFilters)
+                        }
+                        if workspace.mode == .activity {
+                            LogFilterMenu(viewModel: workspace.activity) {
+                                showingDeviceFilter = true
+                            }
+                        } else {
+                            BridgeLevelFilterMenu(viewModel: workspace.bridge)
+                        }
+                    }
+                    TrailingToolbarGroupSpacer()
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button(role: .destructive) {
+                        showingClearConfirmation = true
                     } label: {
                         Image(systemName: "trash")
                     }
                 }
+            }
+            .sheet(isPresented: $showingDeviceFilter) {
+                LogDeviceFilterSheet(
+                    selectedDevices: $workspace.activity.selectedDevices,
+                    logDevices: workspace.activity.pickableDevices(sessions: environment.registry.orderedSessions)
+                )
+            }
+            .alert("Clear Activity?", isPresented: $showingClearConfirmation) {
+                Button("Clear", role: .destructive) {
+                    // Activity is merged across connected bridges, so clear
+                    // every session rather than silently leaving entries.
+                    for session in environment.registry.orderedSessions {
+                        session.store.clearLogs()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently clears the activity and raw log entries for every connected bridge.")
             }
         }
     }
 
     @ViewBuilder
     private var modeContent: some View {
+        if usesActivityFeed {
+            // No pager here: the navigation bar has to track the visible
+            // list for its scroll-edge effect, and the title menu already
+            // switches between Activity and Log.
+            switch workspace.mode {
+            case .activity:
+                ActivityFeedView(viewModel: workspace.activity, selection: selection)
+            case .log:
+                RawLogFeedView(viewModel: workspace.bridge, selection: selection)
+            }
+        } else {
+            pagedModeContent
+        }
+    }
+
+    @ViewBuilder
+    private var pagedModeContent: some View {
         let position = Binding<LogMode?>(
-            get: { mode },
-            set: { if let new = $0, new != mode { mode = new } }
+            get: { workspace.mode },
+            set: { if let new = $0, new != workspace.mode { workspace.mode = new } }
         )
         GeometryReader { geo in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
-                    ActivityLogContent(viewModel: activityVM)
+                    ActivityLogContent(viewModel: workspace.activity, selection: selection)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.activity)
-                    BridgeLogView(viewModel: bridgeVM)
+                    BridgeLogView(viewModel: workspace.bridge, selection: selection)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .id(LogMode.log)
                 }
@@ -118,26 +180,32 @@ struct LogsView: View {
         }
     }
 
-    private var searchBinding: Binding<String> {
-        Binding(
-            get: { mode == .activity ? activityVM.searchText : bridgeVM.searchText },
-            set: { if mode == .activity { activityVM.searchText = $0 } else { bridgeVM.searchText = $0 } }
-        )
+    private var activeModeHasFilter: Bool {
+        workspace.mode == .activity ? workspace.activity.hasActiveFilter : workspace.bridge.hasActiveFilter
     }
 
-    private var searchPrompt: String {
-        mode == .activity ? "Search logs" : "Search messages"
+    private func clearActiveModeFilters() {
+        if workspace.mode == .activity {
+            workspace.activity.clearAllFilters()
+        } else {
+            workspace.bridge.clearAllFilters()
+        }
     }
 
     private func applyInitialFilter(autoOpenSingle: Bool) {
-        guard let filter = initialEntryFilter, activityVM.entryIDFilter == nil else { return }
-        activityVM.entryIDFilter = filter
+        guard let filter = initialEntryFilter, workspace.activity.entryIDFilter == nil else { return }
+        workspace.activity.entryIDFilter = filter
         guard autoOpenSingle, filter.count == 1, let id = filter.first else { return }
         // Search every connected bridge for the entry — deep-link callers
         // know the entry id but not the source bridge.
         for session in environment.registry.orderedSessions {
             if let entry = session.store.logEntries.first(where: { $0.id == id }) {
-                autoOpenedEntry = LogRoute(bridgeID: session.bridgeID, entry: entry)
+                let route = LogRoute(bridgeID: session.bridgeID, entry: entry)
+                if let selection {
+                    selection.wrappedValue = .activity(route)
+                } else {
+                    autoOpenedEntry = route
+                }
                 return
             }
         }
@@ -149,6 +217,7 @@ struct LogsView: View {
 private struct ActivityLogContent: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: LogsViewModel
+    let selection: Binding<LogsPaneRoute?>?
 
     private var isMergedMode: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
@@ -175,7 +244,7 @@ private struct ActivityLogContent: View {
            let session = environment.registry.session(for: bridgeID) {
             singleBridgeListBody(bridgeID: bridgeID, store: session.store)
         } else {
-            List { EmptyView() }
+            selectableList { EmptyView() }
             .listStyle(.plain)
             .overlay {
                 ContentUnavailableView(
@@ -190,16 +259,14 @@ private struct ActivityLogContent: View {
     @ViewBuilder
     private func singleBridgeListBody(bridgeID: UUID, store: AppStore) -> some View {
         let entries = viewModel.filteredEntries(store: store)
-        List {
+        selectableList {
             ForEach(entries) { entry in
-                ZStack {
-                    LogRowView(entry: entry, store: store, bridgeID: bridgeID)
-                    NavigationLink {
-                        LogDetailView(bridgeID: bridgeID, entry: entry)
-                    } label: { EmptyView() }
-                    .opacity(0)
-                }
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+                ActivitySubjectEvents.Row(
+                    item: activityItem(entry: entry, bridgeID: bridgeID),
+                    bridgeID: bridgeID,
+                    usesValueNavigation: selection != nil,
+                    showsBridgeIndicator: selection == nil
+                )
             }
         }
         .listStyle(.plain)
@@ -222,17 +289,14 @@ private struct ActivityLogContent: View {
         // bridge's own store (so device/group lookups in filters resolve
         // correctly), then merge by timestamp.
         let bound = mergedFilteredEntries()
-        List {
+        selectableList {
             ForEach(bound) { item in
-                let rowStore = environment.registry.session(for: item.bridgeID)?.store
-                ZStack {
-                    LogRowView(entry: item.entry, store: rowStore, bridgeID: item.bridgeID)
-                    NavigationLink {
-                        LogDetailView(bridgeID: item.bridgeID, entry: item.entry)
-                    } label: { EmptyView() }
-                    .opacity(0)
-                }
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
+                ActivitySubjectEvents.Row(
+                    item: activityItem(entry: item.entry, bridgeID: item.bridgeID),
+                    bridgeID: item.bridgeID,
+                    usesValueNavigation: selection != nil,
+                    showsBridgeIndicator: selection == nil
+                )
             }
         }
         .listStyle(.plain)
@@ -264,6 +328,45 @@ private struct ActivityLogContent: View {
         }
         return perBridge.sorted { $0.entry.timestamp > $1.entry.timestamp }
     }
+
+    private func activityItem(entry: LogEntry, bridgeID: UUID) -> ActivityEventItem {
+        let bridgeName = environment.registry.session(for: bridgeID)?.displayName ?? "Bridge"
+        return environment.activityEventItem(for: BridgeBoundLogEntry(
+            bridgeID: bridgeID,
+            bridgeName: bridgeName,
+            entry: entry
+        ))
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
+            }
+        }
+    }
+}
+
+// MARK: - Activity feed search
+
+/// Search for the Activity Center, bound to whichever mode is showing.
+/// Other hosts of LogsView keep their existing filters and no search field.
+private struct ActivityFeedSearch: ViewModifier {
+    let isEnabled: Bool
+    @Binding var text: String
+
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.searchable(text: $text, prompt: Text("Search"))
+        } else {
+            content
+        }
+    }
 }
 
 // MARK: - Bridge level filter
@@ -279,58 +382,33 @@ private struct BridgeLevelFilterMenu: View {
     var body: some View {
         Menu {
             if connectedSessions.count >= 2 {
-                bridgeMenu
+                BridgeFilterMenu(selection: $viewModel.bridgeFilter, sessions: connectedSessions)
             }
             levelMenu
-            if viewModel.hasActiveFilter {
-                Divider()
-                Button(role: .destructive) {
-                    viewModel.clearAllFilters()
-                } label: {
-                    Label("Clear Filters", systemImage: "xmark.circle")
-                }
+            ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
+                viewModel.clearAllFilters()
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(viewModel.hasActiveFilter ? .fill : .none)
-        }
-    }
-
-    private var bridgeMenu: some View {
-        Menu {
-            Picker("Bridge", selection: $viewModel.bridgeFilter) {
-                Label("All Bridges", systemImage: "antenna.radiowaves.left.and.right")
-                    .tag(UUID?.none)
-                ForEach(connectedSessions, id: \.bridgeID) { session in
-                    Text(session.displayName).tag(UUID?.some(session.bridgeID))
-                }
-            }
-            .pickerStyle(.inline)
-        } label: {
-            if let id = viewModel.bridgeFilter,
-               let session = connectedSessions.first(where: { $0.bridgeID == id }) {
-                Label("Bridge: \(session.displayName)", systemImage: "antenna.radiowaves.left.and.right")
-            } else {
-                Label("Bridge", systemImage: "antenna.radiowaves.left.and.right")
-            }
+            FilterMenuLabel(isActive: viewModel.hasActiveFilter)
         }
     }
 
     private var levelMenu: some View {
         Menu {
             Picker("Level", selection: $viewModel.selectedLevel) {
-                Label("All Levels", systemImage: "square.grid.2x2").tag(LogLevel?.none)
+                Label("All Levels", systemImage: FilterMenuSymbol.all).tag(LogLevel?.none)
                 ForEach(LogLevel.allCases, id: \.self) { level in
                     Label(level.label, systemImage: level.systemImage).tag(LogLevel?.some(level))
                 }
             }
             .pickerStyle(.inline)
         } label: {
-            if let level = viewModel.selectedLevel {
-                Label("Level: \(level.label)", systemImage: level.systemImage)
-            } else {
-                Label("Level", systemImage: "exclamationmark.triangle")
-            }
+            FilterSubmenuLabel(
+                name: "Level",
+                systemImage: "exclamationmark.triangle",
+                value: viewModel.selectedLevel?.label,
+                valueSystemImage: viewModel.selectedLevel?.systemImage
+            )
         }
     }
 }

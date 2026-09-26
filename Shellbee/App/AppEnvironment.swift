@@ -7,16 +7,11 @@ final class AppEnvironment {
     let history = ConnectionHistory()
     let registry: BridgeRegistry
     let notificationPreferences = NotificationPreferences()
+    /// Latest Zigbee2MQTT release, shared by every surface that reports one.
+    let releases = Z2MReleaseService()
     /// Per-bridge OTA queues. Each bridge's bulk-OTA work runs independently —
     /// a 200-device check on bridge A doesn't serialize bridge B's update.
     private var otaQueues: [UUID: OTABulkOperationQueue] = [:]
-    var selectedTab: AppTab = .home
-    var pendingDeviceFilter: DeviceQuickFilter?
-    var pendingLogSheet: LogSheetRequest?
-    /// Phase 1 multi-bridge: a deep-link request to push a device detail.
-    /// Carries the source bridge id so the route lands on the right store
-    /// without a `setPrimary()` side effect at the call site.
-    var pendingDeviceNavigation: DeviceRoute?
     private var hasStarted = false
 
     init() {
@@ -59,111 +54,49 @@ final class AppEnvironment {
     /// Every device across every connected bridge, tagged with its source.
     /// Useful for the Devices tab in merged mode.
     var allDevices: [BridgeBoundDevice] {
-        registry.orderedSessions.flatMap { session in
-            session.store.devices.map { device in
-                BridgeBoundDevice(bridgeID: session.bridgeID, bridgeName: session.displayName, device: device)
-            }
-        }
+        BridgeDataAggregation.devices(from: bridgeDataSnapshots)
     }
 
     /// Every group across every connected bridge.
     var allGroups: [BridgeBoundGroup] {
-        registry.orderedSessions.flatMap { session in
-            session.store.groups.map { group in
-                BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: group)
-            }
-        }
+        BridgeDataAggregation.groups(from: bridgeDataSnapshots)
     }
 
     /// Every log entry across every connected bridge, sorted newest first.
     var allLogEntries: [BridgeBoundLogEntry] {
-        registry.orderedSessions
-            .flatMap { session in
-                session.store.logEntries.map {
-                    BridgeBoundLogEntry(bridgeID: session.bridgeID, bridgeName: session.displayName, entry: $0)
-                }
-            }
-            .sorted { $0.entry.timestamp > $1.entry.timestamp }
+        BridgeDataAggregation.logEntries(from: bridgeDataSnapshots)
     }
 
-    /// All pending in-app notifications across every bridge. Tagged so the
-    /// overlay can show bridge attribution on the banner and route dismissal
-    /// back to the originating bridge's store.
-    var allPendingNotifications: [BridgeBoundNotification] {
-        registry.orderedSessions.flatMap { session in
-            session.store.pendingNotifications.map {
-                BridgeBoundNotification(bridgeID: session.bridgeID, bridgeName: session.displayName, notification: $0)
-            }
+    private var bridgeDataSnapshots: [BridgeDataSnapshot] {
+        registry.orderedSessions.map { session in
+            BridgeDataSnapshot(
+                bridgeID: session.bridgeID,
+                bridgeName: session.displayName,
+                devices: session.store.devices,
+                groups: session.store.groups,
+                logEntries: session.store.logEntries
+            )
         }
     }
 
-    /// Total count of pending notifications across every bridge — drives the
-    /// overlay's haptic + auto-dismiss scheduling without forcing the overlay
-    /// to flatten the merged list every render.
-    var totalPendingNotifications: Int {
-        registry.orderedSessions.reduce(0) { $0 + $1.store.pendingNotifications.count }
-    }
-
-    /// Combined arrival-id snapshot across every connected bridge. SwiftUI
-    /// observes the value to fire the overlay's "new notification" haptic
-    /// across every bridge — the array changes whenever any bridge enqueues
-    /// a new notification (each store rotates its own UUID on enqueue).
-    var aggregateNotificationArrivalID: [UUID] {
-        registry.orderedSessions.map(\.store.notificationArrivalID)
-    }
-
-    /// Total fast-track count across every bridge. The overlay schedules
-    /// the next fast-track banner whenever this rises.
-    var totalFastTrackNotifications: Int {
-        registry.orderedSessions.reduce(0) { $0 + $1.store.fastTrackNotifications.count }
-    }
-
-    /// Pop the latest non-fast-track notification from whichever bridge holds
-    /// the most recent one. Used when the overlay dismisses a banner.
-    func popLatestPendingNotification() {
-        // The overlay shows newest-first across bridges. Find the bridge with
-        // the most-recently-enqueued notification and pop from there.
-        var latestBridge: BridgeSession?
-        var latestCount = 0
+    /// Reconcile already-running activities after a Live Activities setting
+    /// changes. New work is guarded by the same preferences in each
+    /// coordinator, while active pairing and OTA state can be refreshed
+    /// immediately without waiting for another bridge message.
+    func refreshLiveActivityPreferences() {
         for session in registry.orderedSessions {
-            let count = session.store.pendingNotifications.count
-            if count > latestCount {
-                latestBridge = session
-                latestCount = count
-            }
+            session.store.syncPermitJoinLiveActivity()
+            session.store.refreshOTAActivity()
         }
-        if let store = latestBridge?.store, !store.pendingNotifications.isEmpty {
-            store.pendingNotifications.removeLast()
+        if !PermitJoinLiveActivityCoordinator.isEnabled {
+            PermitJoinLiveActivityCoordinator.shared.clearAll()
         }
-    }
-
-    /// Clear every bridge's pending notifications. Used when the user
-    /// dismisses the entire stack.
-    func clearAllPendingNotifications() {
-        for session in registry.orderedSessions {
-            session.store.pendingNotifications.removeAll()
+        if !OTAUpdateLiveActivityCoordinator.isEnabled {
+            OTAUpdateLiveActivityCoordinator.shared.clearAll()
         }
-    }
-
-    /// Pop the next fast-track notification from whichever bridge has one.
-    /// Fast-track is "show this once briefly" (e.g., "Copied").
-    func popNextFastTrackNotification() -> BridgeBoundNotification? {
-        for session in registry.orderedSessions {
-            if let next = session.store.popFastTrackNotification() {
-                return BridgeBoundNotification(
-                    bridgeID: session.bridgeID,
-                    bridgeName: session.displayName,
-                    notification: next
-                )
-            }
+        if !BridgeOperationLiveActivityCoordinator.isEnabled {
+            BridgeOperationLiveActivityCoordinator.shared.clearAll()
         }
-        return nil
-    }
-
-    /// True if any bridge has fast-track notifications waiting. Used by the
-    /// overlay to drive its scheduler.
-    var hasFastTrackNotifications: Bool {
-        registry.orderedSessions.contains { !$0.store.fastTrackNotifications.isEmpty }
     }
 
     // MARK: - Connection state queries
@@ -200,11 +133,10 @@ final class AppEnvironment {
     /// bridge never tears down others. The first session connected becomes
     /// the focused (primary) bridge automatically.
     func connect(config: ConnectionConfig) {
-        selectedTab = .home
         let isFirst = registry.primary == nil
         registry.connect(config: config)
         if let session = registry.session(for: config.id) {
-            wireNotificationFilter(into: session.store)
+            wireNotificationFilter(into: session.store, bridgeID: session.bridgeID)
             ensureQueueWired(for: session)
         }
         if isFirst, let primary = registry.primary {
@@ -274,18 +206,21 @@ final class AppEnvironment {
         registry.session(for: bridgeID)?.controller.send(topic: topic, payload: payload)
     }
 
+    /// Like `send(bridge:topic:payload:)`, but awaits actual transmission
+    /// and reports whether the request left the device — used by the bulk
+    /// OTA queue, which needs to distinguish "never sent" (e.g. mid-
+    /// reconnect) from a genuine lack of response from Z2M (see #144).
+    @discardableResult
+    func sendAwaitingTransmission(bridge bridgeID: UUID, topic: String, payload: JSONValue) async -> Bool {
+        guard let session = registry.session(for: bridgeID) else { return false }
+        return await session.controller.sendAwaitingTransmission(topic: topic, payload: payload)
+    }
+
     /// Multi-bridge variant of `sendBridgeOptions` — addresses a specific
     /// bridge by id rather than the focused one. Used by per-bridge Settings
     /// pages when more than one bridge is connected.
     func sendBridgeOptions(_ options: [String: JSONValue], to bridgeID: UUID) {
         send(bridge: bridgeID, topic: Z2MTopics.Request.options, payload: .object(["options": .object(options)]))
-    }
-
-    // MARK: - Tab-level navigation helpers
-
-    func showDevices(filter: DeviceQuickFilter) {
-        pendingDeviceFilter = filter
-        selectedTab = .devices
     }
 
     // MARK: - Lifecycle
@@ -294,8 +229,19 @@ final class AppEnvironment {
         guard !hasStarted else { return }
         hasStarted = true
 
-        ConnectionLiveActivityCoordinator.shared.clearAll()
         OTAUpdateLiveActivityCoordinator.shared.clearAll()
+        PermitJoinLiveActivityCoordinator.shared.clearAll()
+        BridgeOperationLiveActivityCoordinator.shared.clearAll()
+        Task { await RetiredLiveActivities.endAll() }
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["SHELLBEE_LIVE_ACTIVITY_PREVIEW"] == "permitJoin" {
+            PermitJoinActivityPreview.run()
+        }
+        LiveActivityStageLauncher.openIfRequested()
+        #endif
+        LiveActivityBackgroundGrace.install { [weak self] in
+            self?.registry.orderedSessions.forEach { $0.store.forgetUnfollowableInterviews() }
+        }
         await Task.yield()
 
         let env = ProcessInfo.processInfo.environment
@@ -308,7 +254,32 @@ final class AppEnvironment {
                let portStr = env["UI_TEST_Z2M_PORT"],
                let port = Int(portStr) {
                 let token = env["UI_TEST_Z2M_TOKEN"].flatMap { $0.isEmpty ? nil : $0 }
-                connect(config: ConnectionConfig(host: host, port: port, useTLS: false, basePath: "/", authToken: token))
+                let name = env["UI_TEST_Z2M_NAME"].flatMap { $0.isEmpty ? nil : $0 }
+                connect(config: ConnectionConfig(
+                    host: host,
+                    port: port,
+                    useTLS: false,
+                    basePath: "/",
+                    authToken: token,
+                    name: name
+                ))
+
+                if let secondaryHost = env["UI_TEST_Z2M_SECONDARY_HOST"],
+                   let secondaryPortString = env["UI_TEST_Z2M_SECONDARY_PORT"],
+                   let secondaryPort = Int(secondaryPortString) {
+                    let secondaryToken = env["UI_TEST_Z2M_SECONDARY_TOKEN"]
+                        .flatMap { $0.isEmpty ? nil : $0 }
+                    let secondaryName = env["UI_TEST_Z2M_SECONDARY_NAME"]
+                        .flatMap { $0.isEmpty ? nil : $0 }
+                    connect(config: ConnectionConfig(
+                        host: secondaryHost,
+                        port: secondaryPort,
+                        useTLS: false,
+                        basePath: "/",
+                        authToken: secondaryToken,
+                        name: secondaryName
+                    ))
+                }
                 return
             }
         }
@@ -328,11 +299,28 @@ final class AppEnvironment {
         }
     }
 
-    /// Set up notification filtering on a freshly-created store so notifications
-    /// from that bridge are routed through the user's global preferences.
-    private func wireNotificationFilter(into store: AppStore) {
+    /// Resume recoverable bridge sessions once when any scene becomes active.
+    /// Controllers transition to `.connecting` synchronously, so another
+    /// scene becoming active cannot start a duplicate connection loop.
+    func resumeConnectionsIfNeeded() {
+        for session in registry.orderedSessions {
+            guard session.controller.hasBeenConnected else { continue }
+            switch session.connectionState {
+            case .lost, .failed, .idle:
+                session.controller.retryFromLost()
+            case .connecting, .connected, .reconnecting:
+                continue
+            }
+        }
+    }
+
+    /// Set up Activity-attention filtering on a freshly-created store. The
+    /// per-bridge mute toggle and category preferences control highlighting in
+    /// Notifications Only, while the underlying Activity remains available.
+    private func wireNotificationFilter(into store: AppStore, bridgeID: UUID) {
         let prefs = notificationPreferences
         store.notificationFilter = { [weak store] notification in
+            if prefs.isMuted(bridgeID: bridgeID) { return false }
             guard let category = notification.category else { return true }
             let bridgeLevel = store?.bridgeInfo?.logLevel
             return prefs.isEnabled(category, bridgeLogLevel: bridgeLevel)
@@ -347,7 +335,7 @@ final class AppEnvironment {
         if let existing = otaQueues[bridgeID] { return existing }
         let queue = OTABulkOperationQueue(
             sender: { [weak self, bridgeID] topic, payload in
-                self?.send(bridge: bridgeID, topic: topic, payload: payload)
+                await self?.sendAwaitingTransmission(bridge: bridgeID, topic: topic, payload: payload) ?? false
             },
             onCompletion: { [weak store] summary in
                 store?.enqueueOTABulkSummary(summary)

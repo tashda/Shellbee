@@ -1,0 +1,477 @@
+import SwiftUI
+
+/// iPad / regular-width shell. Adaptive shape based on width and section:
+///
+/// - **Expansive scene sections** → 3-column:
+///   sidebar + list + detail. Sidebar pinned inline. Tap a row, detail
+///   fills the trailing column.
+/// - **Compact and standard iPad scenes** → adaptive split view. The system
+///   collapses it to one or two visible columns without discarding selection.
+///   Each section pushes detail within its own column (Reminders/Files
+///   pattern).
+///
+/// `Logs` and `Device Library` are sidebar-only entries; the iPhone tab
+/// bar declares its four tabs explicitly and never iterates
+/// `AppTab.allCases`.
+///
+/// The iPad shell uses the system-provided sidebar toggle. The optional soft
+/// top-edge treatment is applied separately so turning it off restores the
+/// untouched UIKit and SwiftUI rendering path.
+struct MainSplitView: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
+    let initialDestination: ShellbeeWindowDestination
+    @State private var selection: AppTab? = .home
+    @State private var twoColumnVisibility: NavigationSplitViewVisibility = .all
+    @State private var threeColumnVisibility: NavigationSplitViewVisibility = .all
+    @State private var selectedDeviceRoute: DeviceRoute?
+    @State private var selectedLogsPaneRoute: LogsPaneRoute?
+    @State private var selectedSettingsRoute: SettingsWorkspaceRoute?
+    @State private var selectedNetworkDeviceRoute: DeviceRoute?
+    @State private var isCommandPalettePresented = false
+    @State private var deviceListViewModel = DeviceListViewModel()
+    @State private var logsWorkspace = LogsWorkspaceState()
+    @State private var groupsWorkspace = GroupsWorkspaceState()
+    @State private var didApplyInitialDestination = false
+    @State private var networkMapFilters: Set<NetworkMapFilter> = []
+    @State private var networkMapBridgeID: UUID?
+
+    init(initialDestination: ShellbeeWindowDestination = .home) {
+        self.initialDestination = initialDestination
+    }
+
+    private var anyBridgeNeedsRestart: Bool {
+        environment.registry.orderedSessions.contains { $0.store.bridgeInfo?.restartRequired == true }
+    }
+
+    private func usesThreeColumns(wideIPadLayout: Bool) -> Bool {
+        guard wideIPadLayout else { return false }
+        switch selection ?? .home {
+        case .devices, .groups, .logs, .settings: return true
+        case .home, .networkMap, .search: return false
+        }
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            responsiveShell(for: geo.size)
+        }
+        .sheet(item: Binding(
+            get: { sceneNavigation.pendingLogSheet },
+            set: { sceneNavigation.pendingLogSheet = $0 }
+        )) { request in
+            LogSheetHost(request: request)
+        }
+        .sheet(isPresented: $isCommandPalettePresented) {
+            CommandPaletteView()
+                .environment(environment)
+        }
+        .onAppear {
+            selection = sceneNavigation.selectedTab
+            consumePendingActivityLogFilter()
+            applyInitialDestinationIfPossible()
+            if let route = sceneNavigation.pendingSettingsNavigation {
+                selectedSettingsRoute = .bridgeOverview(route.bridgeID)
+                sceneNavigation.pendingSettingsNavigation = nil
+            }
+        }
+        .onChange(of: selection) { _, newValue in
+            if let newValue { sceneNavigation.selectedTab = newValue }
+        }
+        .onChange(of: sceneNavigation.selectedTab) { _, newValue in
+            selection = newValue
+        }
+        .onChange(of: sceneNavigation.pendingSettingsNavigation) { _, route in
+            guard let route else { return }
+            selectedSettingsRoute = .bridgeOverview(route.bridgeID)
+            sceneNavigation.pendingSettingsNavigation = nil
+        }
+        .onChange(of: sceneNavigation.pendingActivityLogFilter) { _, filter in
+            guard filter != nil else { return }
+            consumePendingActivityLogFilter()
+        }
+        .onChange(of: logsWorkspace.mode) { _, _ in
+            selectedLogsPaneRoute = nil
+        }
+        .onChange(of: environment.allGroups) { _, groups in
+            groupsWorkspace.reconcile(groups: groups)
+            applyInitialDestinationIfPossible()
+        }
+        .onChange(of: environment.allDevices) { _, _ in
+            applyInitialDestinationIfPossible()
+        }
+        .onChange(of: environment.allLogEntries) { _, _ in
+            applyInitialDestinationIfPossible()
+        }
+        .focusedSceneValue(\.appKeyboardActions, keyboardActions)
+    }
+
+    @ViewBuilder
+    private func responsiveShell(for size: CGSize) -> some View {
+        let wideIPadLayout = AdaptiveLayout.usesWideIPadLayout(in: size)
+        shell(
+            usesThreeColumns: usesThreeColumns(wideIPadLayout: wideIPadLayout),
+            usesWideHomeLayout: wideIPadLayout
+        )
+    }
+
+    @ViewBuilder
+    private func shell(usesThreeColumns: Bool, usesWideHomeLayout: Bool) -> some View {
+        if usesThreeColumns {
+            threeColumnShell
+        } else {
+            twoColumnShell(usesWideHomeLayout: usesWideHomeLayout)
+        }
+    }
+
+    private func twoColumnShell(usesWideHomeLayout: Bool) -> some View {
+        NavigationSplitView(columnVisibility: $twoColumnVisibility) {
+            sidebar
+                .navigationTitle("Shellbee")
+                .navigationSplitViewColumnWidth(
+                    min: DesignTokens.Size.iPadSidebarMinimumWidth,
+                    ideal: DesignTokens.Size.iPadSidebarIdealWidth
+                )
+        } detail: {
+            twoColumnDetail(usesWideHomeLayout: usesWideHomeLayout)
+                .toolbar {
+                    collapsedSidebarToggle(for: twoColumnVisibility)
+                }
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var threeColumnShell: some View {
+        // `.id(selection)` on the entire split rebuilds the whole
+        // NavigationSplitView when the sidebar changes — that's the
+        // only reliable way to clear the *implicit* navigation stack
+        // in the detail column.
+        //
+        // The rebuild crossfades by default, which leaks the previous
+        // selection's highlight across columns and triggers a transient
+        // "navigationDestination outside a stack" warning while the old
+        // shell tears down. `.transaction` strips animation off the
+        // .id-driven rebuild so it's instant.
+        NavigationSplitView(columnVisibility: $threeColumnVisibility) {
+            sidebar
+                .navigationTitle("Shellbee")
+                .navigationSplitViewColumnWidth(
+                    min: DesignTokens.Size.iPadSidebarMinimumWidth,
+                    ideal: DesignTokens.Size.iPadSidebarIdealWidth
+                )
+        } content: {
+            threeColumnContent
+                .navigationSplitViewColumnWidth(
+                    min: DesignTokens.Size.iPadContentColumnMinimumWidth,
+                    ideal: DesignTokens.Size.iPadContentColumnIdealWidth,
+                    max: DesignTokens.Size.iPadContentColumnMaximumWidth
+                )
+                .environment(\.isSelectableListContext, true)
+        } detail: {
+            threeColumnDetail
+                .toolbar {
+                    collapsedSidebarToggle(for: threeColumnVisibility)
+                }
+        }
+        .id(selection)
+        .transaction(value: selection) { $0.animation = nil }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var sidebar: some View {
+        List(selection: $selection) {
+            // No section title: the sidebar's navigation title already
+            // reads "Shellbee".
+            Section {
+                ForEach(sidebarTabs, id: \.self) { tab in
+                    sidebarRow(for: tab)
+                }
+            }
+            if selection == .devices {
+                DeviceWorkspaceFilters(viewModel: deviceListViewModel)
+            }
+            if selection == .logs {
+                ActivityWorkspaceFilters(workspace: logsWorkspace)
+            }
+            if selection == .networkMap {
+                NetworkMapWorkspaceFilters(
+                    filters: $networkMapFilters,
+                    selectedBridgeID: $networkMapBridgeID
+                )
+            }
+        }
+        .listStyle(.sidebar)
+    }
+
+    private var sidebarTabs: [AppTab] {
+        // Search sits last, below the sections it searches.
+        AppTab.allCases
+    }
+
+    private func sidebarRow(for tab: AppTab) -> some View {
+        Label {
+            Text(tab.title)
+        } icon: {
+            tab.symbol.image
+                .font(DesignTokens.Typography.sidebarIcon)
+        }
+        .badge(tab == .settings && anyBridgeNeedsRestart ? Text("!") : nil)
+    }
+
+    @ToolbarContentBuilder
+    private func collapsedSidebarToggle(for visibility: NavigationSplitViewVisibility) -> some ToolbarContent {
+        if #available(iOS 26.0, *), visibility != .all {
+            DefaultToolbarItem(kind: .sidebarToggle, placement: .topBarLeading)
+        }
+    }
+
+    /// 2-column detail: each section is self-contained with its own
+    /// internal `NavigationStack`. Logs needs a stack supplied by the
+    /// host since `LogsView` deliberately omits its own.
+    @ViewBuilder
+    private func twoColumnDetail(usesWideHomeLayout: Bool) -> some View {
+        switch selection ?? .home {
+        case .home:     HomeView(usesWideLayout: usesWideHomeLayout)
+        case .search:   GlobalSearchView()
+        case .devices:
+            NavigationStack {
+                DeviceListView(
+                    embedInNavigationStack: false,
+                    selection: $selectedDeviceRoute,
+                    viewModel: deviceListViewModel
+                )
+                .navigationDestination(item: $selectedDeviceRoute) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+            }
+        case .groups:
+            NavigationStack {
+                GroupListView(
+                    embedInNavigationStack: false,
+                    selection: groupSelection
+                )
+                .navigationDestination(item: groupSelection) { route in
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                }
+                .navigationDestination(for: DeviceRoute.self) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+            }
+        case .logs:
+            NavigationStack {
+                LogsView(
+                    usesActivityFeed: true,
+                    navigationTitle: "Activity",
+                    selection: $selectedLogsPaneRoute,
+                    workspace: logsWorkspace
+                )
+                .navigationDestination(item: $selectedLogsPaneRoute) { route in
+                    LogsPaneDestinationView(route: route)
+                }
+            }
+        case .networkMap:
+            NavigationStack {
+                NetworkMapView(
+                    embedInNavigationStack: false,
+                    selection: $selectedNetworkDeviceRoute,
+                    filters: $networkMapFilters,
+                    bridgeSelection: $networkMapBridgeID
+                )
+                .navigationDestination(item: $selectedNetworkDeviceRoute) { route in
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+            }
+        case .settings:
+            NavigationStack {
+                SettingsWorkspaceList(selection: $selectedSettingsRoute)
+                    .navigationDestination(item: $selectedSettingsRoute) { route in
+                        SettingsWorkspaceDestinationView(route: route)
+                    }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var threeColumnContent: some View {
+        switch selection ?? .home {
+        case .devices:
+            DeviceListView(
+                embedInNavigationStack: false,
+                selection: $selectedDeviceRoute,
+                viewModel: deviceListViewModel
+            )
+        case .groups:
+            GroupListView(
+                embedInNavigationStack: false,
+                selection: groupSelection
+            )
+        case .logs:
+            LogsView(
+                usesActivityFeed: true,
+                navigationTitle: "Activity",
+                selection: $selectedLogsPaneRoute,
+                workspace: logsWorkspace
+            )
+        case .networkMap:
+            NetworkMapView(
+                embedInNavigationStack: false,
+                selection: $selectedNetworkDeviceRoute,
+                filters: $networkMapFilters,
+                bridgeSelection: $networkMapBridgeID
+            )
+        case .settings:
+            SettingsWorkspaceList(selection: $selectedSettingsRoute)
+        case .home, .search:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var threeColumnDetail: some View {
+        switch selection ?? .home {
+        case .devices:
+            if let route = selectedDeviceRoute {
+                NavigationStack {
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Device",
+                    image: "shellbee.devices",
+                    description: Text("Pick a device from the list to view its details.")
+                )
+            }
+        case .groups:
+            if let route = groupsWorkspace.selectedGroup {
+                NavigationStack {
+                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+                        .navigationDestination(for: DeviceRoute.self) { route in
+                            DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                        }
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Group",
+                    image: "shellbee.groups",
+                    description: Text("Pick a group from the list to view its controls, members, and scenes.")
+                )
+            }
+        case .logs:
+            if let route = selectedLogsPaneRoute {
+                NavigationStack {
+                    LogsPaneDestinationView(route: route)
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Log",
+                    image: "shellbee.activity",
+                    description: Text("Pick a log entry from the list to view its details.")
+                )
+            }
+        case .settings:
+            if let route = selectedSettingsRoute {
+                NavigationStack {
+                    SettingsWorkspaceDestinationView(route: route)
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Setting",
+                    image: "shellbee.settings",
+                    description: Text("Pick a setting from the list to view its options.")
+                )
+            }
+        case .networkMap:
+            if let route = selectedNetworkDeviceRoute {
+                NavigationStack {
+                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+                }
+                .id(route)
+            } else {
+                ContentUnavailableView(
+                    "Select a Device",
+                    image: "shellbee.devices",
+                    description: Text("Pick a node from the map to view its device details.")
+                )
+            }
+        case .home, .search:
+            EmptyView()
+        }
+    }
+
+    private var keyboardActions: AppKeyboardActions {
+        AppKeyboardActions(
+            focusSearch: {
+                selection = .search
+            },
+            selectSection: { section in
+                selection = section
+            },
+            showCommandPalette: {
+                isCommandPalettePresented = true
+            }
+        )
+    }
+
+    private var groupSelection: Binding<GroupRoute?> {
+        Binding(
+            get: { groupsWorkspace.selectedGroup },
+            set: { groupsWorkspace.selectGroup($0) }
+        )
+    }
+
+    /// Resolves a restored bridge-scoped destination into this scene's own
+    /// navigation state. Data can arrive after the scene appears, so entity
+    /// routes remain pending until their bridge publishes the matching item.
+    private func applyInitialDestinationIfPossible() {
+        guard !didApplyInitialDestination else { return }
+
+        selection = initialDestination.rootSection
+        switch initialDestination {
+        case .home, .section, .activity:
+            break
+        case .device(let bridgeID, let ieeeAddress):
+            guard let device = environment.registry.session(for: bridgeID)?.store.devices
+                .first(where: { $0.ieeeAddress == ieeeAddress })
+            else { return }
+            selectedDeviceRoute = DeviceRoute(bridgeID: bridgeID, device: device)
+        case .group(let bridgeID, let groupID):
+            guard let group = environment.registry.session(for: bridgeID)?.store.groups
+                .first(where: { $0.id == groupID })
+            else { return }
+            groupsWorkspace.selectGroup(GroupRoute(bridgeID: bridgeID, group: group))
+        case .log(let bridgeID, let entryID):
+            guard let entry = environment.registry.session(for: bridgeID)?.store.logEntries
+                .first(where: { $0.id == entryID })
+            else { return }
+            selectedLogsPaneRoute = .activity(LogRoute(bridgeID: bridgeID, entry: entry))
+        case .settings(let bridgeID):
+            if let bridgeID {
+                guard environment.registry.session(for: bridgeID) != nil else { return }
+                selectedSettingsRoute = .bridgeOverview(bridgeID)
+            }
+        case .networkMap(let bridgeID):
+            if let bridgeID {
+                guard environment.registry.session(for: bridgeID) != nil else { return }
+                sceneNavigation.pendingNetworkMapBridgeID = bridgeID
+            }
+        }
+        didApplyInitialDestination = true
+    }
+
+    private func consumePendingActivityLogFilter() {
+        guard let filter = sceneNavigation.pendingActivityLogFilter else { return }
+        logsWorkspace.activity.clearAllFilters()
+        logsWorkspace.activity.bridgeFilter = filter.bridgeID
+        logsWorkspace.activity.selectedDevices = [filter.deviceName]
+        logsWorkspace.activity.showLinkQualityChanges = true
+        sceneNavigation.pendingActivityLogFilter = nil
+        selection = .logs
+    }
+
+}
+
+#Preview { MainSplitView().environment(AppEnvironment()) }

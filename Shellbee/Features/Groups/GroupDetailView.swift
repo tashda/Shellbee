@@ -10,6 +10,8 @@ struct GroupDetailView: View {
     @State private var showAddMembers = false
     @State private var showAddScene = false
     @State private var showRenameSheet = false
+    /// The hero shows the name; the navigation title appears once it scrolls away.
+    @State private var isNameHidden = false
     @State private var memberToRemove: GroupMember?
     @State private var menuDestination: GroupMenuDestination?
     /// Phase 1 multi-bridge: bridge that owns this group. Pushed in via
@@ -18,6 +20,17 @@ struct GroupDetailView: View {
     /// is the only reliable way to disambiguate.
     let bridgeID: UUID
     let group: Group
+    private let memberSelection: Binding<DeviceRoute?>?
+
+    init(
+        bridgeID: UUID,
+        group: Group,
+        memberSelection: Binding<DeviceRoute?>? = nil
+    ) {
+        self.bridgeID = bridgeID
+        self.group = group
+        self.memberSelection = memberSelection
+    }
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
@@ -31,46 +44,55 @@ struct GroupDetailView: View {
         }
     }
 
+    /// Members reporting ON, or nil when no member reports a state.
+    private var membersOnCount: Int? {
+        let states = memberDevices.compactMap { scope.store.state(for: $0.friendlyName)["state"]?.stringValue }
+        guard !states.isEmpty else { return nil }
+        return states.filter { $0.uppercased() == "ON" }.count
+    }
+
     private var groupState: [String: JSONValue] {
         viewModel.synthesizedState(for: currentGroup, environment: environment, bridgeID: bridgeID)
     }
 
-    private static let recentLogLimit = 5
-
     @ViewBuilder
     private var logsSection: some View {
-        let groupEntries = scope.store.logEntries.filter { $0.deviceName == currentGroup.friendlyName }
-        let recent = Array(groupEntries.prefix(Self.recentLogLimit))
-
-        Section("Logs") {
-            if groupEntries.isEmpty {
-                Text("No logs for this group yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(recent) { entry in
-                    NavigationLink {
-                        LogDetailView(bridgeID: bridgeID, entry: entry)
-                    } label: {
-                        LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
-                    }
-                    .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
-                }
-                NavigationLink {
-                    GroupLogsView(bridgeID: bridgeID, group: currentGroup)
-                } label: {
-                    Label("See All Logs", systemImage: "list.bullet")
-                }
-            }
+        ActivitySubjectLogsSection(
+            bridgeID: bridgeID,
+            subjectName: currentGroup.friendlyName,
+            subjectLabel: "group"
+        ) {
+            GroupLogsView(bridgeID: bridgeID, group: currentGroup)
         }
     }
 
     private var groupLightContext: LightControlContext? {
         for member in currentGroup.members {
             guard let device = scope.store.devices.first(where: { $0.ieeeAddress == member.ieeeAddress }) else { continue }
-            if let ctx = LightControlContext(device: device, state: groupState) { return ctx }
+            if let ctx = LightControlContext(device: device, state: groupState) {
+                let members = memberDevices.compactMap { LightControlContext(device: $0, state: groupState) }
+                return ctx.limitingColorTemperature(toMembers: members)
+            }
         }
         return nil
+    }
+
+    /// A control card is only offered when every member shares the same
+    /// category — a mixed group falls back to read-only rows, since there's
+    /// no one control that speaks for the whole group.
+    private var isUniformCategory: Device.Category? {
+        let categories = Set(memberDevices.map(\.category))
+        return categories.count == 1 ? categories.first : nil
+    }
+
+    private var groupSwitchContext: SwitchControlContext? {
+        guard isUniformCategory == .switchPlug, let device = memberDevices.first else { return nil }
+        return SwitchControlContext.contexts(for: device, state: groupState).first
+    }
+
+    private var groupCoverContext: CoverControlContext? {
+        guard isUniformCategory == .cover, let device = memberDevices.first else { return nil }
+        return CoverControlContext.contexts(for: device, state: groupState).first
     }
 
     var body: some View {
@@ -80,8 +102,10 @@ struct GroupDetailView: View {
                 memberDevices: memberDevices,
                 state: groupState,
                 bridgeID: bridgeID,
-                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
-                onRenameTapped: { showRenameSheet = true }
+                bridgeName: environment.attributionBridgeName(for: bridgeID),
+                membersOnCount: membersOnCount,
+                onRenameTapped: { showRenameSheet = true },
+                onNameHiddenChange: { isNameHidden = $0 }
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -95,13 +119,38 @@ struct GroupDetailView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                 }
+            } else if let switchContext = groupSwitchContext {
+                Section {
+                    SwitchControlCard(context: switchContext, mode: .interactive) { payload in
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+            } else if let coverContext = groupCoverContext {
+                Section {
+                    CoverControlCard(context: coverContext, mode: .interactive) { payload in
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+                if let device = memberDevices.first {
+                    FeatureSectionsList(
+                        exposes: CoverFeatureSections.tiltExposes(for: device),
+                        state: groupState
+                    ) { payload in
+                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                    }
+                }
             } else if !groupState.isEmpty {
-                BeautifulPayloadView(payload: groupState)
+                PayloadSectionsView(payload: groupState)
             }
 
             GroupMembersSection(
                 bridgeID: bridgeID,
                 group: currentGroup,
+                selection: memberSelection,
                 onRemove: { memberToRemove = $0 },
                 onAdd: { showAddMembers = true }
             )
@@ -111,12 +160,18 @@ struct GroupDetailView: View {
             logsSection
         }
         .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
-        .navigationTitle(currentGroup.friendlyName)
+        .navigationTitle(isNameHidden ? currentGroup.friendlyName : "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    OpenInNewWindowButton(destination: .group(
+                        bridgeID: bridgeID,
+                        groupID: currentGroup.id
+                    ))
+                    Divider()
                     Button { menuDestination = .settings } label: {
                         Label("Group Settings", systemImage: "slider.horizontal.3")
                     }
@@ -190,4 +245,5 @@ struct GroupDetailView: View {
         GroupDetailView(bridgeID: UUID(), group: .previewWithMembers)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

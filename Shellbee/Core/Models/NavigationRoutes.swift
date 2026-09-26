@@ -27,3 +27,13 @@ struct LogRoute: Hashable {
     let bridgeID: UUID
     let entry: LogEntry
 }
+
+enum LogsPaneRoute: Hashable {
+    case activity(LogRoute)
+    case bridge(LogRoute)
+}
+
+struct BridgeSettingsRoute: Hashable, Identifiable {
+    let bridgeID: UUID
+    var id: UUID { bridgeID }
+}

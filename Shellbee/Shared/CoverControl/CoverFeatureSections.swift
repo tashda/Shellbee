@@ -29,15 +29,17 @@ struct CoverFeatureSections: View {
         )
     }
 
-    private var sections: [LayoutSection] { FeatureLayout.sections(from: extras) }
+    /// Tilt is a control but rarely changed, so it sits with the settings
+    /// as a slider row instead of a second capsule on the card. One per
+    /// cover block, so dual covers keep both.
+    static func tiltExposes(for device: Device) -> [Expose] {
+        (device.definition?.exposes ?? [])
+            .filter { $0.type == "cover" }
+            .flatMap { ($0.features ?? []).flattenedLeaves }
+            .filter { $0.name == "tilt" && $0.property != nil }
+    }
 
     var body: some View {
-        ForEach(sections) { section in
-            Section(section.title) {
-                ForEach(section.items, id: \.id) { item in
-                    DeviceFeatureSectionRow(item: item, state: state, mode: .interactive, onSend: onSend)
-                }
-            }
-        }
+        FeatureSectionsList(exposes: Self.tiltExposes(for: device) + extras, state: state, onSend: onSend)
     }
 }

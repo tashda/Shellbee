@@ -46,43 +46,42 @@ struct LightAdvancedFeatureRow: View {
         }
     }
 
-    /// Reuses the same swatch + slider control as the hero light card so the
-    /// "Color Temperature" startup row reads identically to the live control
-    /// the user just adjusted in the card.
+    /// One line showing the current choice; the presets and a custom
+    /// slider live on their own page, like Settings › Display › Night Shift.
     private func temperatureRow(range: ClosedRange<Double>?) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text(feature.displayLabel)
-            if let range {
-                LightTemperatureControl(
-                    range: range,
-                    value: numericDraftValue,
-                    isInteractive: true,
-                    onChange: { mireds in
-                        numericDraftValue = mireds
-                        onChange(.double(mireds))
-                    }
-                )
-                .onChange(of: feature.value?.numberValue ?? 0) { _, newValue in
-                    numericDraftValue = newValue
+        NavigationLink {
+            LightStartupTemperaturePage(
+                feature: feature,
+                range: range.map { LightControlContext.plausibleColorTemperatureRange($0) },
+                value: numericDraftValue,
+                onChange: { mireds in
+                    numericDraftValue = mireds
+                    onChange(.int(Int(mireds.rounded())))
                 }
+            )
+        } label: {
+            LabeledContent(feature.displayLabel) {
+                Text(LightStartupTemperaturePage.summary(for: numericDraftValue, presets: feature.presets))
             }
+        }
+        .onChange(of: feature.value?.numberValue ?? 0) { _, newValue in
+            numericDraftValue = newValue
         }
     }
 
+    /// Same layout as `SettingsFormRow`: label and value on one line, the
+    /// slider beneath, committing once when the drag ends.
     private func numericRow(range: ClosedRange<Double>?, step: Double?) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack {
-                Text(feature.displayLabel)
-                Spacer()
+            LabeledContent(feature.displayLabel) {
                 Text(numericDraftValue.formatted(.number.precision(.fractionLength(0...1))))
-                    .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
 
             if let range {
-                Slider(value: $numericDraftValue, in: range) { editing in
+                Slider(value: $numericDraftValue, in: range, step: step ?? 1) { editing in
                     guard !editing else { return }
-                    onChange(.double(numericDraftValue))
+                    onChange(payloadValue(numericDraftValue, step: step))
                 }
                 .onChange(of: feature.value?.numberValue ?? 0) { _, newValue in
                     numericDraftValue = newValue
@@ -93,16 +92,15 @@ struct LightAdvancedFeatureRow: View {
                     .multilineTextAlignment(.center)
                     .focused($numericFocused)
                     .onChange(of: numericFocused) { _, isFocused in
-                        if !isFocused { onChange(.double(numericDraftValue)) }
+                        if !isFocused { onChange(payloadValue(numericDraftValue, step: step)) }
                     }
             }
         }
     }
 
-    private var kelvinBinding: Binding<Double> {
-        Binding(
-            get: { 1_000_000 / max(numericDraftValue, 1) },
-            set: { numericDraftValue = 1_000_000 / max($0, 1) }
-        )
+    /// Whole numbers go out as integers, as z2m expects for stepped values.
+    private func payloadValue(_ value: Double, step: Double?) -> JSONValue {
+        if (step ?? 1).truncatingRemainder(dividingBy: 1) == 0 { return .int(Int(value.rounded())) }
+        return .double(value)
     }
 }

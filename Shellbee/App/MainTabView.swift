@@ -2,7 +2,12 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var tabSelection: AppTab = .home
+    @State private var isCommandPalettePresented = false
+    @State private var activityWorkspace = LogsWorkspaceState()
+    @Namespace private var activityCenterTransition
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
     /// connected bridge has pending config that needs a restart. Single-
@@ -26,110 +31,202 @@ struct MainTabView: View {
 
     var body: some View {
         tabContent
-        .overlay(alignment: .bottom) {
-            InAppNotificationOverlay()
-                .safeAreaPadding(.bottom)
-                .padding(.bottom, DesignTokens.Size.mainTabBarInset)
-        }
+        .modifier(MainTabNotificationPresentation(
+            transitionNamespace: activityCenterTransition,
+            showsSignalChanges: activityWorkspace.activity.showLinkQualityChanges
+        ))
         .sheet(item: Binding(
-            get: { environment.pendingLogSheet },
-            set: { environment.pendingLogSheet = $0 }
+            get: { sceneNavigation.pendingLogSheet },
+            set: { sceneNavigation.pendingLogSheet = $0 }
         )) { request in
             LogSheetHost(request: request)
         }
+        .modifier(ActivityCenterSheetPresentation(
+            transitionNamespace: activityCenterTransitionNamespace,
+            workspace: activityWorkspace
+        ))
+        .sheet(isPresented: $isCommandPalettePresented) {
+            CommandPaletteView()
+                .environment(environment)
+        }
         .onAppear {
-            tabSelection = environment.selectedTab
+            consumePendingActivityLogFilter()
+            if !AdaptiveLayout.isPad, sceneNavigation.selectedTab == .logs {
+                sceneNavigation.isActivityCenterPresented = isActivityCenterEnabled
+                sceneNavigation.selectedTab = tabSelection
+            } else {
+                tabSelection = sceneNavigation.selectedTab
+            }
         }
         .onChange(of: tabSelection) { _, newValue in
-            environment.selectedTab = newValue
+            sceneNavigation.selectedTab = newValue
         }
-        .onChange(of: environment.selectedTab) { _, newValue in
-            tabSelection = newValue
+        .onChange(of: sceneNavigation.selectedTab) { _, newValue in
+            if !AdaptiveLayout.isPad, newValue == .logs {
+                sceneNavigation.isActivityCenterPresented = isActivityCenterEnabled
+                sceneNavigation.selectedTab = tabSelection
+            } else {
+                tabSelection = newValue
+            }
         }
+        .onChange(of: sceneNavigation.pendingActivityLogFilter) { _, filter in
+            guard filter != nil else { return }
+            consumePendingActivityLogFilter()
+        }
+        .focusedSceneValue(\.appKeyboardActions, keyboardActions)
     }
 
     @ViewBuilder
     private var tabContent: some View {
         if #available(iOS 18.0, *) {
             TabView(selection: $tabSelection) {
-                Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+                Tab(value: AppTab.home) {
                     HomeView()
+                } label: {
+                    Label(AppTab.home.title, symbol: AppTab.home.symbol)
                 }
-                Tab("Devices", systemImage: "sensor.tag.radiowaves.forward.fill", value: AppTab.devices) {
+                Tab(value: AppTab.devices) {
                     DeviceListView()
+                } label: {
+                    Label(AppTab.devices.title, symbol: AppTab.devices.symbol)
                 }
-                Tab("Groups", systemImage: "square.on.square.fill", value: AppTab.groups) {
+                Tab(value: AppTab.groups) {
                     GroupListView()
+                } label: {
+                    Label(AppTab.groups.title, symbol: AppTab.groups.symbol)
                 }
-                Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
+                if AdaptiveLayout.isPad {
+                    Tab(value: AppTab.logs) {
+                        NavigationStack {
+                            LogsView(usesActivityFeed: true, navigationTitle: "Activity")
+                        }
+                        .configuredTopScrollEdgeEffect()
+                    } label: {
+                        Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
+                    }
+                    Tab(value: AppTab.networkMap) {
+                        NetworkMapView()
+                    } label: {
+                        Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol)
+                    }
+                }
+                Tab(value: AppTab.settings) {
                     SettingsView()
+                } label: {
+                    Label(AppTab.settings.title, symbol: AppTab.settings.symbol)
                 }
                 .badge(anyBridgeNeedsRestart ? Text("!") : nil)
+                Tab(value: AppTab.search, role: .search) {
+                    GlobalSearchView()
+                } label: {
+                    Label(AppTab.search.title, symbol: AppTab.search.symbol)
+                }
             }
+            .modifier(SearchTabActivation())
         } else {
             TabView(selection: $tabSelection) {
                 HomeView()
-                    .tabItem { Label("Home", systemImage: "house.fill") }
+                    .tabItem { Label(AppTab.home.title, symbol: AppTab.home.symbol) }
                     .tag(AppTab.home)
                 DeviceListView()
-                    .tabItem { Label("Devices", systemImage: "sensor.tag.radiowaves.forward.fill") }
+                    .tabItem { Label(AppTab.devices.title, symbol: AppTab.devices.symbol) }
                     .tag(AppTab.devices)
                 GroupListView()
-                    .tabItem { Label("Groups", systemImage: "square.on.square.fill") }
+                    .tabItem { Label(AppTab.groups.title, symbol: AppTab.groups.symbol) }
                     .tag(AppTab.groups)
+                if AdaptiveLayout.isPad {
+                    NavigationStack {
+                        LogsView(usesActivityFeed: true, navigationTitle: "Activity")
+                    }
+                    .configuredTopScrollEdgeEffect()
+                    .tabItem { Label(AppTab.logs.title, symbol: AppTab.logs.symbol) }
+                    .tag(AppTab.logs)
+                    NetworkMapView()
+                        .tabItem { Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol) }
+                        .tag(AppTab.networkMap)
+                }
                 SettingsView()
-                    .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                    .tabItem { Label(AppTab.settings.title, symbol: AppTab.settings.symbol) }
                     .tag(AppTab.settings)
                     .badge(anyBridgeNeedsRestart ? Text("!") : nil)
+                GlobalSearchView()
+                    .tabItem { Label(AppTab.search.title, symbol: AppTab.search.symbol) }
+                    .tag(AppTab.search)
             }
+        }
+    }
+
+    private var keyboardActions: AppKeyboardActions {
+        AppKeyboardActions(
+            focusSearch: {
+                tabSelection = .search
+            },
+            selectSection: { section in
+                if section == .networkMap {
+                    guard AdaptiveLayout.isPad else { return }
+                } else if section == .logs, !AdaptiveLayout.isPad {
+                    sceneNavigation.isActivityCenterPresented = isActivityCenterEnabled
+                    return
+                }
+                tabSelection = section
+            },
+            showCommandPalette: {
+                isCommandPalettePresented = true
+            }
+        )
+    }
+
+    private var activityCenterTransitionNamespace: Namespace.ID? {
+        guard #available(iOS 26.0, *) else { return nil }
+        return activityCenterTransition
+    }
+
+    private func consumePendingActivityLogFilter() {
+        guard let filter = sceneNavigation.pendingActivityLogFilter else { return }
+        activityWorkspace.activity.clearAllFilters()
+        activityWorkspace.activity.bridgeFilter = filter.bridgeID
+        activityWorkspace.activity.selectedDevices = [filter.deviceName]
+        activityWorkspace.activity.showLinkQualityChanges = true
+        sceneNavigation.pendingActivityLogFilter = nil
+    }
+
+}
+
+/// Uses the system-owned accessory host on iOS 26 and later, so notification
+/// presentation follows the tab bar's Liquid Glass geometry and animations.
+/// Earlier releases keep Activity available from Logs without adding a custom
+/// floating notification surface.
+private struct MainTabNotificationPresentation: ViewModifier {
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
+    let transitionNamespace: Namespace.ID
+    let showsSignalChanges: Bool
+
+    func body(content: Content) -> some View {
+        if !isActivityCenterEnabled {
+            content
+        } else if #available(iOS 26.0, *) {
+            content
+                .tabBarMinimizeBehavior(.onScrollDown)
+                .tabViewBottomAccessory {
+                    ActivityTabBarAccessory(
+                        transitionNamespace: transitionNamespace,
+                        showsSignalChanges: showsSignalChanges
+                    )
+                }
+        } else {
+            content
         }
     }
 }
 
-private struct LogSheetHost: View {
-    @Environment(AppEnvironment.self) private var environment
-    @Environment(\.dismiss) private var dismiss
-    let request: LogSheetRequest
-
-    /// Phase 1 multi-bridge: the request carries log entry ids only — find
-    /// which bridge owns the entry by scanning every connected session and
-    /// route detail there. Falls through to the merged Logs view when more
-    /// than one entry is requested or none can be located.
-    private var singleResolved: (UUID, LogEntry)? {
-        guard request.isSingle, let id = request.entryIDs.first else { return nil }
-        for session in environment.registry.orderedSessions {
-            if let entry = session.store.logEntries.first(where: { $0.id == id }) {
-                return (session.bridgeID, entry)
-            }
-        }
-        return nil
-    }
-
-    var body: some View {
-        if let (bridgeID, entry) = singleResolved {
-            NavigationStack {
-                LogDetailView(bridgeID: bridgeID, entry: entry, doneAction: { dismiss() })
-                    .navigationDestination(for: DeviceRoute.self) { route in
-                        DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-                    }
-                    .navigationDestination(for: GroupRoute.self) { route in
-                        GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-                    }
-            }
+/// Shows the search tab as the separate search button at the end of the tab
+/// bar and focuses the field as soon as it is selected, as in the system apps.
+private struct SearchTabActivation: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabViewSearchActivation(.searchTabSelection)
         } else {
-            NavigationStack {
-                LogsView(
-                    initialEntryFilter: Set(request.entryIDs),
-                    notificationSheetStyle: true,
-                    onDone: { dismiss() }
-                )
-                .navigationDestination(for: DeviceRoute.self) { route in
-                    DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
-                }
-                .navigationDestination(for: GroupRoute.self) { route in
-                    GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-                }
-            }
+            content
         }
     }
 }

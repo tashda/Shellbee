@@ -93,4 +93,5 @@ struct HomeAssistantSettingsView: View {
     NavigationStack {
         HomeAssistantSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

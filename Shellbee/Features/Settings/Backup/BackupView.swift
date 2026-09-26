@@ -203,5 +203,6 @@ private struct ActivityViewController: UIViewControllerRepresentable {
 
 #Preview {
     NavigationStack { BackupView(bridgeID: UUID()) }
+    .configuredTopScrollEdgeEffect()
         .environment(AppEnvironment())
 }

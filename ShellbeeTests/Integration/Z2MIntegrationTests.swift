@@ -17,19 +17,11 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
 
     override func setUp() async throws {
         try await super.setUp()
-        await MainActor.run {
-            ConnectionConfig.clear()
-            ConnectionConfig.clearPersistedSecretsForTests()
-        }
         store = await MainActor.run { AppStore() }
         try await requireZ2M()
     }
 
     override func tearDown() async throws {
-        await MainActor.run {
-            ConnectionConfig.clear()
-            ConnectionConfig.clearPersistedSecretsForTests()
-        }
         await MainActor.run { store = nil }
         try await super.tearDown()
     }

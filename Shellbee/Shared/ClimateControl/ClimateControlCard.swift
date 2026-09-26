@@ -14,25 +14,63 @@ struct ClimateControlCard: View {
         _setpointDraft = State(initialValue: context.activeSetpoint ?? 20)
     }
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            heroHeadline
-            if showsSetpointControl {
-                hairline
-                setpointRow
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                CardHeader(
+                    systemImage: heroIcon,
+                    title: "Climate",
+                    value: context.runningStateLabel,
+                    tint: heroTint,
+                    valueColor: isActive ? heroTint : .secondary
+                )
+                temperatureRow
+                if showsSetpointControl { setpointSlider }
+                if let modes = context.systemModeFeature?.values, !modes.isEmpty,
+                   mode == .interactive, context.systemModeFeature?.isWritable == true {
+                    modePicker(modes: modes)
+                }
             }
-            if let modes = context.systemModeFeature?.values, !modes.isEmpty, mode == .interactive {
-                hairline
-                modeRow(modes: modes)
+            .cardSurface()
+            .onChange(of: context.activeSetpoint) { _, v in setpointDraft = v ?? setpointDraft }
+        }
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Mode glyph (flame/snowflake/fan) +
+    /// "Climate" + temp · target summary + running-state pill.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            CompactControlSnapshotRow(
+                systemImage: heroIcon,
+                title: "Climate",
+                subtitle: snapshotSecondaryText,
+                tint: heroTint
+            ) {
+                Text(context.runningStateLabel.uppercased())
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(isActive ? heroTint : Color(.secondaryLabel))
+                    .padding(.horizontal, DesignTokens.Spacing.sm)
+                    .padding(.vertical, DesignTokens.Spacing.xs)
+                    .background(
+                        isActive ? heroTint.opacity(DesignTokens.Opacity.chipFill)
+                                 : Color(.tertiarySystemFill),
+                        in: Capsule()
+                    )
             }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
-        .onChange(of: context.activeSetpoint) { _, v in setpointDraft = v ?? setpointDraft }
+    }
+
+    private var snapshotSecondaryText: String {
+        var parts: [String] = [context.displayTemperature]
+        if let setpoint = context.activeSetpoint {
+            parts.append("Target \(formatTemp(setpoint))")
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Tinting
@@ -57,44 +95,6 @@ struct ClimateControlCard: View {
         heroTint != Color(.tertiaryLabel)
     }
 
-    private var heroBackground: some View {
-        ZStack {
-            Color(.secondarySystemGroupedBackground)
-            LinearGradient(
-                colors: [heroTint.opacity(isActive ? 0.18 : 0.06),
-                         heroTint.opacity(DesignTokens.Opacity.subtleFade)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-
-    // MARK: - Hero
-
-    private var heroHeadline: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                heroEyebrow
-                heroValue
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var heroEyebrow: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: heroIcon)
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .symbolRenderingMode(.hierarchical)
-            Text(context.runningStateLabel)
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-                .lineLimit(1)
-        }
-        .foregroundStyle(heroTint)
-    }
-
     private var heroIcon: String {
         switch runningKey {
         case "heat", "heating": return "flame.fill"
@@ -104,36 +104,27 @@ struct ClimateControlCard: View {
         }
     }
 
-    @ViewBuilder
-    private var heroValue: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+    private var temperatureRow: some View {
+        HStack(alignment: .lastTextBaseline, spacing: DesignTokens.Spacing.md) {
             Text(context.displayTemperature)
-                .font(DesignTokens.Typography.heroValue)
+                .font(DesignTokens.Typography.climateTemperature)
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
-            // In snapshot mode (and when no interactive setpoint control is
-            // shown), surface the target inside the hero block — otherwise the
-            // setpoint row below already carries it.
-            if let setpoint = context.activeSetpoint, !showsSetpointControl {
-                Text("Target \(formatTemp(setpoint))")
-                    .font(DesignTokens.Typography.heroSubtitle)
-                    .foregroundStyle(heroTint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
+            if context.activeSetpoint != nil {
+                Text("Target \(formatTemp(setpointDraft))")
+                    .font(.body)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText(value: setpointDraft))
+                    .animation(.snappy, value: setpointDraft)
             }
         }
     }
 
     private func formatTemp(_ v: Double) -> String {
         String(format: "%.1f°", v)
-    }
-
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
-            .frame(height: DesignTokens.Size.hairline)
     }
 
     // MARK: - Setpoint row
@@ -144,115 +135,50 @@ struct ClimateControlCard: View {
             && context.activeSetpoint != nil
     }
 
-    private var setpointRow: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: "target")
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text("Target")
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
+    /// Target temperature on a slider over the device's own range. The
+    /// value commits when the drag ends, so one message goes out per change.
+    private var setpointSlider: some View {
+        let feature = context.activeSetpointFeature
+        let range = feature?.range ?? 5...35
+        return Slider(
+            value: $setpointDraft,
+            in: range,
+            step: feature?.step ?? 0.5,
+            onEditingChanged: { editing in
+                guard !editing, let p = context.setpointPayload(setpointDraft) else { return }
+                onSend(p)
             }
-            .foregroundStyle(.secondary)
-
-            Spacer()
-
-            HStack(spacing: DesignTokens.Spacing.md) {
-                setpointButton(systemImage: "minus") {
-                    let step = context.activeSetpointFeature?.step ?? 0.5
-                    let lo = context.activeSetpointFeature?.range?.lowerBound ?? 5
-                    setpointDraft = max(lo, setpointDraft - step)
-                    if let p = context.setpointPayload(setpointDraft) { onSend(p) }
-                }
-
-                Text(formatTemp(setpointDraft))
-                    .font(DesignTokens.Typography.identityTileValue)
-                    .monospacedDigit()
-                    .foregroundStyle(heroTint)
-                    .frame(minWidth: DesignTokens.Size.climateSetpointMinWidth)
-                    .contentTransition(.numericText(value: setpointDraft))
-                    .animation(.snappy, value: setpointDraft)
-
-                setpointButton(systemImage: "plus") {
-                    let step = context.activeSetpointFeature?.step ?? 0.5
-                    let hi = context.activeSetpointFeature?.range?.upperBound ?? 35
-                    setpointDraft = Swift.min(hi, setpointDraft + step)
-                    if let p = context.setpointPayload(setpointDraft) { onSend(p) }
-                }
-            }
-        }
+        )
+        .tint(isActive ? heroTint : .orange)
+        .accessibilityLabel("Target")
+        .accessibilityValue(formatTemp(setpointDraft))
     }
 
-    private func setpointButton(systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(DesignTokens.Typography.climateActionIcon)
-                .foregroundStyle(heroTint)
-                .frame(width: DesignTokens.Size.climateActionButton, height: DesignTokens.Size.climateActionButton)
-                .background(heroTint.opacity(DesignTokens.Opacity.actionButtonFill), in: Circle())
-        }
-        .buttonStyle(.plain)
-    }
+    // MARK: - Mode
 
-    // MARK: - Mode row
-
+    /// Segmented for up to four modes, a menu picker beyond that.
     @ViewBuilder
-    private func modeRow(modes: [String]) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: "dial.medium")
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
+    private func modePicker(modes: [String]) -> some View {
+        let selection = Binding<String>(
+            get: { context.systemMode ?? "" },
+            set: { m in if let p = context.systemModePayload(m) { onSend(p) } }
+        )
+        if modes.count <= DesignTokens.Count.segmentedMaxOptions {
+            Picker("Mode", selection: selection) {
+                ForEach(modes, id: \.self) { Text(displayLabel(for: $0)).tag($0) }
+            }
+            .pickerStyle(.segmented)
+        } else {
+            HStack {
                 Text("Mode")
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-            }
-            .foregroundStyle(.secondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    ForEach(modes, id: \.self) { m in
-                        modeChip(m)
-                    }
+                Spacer()
+                Picker("Mode", selection: selection) {
+                    ForEach(modes, id: \.self) { Text(displayLabel(for: $0)).tag($0) }
                 }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .tint(.secondary)
             }
-        }
-    }
-
-    private func modeChip(_ m: String) -> some View {
-        let isSelected = context.systemMode == m
-        let chipTint = chipColor(for: m)
-        return Button {
-            if let p = context.systemModePayload(m) { onSend(p) }
-        } label: {
-            Text(displayLabel(for: m))
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.vertical, DesignTokens.Spacing.sm)
-                .background(
-                    isSelected ? chipTint.opacity(DesignTokens.Opacity.strongAccentFill) : Color(.tertiarySystemFill),
-                    in: Capsule()
-                )
-                .foregroundStyle(isSelected ? chipTint : Color.primary)
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// Chip tint follows the *mode's* meaning, not the live running state —
-    /// "Heat" stays orange even when the system is currently idle, so the
-    /// selector reads as a legend not just a tint accent.
-    private func chipColor(for mode: String) -> Color {
-        switch mode.lowercased() {
-        case "heat", "heating", "emergency_heating": return .orange
-        case "cool", "cooling": return .blue
-        case "fan_only", "fan": return .teal
-        case "auto": return .purple
-        case "dry": return .yellow
-        case "off": return Color(.tertiaryLabel)
-        default: return .accentColor
         }
     }
 

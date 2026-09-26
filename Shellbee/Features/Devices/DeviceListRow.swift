@@ -4,6 +4,8 @@ import UIKit
 #endif
 
 struct DeviceListRow: View {
+    @Environment(\.isSelectableListContext) private var isSelectableListContext
+
     let device: Device
     let state: [String: JSONValue]
     let isAvailable: Bool
@@ -36,6 +38,14 @@ struct DeviceListRow: View {
 
     private var supportsOTA: Bool {
         device.definition?.supportsOTA == true
+    }
+
+    private var transferPayload: DeviceTransferPayload {
+        DeviceTransferPayload(
+            device: device,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName
+        )
     }
 
     private var rejectionMessage: (text: String, icon: String)? {
@@ -106,7 +116,20 @@ struct DeviceListRow: View {
         // Multi-bridge attribution: a thin colored bar on the cell's leading
         // edge, full row height. Visibility honors the Bridge Indicator
         // setting (Settings → Application → General → Appearance).
-        .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+        // Skipped in iPad 3-column mode — iPadOS 26's row selection chrome
+        // overlays a custom listRowBackground and squashes row content.
+        .modifier(BridgeRowLeadingBarBackground(bridgeID: bridgeID, enabled: !isSelectableListContext))
+        .draggable(transferPayload) {
+            DeviceTransferPreview(
+                device: device,
+                isAvailable: effectiveTransferAvailability,
+                otaStatus: otaStatus
+            )
+        }
+        .accessibilityAction(named: "Copy Device Information") {
+            UIPasteboard.general.string = transferPayload.plainText
+        }
+        .accessibilityAction(named: "Add to Favorites", addToFavorites)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if otaStatus?.phase == .scheduled, let onUnschedule {
                 Button(action: onUnschedule) {
@@ -184,6 +207,15 @@ struct DeviceListRow: View {
             }
         }
         .contextMenu {
+            Button {
+                UIPasteboard.general.string = transferPayload.plainText
+            } label: {
+                Label("Copy Device Information", systemImage: "doc.on.doc")
+            }
+            Button(action: addToFavorites) {
+                Label("Add to Favorites", systemImage: "star")
+            }
+            Divider()
             if device.supportsIdentify {
                 Button(action: onIdentify) {
                     Label("Identify", systemImage: "wave.3.right.circle")
@@ -246,6 +278,15 @@ struct DeviceListRow: View {
         }
     }
 
+    private var effectiveTransferAvailability: Bool {
+        isDeleting ? false : isAvailable
+    }
+
+    private func addToFavorites() {
+        if DeviceFavoritesStore().add(transferPayload) {
+            Haptics.impact(.light)
+        }
+    }
 }
 
 #Preview {
@@ -268,4 +309,5 @@ struct DeviceListRow: View {
             )
         }
     }
+    .configuredTopScrollEdgeEffect()
 }

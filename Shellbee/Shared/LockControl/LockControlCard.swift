@@ -5,79 +5,48 @@ struct LockControlCard: View {
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
 
+    /// Unlocking takes two taps: the first arms the button, the second sends.
+    @State private var isUnlockArmed = false
+
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            heroHeadline
-            if showsActionButton {
-                hairline
-                actionButton
+        if mode == .snapshot {
+            snapshotContent
+        } else {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                CardHeader(
+                    systemImage: context.isLocked ? "lock.fill" : "lock.open.fill",
+                    title: "Lock",
+                    value: context.isLocked ? "Locked" : "Unlocked",
+                    tint: heroTint,
+                    valueColor: context.isLocked ? .secondary : .orange
+                )
+                if showsActionButton { actionButton }
+            }
+            .cardSurface()
+        }
+    }
+
+    // MARK: - Snapshot
+
+    /// Compact log-row rendering. Lock glyph + "Lock" + LOCKED/UNLOCKED pill.
+    private var snapshotContent: some View {
+        CompactSnapshotCard {
+            CompactControlSnapshotRow(
+                systemImage: context.isLocked ? "lock.fill" : "lock.open.fill",
+                title: "Lock",
+                subtitle: nil,
+                tint: heroTint
+            ) {
+                statePill
             }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(heroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
     }
 
     /// Locked = green (Apple Home's "secured" tile), Unlocked = orange so the
     /// unusual/attention-worthy state stands out at a glance.
     private var heroTint: Color {
         context.isLocked ? .green : .orange
-    }
-
-    /// Tint of the *action* the user is about to take. Tapping the button
-    /// swaps the lock's state, so the button shows the destination color:
-    /// "Unlock" reads orange (you're opening a secure door), "Lock" reads
-    /// green (you're securing it).
-    private var actionTint: Color {
-        context.isLocked ? .orange : .green
-    }
-
-    private var heroBackground: some View {
-        ZStack {
-            Color(.secondarySystemGroupedBackground)
-            LinearGradient(
-                colors: [heroTint.opacity(DesignTokens.Opacity.onStateTint), heroTint.opacity(DesignTokens.Opacity.subtleFade)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-
-    // MARK: - Hero
-
-    private var heroHeadline: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                heroEyebrow
-                heroValue
-            }
-            Spacer(minLength: 0)
-            if mode == .snapshot { statePill }
-        }
-    }
-
-    private var heroEyebrow: some View {
-        HStack(spacing: DesignTokens.Spacing.xs) {
-            Image(systemName: context.isLocked ? "lock.fill" : "lock.open.fill")
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .symbolRenderingMode(.hierarchical)
-            Text("Lock")
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-        }
-        .foregroundStyle(heroTint)
-    }
-
-    private var heroValue: some View {
-        Text(context.isLocked ? "Locked" : "Unlocked")
-            .font(DesignTokens.Typography.heroStateText)
-            .foregroundStyle(heroTint)
-            .lineLimit(1)
-            .minimumScaleFactor(DesignTokens.Typography.scaleFactorRelaxed)
     }
 
     private var statePill: some View {
@@ -89,12 +58,6 @@ struct LockControlCard: View {
             .background(heroTint.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
     }
 
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
-            .frame(height: DesignTokens.Size.hairline)
-    }
-
     // MARK: - Action button
 
     private var showsActionButton: Bool {
@@ -102,20 +65,47 @@ struct LockControlCard: View {
     }
 
     private var actionButton: some View {
-        Button {
-            if let payload = context.togglePayload() { onSend(payload) }
-        } label: {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                Image(systemName: context.isLocked ? "lock.open.fill" : "lock.fill")
-                    .font(DesignTokens.Typography.formRowIconBold)
-                Text(context.isLocked ? "Unlock" : "Lock")
-                    .font(.headline)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, DesignTokens.Spacing.md)
+        Button(action: performAction) {
+            Label(buttonTitle, systemImage: context.isLocked ? "lock.open.fill" : "lock.fill")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DesignTokens.Spacing.sm)
+                .contentTransition(.symbolEffect(.replace))
         }
-        .buttonStyle(.borderedProminent)
-        .tint(actionTint)
+        .buttonBorderShape(.capsule)
+        .modifier(LockButtonStyle(isArmed: isUnlockArmed))
+        .animation(.snappy, value: isUnlockArmed)
+    }
+
+    private var buttonTitle: String {
+        guard context.isLocked else { return "Lock" }
+        return isUnlockArmed ? "Tap Again to Unlock" : "Unlock"
+    }
+
+    private func performAction() {
+        if context.isLocked, !isUnlockArmed {
+            isUnlockArmed = true
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                isUnlockArmed = false
+            }
+            return
+        }
+        isUnlockArmed = false
+        if let payload = context.togglePayload() { onSend(payload) }
+    }
+}
+
+/// Glass while idle; orange prominent glass once unlocking is armed.
+private struct LockButtonStyle: ViewModifier {
+    let isArmed: Bool
+
+    func body(content: Content) -> some View {
+        if isArmed {
+            content.glassProminentButtonStyleIfAvailable().tint(.orange)
+        } else {
+            content.glassButtonStyleIfAvailable().tint(.primary)
+        }
     }
 }
 

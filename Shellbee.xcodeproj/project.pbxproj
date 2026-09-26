@@ -77,9 +77,14 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				App/AppEnvironment.swift,
+				"App/AppEnvironment+BridgeAttribution.swift",
 				App/ConnectionSessionController.swift,
+				App/LogSheetHost.swift,
+				App/MainSplitView.swift,
 				App/MainTabView.swift,
 				App/RootView.swift,
+				App/SceneNavigationState.swift,
+				App/ShellbeeSceneView.swift,
 				Assets.xcassets,
 				ContentView.swift,
 				Core/Config/AppConfig.swift,
@@ -88,15 +93,18 @@
 				Core/CrashReporting/PendingCrashSheet.swift,
 				Core/CrashReporting/PendingCrashStore.swift,
 				Core/CrashReporting/SentryService.swift,
+				Core/Log/BridgeTopicLabel.swift,
 				Core/Log/LogContext.swift,
 				Core/Log/LogMapperEngine.swift,
 				Core/Log/LogMessageStructure.swift,
 				Core/Log/Z2MLogPatterns.swift,
 				Core/Models/AppearanceMode.swift,
 				Core/Models/BridgeBound.swift,
+				Core/Models/BridgeDataAggregation.swift,
 				Core/Models/BridgeHealth.swift,
 				Core/Models/BridgeInfo.swift,
 				Core/Models/BridgeSettings.swift,
+				Core/Models/CommandPaletteModel.swift,
 				Core/Models/ConnectionHistory.swift,
 				Core/Models/DeviceDoc.swift,
 				Core/Models/Group.swift,
@@ -106,6 +114,7 @@
 				Core/Models/LogSheetRequest.swift,
 				Core/Models/NavigationRoutes.swift,
 				Core/Models/NotificationCategory.swift,
+				Core/Models/ShellbeeWindowDestination.swift,
 				Core/Models/TouchlinkDevice.swift,
 				Core/Networking/BridgeRegistry.swift,
 				Core/Networking/BridgeScope.swift,
@@ -133,14 +142,46 @@
 				Core/Store/AppStore.swift,
 				"Core/Store/AppStore+Devices.swift",
 				"Core/Store/AppStore+Events.swift",
+				"Core/Store/AppStore+LiveActivities.swift",
 				"Core/Store/AppStore+Logs.swift",
 				"Core/Store/AppStore+Notifications.swift",
 				"Core/Store/AppStore+OTA.swift",
 				Core/Store/NotificationPreferences.swift,
+				Features/ActivityCenter/ActivityAttentionClearance.swift,
+				Features/ActivityCenter/ActivityCard.swift,
+				Features/ActivityCenter/ActivityCardContent.swift,
+				Features/ActivityCenter/ActivityChangeWording.swift,
+				Features/ActivityCenter/ActivityEventItem.swift,
+				Features/ActivityCenter/ActivityEventRow.swift,
+				Features/ActivityCenter/ActivityFeedView.swift,
+				Features/ActivityCenter/ActivityInstrument.swift,
+				"Features/ActivityCenter/ActivityInstrument+Tint.swift",
+				"Features/ActivityCenter/ActivityInstrumentDrawing+Events.swift",
+				"Features/ActivityCenter/ActivityInstrumentDrawing+States.swift",
+				"Features/ActivityCenter/ActivityInstrumentDrawing+Values.swift",
+				Features/ActivityCenter/ActivityInstrumentPen.swift,
+				Features/ActivityCenter/ActivityInstrumentResolver.swift,
+				Features/ActivityCenter/ActivityInstrumentView.swift,
+				Features/ActivityCenter/ActivityLogSheet.swift,
+				Features/ActivityCenter/ActivityPropertyGlyph.swift,
+				Features/ActivityCenter/ActivityStack.swift,
+				Features/ActivityCenter/ActivityStackBuilder.swift,
+				Features/ActivityCenter/ActivityStackCard.swift,
+				Features/ActivityCenter/ActivitySubjectEvents.swift,
+				Features/ActivityCenter/ActivitySubjectLogsSection.swift,
+				Features/ActivityCenter/ActivitySubjectLogsView.swift,
+				Features/ActivityCenter/ActivityThumbnail.swift,
+				Features/ActivityCenter/RawLogBlock.swift,
+				Features/ActivityCenter/RawLogFeedView.swift,
+				Features/ActivityCenter/RawLogLineContent.swift,
+				Features/ActivityCenter/RawLogRow.swift,
+				Features/ActivityCenter/RawLogSheet.swift,
 				Features/Bridge/PhilipsHueResetSheet.swift,
 				Features/Bridge/TouchlinkDeviceRow.swift,
 				Features/Bridge/TouchlinkGuideView.swift,
 				Features/Bridge/TouchlinkView.swift,
+				Features/CommandPalette/CommandPaletteView.swift,
+				Features/Connection/ConnectionEditorDraft.swift,
 				Features/Connection/ConnectionEditorView.swift,
 				Features/Connection/ConnectionFormSections.swift,
 				Features/Connection/ConnectionOverviewView.swift,
@@ -149,31 +190,35 @@
 				Features/Devices/AddBindingSheet.swift,
 				Features/Devices/AddReportingSheet.swift,
 				Features/Devices/BindingRow.swift,
+				Features/Devices/DeviceAlternativePresentation.swift,
 				Features/Devices/DeviceBindView.swift,
 				Features/Devices/DeviceDetailView.swift,
 				Features/Devices/DeviceDocView.swift,
 				Features/Devices/DeviceFilterMenu.swift,
 				Features/Devices/DeviceFilterMenuSnapshot.swift,
 				Features/Devices/DeviceFirmwareMenu.swift,
+				"Features/Devices/DeviceListContent+Presentation.swift",
 				Features/Devices/DeviceListRow.swift,
 				Features/Devices/DeviceListView.swift,
 				Features/Devices/DeviceListViewModel.swift,
 				Features/Devices/DeviceLogsView.swift,
 				Features/Devices/DevicePairingSheet.swift,
+				Features/Devices/DevicePresentationActionsModifier.swift,
 				Features/Devices/DeviceReportingView.swift,
 				Features/Devices/DeviceRowView.swift,
 				Features/Devices/DeviceSettingsView.swift,
+				Features/Devices/DeviceWorkspaceFilters.swift,
 				Features/Devices/PendingDeviceAlert.swift,
 				Features/Groups/AddGroupMemberDeviceRow.swift,
 				Features/Groups/AddGroupMembersSheet.swift,
 				Features/Groups/AddGroupSheet.swift,
+				Features/Groups/DeviceFavoritesStore.swift,
 				Features/Groups/GroupAvatarPickerSheet.swift,
 				Features/Groups/GroupAvatarStore.swift,
 				Features/Groups/GroupCard.swift,
-				Features/Groups/GroupCardFooterBar.swift,
-				Features/Groups/GroupCardHeader.swift,
 				Features/Groups/GroupDetailView.swift,
 				Features/Groups/GroupDetailViewModel.swift,
+				Features/Groups/GroupDeviceDropPolicy.swift,
 				Features/Groups/GroupIconView.swift,
 				Features/Groups/GroupListRow.swift,
 				Features/Groups/GroupListView.swift,
@@ -184,49 +229,78 @@
 				Features/Groups/GroupRowView.swift,
 				Features/Groups/GroupScenesSection.swift,
 				Features/Groups/GroupSettingsView.swift,
+				Features/Groups/GroupsWorkspaceState.swift,
 				Features/Groups/RemoveGroupSheet.swift,
 				Features/Groups/RenameGroupSheet.swift,
-				Features/Home/HomeAddCardsSection.swift,
-				Features/Home/HomeBackgroundGradient.swift,
-				Features/Home/HomeBridgeCard.swift,
+				Features/Home/BridgeInfoSheet.swift,
+				Features/Home/HomeActivityRow.swift,
+				Features/Home/HomeAttentionItem.swift,
+				Features/Home/HomeBatteriesCard.swift,
 				Features/Home/HomeBridgeCardEntry.swift,
-				Features/Home/HomeBridgeCardRow.swift,
-				Features/Home/HomeCardComponents.swift,
-				Features/Home/HomeCardSlot.swift,
-				Features/Home/HomeDevicesCard.swift,
-				Features/Home/HomeGroupsCard.swift,
-				Features/Home/HomeLayout.swift,
-				Features/Home/HomeLogsCard.swift,
-				Features/Home/HomeMeshCard.swift,
+				Features/Home/HomeBridgeHealthCard.swift,
+				Features/Home/HomeBridgeHealthGroupCard.swift,
+				Features/Home/HomeBridgeRow.swift,
+				Features/Home/HomeCardKind.swift,
+				Features/Home/HomeLinkQualityCard.swift,
+				Features/Home/HomeNetworkCard.swift,
+				Features/Home/HomeNowCard.swift,
 				Features/Home/HomeSettings.swift,
 				Features/Home/HomeSnapshot.swift,
 				Features/Home/HomeStatsSnapshot.swift,
+				Features/Home/HomeVendorsCard.swift,
 				Features/Home/HomeView.swift,
-				Features/Home/MeshDetailView.swift,
 				Features/Home/PermitJoinActiveSheet.swift,
 				Features/Home/PermitJoinSheet.swift,
 				Features/Home/PermitJoinToolbarButton.swift,
+				Features/Logs/ActivityWorkspaceFilters.swift,
 				Features/Logs/BridgeLogView.swift,
 				Features/Logs/BridgeLogViewModel.swift,
-				Features/Logs/LogDetailChangesSection.swift,
+				Features/Logs/LogChangeRows.swift,
 				Features/Logs/LogDetailDevicesSection.swift,
 				Features/Logs/LogDetailView.swift,
 				Features/Logs/LogDeviceFilterSheet.swift,
+				"Features/Logs/LogEntry+SpecificTitle.swift",
 				Features/Logs/LogFilterMenu.swift,
-				Features/Logs/LogRowView.swift,
+				Features/Logs/LogHealthDetailSections.swift,
+				Features/Logs/LogRowIconography.swift,
+				Features/Logs/LogsPaneDestinationView.swift,
 				Features/Logs/LogsView.swift,
 				Features/Logs/LogsViewModel.swift,
-				Features/Notifications/FastTrackBanner.swift,
-				Features/Notifications/InAppNotificationBanner.swift,
-				Features/Notifications/InAppNotificationOverlay.swift,
+				Features/NetworkMap/NetworkMapCanvasView.swift,
+				Features/NetworkMap/NetworkMapCollisionResolver.swift,
+				Features/NetworkMap/NetworkMapDeviceQuickLookSheet.swift,
+				Features/NetworkMap/NetworkMapFilter.swift,
+				Features/NetworkMap/NetworkMapLayoutEngine.swift,
+				Features/NetworkMap/NetworkMapNodeView.swift,
+				Features/NetworkMap/NetworkMapRefreshProgressView.swift,
+				Features/NetworkMap/NetworkMapRenderIndex.swift,
+				Features/NetworkMap/NetworkMapScanLiveView.swift,
+				Features/NetworkMap/NetworkMapScanRows.swift,
+				Features/NetworkMap/NetworkMapScanSummaryView.swift,
+				Features/NetworkMap/NetworkMapView.swift,
+				Features/NetworkMap/NetworkMapWorkspaceFilters.swift,
+				Features/NetworkMap/NetworkMapWorldLayer.swift,
+				Features/NetworkMap/NetworkMapZoomController.swift,
+				Features/Notifications/ActivityAccessoryContent.swift,
+				Features/Notifications/ActivityAccessoryTrailing.swift,
+				Features/Notifications/ActivityCenterSheet.swift,
+				Features/Notifications/ActivityTabBarAccessory.swift,
+				Features/Onboarding/OnboardingBackgroundGradient.swift,
 				Features/Onboarding/OnboardingConnectPage.swift,
 				Features/Onboarding/OnboardingModel.swift,
 				Features/Onboarding/OnboardingTestPage.swift,
 				Features/Onboarding/OnboardingView.swift,
 				Features/Pairing/PairingWizardModel.swift,
 				Features/Pairing/PairingWizardView.swift,
+				Features/Search/GlobalSearchResultRows.swift,
+				Features/Search/GlobalSearchResults.swift,
+				Features/Search/GlobalSearchScope.swift,
+				Features/Search/GlobalSearchScopeBar.swift,
+				Features/Search/GlobalSearchView.swift,
 				Features/Settings/AboutView.swift,
 				Features/Settings/AcknowledgementsView.swift,
+				Features/Settings/ActivityNotificationSettingsView.swift,
+				Features/Settings/AppAppearanceSettingsView.swift,
 				Features/Settings/AppGeneralView.swift,
 				Features/Settings/AppLiveActivitiesView.swift,
 				Features/Settings/AppNotificationSettingsView.swift,
@@ -234,17 +308,42 @@
 				Features/Settings/Backup/BackupPayload.swift,
 				Features/Settings/Backup/BackupView.swift,
 				Features/Settings/Backup/RestoreGuideSheet.swift,
+				Features/Settings/BridgeConnectToggle.swift,
 				Features/Settings/BridgeSettingsView.swift,
 				Features/Settings/ConnectionCardActions.swift,
+				Features/Settings/Developer/ActivityIconGalleryView.swift,
+				Features/Settings/Developer/ActivityInstrumentGallerySamples.swift,
+				Features/Settings/Developer/ActivityInstrumentGalleryView.swift,
+				Features/Settings/Developer/ActivityInstrumentStageControls.swift,
+				Features/Settings/Developer/ActivityInstrumentStageScreen.swift,
+				Features/Settings/Developer/ActivityInstrumentStageView.swift,
+				Features/Settings/Developer/CardGallerySamples.swift,
+				Features/Settings/Developer/CardGalleryStageControls.swift,
+				Features/Settings/Developer/CardGalleryStageView.swift,
+				Features/Settings/Developer/CardGalleryView.swift,
 				Features/Settings/Developer/DeveloperSettings.swift,
 				Features/Settings/Developer/DeveloperSettingsView.swift,
+				Features/Settings/Developer/IconGalleryCatalog.swift,
+				Features/Settings/Developer/IconGalleryView.swift,
+				Features/Settings/Developer/LiveActivityGalleryMoreSamples.swift,
+				Features/Settings/Developer/LiveActivityGallerySamples.swift,
+				Features/Settings/Developer/LiveActivityGalleryView.swift,
+				Features/Settings/Developer/LiveActivityStageControls.swift,
+				Features/Settings/Developer/LiveActivityStageLauncher.swift,
+				Features/Settings/Developer/LiveActivityStageView.swift,
+				Features/Settings/Developer/LiveActivityStageWallpaper.swift,
 				Features/Settings/Developer/MQTTInspectorView.swift,
+				Features/Settings/Developer/ShellbeeDeveloperView.swift,
 				Features/Settings/Developer/SubscribeStore.swift,
+				Features/Settings/DeviceStatisticsSnapshot.swift,
 				Features/Settings/DeviceStatisticsView.swift,
 				Features/Settings/DocBrowserDetailView.swift,
 				Features/Settings/DocBrowserView.swift,
+				Features/Settings/DocEntryRow.swift,
+				Features/Settings/FrontendSettingsView.swift,
 				Features/Settings/HealthSettingsView.swift,
 				Features/Settings/HomeAssistantSettingsView.swift,
+				Features/Settings/HomeSettingsView.swift,
 				Features/Settings/LogOutputView.swift,
 				Features/Settings/MainSettingsView.swift,
 				Features/Settings/MQTTSettingsView.swift,
@@ -255,25 +354,42 @@
 				Features/Settings/SerialSettingsView.swift,
 				Features/Settings/ServerDetailView.swift,
 				Features/Settings/SettingsView.swift,
-				LiveActivities/ConnectionLiveActivityCoordinator.swift,
-				LiveActivities/InterviewLiveActivityCoordinator.swift,
+				Features/Settings/SettingsWorkspaceDestinationView.swift,
+				Features/Settings/SettingsWorkspaceList.swift,
+				Features/Settings/StatisticsRankingCard.swift,
+				LiveActivities/BridgeOperationLiveActivityCoordinator.swift,
+				LiveActivities/LiveActivityBackgroundGrace.swift,
+				LiveActivities/LiveActivityBridgeLabel.swift,
 				LiveActivities/LiveActivityController.swift,
 				LiveActivities/OTAUpdateLiveActivityCoordinator.swift,
+				LiveActivities/PermitJoinActivityPreview.swift,
+				LiveActivities/PermitJoinLiveActivityCoordinator.swift,
+				LiveActivities/RetiredLiveActivities.swift,
 				Shared/CardDisplayMode.swift,
 				Shared/ClimateControl/ClimateControlCard.swift,
 				Shared/ClimateControl/ClimateControlContext.swift,
 				Shared/ClimateControl/ClimateFeatureSections.swift,
-				Shared/Compat/iOS26Compat.swift,
-				Shared/Components/BeautifulPayloadView.swift,
-				Shared/Components/BeautifulRow.swift,
+				Shared/Components/AdaptiveListStyle.swift,
 				Shared/Components/BridgeBadge.swift,
 				Shared/Components/BridgeColor.swift,
 				Shared/Components/BridgePicker.swift,
+				Shared/Components/BridgeRowLeadingBarBackground.swift,
 				Shared/Components/BridgeSwitcherToolbarItem.swift,
+				Shared/Components/Card/CardHeader.swift,
+				Shared/Components/Card/CardSurface.swift,
+				Shared/Components/Card/DeviceStatus.swift,
+				Shared/Components/Card/ExpandableCardRows.swift,
+				Shared/Components/Card/IdentityHero.swift,
+				Shared/Components/Card/IdentityRow.swift,
+				Shared/Components/Card/RankedBarRow.swift,
+				Shared/Components/Card/StatStrip.swift,
+				Shared/Components/CompactSnapshotCard.swift,
 				Shared/Components/CopyableRow.swift,
+				Shared/Components/DeviceCard.swift,
 				Shared/Components/DeviceExtras.swift,
 				Shared/Components/DeviceFeatureSectionRow.swift,
 				Shared/Components/DevicePickerRow.swift,
+				Shared/Components/DeviceTransferPreview.swift,
 				Shared/Components/Doc/DefaultDocSectionView.swift,
 				Shared/Components/Doc/DeviceInfoCardView.swift,
 				Shared/Components/Doc/DocBlockView.swift,
@@ -288,9 +404,15 @@
 				Shared/Components/Doc/PairingGuideExperienceView.swift,
 				Shared/Components/Doc/PairingSectionView.swift,
 				Shared/Components/FeatureGroupDetailView.swift,
-				Shared/Components/FilterChip.swift,
+				Shared/Components/FeatureSectionsList.swift,
+				Shared/Components/FilterMenuComponents.swift,
 				Shared/Components/MemberAvatarStack.swift,
+				Shared/Components/OpenInNewWindowButton.swift,
+				Shared/Components/OpenWindowMenu.swift,
+				Shared/Components/PayloadRow.swift,
+				Shared/Components/PayloadSectionsView.swift,
 				Shared/Components/SafariBrowserView.swift,
+				Shared/Components/SelectableListContext.swift,
 				Shared/Components/SettingsFormRow.swift,
 				Shared/CoverControl/CoverControlCard.swift,
 				Shared/CoverControl/CoverControlContext.swift,
@@ -301,21 +423,23 @@
 				Shared/FanControl/FanControlContext.swift,
 				Shared/FanControl/FanExtraRow.swift,
 				Shared/FanControl/FanFeatureSections.swift,
-				Shared/GenericExposeCard/GenericExposeCard.swift,
+				Shared/FanControl/FanReadingsSections.swift,
 				"Shared/LightControl/Color+HexString.swift",
 				Shared/LightControl/LightAdvancedFeatureRow.swift,
 				Shared/LightControl/LightAdvancedSheet.swift,
 				Shared/LightControl/LightColorControl.swift,
+				Shared/LightControl/LightColorSheet.swift,
 				Shared/LightControl/LightConfigBar.swift,
 				Shared/LightControl/LightControlCard.swift,
 				Shared/LightControl/LightControlContext.swift,
 				Shared/LightControl/LightDisplayColor.swift,
 				Shared/LightControl/LightEffectsSheet.swift,
 				Shared/LightControl/LightFeatureSections.swift,
+				Shared/LightControl/LightStartupTemperaturePage.swift,
 				Shared/LightControl/LightTemperatureControl.swift,
 				Shared/LockControl/LockControlCard.swift,
 				Shared/LockControl/LockControlContext.swift,
-				Shared/RemoteCard/RemoteCard.swift,
+				Shared/RemoteCard/RemoteSections.swift,
 				Shared/SensorCard/SensorCard.swift,
 				Shared/SwitchControl/SwitchControlCard.swift,
 				Shared/SwitchControl/SwitchControlContext.swift,
@@ -532,7 +656,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2640;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					0A9D450C2F96077A00DF6DF5 = {
 						CreatedOnToolsVersion = 26.4.1;
@@ -762,6 +886,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -820,6 +945,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -833,7 +959,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				ENABLE_PREVIEWS = YES;
@@ -846,7 +972,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -859,7 +985,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -870,8 +996,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
-					CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = Shellbee.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				ENABLE_PREVIEWS = YES;
@@ -884,7 +1010,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -897,7 +1023,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -908,7 +1034,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -922,7 +1048,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -936,7 +1062,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -946,8 +1072,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-					CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
-					CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = ShellbeeWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APP_DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -961,7 +1087,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_WIDGET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -974,7 +1100,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

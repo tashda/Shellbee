@@ -93,6 +93,7 @@ struct AddReportingSheet: View {
                 }
             }
         }
+        .configuredTopScrollEdgeEffect()
     }
 }
 

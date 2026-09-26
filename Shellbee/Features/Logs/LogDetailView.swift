@@ -2,20 +2,18 @@ import SwiftUI
 
 struct LogDetailView: View {
     @Environment(AppEnvironment.self) private var environment
-    @State private var viewMode: ViewMode = .beautiful
+    @State private var viewMode: ViewMode = .parsed
     /// Phase 1 multi-bridge: source bridge for this log entry. Threaded
     /// through from the navigation route so device/group references inside
     /// the entry resolve against the right store.
     let bridgeID: UUID
     let entry: LogEntry
-    private let doneAction: (() -> Void)?
 
-    enum ViewMode { case beautiful, json }
+    enum ViewMode { case parsed, json }
 
-    init(bridgeID: UUID, entry: LogEntry, doneAction: (() -> Void)? = nil) {
+    init(bridgeID: UUID, entry: LogEntry) {
         self.bridgeID = bridgeID
         self.entry = entry
-        self.doneAction = doneAction
     }
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
@@ -34,39 +32,6 @@ struct LogDetailView: View {
         return refs.compactMap { ref in
             scope.store.device(named: ref.friendlyName).map { (ref, $0) }
         }
-    }
-
-    private var payloadLinkQuality: Int? {
-        guard case .mqttPublish(_, _, let payload) = entry.parsedMessageKind else { return nil }
-        return payload.linkQuality
-    }
-
-    private static let stateMetadataKeys: Set<String> = [
-        "linkquality", "last_seen", "update", "update_available", "device", "elapsed"
-    ]
-
-    private var logTimeState: [String: JSONValue]? {
-        if case .mqttPublish(_, _, let payload) = entry.parsedMessageKind {
-            return payload.isEmpty ? nil : payload
-        }
-        if entry.category == .stateChange {
-            // Prefer the full state captured at log time when available — the
-            // diff alone drops every unchanged field, which collapses the
-            // Light Card to a single property even when the payload had
-            // brightness/color_temp/color present. Fall back to the diff
-            // for older entries that don't carry a payload.
-            if let payload = entry.context?.payload, !payload.isEmpty {
-                return payload
-            }
-            if let changes = entry.context?.stateChanges {
-                var state: [String: JSONValue] = [:]
-                for change in changes where !Self.stateMetadataKeys.contains(change.property) {
-                    state[change.property] = change.to
-                }
-                return state.isEmpty ? nil : state
-            }
-        }
-        return nil
     }
 
     private var resolvedGroup: Group? {
@@ -96,167 +61,102 @@ struct LogDetailView: View {
                 LogDetailDevicesSection(bridgeID: bridgeID, devices: displayDevices)
             }
 
-            if viewMode == .beautiful {
-                beautifulBody
+            if viewMode == .parsed {
+                parsedBody
             } else {
                 jsonSection
             }
+
         }
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
-        .navigationTitle(headerTitle)
+        .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                VStack(spacing: 0) {
-                    Text(headerTitle)
-                        .font(.headline)
-                    Text(timestampSubtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(headerTitle), \(timestampSubtitle)")
+            ToolbarItem(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .log(
+                    bridgeID: bridgeID,
+                    entryID: entry.id
+                ))
             }
-            if let doneAction {
-                if entry.category != .stateChange {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        formatButton
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: doneAction)
-                        .fontWeight(.semibold)
-                }
-            } else if entry.category != .stateChange {
-                ToolbarItem(placement: .topBarTrailing) {
-                    formatButton
-                }
+            ToolbarItem(placement: .topBarTrailing) {
+                formatButton
             }
         }
     }
 
     private var formatButton: some View {
         Button {
-            viewMode = viewMode == .json ? .beautiful : .json
+            viewMode = viewMode == .json ? .parsed : .json
         } label: {
             Image(systemName: "curlybraces")
         }
         .tint(viewMode == .json ? .accentColor : .secondary)
-        .accessibilityLabel("Format")
+        .accessibilityLabel(viewMode == .json ? "Show formatted activity" : "Show raw message")
     }
 
-    @ViewBuilder
+    /// The group as one native row that opens Group detail.
     private func singleGroupSection(_ group: Group) -> some View {
         let members = scope.store.memberDevices(of: group)
-        let groupState = members.reduce(into: [String: JSONValue]()) { acc, d in
-            for (k, v) in scope.store.state(for: d.friendlyName) where acc[k] == nil {
-                acc[k] = v
-            }
-        }
-        Section {
-            // ZStack + closure-based NavigationLink overlay — same pattern
-            // as singleDeviceSection. Card's internal chevron is the only
-            // disclosure indicator; List doesn't auto-add its own.
-            ZStack {
+        return Section {
+            NavigationLink {
+                GroupDetailView(bridgeID: bridgeID, group: group)
+            } label: {
                 GroupCard(
                     group: group,
                     memberDevices: members,
-                    state: groupState,
+                    state: [:],
                     bridgeID: bridgeID,
-                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
+                    bridgeName: environment.attributionBridgeName(for: bridgeID),
                     displayMode: .compact
                 )
-                NavigationLink {
-                    GroupDetailView(bridgeID: bridgeID, group: group)
-                } label: { EmptyView() }
-                .opacity(0)
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-        }
-        if let (member, snapshotState) = lightLikeMemberAndState(in: members) {
-            Section {
-                ExposeCardView(device: member, state: snapshotState, mode: .snapshot)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
             }
         }
     }
 
-    /// For a group log entry whose payload looks like a light state
-    /// (`state` plus at least one of brightness/color_temp/color), pick a
-    /// light member device to drive the snapshot Light Card. Returns nil
-    /// when the payload isn't light-shaped or no light member exists —
-    /// callers fall through to the generic field breakdown.
-    private func lightLikeMemberAndState(in members: [Device]) -> (Device, [String: JSONValue])? {
-        guard let payload = logTimeState else { return nil }
-        let lightKeys: Set<String> = ["brightness", "color_temp", "color", "color_xy", "color_hs"]
-        let hasLightShape = payload["state"] != nil && payload.keys.contains(where: { lightKeys.contains($0) })
-        guard hasLightShape else { return nil }
-        guard let member = members.first(where: { $0.category == .light }) else { return nil }
-        return (member, payload)
-    }
-
-    @ViewBuilder
+    /// The device as one native row that opens Device detail. Closure-based
+    /// push, so it doesn't mix with the value-based path that got us here.
     private func singleDeviceSection(_ device: Device) -> some View {
         Section {
-            // ZStack with a closure-based NavigationLink overlay: the card's
-            // internal chevron is the only disclosure indicator (the List
-            // doesn't auto-add its own because the row's primary content is
-            // the card, not the link). Closure-based push avoids the
-            // value-based path mixing that previously re-fired the row's
-            // own NavigationLink.
-            ZStack {
+            NavigationLink {
+                DeviceDetailView(bridgeID: bridgeID, device: device)
+            } label: {
                 DeviceCard(
                     device: device,
                     state: scope.store.state(for: device.friendlyName),
                     isAvailable: scope.store.isAvailable(device.friendlyName),
                     otaStatus: scope.store.otaStatus(for: device.friendlyName),
                     bridgeID: bridgeID,
-                    bridgeName: environment.registry.session(for: bridgeID)?.displayName,
-                    lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                    bridgeName: environment.attributionBridgeName(for: bridgeID),
                     displayMode: .compact
                 )
-                NavigationLink {
-                    DeviceDetailView(bridgeID: bridgeID, device: device)
-                } label: { EmptyView() }
-                .opacity(0)
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-        }
-        if let state = exposesScopedState(for: device) {
-            Section {
-                ExposeCardView(device: device, state: state, mode: .snapshot)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
             }
         }
     }
 
-    /// Filter `logTimeState` to only the keys that are actual exposes of this
-    /// device. For bridge responses (payload `{data, error, status}`), nothing
-    /// matches and we return nil — so the device section just shows the hero
-    /// card. For real state publishes / state-change diffs, the payload keys
-    /// match exposes and we render the relevant control card with those values.
-    private func exposesScopedState(for device: Device) -> [String: JSONValue]? {
-        guard let state = logTimeState else { return nil }
-        // Use `flattened` (every node, parents + leaves) rather than
-        // `flattenedLeaves`. Z2M publishes nested features (notably the
-        // `color_xy` / `color_hs` parents whose `property` resolves to
-        // `"color"`) as a single object under the parent key — not as
-        // separate top-level `x` / `y` keys. Filtering by leaves alone
-        // dropped the entire color object, which is why the snapshot
-        // Light Card never rendered the color surface even when the
-        // payload carried a perfectly valid `color: {x, y}`.
-        let exposeProps: Set<String> = Set(
-            (device.definition?.exposes ?? []).flattened.compactMap {
-                $0.property ?? $0.name
+    /// Title for the navigation bar. The user tapped a row about a
+    /// specific subject — Apple's pattern is to make the subject the page
+    /// title (Mail puts the sender, Messages puts the contact). For
+    /// non-device events we fall back to a quiet category label.
+    private var navTitle: String {
+        if let group = resolvedGroup { return group.friendlyName }
+        if displayDevices.count == 1, let (_, device) = displayDevices.first {
+            return device.friendlyName
+        }
+        if displayDevices.count > 1 { return "Activity" }
+        switch entry.category {
+        case .deviceJoined, .deviceAnnounce, .deviceLeave, .interview, .availability:
+            return entry.deviceName ?? entry.category.label
+        case .stateChange: return "Activity"
+        case .bridgeState: return "Bridge"
+        case .bridgeActivity: return entry.bridgeTopicDisplay?.title ?? "Bridge"
+        case .permitJoin: return "Pairing"
+        case .general:
+            switch entry.level {
+            case .error: return "Error"
+            case .warning: return "Warning"
+            default: return "Activity"
             }
-        )
-        let scoped = state.filter { exposeProps.contains($0.key) }
-        return scoped.isEmpty ? nil : scoped
+        }
     }
 
     private var timestampSubtitle: String {
@@ -282,79 +182,107 @@ struct LogDetailView: View {
         }
     }
 
-    private var headerTitle: String {
-        entry.category == .general ? entry.level.label : entry.category.label
-    }
-
     @ViewBuilder
-    private var beautifulBody: some View {
+    private var parsedBody: some View {
         let changes = entry.context?.stateChanges ?? []
         let payload: [String: JSONValue] = {
             if case .mqttPublish(_, _, let p) = entry.parsedMessageKind { return p }
             return [:]
         }()
+        let topic: String? = {
+            if case .mqttPublish(_, let t, _) = entry.parsedMessageKind { return t }
+            return nil
+        }()
 
-        if !changes.isEmpty {
-            LogDetailChangesSection(changes: changes)
-        }
-        // Skip the full-payload snapshot for state-change events — the diff is
-        // what actually happened, the rest is noise.
-        if !payload.isEmpty && entry.category != .stateChange {
-            BeautifulPayloadView(payload: payload, device: displayDevices.first?.device)
-        }
-        if changes.isEmpty && payload.isEmpty {
-            if let structure = LogMessageParser.structure(for: entry.message) {
-                structuredMessageSections(structure)
-            } else {
-                messageSection
-            }
+        // bridge/health gets a dedicated detail renderer that maps the
+        // `devices` IEEE map to per-device cards instead of dumping
+        // "0X000…1234: 4 properties" rows the user can't decipher.
+        // `hasSuffix` because Z2M prepends the configurable MQTT base
+        // (default `zigbee2mqtt/`) to the topic; we want to match the
+        // canonical sub-topic regardless of how the user has it set.
+        if topic?.hasSuffix("bridge/health") == true {
+            LogHealthDetailSections(payload: payload, store: scope.store)
+        } else {
+            payloadBody(changes: changes, payload: payload)
         }
     }
 
     @ViewBuilder
-    private func structuredMessageSections(_ structure: LogMessageStructure) -> some View {
-        Section(sectionTitle) {
-            Text(structure.summary)
-                .font(.callout)
-                .textSelection(.enabled)
-                .padding(.vertical, DesignTokens.Spacing.xs)
-            ForEach(structure.fields) { field in
-                CopyableRow(label: field.label, value: field.value)
-            }
-        }
-        ForEach(structure.groups) { group in
-            Section(group.title) {
-                ForEach(group.fields) { field in
-                    CopyableRow(label: field.label, value: field.value)
+    private func payloadBody(
+        changes: [LogContext.StateChange],
+        payload: [String: JSONValue]
+    ) -> some View {
+        if !changes.isEmpty {
+            let rows = LogChangeRows.rows(for: changes, payload: entry.context?.payload)
+            Section("Changes") {
+                LabeledContent("Changed") {
+                    Text(timestampSubtitle)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                if rows.isEmpty {
+                    Text("Reported again with the same values")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(rows) { LogChangeRowView(row: $0) }
                 }
             }
-        }
-    }
-
-    private var messageSection: some View {
-        let (summary, detail) = parsedMessage
-        return Section(sectionTitle) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(summary)
+        } else if !payload.isEmpty && entry.category != .stateChange {
+            // PayloadSectionsView produces its own Sections — render at
+            // the top level so each section gets a real header (Status,
+            // Data, Firmware, etc.) the way iOS Settings detail screens
+            // do. Wrapping it in another Section would nest sections,
+            // which SwiftUI silently drops.
+            PayloadSectionsView(payload: payload, device: displayDevices.first?.device)
+        } else if let structure = LogMessageParser.structure(for: entry.message) {
+            // Structured message: top-level summary sits in its own
+            // section under the event header; structured fields/groups
+            // get their own real sections beneath.
+            Section {
+                Text(structure.summary)
                     .font(.callout)
                     .textSelection(.enabled)
-                if let detail {
-                    Text(detail)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
+                    .padding(.vertical, DesignTokens.Spacing.xs)
+            } header: {
+                eventHeader
+            }
+            ForEach(structure.fields) { field in
+                Section { CopyableRow(label: field.label, value: field.value) }
+            }
+            ForEach(structure.groups) { group in
+                Section(group.title) {
+                    ForEach(group.fields) { field in
+                        CopyableRow(label: field.label, value: field.value)
+                    }
                 }
             }
-            .padding(.vertical, DesignTokens.Spacing.xs)
+        } else {
+            Section {
+                let (summary, detail) = parsedMessage
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                    Text(summary)
+                        .font(.callout)
+                        .textSelection(.enabled)
+                    if let detail {
+                        Text(detail)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.vertical, DesignTokens.Spacing.xs)
+            } header: {
+                eventHeader
+            }
         }
     }
 
-    private var sectionTitle: String {
-        switch entry.level {
-        case .error: "Error"
-        case .warning: "Warning"
-        default: "Message"
-        }
+    /// Body section header. Plain noun in the iOS Settings idiom —
+    /// "Signal", "Humidity", "Battery", "Interview". The verb lives in
+    /// the diff rows beneath; the timestamp lives in the nav-bar subtitle
+    /// at the top of the screen.
+    private var eventHeader: some View {
+        Text(entry.bodyHeader)
     }
 
     private var parsedMessage: (summary: String, detail: String?) {
@@ -396,4 +324,5 @@ struct LogDetailView: View {
         LogDetailView(bridgeID: UUID(), entry: LogEntry.previewEntries[3])
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

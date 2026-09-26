@@ -62,6 +62,7 @@ struct DocInlineTextView: View {
                             }
                         }
                 }
+                .configuredTopScrollEdgeEffect()
             }
     }
 

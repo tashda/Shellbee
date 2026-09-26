@@ -148,4 +148,5 @@ struct MainSettingsView: View {
     NavigationStack {
         MainSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

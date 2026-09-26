@@ -31,7 +31,7 @@ enum LogLevel: String, CaseIterable, Sendable, Hashable, ChipRepresentable {
     var color: Color {
         switch self {
         case .error: .red
-        case .warning: .yellow
+        case .warning: .orange
         case .info: .blue
         case .debug: .gray
         }
@@ -46,19 +46,43 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     let id: UUID
     let timestamp: Date
     let level: LogLevel
-    let category: LogCategory
+    /// `var` so AppStore+Events can override the category after the entry
+    /// is constructed — bridge MQTT publishes start as `.general` from
+    /// `LogContext.inferredCategory` and get re-categorised based on the
+    /// recognised topic without rebuilding the whole entry.
+    var category: LogCategory
     let namespace: String?
     let message: String
     let deviceName: String?
     let context: LogContext?
+    /// Marks an entry that was previously surfaced as an in-app notification.
+    /// Activity Center uses this for Notifications Only without maintaining a
+    /// second, disposable event history.
+    var isActivityAttention: Bool
+    /// Structured copy for application-originated Activity entries and for
+    /// Z2M log lines promoted into a user-facing Activity event.
+    var activityTitle: String?
+    var activitySubtitle: String?
+    /// Set by the view model when consecutive same-device same-kind entries
+    /// are coalesced into one displayed row ("Signal drifted ×5"). Always 1
+    /// on the canonical entries stored in `AppStore.logEntries`; the view
+    /// model produces synthesized copies with a higher count for display.
+    var coalescedCount: Int
 
     init(
         id: UUID, timestamp: Date, level: LogLevel, category: LogCategory,
-        namespace: String?, message: String, deviceName: String?, context: LogContext? = nil
+        namespace: String?, message: String, deviceName: String?, context: LogContext? = nil,
+        isActivityAttention: Bool = false,
+        activityTitle: String? = nil,
+        activitySubtitle: String? = nil,
+        coalescedCount: Int = 1
     ) {
         self.id = id; self.timestamp = timestamp; self.level = level
         self.category = category; self.namespace = namespace
         self.message = message; self.deviceName = deviceName; self.context = context
+        self.isActivityAttention = isActivityAttention
+        self.activityTitle = activityTitle; self.activitySubtitle = activitySubtitle
+        self.coalescedCount = coalescedCount
     }
 
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -144,6 +168,10 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     }
 
     var summaryTitle: String {
+        if let activityTitle { return activityTitle }
+        // Recognized bridge topics get a friendly title up front so rows
+        // read as "Bridge health check" instead of the raw MQTT topic.
+        if let display = bridgeTopicDisplay { return display.title }
         if let name = context?.primaryDevice?.friendlyName { return name }
         if let name = deviceName { return name }
         if case .mqttPublish(let device, _, _) = parsedMessageKind { return device }
@@ -152,6 +180,10 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     }
 
     var summarySubtitle: String {
+        if let activitySubtitle { return activitySubtitle }
+        if let display = bridgeTopicDisplay {
+            return display.subtitle ?? ""
+        }
         if let ctx = context, !ctx.stateChanges.isEmpty {
             let withFrom = ctx.stateChanges.filter { $0.displayFrom != nil }
             let candidates = withFrom.isEmpty ? ctx.stateChanges : withFrom
@@ -168,6 +200,15 @@ struct LogEntry: Identifiable, Sendable, Hashable {
             return pairs.joined(separator: ", ") + suffix
         }
         return Self.stripZ2MPrefix(message)
+    }
+
+    /// Friendly bridge-topic display when this entry is an MQTT publish on
+    /// a recognized `bridge/response/*` or `bridge/event` topic. Computed
+    /// fresh because the canonical topic + payload are derivable from the
+    /// raw `message` via `parsedMessageKind` — no model duplication needed.
+    var bridgeTopicDisplay: BridgeTopicLabel.Display? {
+        guard case .mqttPublish(_, let topic, let payload) = parsedMessageKind else { return nil }
+        return BridgeTopicLabel.display(for: topic, payload: payload)
     }
 
     static func stripZ2MPrefix(_ text: String) -> String {

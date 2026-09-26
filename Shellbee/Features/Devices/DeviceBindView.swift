@@ -153,4 +153,5 @@ struct ParsedBinding: Identifiable {
         DeviceBindView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

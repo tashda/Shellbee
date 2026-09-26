@@ -57,6 +57,9 @@ struct DocBrowserView: View {
         .minimizeSearchToolbarIfAvailable()
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if filters.isActive {
+                    ClearFiltersToolbarButton { filters = DocBrowserFilters() }
+                }
                 DocBrowserFilterMenu(
                     filters: $filters,
                     showManufacturerSheet: $showManufacturerSheet
@@ -145,83 +148,6 @@ struct DocBrowserView: View {
     }
 }
 
-// MARK: - Entry row
-
-private struct DocEntryRow: View {
-    let entry: DocBrowserEntry
-    var showVendor: Bool = false
-
-    @State private var bundledImageData: Data?
-
-    var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            deviceImage
-            VStack(alignment: .leading, spacing: 0) {
-                if showVendor {
-                    Text(entry.vendor.uppercased())
-                        .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary.opacity(DesignTokens.Opacity.secondaryText))
-                        .lineLimit(1)
-                }
-                Text(entry.model)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                if !entry.description.isEmpty {
-                    Text(entry.description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, DesignTokens.Spacing.xs)
-        .task(id: entry.docKey) {
-            bundledImageData = nil
-            if let key = entry.imageKey {
-                bundledImageData = await BundledImageStore.shared.imageData(for: key)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var deviceImage: some View {
-        let size = DesignTokens.Size.summaryRowSymbolFrame
-        if let data = bundledImageData, let uiImage = UIImage(data: data) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size, height: size)
-                .transition(.opacity)
-        } else {
-            PersistentAsyncImage(url: entry.networkImageURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            } placeholder: {
-                Image(systemName: entry.deviceType?.systemImage ?? "cpu")
-                    .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-            }
-            .frame(width: size, height: size)
-        }
-    }
-}
-
-// MARK: - DocBrowserEntry network image URL (fallback when bundle unavailable)
-
-fileprivate extension DocBrowserEntry {
-    var networkImageURL: URL? {
-        let stem = imageKey ?? model
-            .replacingOccurrences(of: ":", with: "-")
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "/", with: "-")
-        return URL(string: "https://www.zigbee2mqtt.io/images/devices/\(stem).png")
-    }
-}
-
 // MARK: - Filter menu
 
 private struct DocBrowserFilterMenu: View {
@@ -232,7 +158,7 @@ private struct DocBrowserFilterMenu: View {
         Menu {
             Menu {
                 Picker("Device Type", selection: $filters.deviceType) {
-                    Label("All Types", systemImage: "square.grid.2x2")
+                    Label("All Types", systemImage: FilterMenuSymbol.all)
                         .tag(DocDeviceType?.none)
                     ForEach(DocDeviceType.allCases) { type in
                         Label(type.rawValue, systemImage: type.systemImage)
@@ -241,49 +167,43 @@ private struct DocBrowserFilterMenu: View {
                 }
                 .pickerStyle(.inline)
             } label: {
-                if let type = filters.deviceType {
-                    Label("Type: \(type.rawValue)", systemImage: type.systemImage)
-                } else {
-                    Label("Type", systemImage: "tag")
-                }
+                FilterSubmenuLabel(
+                    name: "Type",
+                    systemImage: "tag",
+                    value: filters.deviceType?.rawValue,
+                    valueSystemImage: filters.deviceType?.systemImage
+                )
             }
 
             Menu {
                 Picker("Power Source", selection: powerBinding) {
-                    Label("Any Power Source", systemImage: "bolt.circle").tag(PowerFilter.any)
+                    Label("All Power Sources", systemImage: FilterMenuSymbol.all).tag(PowerFilter.any)
                     Label("Battery", systemImage: "battery.100").tag(PowerFilter.battery)
                     Label("Mains / USB", systemImage: "powerplug.fill").tag(PowerFilter.mains)
                 }
                 .pickerStyle(.inline)
             } label: {
                 switch currentPower {
-                case .battery: Label("Power: Battery", systemImage: "battery.100")
-                case .mains:   Label("Power: Mains / USB", systemImage: "powerplug.fill")
-                case .any:     Label("Power Source", systemImage: "bolt.circle")
+                case .battery:
+                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: "Battery", valueSystemImage: "battery.100")
+                case .mains:
+                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: "Mains / USB", valueSystemImage: "powerplug.fill")
+                case .any:
+                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle")
                 }
             }
 
             Button {
                 showManufacturerSheet = true
             } label: {
-                if let vendor = filters.vendor {
-                    Label(vendor, systemImage: "building.2.fill")
-                } else {
-                    Label("Manufacturer", systemImage: "building.2")
-                }
+                FilterSubmenuLabel(name: "Manufacturer", systemImage: "building.2", value: filters.vendor)
             }
 
-            if filters.isActive {
-                Divider()
-                Button(role: .destructive) {
-                    filters = DocBrowserFilters()
-                } label: {
-                    Label("Clear Filters", systemImage: "xmark.circle")
-                }
+            ClearFiltersMenuItem(isActive: filters.isActive) {
+                filters = DocBrowserFilters()
             }
         } label: {
-            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                .symbolVariant(filters.isActive ? .fill : .none)
+            FilterMenuLabel(isActive: filters.isActive)
         }
     }
 
@@ -343,6 +263,7 @@ private struct ManufacturerFilterSheet: View {
                 }
             }
         }
+        .configuredTopScrollEdgeEffect()
     }
 
     @ViewBuilder
@@ -370,4 +291,5 @@ private struct ManufacturerFilterSheet: View {
         DocBrowserView()
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

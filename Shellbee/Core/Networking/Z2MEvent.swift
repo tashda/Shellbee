@@ -14,6 +14,7 @@ enum Z2MEvent: Sendable {
     case bridgeResponse(topic: String, data: JSONValue)
     case bridgeEvent(BridgeDeviceEvent)
     case bridgeHealth(BridgeHealth)
+    case networkMapResponse(NetworkMapResponse)
     case operationError(Z2MOperationError)
     case touchlinkScanResult([TouchlinkDevice])
     case touchlinkIdentifyDone

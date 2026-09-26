@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import Shellbee
 
@@ -11,9 +12,8 @@ final class SensorReadingTests: XCTestCase {
         )
 
         XCTAssertEqual(reading.displayValue, "Closed")
-        XCTAssertEqual(reading.numericDisplayValue, "Closed")
-        XCTAssertEqual(reading.icon, "door.sliding.left.hand.closed")
         XCTAssertFalse(reading.binaryActive)
+        XCTAssertEqual(reading.valueColor, .secondary)
     }
 
     func testContactFalseDisplaysOpen() {
@@ -24,9 +24,8 @@ final class SensorReadingTests: XCTestCase {
         )
 
         XCTAssertEqual(reading.displayValue, "Open")
-        XCTAssertEqual(reading.numericDisplayValue, "Open")
-        XCTAssertEqual(reading.icon, "door.sliding.left.hand.open")
         XCTAssertTrue(reading.binaryActive)
+        XCTAssertEqual(reading.valueColor, .orange)
     }
 
     func testWindowOpenKeepsTrueAsOpen() {
@@ -37,7 +36,6 @@ final class SensorReadingTests: XCTestCase {
         )
 
         XCTAssertEqual(reading.displayValue, "Open")
-        XCTAssertEqual(reading.icon, "window.vertical.open")
         XCTAssertTrue(reading.binaryActive)
     }
 

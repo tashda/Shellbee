@@ -152,9 +152,17 @@ struct Expose: Codable, Sendable, Equatable {
     let valueOn: JSONValue?
     let valueOff: JSONValue?
     let presets: [ExposePreset]?
+    /// z2m's `category`: "config" or "diagnostic", nil for primary exposes.
+    let category: String?
 
     nonisolated var isReadable: Bool { (access ?? 0) & 0x01 != 0 }
     nonisolated var isWritable: Bool { (access ?? 0) & 0x02 != 0 }
+    /// z2m's diagnostic category, with a fallback for device definitions
+    /// that predate the `category` field.
+    nonisolated var isDiagnostic: Bool {
+        if let category { return category == "diagnostic" }
+        return ["device_temperature", "power_outage_count"].contains(property ?? "")
+    }
 
     // The custom init(from:) below suppresses Swift's synthesized
     // memberwise initializer, so we restore it explicitly for tests and
@@ -176,7 +184,8 @@ struct Expose: Codable, Sendable, Equatable {
         values: [String]?,
         valueOn: JSONValue?,
         valueOff: JSONValue?,
-        presets: [ExposePreset]?
+        presets: [ExposePreset]?,
+        category: String? = nil
     ) {
         self.type = type
         self.name = name
@@ -195,10 +204,11 @@ struct Expose: Codable, Sendable, Equatable {
         self.valueOn = valueOn
         self.valueOff = valueOff
         self.presets = presets
+        self.category = category
     }
 
     enum CodingKeys: String, CodingKey {
-        case type, name, label, description, access, property, endpoint, features, options, unit, values, presets
+        case type, name, label, description, access, property, endpoint, features, options, unit, values, presets, category
         case valueMin = "value_min"
         case valueMax = "value_max"
         case valueStep = "value_step"
@@ -224,6 +234,7 @@ struct Expose: Codable, Sendable, Equatable {
         valueOn = try c.decodeIfPresent(JSONValue.self, forKey: .valueOn)
         valueOff = try c.decodeIfPresent(JSONValue.self, forKey: .valueOff)
         presets = try c.decodeIfPresent([ExposePreset].self, forKey: .presets)
+        category = try c.decodeIfPresent(String.self, forKey: .category)
         // Real z2m sends enum `values` as strings most of the time, but some
         // device definitions (e.g. Eurotronic SPZB0001 trv_mode) use numbers
         // or booleans. Stringify so consumers can keep treating values as

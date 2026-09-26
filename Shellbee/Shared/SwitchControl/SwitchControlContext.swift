@@ -97,4 +97,18 @@ struct SwitchControlContext: Equatable, Identifiable {
         guard let feature = find(in: flat, names: names) else { return nil }
         return state[feature.property]?.numberValue
     }
+
+    /// Power, Energy, Voltage and Current as label and formatted value, in
+    /// that order, with units from z2m.
+    var meteringReadings: [(label: String, value: String)] {
+        func format(_ v: Double, _ fraction: Int, _ unit: String) -> String {
+            "\(v.formatted(.number.precision(.fractionLength(0...fraction)))) \(unit)"
+        }
+        var rows: [(label: String, value: String)] = []
+        if let v = powerValue { rows.append(("Power", format(v, 1, powerFeature?.unit ?? "W"))) }
+        if let v = energyValue { rows.append(("Energy", format(v, 2, energyFeature?.unit ?? "kWh"))) }
+        if let v = voltageValue { rows.append(("Voltage", format(v, 0, voltageFeature?.unit ?? "V"))) }
+        if let v = currentValue { rows.append(("Current", format(v, 2, currentFeature?.unit ?? "A"))) }
+        return rows
+    }
 }

@@ -1,20 +1,30 @@
 import SwiftUI
 
 struct SettingsView: View {
+    var embedInNavigationStack: Bool = true
+
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
     @AppStorage(DeveloperSettings.modeEnabledKey) private var developerModeEnabled: Bool = false
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var showingDisconnectConfirmation = false
     @State private var showingRestartAlert = false
     /// Connection editor state for the toolbar `+` button. Used in multi-bridge
     /// mode to add a new saved bridge without leaving Settings.
     @State private var editorViewModel: ConnectionViewModel?
     @State private var removeConfirmation: ConnectionConfig?
+    @State private var autoOpenedBridgeRoute: BridgeSettingsRoute?
+    @State private var autoOpenedLogsFilter: ActivityLogFilter?
 
     /// Phase 2 multi-bridge: when the user has more than one saved bridge, the
     /// top-level Settings page swaps to the merged layout — every per-bridge
     /// section moves into a per-bridge sub-page (`BridgeSettingsView`).
     private var isMultiBridge: Bool {
         environment.history.connections.count >= 2
+    }
+
+    private var showsSidebarDestinationsInSettings: Bool {
+        !AdaptiveLayout.isPad
     }
 
     /// The bridge whose data the single-bridge layout operates on. There's
@@ -46,83 +56,113 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                if isMultiBridge {
-                    multiBridgeLayout
-                } else {
-                    singleBridgeLayout
-                }
+        SwiftUI.Group {
+            if embedInNavigationStack {
+                NavigationStack { settingsContent }
+            } else {
+                settingsContent
             }
-            .navigationTitle("Settings")
-            // Settings → Logs pushes LogsView (which has its own
-            // NavigationStack). Inside LogsView's log-detail screen, the
-            // device/group hero card uses NavigationLink(value:) to push a
-            // DeviceRoute / GroupRoute. With nested NavigationStacks SwiftUI
-            // can route the push to whichever stack first matches a
-            // destination — register handlers on the outer Settings stack as
-            // a safety net so the tap always lands on the right screen.
-            .navigationDestination(for: DeviceRoute.self) { route in
-                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+        }
+    }
+
+    private var settingsContent: some View {
+        Form {
+            if isMultiBridge {
+                multiBridgeLayout
+            } else {
+                singleBridgeLayout
             }
-            .navigationDestination(for: GroupRoute.self) { route in
-                GroupDetailView(bridgeID: route.bridgeID, group: route.group)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button { presentNewBridgeEditor() } label: {
-                            Label("Add Bridge", systemImage: "plus")
-                        }
-                        if !isMultiBridge, canDisconnectSingleBridge {
-                            Button(role: .destructive) {
-                                showingDisconnectConfirmation = true
-                            } label: {
-                                Label("Disconnect", systemImage: "xmark.circle")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
+        }
+        .navigationTitle("Settings")
+        // Inside LogsView's log-detail screen, the device/group hero card
+        // uses NavigationLink(value:) to push a DeviceRoute / GroupRoute.
+        // Register handlers on the Settings navigation host so those taps
+        // always land on the right screen.
+        .navigationDestination(for: DeviceRoute.self) { route in
+            DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+        }
+        .navigationDestination(for: GroupRoute.self) { route in
+            GroupDetailView(bridgeID: route.bridgeID, group: route.group)
+        }
+        .navigationDestination(item: $autoOpenedBridgeRoute) { route in
+            BridgeSettingsView(bridgeID: route.bridgeID)
+        }
+        .navigationDestination(item: $autoOpenedLogsFilter) { filter in
+            LogsView(
+                usesActivityFeed: true,
+                navigationTitle: "",
+                workspace: LogsWorkspaceState(activityFilter: filter)
+            )
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    OpenInNewWindowButton(destination: .settings(bridgeID: singleBridgeID))
+                    Divider()
+                    Button { presentNewBridgeEditor() } label: {
+                        Label("Add Bridge", systemImage: "plus")
                     }
-                    .accessibilityLabel("More")
-                }
-            }
-            .sheet(item: editorBinding) { vm in
-                NavigationStack {
-                    ConnectionEditorView(viewModel: vm, mode: .save)
-                }
-            }
-            .alert("Remove Bridge?", isPresented: removeAlertBinding, presenting: removeConfirmation) { config in
-                Button("Remove", role: .destructive) {
-                    Task {
-                        await environment.disconnect(bridgeID: config.id)
-                        environment.history.remove(config)
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: { config in
-                Text("\(config.displayName) will be disconnected and removed from your saved bridges. Its auth token is deleted from the keychain.")
-            }
-            .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
-                Button("Restart", role: .destructive) {
-                    if let id = singleBridgeID { environment.restartBridge(id) }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Zigbee2MQTT will restart. The app will reconnect automatically.")
-            }
-            .alert("Disconnect from Server?", isPresented: $showingDisconnectConfirmation) {
-                Button("Disconnect", role: .destructive) {
-                    Task {
-                        if let id = singleBridgeID {
-                            await environment.disconnect(bridgeID: id)
+                    if !isMultiBridge, canDisconnectSingleBridge {
+                        Button(role: .destructive) {
+                            showingDisconnectConfirmation = true
+                        } label: {
+                            Label("Disconnect", systemImage: "xmark.circle")
                         }
                     }
+                } label: {
+                    Image(systemName: "ellipsis")
                 }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("The app returns to the setup screen. Your server address is remembered.")
+                .accessibilityLabel("More")
             }
+        }
+        .sheet(item: editorBinding) { vm in
+            NavigationStack {
+                ConnectionEditorView(viewModel: vm, mode: .save)
+            }
+            .configuredTopScrollEdgeEffect()
+        }
+        .alert("Remove Bridge?", isPresented: removeAlertBinding, presenting: removeConfirmation) { config in
+            Button("Remove", role: .destructive) {
+                Task {
+                    await environment.disconnect(bridgeID: config.id)
+                    environment.history.remove(config)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { config in
+            Text("\(config.displayName) will be disconnected and removed from your saved bridges. Its auth token is deleted from the keychain.")
+        }
+        .alert("Restart Zigbee2MQTT?", isPresented: $showingRestartAlert) {
+            Button("Restart", role: .destructive) {
+                if let id = singleBridgeID { environment.restartBridge(id) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Zigbee2MQTT will restart. The app will reconnect automatically.")
+        }
+        .alert("Disconnect from Server?", isPresented: $showingDisconnectConfirmation) {
+            Button("Disconnect", role: .destructive) {
+                Task {
+                    if let id = singleBridgeID {
+                        await environment.disconnect(bridgeID: id)
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The app returns to the setup screen. Your server address is remembered.")
+        }
+        .onAppear {
+            consumePendingSettingsNavigation()
+            consumePendingLogsFilter()
+        }
+        .onChange(of: sceneNavigation.pendingSettingsNavigation) { _, route in
+            guard route != nil else { return }
+            consumePendingSettingsNavigation()
+        }
+        .onChange(of: sceneNavigation.pendingSettingsLogFilter) { _, filter in
+            guard filter != nil else { return }
+            consumePendingLogsFilter()
         }
     }
 
@@ -133,19 +173,23 @@ struct SettingsView: View {
         bridgesSection
 
         Section {
-            NavigationLink { LogsView() } label: {
-                settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
-            }
-            NavigationLink { DocBrowserView() } label: {
-                settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+            if showsSidebarDestinationsInSettings {
+                if !isActivityCenterEnabled {
+                    NavigationLink {
+                        LogsView(usesActivityFeed: true, navigationTitle: "")
+                    } label: {
+                        settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
+                    }
+                }
+                NavigationLink { DocBrowserView() } label: {
+                    settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+                }
             }
         } header: {
             Text("Tools")
-        } footer: {
-            Text("Logs from every connected bridge are merged in one place.")
         }
 
-        applicationSection
+        applicationSections
 
         if developerModeEnabled {
             developerSection
@@ -158,6 +202,7 @@ struct SettingsView: View {
             ForEach(environment.history.connections) { config in
                 BridgeSettingsRow(
                     config: config,
+                    usesExistingNavigationStack: embedInNavigationStack,
                     onEdit: { presentEditor(for: config) },
                     onRemove: { removeConfirmation = config }
                 )
@@ -173,6 +218,18 @@ struct SettingsView: View {
         let vm = ConnectionViewModel(environment: environment)
         vm.presentNewServer()
         editorViewModel = vm
+    }
+
+    private func consumePendingSettingsNavigation() {
+        guard let route = sceneNavigation.pendingSettingsNavigation else { return }
+        sceneNavigation.pendingSettingsNavigation = nil
+        autoOpenedBridgeRoute = route
+    }
+
+    private func consumePendingLogsFilter() {
+        guard let filter = sceneNavigation.pendingSettingsLogFilter else { return }
+        sceneNavigation.pendingSettingsLogFilter = nil
+        autoOpenedLogsFilter = filter
     }
 
     private func presentEditor(for config: ConnectionConfig) {
@@ -211,7 +268,7 @@ struct SettingsView: View {
             networkSection(bridgeID: id)
             toolsSection(bridgeID: id)
         }
-        applicationSection
+        applicationSections
 
         if developerModeEnabled {
             developerSection
@@ -222,7 +279,11 @@ struct SettingsView: View {
     private var connectionSection: some View {
         Section {
             if let id = singleBridgeID, let config = singleBridgeConfig {
-                NavigationLink { ServerDetailView(bridgeID: id) } label: {
+                NavigationLink {
+                    settingsDetailDestination {
+                        ServerDetailView(bridgeID: id)
+                    }
+                } label: {
                     singleBridgeConnectionCard(bridgeID: id)
                 }
                 .connectionCardActions(
@@ -282,8 +343,12 @@ struct SettingsView: View {
             } label: {
                 settingsLabel(title: "Logging Level", systemImage: "slider.horizontal.below.square.filled.and.square", color: .gray)
             }
-            NavigationLink { LogsView() } label: {
-                settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
+            if showsSidebarDestinationsInSettings && !isActivityCenterEnabled {
+                NavigationLink {
+                    LogsView(usesActivityFeed: true, navigationTitle: "")
+                } label: {
+                    settingsLabel(title: "Logs", systemImage: "list.bullet.rectangle.portrait", color: .indigo)
+                }
             }
             NavigationLink { LogOutputView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Log Output", systemImage: "doc.text.magnifyingglass", color: Color(.systemGray2))
@@ -308,8 +373,10 @@ struct SettingsView: View {
 
     private func toolsSection(bridgeID: UUID) -> some View {
         Section {
-            NavigationLink { DocBrowserView() } label: {
-                settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+            if showsSidebarDestinationsInSettings {
+                NavigationLink { DocBrowserView() } label: {
+                    settingsLabel(title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
+                }
             }
             NavigationLink { TouchlinkView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Touchlink", systemImage: "dot.radiowaves.left.and.right", color: .teal)
@@ -356,28 +423,38 @@ struct SettingsView: View {
 
     // MARK: - App-global sections (shared between layouts)
 
-    private var applicationSection: some View {
-        Section {
+    @ViewBuilder
+    private var applicationSections: some View {
+        Section("Application") {
             NavigationLink { AppGeneralView() } label: {
                 settingsLabel(title: "General", systemImage: "gearshape.fill", color: .gray)
+            }
+            NavigationLink { AppAppearanceSettingsView() } label: {
+                settingsLabel(title: "Appearance", systemImage: "paintbrush.fill", color: .blue)
+            }
+            NavigationLink { AppNotificationSettingsView() } label: {
+                settingsLabel(title: "Activity Center", systemImage: "bell.badge.fill", color: .red)
             }
             NavigationLink { AppLiveActivitiesView() } label: {
                 settingsLabel(title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
             }
-            NavigationLink { AppNotificationSettingsView() } label: {
-                settingsLabel(title: "Notifications", systemImage: "bell.badge.fill", color: .red)
-            }
-            NavigationLink { AboutView() } label: {
+            NavigationLink {
+                settingsDetailDestination {
+                    AboutView()
+                }
+            } label: {
                 settingsLabel(title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             }
-        } header: {
-            Text("Application")
         }
     }
 
     private var developerSection: some View {
         Section {
-            NavigationLink { DeveloperSettingsView() } label: {
+            NavigationLink {
+                settingsDetailDestination {
+                    DeveloperSettingsView()
+                }
+            } label: {
                 settingsLabel(title: "Developer", systemImage: "hammer.fill", color: .purple)
             }
         } header: {
@@ -386,17 +463,36 @@ struct SettingsView: View {
     }
 
     private func settingsLabel(title: String, systemImage: String, color: Color) -> some View {
-        Label {
-            Text(title)
-        } icon: {
-            Image(systemName: systemImage)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                .background(color, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-        }
+        SettingsNavigationLabel(title: title, systemImage: systemImage, color: color)
     }
 
+    @ViewBuilder
+    private func settingsDetailDestination<Content: View>(
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        SettingsDestinationHost(
+            usesExistingNavigationStack: embedInNavigationStack,
+            content: content
+        )
+    }
+}
+
+private struct SettingsDestinationHost<Content: View>: View {
+    let usesExistingNavigationStack: Bool
+    @ViewBuilder let content: () -> Content
+
+    @ViewBuilder
+    var body: some View {
+        if usesExistingNavigationStack {
+            content()
+        } else {
+            NavigationStack { content() }
+                .configuredTopScrollEdgeEffect()
+        }
+    }
+}
+
+extension SettingsView {
     private var restartRequiredNotice: some View {
         Section {
             Button { showingRestartAlert = true } label: {
@@ -433,6 +529,7 @@ struct SettingsView: View {
 /// drills in.
 private struct BridgeSettingsRow: View {
     let config: ConnectionConfig
+    let usesExistingNavigationStack: Bool
     let onEdit: () -> Void
     let onRemove: () -> Void
 
@@ -442,19 +539,16 @@ private struct BridgeSettingsRow: View {
         environment.registry.session(for: config.id)
     }
 
-    private var isConnected: Bool { session?.isConnected ?? false }
-    private var isConnecting: Bool {
-        switch session?.connectionState {
-        case .connecting, .reconnecting: true
-        default: false
-        }
-    }
     private var isAutoConnect: Bool { environment.history.isAutoConnect(config) }
     private var restartRequired: Bool { session?.store.bridgeInfo?.restartRequired == true }
 
     var body: some View {
         NavigationLink {
-            BridgeSettingsView(bridgeID: config.id)
+            SettingsDestinationHost(
+                usesExistingNavigationStack: usesExistingNavigationStack
+            ) {
+                BridgeSettingsView(bridgeID: config.id)
+            }
         } label: {
             HStack(spacing: DesignTokens.Spacing.md) {
                 BridgeConnectionCardLabel(
@@ -469,7 +563,7 @@ private struct BridgeSettingsRow: View {
                         .accessibilityLabel("Restart required")
                 }
                 Spacer()
-                connectToggle
+                BridgeConnectToggle(config: config)
             }
         }
         .contextMenu {
@@ -490,22 +584,6 @@ private struct BridgeSettingsRow: View {
             }
             .tint(.blue)
         }
-    }
-
-    private var connectToggle: some View {
-        let isOn = Binding(
-            get: { isConnected || isConnecting },
-            set: { newValue in
-                if newValue {
-                    environment.connect(config: config)
-                } else {
-                    Task { await environment.disconnect(bridgeID: config.id) }
-                }
-            }
-        )
-        return Toggle("", isOn: isOn)
-            .labelsHidden()
-            .accessibilityLabel(isConnected ? "Disconnect \(config.displayName)" : "Connect \(config.displayName)")
     }
 
     private var stateLabel: String {

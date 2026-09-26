@@ -10,13 +10,18 @@ import Foundation
 final class OTAUpdateLiveActivityCoordinator {
     static let shared = OTAUpdateLiveActivityCoordinator()
 
-    private let controller = LiveActivityController<OTAUpdateActivityAttributes> {
+    private let controller = LiveActivityController<OTAUpdateActivityAttributes>(
+        dismissesOtherActivities: false
+    ) {
         (existing: OTAUpdateActivityAttributes, requested: OTAUpdateActivityAttributes) in
         existing.identifier == requested.identifier
     }
     /// Bridge ids whose activities are currently presented. Lets us decide
     /// between `present` and `update` per bridge without re-querying ActivityKit.
     private var visibleBridges: Set<UUID> = []
+    /// Last estimated finish per bridge, kept steady unless Z2M's estimate
+    /// moves meaningfully so the countdown doesn't twitch.
+    private var estimatedEnds: [UUID: Date] = [:]
 
     private init() {}
 
@@ -65,19 +70,34 @@ final class OTAUpdateLiveActivityCoordinator {
 
         let symbolMap = Dictionary(uniqueKeysWithValues: devices.map { ($0.friendlyName, $0.categorySystemImage) })
 
-        let content = contentState(
+        var content = contentState(
             phase: .active,
             statuses: activeStatuses,
             detail: detailText(for: activeStatuses),
             symbolMap: symbolMap
         )
+        applyEstimate(to: &content, from: activeStatuses, key: key)
 
         let alreadyVisible = visibleBridges.contains(key)
+        let staleDate = max(
+            Date.now.addingTimeInterval(DesignTokens.Duration.liveActivityOTAStale),
+            content.estimatedEnd ?? .distantPast
+        )
         Task { [attributes] in
             if alreadyVisible {
-                await controller.update(state: content)
+                await controller.update(
+                    attributes: attributes,
+                    state: content,
+                    staleDate: staleDate,
+                    relevanceScore: 70
+                )
             } else {
-                await controller.present(attributes: attributes, state: content)
+                await controller.present(
+                    attributes: attributes,
+                    state: content,
+                    staleDate: staleDate,
+                    relevanceScore: 70
+                )
             }
         }
         visibleBridges.insert(key)
@@ -103,9 +123,12 @@ final class OTAUpdateLiveActivityCoordinator {
 
         let key = bridgeID ?? defaultKey
         visibleBridges.remove(key)
+        estimatedEnds.removeValue(forKey: key)
+        let attributes = makeAttributes(bridgeID: bridgeID, bridgeDisplayName: "")
 
-        Task {
+        Task { [attributes] in
             await controller.finish(
+                attributes: attributes,
                 state: state,
                 displayFor: success
                     ? DesignTokens.Duration.liveActivitySuccess
@@ -117,6 +140,7 @@ final class OTAUpdateLiveActivityCoordinator {
     /// Tear down a single bridge's activity. Other bridges' activities stay.
     func clear(bridgeID: UUID?) {
         let key = bridgeID ?? defaultKey
+        estimatedEnds.removeValue(forKey: key)
         guard visibleBridges.remove(key) != nil else { return }
         let cancelState = OTAUpdateActivityAttributes.ContentState(
             phase: .completed,
@@ -126,13 +150,15 @@ final class OTAUpdateLiveActivityCoordinator {
             progress: nil,
             items: []
         )
-        Task {
-            await controller.cancel(with: cancelState)
+        let attributes = makeAttributes(bridgeID: bridgeID, bridgeDisplayName: "")
+        Task { [attributes] in
+            await controller.cancel(attributes: attributes, with: cancelState)
         }
     }
 
     func clearAll() {
         visibleBridges.removeAll()
+        estimatedEnds.removeAll()
         Task {
             await LiveActivityController<OTAUpdateActivityAttributes>.endAllActivities()
         }
@@ -158,7 +184,7 @@ final class OTAUpdateLiveActivityCoordinator {
         OTAUpdateActivityAttributes.ContentState(
             phase: phase,
             activeCount: statuses.count,
-            headline: statuses.count == 1 ? "1 upgrade running" : "\(statuses.count) upgrades running",
+            headline: statuses.count == 1 ? "Updating" : "\(statuses.count) device updates",
             detail: detail,
             progress: aggregateProgress(for: statuses),
             items: statuses.map {
@@ -176,18 +202,49 @@ final class OTAUpdateLiveActivityCoordinator {
     private func detailText(for statuses: [OTAUpdateStatus]) -> String {
         if let updating = statuses.first(where: { $0.phase == .updating }) {
             let progressText = updating.progress.map { "\(Int($0))%" } ?? "Preparing"
-            return "\(updating.deviceName) • \(progressText)"
+            return "\(updating.deviceName) · \(progressText)"
         }
 
         if let scheduled = statuses.first(where: { $0.phase == .scheduled }) {
-            return "\(scheduled.deviceName) • Scheduled"
+            return "\(scheduled.deviceName) · Scheduled"
         }
 
         if let requested = statuses.first(where: { $0.phase == .requested }) {
-            return "\(requested.deviceName) • Starting"
+            return "\(requested.deviceName) · Starting"
         }
 
         return "Preparing upgrades"
+    }
+
+    /// Pins the running update's finish time from Z2M's `remaining`, and
+    /// back-computes a start so a filling timer begins at the current
+    /// progress. The finish only moves when the estimate shifts by more
+    /// than the tolerance.
+    private func applyEstimate(
+        to content: inout OTAUpdateActivityAttributes.ContentState,
+        from statuses: [OTAUpdateStatus],
+        key: UUID
+    ) {
+        guard let running = statuses.first(where: { $0.phase == .updating }),
+              let remaining = running.remaining, remaining > 0
+        else {
+            estimatedEnds.removeValue(forKey: key)
+            return
+        }
+        let now = Date.now
+        let reported = now.addingTimeInterval(Double(remaining))
+        let end: Date
+        if let previous = estimatedEnds[key],
+           abs(previous.timeIntervalSince(reported)) < Double(remaining) * DesignTokens.Duration.liveActivityOTAEstimateTolerance {
+            end = previous
+        } else {
+            end = reported
+        }
+        estimatedEnds[key] = end
+        let fraction = min(max((running.progress ?? 0) / 100, 0), 0.99)
+        let left = max(end.timeIntervalSince(now), 1)
+        content.estimatedEnd = end
+        content.progressStart = end.addingTimeInterval(-left / (1 - fraction))
     }
 
     private func aggregateProgress(for statuses: [OTAUpdateStatus]) -> Int? {

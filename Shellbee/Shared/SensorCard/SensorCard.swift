@@ -1,84 +1,75 @@
 import SwiftUI
 
-struct SensorCard: View {
+/// A sensor's readings as native List sections: Readings, with when it
+/// last reported as the footer, then Diagnostics for the values z2m marks
+/// as diagnostic (device temperature, voltage, power outage count).
+/// Place inside an inset-grouped `List`.
+struct SensorSections: View {
     let device: Device
     let state: [String: JSONValue]
-    let mode: CardDisplayMode
 
     private static let skipKeys: Set<String> = ["linkquality", "last_seen", "update", "update_available", "battery", "battery_low"]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            if mode == .snapshot {
-                header
-            }
-            let readings = makeReadings()
-            if readings.isEmpty {
-                Text("No sensor data available")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                readingsGrid(readings)
+        let readings = Self.readings(device: device, state: state)
+        let primary = readings.filter { !isDiagnostic($0) }
+        let diagnostics = readings.filter(isDiagnostic)
+
+        if !primary.isEmpty {
+            Section {
+                ForEach(primary, id: \.property) { SensorReadingRow(reading: $0) }
+            } header: {
+                Text("Readings")
+            } footer: {
+                if let updated = DeviceStatus.lastSeenText(state.lastSeen) {
+                    Text("Updated \(updated)")
+                }
             }
         }
-        .padding(DesignTokens.Spacing.xl)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
-    }
-
-    private func readingsGrid(_ readings: [SensorReading]) -> some View {
-        let columns = [
-            GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
-            GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
-        ]
-        return LazyVGrid(columns: columns,
-                         alignment: .leading,
-                         spacing: DesignTokens.Spacing.xl) {
-            ForEach(readings, id: \.label) { reading in
-                SensorReadingTile(reading: reading)
+        if !diagnostics.isEmpty {
+            Section("Diagnostics") {
+                ForEach(diagnostics, id: \.property) { SensorReadingRow(reading: $0) }
             }
         }
     }
 
-    private var header: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "sensor.fill")
-                .font(DesignTokens.Typography.eyebrowIcon)
-                .foregroundStyle(.tint)
-            Text("Sensor")
-                .font(DesignTokens.Typography.eyebrowLabel)
-                .tracking(DesignTokens.Typography.eyebrowTracking)
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
-        }
+    private func isDiagnostic(_ reading: SensorReading) -> Bool {
+        // A battery sensor's voltage is diagnostic even when z2m doesn't say so.
+        reading.expose.isDiagnostic || (reading.expose.category == nil && reading.property == "voltage")
     }
 
     static func hasReadings(device: Device, state: [String: JSONValue]) -> Bool {
-        let flat = device.definition?.exposes.flatMap { [$0] + ($0.features ?? []) } ?? []
-        return flat.contains { expose in
-            let prop = expose.property ?? expose.name ?? ""
-            guard !skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return false }
-            guard expose.type == "numeric" || expose.type == "binary" else { return false }
-            return state[prop] != nil
-        }
+        !readings(device: device, state: state).isEmpty
     }
 
-    private func makeReadings() -> [SensorReading] {
-        let exposes = device.definition?.exposes ?? []
-        let flat = exposes.flattened
-        return flat.compactMap { expose in
+    /// Properties these sections show, so the settings below skip them.
+    static func readingProperties(device: Device, state: [String: JSONValue]) -> Set<String> {
+        Set(readings(device: device, state: state).map(\.property))
+    }
+
+    private static func readings(device: Device, state: [String: JSONValue]) -> [SensorReading] {
+        (device.definition?.exposes ?? []).flattened.compactMap { expose in
             let prop = expose.property ?? expose.name ?? ""
-            guard !Self.skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return nil }
+            guard !skipKeys.contains(prop), expose.isReadable, !expose.isWritable else { return nil }
             guard expose.type == "numeric" || expose.type == "binary" else { return nil }
             guard let value = state[prop] else { return nil }
             return SensorReading(expose: expose, property: prop, value: value)
         }
     }
+}
 
+private struct SensorReadingRow: View {
+    let reading: SensorReading
+
+    var body: some View {
+        LabeledContent {
+            Text(reading.displayValue)
+                .monospacedDigit()
+                .foregroundStyle(reading.valueColor == .primary ? .secondary : reading.valueColor)
+        } label: {
+            Text(reading.label)
+        }
+    }
 }
 
 struct SensorReading {
@@ -105,53 +96,6 @@ struct SensorReading {
         }
     }
 
-    var numericDisplayValue: String {
-        switch expose.type {
-        case "binary":
-            return binaryLabel(isTrue: isTrue)
-        case "numeric":
-            guard let num = value.numberValue else { return value.stringified }
-            return num.truncatingRemainder(dividingBy: 1) == 0
-                ? String(format: "%.0f", num)
-                : String(format: "%.1f", num)
-        default:
-            return value.stringified
-        }
-    }
-
-    var unitDisplay: String? {
-        guard expose.type == "numeric" else { return nil }
-        return expose.unit
-    }
-
-    var icon: String {
-        switch property {
-        case "temperature": return "thermometer.medium"
-        case "humidity": return "humidity"
-        case "pressure": return "gauge.medium"
-        case "co2": return "aqi.medium"
-        case "carbon_monoxide": return "aqi.high"
-        case "pm25", "pm10": return "aqi.high"
-        case "illuminance", "illuminance_lux": return "sun.max"
-        case "motion", "occupancy", "presence": return "figure.walk"
-        case "moving": return "arrow.left.arrow.right"
-        case "contact": return isTrue ? "door.sliding.left.hand.closed" : "door.sliding.left.hand.open"
-        case "window_open": return isTrue ? "window.vertical.open" : "window.vertical.closed"
-        case "water_leak": return "drop.triangle"
-        case "smoke": return "smoke"
-        case "gas": return "exclamationmark.triangle"
-        case "vibration": return "waveform.path"
-        case "voltage": return "bolt"
-        case "current": return "bolt.ring.closed"
-        case "power": return "plug"
-        case "energy": return "chart.line.uptrend.xyaxis"
-        case "tamper": return "lock.open.trianglebadge.exclamationmark"
-        case "alarm", "sos": return "exclamationmark.triangle.fill"
-        case "child_lock": return "lock.fill"
-        default: return "sensor"
-        }
-    }
-
     /// Whether this binary reading represents an active/triggered state worth
     /// drawing the user's eye to. Used to color the value text only — the icon
     /// and label stay monochrome.
@@ -161,9 +105,9 @@ struct SensorReading {
         return isTrue
     }
 
-    /// Color of the *value* text. Numerics stay primary. Binary state sensors
-    /// get a state-driven color: alarm-class red, "open/triggered" orange,
-    /// "presence detected" green. Inactive binary stays secondary.
+    /// Color of the *value* text. Numerics and presence stay primary; colour
+    /// is kept for states that need attention: alarm-class red and
+    /// "open/triggered" orange. Inactive binary stays secondary.
     var valueColor: Color {
         guard expose.type == "binary" else { return .primary }
         if !binaryActive { return .secondary }
@@ -172,8 +116,6 @@ struct SensorReading {
             return .red
         case "contact", "window_open", "vibration", "moving", "child_lock":
             return .orange
-        case "motion", "occupancy", "presence":
-            return .green
         default:
             return .primary
         }
@@ -205,63 +147,13 @@ struct SensorReading {
 
 }
 
-private struct SensorReadingTile: View {
-    let reading: SensorReading
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: reading.icon)
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(reading.label)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(.secondary)
-
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                Text(reading.numericDisplayValue)
-                    .font(DesignTokens.Typography.featureTileValue)
-                    .monospacedDigit()
-                    .foregroundStyle(reading.valueColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
-                if let unit = reading.unitDisplay {
-                    Text(unit)
-                        .font(DesignTokens.Typography.featureTileUnit)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-    }
-}
-
 #Preview {
-    ScrollView {
-        VStack(spacing: DesignTokens.Spacing.lg) {
-            SensorCard(device: .preview, state: [
-                "temperature": .double(21.5),
-                "humidity": .double(55),
-                "occupancy": .bool(true),
-                "contact": .bool(false)
-            ], mode: .interactive)
-            SensorCard(device: .preview, state: [
-                "temperature": .double(21.5),
-                "humidity": .double(55),
-                "contact": .bool(true),
-                "water_leak": .bool(true),
-                "motion": .bool(true),
-                "tamper": .bool(false)
-            ], mode: .snapshot)
-        }
-        .padding()
+    List {
+        SensorSections(device: .preview, state: [
+            "temperature": .double(21.5),
+            "humidity": .double(55),
+            "occupancy": .bool(false),
+            "water_leak": .bool(true)
+        ])
     }
-    .background(Color(.systemGroupedBackground))
 }

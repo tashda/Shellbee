@@ -6,7 +6,10 @@ struct GroupCard: View {
     let state: [String: JSONValue]
     var bridgeID: UUID? = nil
     var bridgeName: String? = nil
+    /// How many members report ON, for "2 of 3 on".
+    var membersOnCount: Int? = nil
     var onRenameTapped: (() -> Void)? = nil
+    var onNameHiddenChange: ((Bool) -> Void)? = nil
     var displayMode: DeviceIdentityDisplayMode = .prominent
 
     @State private var showAvatarPicker = false
@@ -27,25 +30,34 @@ struct GroupCard: View {
 
     var body: some View {
         switch displayMode {
-        case .prominent:
-            prominentHeader
-        case .compact:
-            compactHeader
+        case .prominent: hero
+        case .compact: row
         }
     }
 
-    private var prominentHeader: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            identityRow
-            hairline
-            metricsGrid
+    private var hero: some View {
+        IdentityHero(
+            name: group.friendlyName,
+            subtitle: subtitle,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName,
+            chips: chips,
+            renameAccessibilityLabel: "Rename group",
+            onRenameTapped: onRenameTapped,
+            onNameHiddenChange: onNameHiddenChange
+        ) {
+            Button {
+                let stored = GroupAvatarStore.shared.selection(for: group)
+                avatarSelection = stored.isEmpty
+                    ? Array(memberDevices.prefix(2).map(\.ieeeAddress))
+                    : stored
+                showAvatarPicker = true
+            } label: {
+                GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceHeroImage)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Choose group avatar")
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         .sheet(isPresented: $showAvatarPicker) {
             GroupAvatarPickerSheet(
                 group: group,
@@ -58,182 +70,58 @@ struct GroupCard: View {
         }
     }
 
-    private var compactHeader: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
-            GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceCardImage * 0.68)
-                .clipShape(Circle())
-
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(group.friendlyName)
-                    .font(DesignTokens.Typography.compactCardTitle)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMildLight)
-
-                Text("Group #\(group.id) · \(group.members.count) members")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                if let bridgeID, let bridgeName, !bridgeName.isEmpty {
-                    BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Spacer(minLength: DesignTokens.Spacing.sm)
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .padding(DesignTokens.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-    }
-
-    private var identityRow: some View {
-        HStack(alignment: .center, spacing: DesignTokens.Spacing.lg) {
-            Button {
-                let stored = GroupAvatarStore.shared.selection(for: group)
-                avatarSelection = stored.isEmpty
-                    ? Array(memberDevices.prefix(2).map(\.ieeeAddress))
-                    : stored
-                showAvatarPicker = true
-            } label: {
-                GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceCardImage * 0.80)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Choose group avatar")
-
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                nameView
-
-                Text("Group #\(group.id)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                if let description = group.description, !description.isEmpty {
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(DesignTokens.Typography.scaleFactorSubtle)
-                }
-
-                if let bridgeID, let bridgeName, !bridgeName.isEmpty {
-                    BridgeAttributionBadge(bridgeID: bridgeID, bridgeName: bridgeName)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var metricsGrid: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading),
-                GridItem(.flexible(), spacing: DesignTokens.Spacing.lg, alignment: .topLeading)
-            ],
-            alignment: .leading,
-            spacing: DesignTokens.Spacing.xl
+    private var row: some View {
+        IdentityRow(
+            name: group.friendlyName,
+            subtitle: "Group · \(membersText)",
+            bridgeID: bridgeID,
+            bridgeName: bridgeName,
+            isListRow: true
         ) {
-            identityMetric(label: "Type", icon: "square.on.square.fill", value: "Group", unit: nil, color: .indigo)
-            identityMetric(label: "State", icon: stateIcon, value: stateTitle, unit: nil, color: stateColor)
-            identityMetric(label: "Members", icon: "person.2.fill", value: "\(group.members.count)", unit: nil, color: .blue)
-            identityMetric(label: "Scenes", icon: "sparkles", value: scenesTitle, unit: nil, color: .purple)
+            GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceRowImage)
         }
     }
 
-    private func identityMetric(label: String, icon: String, value: String, unit: String?, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(label)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(.secondary)
-
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                Text(value)
-                    .font(DesignTokens.Typography.identityTileValue)
-                    .monospacedDigit()
-                    .foregroundStyle(color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorTight)
-                if let unit {
-                    Text(unit)
-                        .font(DesignTokens.Typography.identityTileUnit)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
+    /// "Group 208", plus the description when the group has one.
+    private var subtitle: String {
+        if let description = group.description, !description.isEmpty {
+            return "Group \(group.id) · \(description)"
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        return "Group \(group.id)"
     }
 
-    private var statusPill: some View {
-        Text(stateTitle)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(stateColor)
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.xs)
-            .background(stateColor.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
+    private var membersText: String {
+        group.members.count == 1 ? "1 member" : "\(group.members.count) members"
     }
 
-    @ViewBuilder
-    private var nameView: some View {
-        let label = Text(group.friendlyName)
-            .font(DesignTokens.Typography.cardTitle)
-            .foregroundStyle(.primary)
-            .lineLimit(1)
-            .minimumScaleFactor(DesignTokens.Typography.scaleFactorAggressive)
-            .allowsTightening(true)
-
-        if let onRenameTapped {
-            Button(action: onRenameTapped) {
-                label.contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Rename group")
-            .accessibilityValue(group.friendlyName)
-        } else {
-            label
+    private var chips: [IdentityChip] {
+        var chips: [IdentityChip] = []
+        if let stateText {
+            chips.append(IdentityChip(title: stateText, dotColor: anyOn ? .green : Color(.tertiaryLabel)))
         }
+        chips.append(IdentityChip(title: membersText))
+        if !group.scenes.isEmpty {
+            chips.append(IdentityChip(title: group.scenes.count == 1 ? "1 scene" : "\(group.scenes.count) scenes"))
+        }
+        return chips
     }
 
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
-            .frame(height: DesignTokens.Size.hairline)
+    private var anyOn: Bool {
+        membersOnCount.map { $0 > 0 } ?? isOn
     }
 
-    private var scenesTitle: String {
-        group.scenes.isEmpty ? "—" : "\(group.scenes.count)"
+    private var isOn: Bool {
+        state["state"]?.stringValue?.uppercased() == "ON"
     }
 
-    private var stateTitle: String {
-        guard let value = state["state"]?.stringValue else { return "—" }
-        return value.uppercased()
+    /// "2 of 3 on" when member states are known, otherwise the group state.
+    private var stateText: String? {
+        if let membersOnCount, !group.members.isEmpty {
+            return "\(membersOnCount) of \(group.members.count) on"
+        }
+        guard state["state"]?.stringValue != nil else { return nil }
+        return isOn ? "On" : "Off"
     }
-
-    private var stateColor: Color {
-        guard let value = state["state"]?.stringValue else { return .secondary }
-        return value.uppercased() == "ON" ? .green : .secondary
-    }
-
-    private var stateIcon: String {
-        guard let value = state["state"]?.stringValue else { return "circle.dashed" }
-        return value.uppercased() == "ON" ? "power.circle.fill" : "power.circle"
-    }
-
 }
 
 #Preview {

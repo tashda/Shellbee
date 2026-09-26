@@ -19,7 +19,8 @@ struct SettingsFormRow: View {
 
     private var property: String { expose.property ?? expose.name ?? "" }
     private var meta: FeatureMeta { FeatureCatalog.meta(for: property, exposeType: expose.type) }
-    private var label: String { meta.label }
+    /// z2m's own label first, so rows read the same as the windfront.
+    private var label: String { expose.label ?? meta.label }
     private var stateValue: JSONValue? { state[property] }
 
     var body: some View {

@@ -22,6 +22,7 @@ CACHE_PLAN.md
 PLAN.md
 REFINEMENT_PLAN.md
 SETTINGS_ARCHITECTURE.md
+DESIGN_REVIEW_LIGHT_ACTIVITY.md
 
 # Local developer scripts (per-developer worktree/build helpers)
 /scripts/
@@ -35,3 +36,4 @@ Tools/.bundle-hash
 # Docker test artifacts
 docker/zigbee2mqtt/data/configuration_backup*.yaml
 docker/zigbee2mqtt/data/migration-*.log
+Tools/icons/__pycache__/

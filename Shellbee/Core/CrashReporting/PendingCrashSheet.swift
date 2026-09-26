@@ -70,6 +70,7 @@ struct PendingCrashSheet: View {
             .navigationTitle("Shellbee crashed")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
     }
 

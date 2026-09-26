@@ -3,6 +3,13 @@ import SwiftUI
 struct BridgeLogView: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: BridgeLogViewModel
+    let selection: Binding<LogsPaneRoute?>?
+    @State private var liveFeed = LiveFeedState<BridgeBoundLogEntry>()
+
+    init(viewModel: BridgeLogViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
+        self.viewModel = viewModel
+        self.selection = selection
+    }
 
     private var connectedSessions: [BridgeSession] {
         environment.registry.orderedSessions.filter(\.isConnected)
@@ -38,26 +45,83 @@ struct BridgeLogView: View {
     }
 
     var body: some View {
-        let entries = mergedEntries
-        List {
-            ForEach(entries) { item in
-                NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
-                    BridgeLogRowView(entry: item.entry)
+        let liveEntries = mergedEntries
+        let entries = liveFeed.displayedItems(from: liveEntries)
+        ScrollViewReader { proxy in
+            ZStack {
+                selectableList {
+                    ForEach(entries) { item in
+                        bridgeLogRow(item)
+                            .id(item.id)
+                            .listRowInsets(EdgeInsets(
+                                top: DesignTokens.Spacing.bridgeLogRowVerticalInset,
+                                leading: DesignTokens.Spacing.bridgeLogRowHorizontalInset,
+                                bottom: DesignTokens.Spacing.bridgeLogRowVerticalInset,
+                                trailing: DesignTokens.Spacing.bridgeLogRowHorizontalInset
+                            ))
+                            .modifier(BridgeRowLeadingBarBackground(
+                                bridgeID: item.bridgeID,
+                                enabled: selection == nil
+                            ))
+                    }
                 }
-                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
+                .listStyle(.plain)
+                .overlay {
+                    if displayedSessions.isEmpty || !hasAnyRawEntries {
+                        ContentUnavailableView(
+                            "No Log Entries",
+                            systemImage: "terminal",
+                            description: Text("Raw zigbee2mqtt log lines will appear here in real time.")
+                        )
+                    } else if entries.isEmpty {
+                        ContentUnavailableView.search(text: viewModel.searchText)
+                    }
+                }
+
+            }
+            .toolbar {
+                if liveFeed.isReadingHistory {
+                    TrailingToolbarGroupSpacer()
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        FollowLiveButton {
+                            withAnimation(.smooth) {
+                                liveFeed.followLive()
+                                if let first = liveEntries.first {
+                                    proxy.scrollTo(first.id, anchor: .top)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in
+                liveFeed.beginReadingHistory(with: liveEntries)
+            })
+        }
+    }
+
+    @ViewBuilder
+    private func bridgeLogRow(_ item: BridgeBoundLogEntry) -> some View {
+        if selection != nil {
+            NavigationLink(value: LogsPaneRoute.bridge(LogRoute(bridgeID: item.bridgeID, entry: item.entry))) {
+                BridgeLogRowView(entry: item.entry)
+            }
+        } else {
+            NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
+                BridgeLogRowView(entry: item.entry)
             }
         }
-        .listStyle(.plain)
-        .overlay {
-            if displayedSessions.isEmpty || !hasAnyRawEntries {
-                ContentUnavailableView(
-                    "No Log Entries",
-                    systemImage: "terminal",
-                    description: Text("Raw zigbee2mqtt log lines will appear here in real time.")
-                )
-            } else if entries.isEmpty {
-                ContentUnavailableView.search(text: viewModel.searchText)
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                content()
+            }
+        } else {
+            List {
+                content()
             }
         }
     }
@@ -222,8 +286,11 @@ struct BridgeLogDetailView: View {
                     Image(systemName: "plus.magnifyingglass")
                 }
                 .disabled(fontSize >= Self.maxFontSize)
+            }
 
-                if prettyMessage != nil {
+            if prettyMessage != nil {
+                TrailingToolbarGroupSpacer()
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         prettyPrint.toggle()
                     } label: {
@@ -232,6 +299,7 @@ struct BridgeLogDetailView: View {
                     .tint(prettyPrint ? .accentColor : .secondary)
                 }
             }
+
         }
     }
 }
