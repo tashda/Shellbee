@@ -2,19 +2,10 @@ import XCTest
 @testable import Shellbee
 
 final class GroupDeviceDropPolicyTests: XCTestCase {
-    @MainActor
-    func testSameBridgeDropBuildsOneExactAddMemberRequest() async {
+    func testSameBridgeDropBuildsOneExactAddMemberRequest() {
         let bridgeID = UUID()
-        var device = makeDevice(ieee: "0x01")
-        device.endpoints = ["2": .object([:])]
-        let payload = DeviceTransferPayload(device: device, bridgeID: bridgeID, bridgeName: "Home")
 
-        let outcome = GroupDeviceDropPolicy.evaluate(
-            payload,
-            targetGroup: makeGroup(),
-            targetBridgeID: bridgeID,
-            availableDevices: [device]
-        )
+        let outcome = evaluate(sourceBridgeID: bridgeID, targetBridgeID: bridgeID)
 
         XCTAssertEqual(
             outcome,
@@ -30,17 +21,8 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         )
     }
 
-    @MainActor
-    func testCrossBridgeDropIsRejected() async {
-        let device = makeDevice(ieee: "0x01")
-        let payload = DeviceTransferPayload(device: device, bridgeID: UUID(), bridgeName: "Home")
-
-        let outcome = GroupDeviceDropPolicy.evaluate(
-            payload,
-            targetGroup: makeGroup(),
-            targetBridgeID: UUID(),
-            availableDevices: [device]
-        )
+    func testCrossBridgeDropIsRejected() {
+        let outcome = evaluate(sourceBridgeID: UUID(), targetBridgeID: UUID())
 
         guard case .rejected(let reason) = outcome else {
             return XCTFail("Expected a rejected drop")
@@ -48,62 +30,58 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         XCTAssertTrue(reason.contains("same bridge"))
     }
 
-    @MainActor
-    func testDuplicateMembershipDoesNotBuildRequest() async {
+    func testDuplicateMembershipDoesNotBuildRequest() {
         let bridgeID = UUID()
-        let device = makeDevice(ieee: "0x01")
-        let payload = DeviceTransferPayload(device: device, bridgeID: bridgeID, bridgeName: "Home")
-        var group = makeGroup()
-        group.members = [GroupMember(ieeeAddress: device.ieeeAddress, endpoint: 1)]
+        let outcome = evaluate(sourceBridgeID: bridgeID, targetBridgeID: bridgeID, groupMembers: ["0x01"])
 
-        XCTAssertEqual(
-            GroupDeviceDropPolicy.evaluate(
-                payload,
-                targetGroup: group,
-                targetBridgeID: bridgeID,
-                availableDevices: [device]
-            ),
-            .alreadyMember(deviceName: "Lamp")
+        XCTAssertEqual(outcome, .alreadyMember(deviceName: "Lamp"))
+    }
+
+    func testMissingSourceBridgeAndMissingDeviceAreRejected() {
+        let bridgeID = UUID()
+        let noBridge = evaluate(sourceBridgeID: nil, targetBridgeID: bridgeID)
+        let missingDevice = evaluate(sourceBridgeID: bridgeID, targetBridgeID: bridgeID, availableDevice: nil)
+
+        guard case .rejected = noBridge else {
+            return XCTFail("Expected missing bridge rejection")
+        }
+        guard case .rejected = missingDevice else {
+            return XCTFail("Expected missing device rejection")
+        }
+    }
+
+    func testCoordinatorCannotBeAddedToAGroup() {
+        let bridgeID = UUID()
+        let outcome = evaluate(sourceBridgeID: bridgeID, targetBridgeID: bridgeID, availableDevice: GroupDeviceDropCandidate(
+            ieeeAddress: "0x01",
+            name: "Coordinator",
+            isCoordinator: true,
+            endpoint: 1
+        ))
+
+        guard case .rejected = outcome else {
+            return XCTFail("Expected coordinator rejection")
+        }
+    }
+
+    private func evaluate(
+        sourceBridgeID: UUID?,
+        targetBridgeID: UUID,
+        groupMembers: Set<String> = [],
+        availableDevice: GroupDeviceDropCandidate? = GroupDeviceDropCandidate(
+            ieeeAddress: "0x01",
+            name: "Lamp",
+            isCoordinator: false,
+            endpoint: 2
         )
-    }
-
-    @MainActor
-    func testMissingSourceBridgeAndMissingDeviceAreRejected() async {
-        let device = makeDevice(ieee: "0x01")
-        let noBridge = DeviceTransferPayload(device: device, bridgeID: nil, bridgeName: nil)
-        let bridgeID = UUID()
-        let missing = DeviceTransferPayload(device: device, bridgeID: bridgeID, bridgeName: "Home")
-
-        guard case .rejected = GroupDeviceDropPolicy.evaluate(
-            noBridge,
-            targetGroup: makeGroup(),
-            targetBridgeID: bridgeID,
-            availableDevices: [device]
-        ) else { return XCTFail("Expected missing bridge rejection") }
-        guard case .rejected = GroupDeviceDropPolicy.evaluate(
-            missing,
-            targetGroup: makeGroup(),
-            targetBridgeID: bridgeID,
-            availableDevices: []
-        ) else { return XCTFail("Expected missing device rejection") }
-    }
-
-    private func makeGroup() -> Group {
-        Group(id: 7, friendlyName: "Living", members: [], scenes: [])
-    }
-
-    private func makeDevice(ieee: String) -> Device {
-        Device(
-            ieeeAddress: ieee,
-            type: .router,
-            networkAddress: 1,
-            supported: true,
-            friendlyName: "Lamp",
-            disabled: false,
-            definition: nil,
-            powerSource: nil,
-            interviewCompleted: true,
-            interviewing: false
+    ) -> GroupDeviceDropOutcome {
+        GroupDeviceDropDecision.evaluate(
+            sourceBridgeID: sourceBridgeID,
+            targetBridgeID: targetBridgeID,
+            draggedIEEEAddress: "0x01",
+            targetGroupID: 7,
+            targetGroupMembers: groupMembers,
+            availableDevice: availableDevice
         )
     }
 }
