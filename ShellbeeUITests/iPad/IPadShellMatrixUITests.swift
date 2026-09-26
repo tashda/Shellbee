@@ -103,10 +103,13 @@ final class IPadShellMatrixUITests: XCTestCase {
 
     @MainActor
     private func selectSecondaryBridgeFilter() {
-        app.descendants(matching: .any)
+        let options = app.descendants(matching: .any)
             .matching(identifier: "Secondary")
-            .lastMatch
-            .tapWhenReady(timeout: 10)
+            .allElementsBoundByIndex
+        guard let option = options.last else {
+            return XCTFail("The Secondary bridge filter option was not found")
+        }
+        option.tapWhenReady(timeout: 10)
     }
 
     @MainActor
