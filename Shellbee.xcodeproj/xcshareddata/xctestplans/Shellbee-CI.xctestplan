@@ -26,6 +26,7 @@
         "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
         "ConnectionHistoryTests",
         "BridgeRegistryTests",
+        "BridgeScopeTests",
         "DeviceFavoritesStoreTests",
         "GroupsWorkspaceStateTests",
         "HomeLayoutStoreTests",

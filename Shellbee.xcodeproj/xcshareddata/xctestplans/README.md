@@ -47,6 +47,7 @@ as the fix.
 | `NotificationPreferencesTests` (entire class) | Same isolation pattern as `HomeLayoutStoreTests` — `@Observable @MainActor` model created from XCTest's nonisolated bridge crashes the host on Xcode 26.3 runners. |
 | `DeviceFavoritesStoreTests`, `GroupsWorkspaceStateTests`, `LogsWorkspaceStateTests`, `MultiWindowTests`, `NetworkMapTests` (entire classes) | Same `@MainActor` XCTestCase / `@Observable` isolation crash as `HomeLayoutStoreTests` — added 2026-09-22 once these suites started hitting it too. All pass locally (confirmed under AddressSanitizer). |
 | `BridgeRegistryTests` (entire class) | `connect()` starts a live WebSocket session task; on GitHub's simulator the task teardown crashes the test host with `malloc: pointer being freed was not allocated`, even when `disconnectAll()` is awaited in `tearDown`. Keep registry behavior covered locally until session creation/connection can be injected independently. |
+| `BridgeScopeTests` (entire class) | Its multi-session cases create live `AppEnvironment` connections. The Xcode 26.3 simulator intermittently crashes the test host with the same allocator failure during these network task lifecycles. Keep scope behavior covered locally until sessions can be injected independently. |
 | `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
 
 ### Recently un-skipped

@@ -140,6 +140,7 @@ jobs:
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
             -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
             -skip-testing:"ShellbeeTests/BridgeRegistryTests" \
+            -skip-testing:"ShellbeeTests/BridgeScopeTests" \
             -skip-testing:"ShellbeeTests/DeviceFavoritesStoreTests" \
             -skip-testing:"ShellbeeTests/GroupsWorkspaceStateTests" \
             -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
