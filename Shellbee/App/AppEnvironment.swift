@@ -54,31 +54,29 @@ final class AppEnvironment {
     /// Every device across every connected bridge, tagged with its source.
     /// Useful for the Devices tab in merged mode.
     var allDevices: [BridgeBoundDevice] {
-        registry.orderedSessions.flatMap { session in
-            session.store.devices.map { device in
-                BridgeBoundDevice(bridgeID: session.bridgeID, bridgeName: session.displayName, device: device)
-            }
-        }
+        BridgeDataAggregation.devices(from: bridgeDataSnapshots)
     }
 
     /// Every group across every connected bridge.
     var allGroups: [BridgeBoundGroup] {
-        registry.orderedSessions.flatMap { session in
-            session.store.groups.map { group in
-                BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: group)
-            }
-        }
+        BridgeDataAggregation.groups(from: bridgeDataSnapshots)
     }
 
     /// Every log entry across every connected bridge, sorted newest first.
     var allLogEntries: [BridgeBoundLogEntry] {
-        registry.orderedSessions
-            .flatMap { session in
-                session.store.logEntries.map {
-                    BridgeBoundLogEntry(bridgeID: session.bridgeID, bridgeName: session.displayName, entry: $0)
-                }
-            }
-            .sorted { $0.entry.timestamp > $1.entry.timestamp }
+        BridgeDataAggregation.logEntries(from: bridgeDataSnapshots)
+    }
+
+    private var bridgeDataSnapshots: [BridgeDataSnapshot] {
+        registry.orderedSessions.map { session in
+            BridgeDataSnapshot(
+                bridgeID: session.bridgeID,
+                bridgeName: session.displayName,
+                devices: session.store.devices,
+                groups: session.store.groups,
+                logEntries: session.store.logEntries
+            )
+        }
     }
 
     /// Reconcile already-running activities after a Live Activities setting

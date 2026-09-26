@@ -1,8 +1,8 @@
 import XCTest
 @testable import Shellbee
 
-@MainActor
 final class GroupDeviceDropPolicyTests: XCTestCase {
+    @MainActor
     func testSameBridgeDropBuildsOneExactAddMemberRequest() async {
         let bridgeID = UUID()
         var device = makeDevice(ieee: "0x01")
@@ -30,6 +30,7 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testCrossBridgeDropIsRejected() async {
         let device = makeDevice(ieee: "0x01")
         let payload = DeviceTransferPayload(device: device, bridgeID: UUID(), bridgeName: "Home")
@@ -47,6 +48,7 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         XCTAssertTrue(reason.contains("same bridge"))
     }
 
+    @MainActor
     func testDuplicateMembershipDoesNotBuildRequest() async {
         let bridgeID = UUID()
         let device = makeDevice(ieee: "0x01")
@@ -65,6 +67,7 @@ final class GroupDeviceDropPolicyTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testMissingSourceBridgeAndMissingDeviceAreRejected() async {
         let device = makeDevice(ieee: "0x01")
         let noBridge = DeviceTransferPayload(device: device, bridgeID: nil, bridgeName: nil)
