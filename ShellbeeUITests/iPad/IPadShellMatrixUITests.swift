@@ -63,11 +63,11 @@ final class IPadShellMatrixUITests: XCTestCase {
 
         openSidebarSection("Activity", expectedTitle: "Activity")
         selectSecondaryBridgeInSidebar()
-        app.cells.containing(.any, identifier: "activity-log-Secondary")
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Secondary,"))
             .firstMatch
             .assertExists(timeout: 20)
         XCTAssertFalse(
-            app.cells.containing(.any, identifier: "activity-log-Primary")
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Primary,"))
                 .firstMatch
                 .waitForExistence(timeout: 2),
             "The Secondary activity filter leaked a Primary bridge log"
