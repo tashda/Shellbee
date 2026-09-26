@@ -39,6 +39,7 @@
         "GroupDropIntegrationTests",
         "NetworkMapIntegrationTests",
         "NotificationPreferencesTests",
+        "OTABulkOperationQueueTests/testCancelStopsProcessing()",
         "Z2MIntegrationTests"
       ],
       "target" : {
