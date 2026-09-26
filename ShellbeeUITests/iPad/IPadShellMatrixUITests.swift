@@ -62,9 +62,7 @@ final class IPadShellMatrixUITests: XCTestCase {
         assertSecondaryDetail(title: "All Lights")
 
         openSidebarSection("Activity", expectedTitle: "Activity")
-        app.buttons["Filter"].tapWhenReady(timeout: 15)
-        app.buttons["Bridge"].tapWhenReady(timeout: 10)
-        selectSecondaryBridgeFilter()
+        selectSecondaryBridgeInSidebar()
         app.cells.containing(.any, identifier: "activity-log-Secondary")
             .firstMatch
             .assertExists(timeout: 20)
@@ -110,6 +108,12 @@ final class IPadShellMatrixUITests: XCTestCase {
             return XCTFail("The Secondary bridge filter option was not found")
         }
         option.tapWhenReady(timeout: 10)
+    }
+
+    @MainActor
+    private func selectSecondaryBridgeInSidebar() {
+        app.collectionViews["Sidebar"].buttons["Secondary"]
+            .tapWhenReady(timeout: 10)
     }
 
     @MainActor
