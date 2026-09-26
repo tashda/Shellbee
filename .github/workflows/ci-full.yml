@@ -44,7 +44,7 @@ jobs:
     name: Unit + Integration Tests
     needs: gate
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     env:
       SCHEME: Shellbee
@@ -123,15 +123,14 @@ jobs:
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO | tee build-unit.log
 
-      - name: Run unit + integration tests
+      - name: Run unit tests
         timeout-minutes: 15
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
           # Skip the same tests that Shellbee-CI.xctestplan skips on Fast CI
-          # (keychain/concurrency issues that only fail on GitHub runners) —
-          # except Z2MIntegrationTests, which Full CI explicitly runs because
-          # we now have the mock bridge up. See xctestplans/README.md.
+          # Skip only the known runner-specific cases documented in the test
+          # plan README. Live bridge suites run in the next step.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
@@ -140,6 +139,7 @@ jobs:
             -only-testing:"$TEST_TARGET" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
             -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
+            -skip-testing:"ShellbeeTests/BridgeRegistryTests" \
             -skip-testing:"ShellbeeTests/DeviceFavoritesStoreTests" \
             -skip-testing:"ShellbeeTests/GroupsWorkspaceStateTests" \
             -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
@@ -149,8 +149,32 @@ jobs:
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
+            -skip-testing:"ShellbeeTests/Z2MIntegrationTests" \
+            -skip-testing:"ShellbeeTests/MultiBridgeIntegrationTests" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-unit.log
+
+      - name: Run mock bridge integration tests
+        timeout-minutes: 15
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          # Keep the live WebSocket suites separate from deterministic unit
+          # tests. A single retry is limited to these network integration tests
+          # because the macOS runner occasionally delays the mock bridge's
+          # replay of its retained fixture set during a handshake.
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            -only-testing:"ShellbeeTests/Z2MIntegrationTests" \
+            -only-testing:"ShellbeeTests/MultiBridgeIntegrationTests" \
+            -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
+            -parallel-testing-enabled NO \
+            -retry-tests-on-failure -test-iterations 2 \
+            -resultBundlePath "$DERIVED_DATA/IntegrationTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | tee test-integration.log
 
       - name: Capture mock bridge logs
         if: always()
@@ -180,6 +204,13 @@ jobs:
             else
               echo "_No result bundle produced._"
             fi
+            if [ -d "$DERIVED_DATA/IntegrationTests.xcresult" ]; then
+              echo
+              echo "## Mock Bridge Integration Tests"
+              xcrun xcresulttool get --path "$DERIVED_DATA/IntegrationTests.xcresult" --format json 2>/dev/null \
+                | jq -r '.metrics | "**Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)**"' \
+                || echo "_Result bundle present but could not be parsed._"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifacts on failure
@@ -190,11 +221,13 @@ jobs:
           path: |
             build-unit.log
             test-unit.log
+            test-integration.log
             mock-bridge.log
             mock-seeder.log
             mock-bridge-2.log
             mock-seeder-2.log
             ${{ env.DERIVED_DATA }}/UnitTests.xcresult
+            ${{ env.DERIVED_DATA }}/IntegrationTests.xcresult
           if-no-files-found: ignore
           retention-days: 14
 

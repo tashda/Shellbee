@@ -301,6 +301,8 @@ enum ActivityInstrumentGalleryCatalog {
     // MARK: - Events and outcomes
 
     private static let eventSamples: [ActivityInstrumentGallerySample] = [
+        event("vendors", "Vendor Information", "Vendor details refreshed", .bridgeActivity, .vendors),
+        event("models", "Device Models", "Model details refreshed", .bridgeActivity, .models),
         event("device-joined", "Device Joined", "New device joined the network", .deviceJoined, .lifecycle, trend: .rising, severity: .success),
         event("device-announced", "Device Announced", "Device announced itself", .deviceAnnounce, .signal),
         event("interview-started", "Interview Started", "Interview is in progress", .interview, .pairing),

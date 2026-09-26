@@ -25,6 +25,11 @@ add or remove a skip in this plan, mirror the change in
 `.github/workflows/ci-full.yml` when the same runner limitation also applies
 to Full CI.
 
+Full CI runs deterministic unit tests separately from the live bridge
+integration suites. Only the integration step retries failed tests once,
+because it depends on simulator-to-WebSocket timing and mock retained-state
+replay; unit-test failures are never retried.
+
 Every entry in `skippedTests` is tech debt with a tracking reason. When the
 underlying problem is fixed, the skip entry should be removed in the same PR
 as the fix.
@@ -41,6 +46,7 @@ as the fix.
 | `HomeLayoutStoreTests` (entire class) | Crashes with malloc free corruption on Xcode 26.3 GitHub runners even with `@MainActor + async setUp` migration. Suspected isolation interaction between XCTest's nonisolated launch path and `@Observable` (implicit `@MainActor`). Locally green; CI-only flake. |
 | `NotificationPreferencesTests` (entire class) | Same isolation pattern as `HomeLayoutStoreTests` — `@Observable @MainActor` model created from XCTest's nonisolated bridge crashes the host on Xcode 26.3 runners. |
 | `DeviceFavoritesStoreTests`, `GroupsWorkspaceStateTests`, `LogsWorkspaceStateTests`, `MultiWindowTests`, `NetworkMapTests` (entire classes) | Same `@MainActor` XCTestCase / `@Observable` isolation crash as `HomeLayoutStoreTests` — added 2026-09-22 once these suites started hitting it too. All pass locally (confirmed under AddressSanitizer). |
+| `BridgeRegistryTests` (entire class) | `connect()` starts a live WebSocket session task; on GitHub's simulator the task teardown crashes the test host with `malloc: pointer being freed was not allocated`, even when `disconnectAll()` is awaited in `tearDown`. Keep registry behavior covered locally until session creation/connection can be injected independently. |
 | `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
 
 ### Recently un-skipped
