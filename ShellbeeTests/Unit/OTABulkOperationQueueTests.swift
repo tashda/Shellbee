@@ -20,6 +20,20 @@ private enum OTABulkOperationQueueTestDriver {
         var summaries: [OTABulkOperationQueue.CompletionSummary] = []
     }
 
+    private final class SendGate {
+        private var continuation: CheckedContinuation<Void, Never>?
+        var isWaiting: Bool { continuation != nil }
+
+        func wait() async {
+            await withCheckedContinuation { continuation = $0 }
+        }
+
+        func release() {
+            continuation?.resume()
+            continuation = nil
+        }
+    }
+
     private static func makeQueue(
         recorder: Recorder,
         concurrency: Int = 1,
@@ -115,12 +129,22 @@ private enum OTABulkOperationQueueTestDriver {
 
     static func testCancelStopsProcessing() async {
         let recorder = Recorder()
-        let queue = makeQueue(recorder: recorder)
+        let gate = SendGate()
+        let queue = OTABulkOperationQueue(
+            sender: { topic, payload in
+                let id = payload.object?["id"]?.stringValue ?? ""
+                recorder.sends.append((topic, id))
+                await gate.wait()
+                return true
+            },
+            onCompletion: { summary in recorder.summaries.append(summary) }
+        )
 
         queue.enqueue(["a", "b", "c"], kind: .check)
-        await waitUntil { recorder.sends.count == 1 }
+        await waitUntil { recorder.sends.count == 1 && gate.isWaiting }
 
         queue.cancelAll()
+        gate.release()
         await waitUntil { !queue.isActive }
 
         XCTAssertEqual(recorder.sends.count, 1, "Only the first in-flight send should have gone out")
