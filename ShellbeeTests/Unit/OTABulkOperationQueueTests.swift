@@ -1,15 +1,26 @@
 import XCTest
 @testable import Shellbee
 
-@MainActor
 final class OTABulkOperationQueueTests: XCTestCase {
+    func testSendsSequentiallyInOrder() async { await OTABulkOperationQueueTestDriver.testSendsSequentiallyInOrder() }
+    func testTimeoutCountsAsFailureAndAdvances() async { await OTABulkOperationQueueTestDriver.testTimeoutCountsAsFailureAndAdvances() }
+    func testCancelStopsProcessing() async { await OTABulkOperationQueueTestDriver.testCancelStopsProcessing() }
+    func testIgnoresResponseForDeviceNotInQueue() async { await OTABulkOperationQueueTestDriver.testIgnoresResponseForDeviceNotInQueue() }
+    func testConcurrencyDispatchesMultipleInFlight() async { await OTABulkOperationQueueTestDriver.testConcurrencyDispatchesMultipleInFlight() }
+    func testUpdateRetriesSendUntilTransmitted() async { await OTABulkOperationQueueTestDriver.testUpdateRetriesSendUntilTransmitted() }
+    func testUpdateTimeoutRetriesOnceBeforeFailing() async { await OTABulkOperationQueueTestDriver.testUpdateTimeoutRetriesOnceBeforeFailing() }
+    func testEnqueueWhileRunningAppendsToCurrentRun() async { await OTABulkOperationQueueTestDriver.testEnqueueWhileRunningAppendsToCurrentRun() }
+}
+
+@MainActor
+private enum OTABulkOperationQueueTestDriver {
 
     private final class Recorder {
         var sends: [(topic: String, id: String)] = []
         var summaries: [OTABulkOperationQueue.CompletionSummary] = []
     }
 
-    private func makeQueue(
+    private static func makeQueue(
         recorder: Recorder,
         concurrency: Int = 1,
         checkTimeout: Duration = .seconds(60),
@@ -33,7 +44,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         )
     }
 
-    private func waitUntil(
+    private static func waitUntil(
         timeout: TimeInterval = 1.0,
         _ condition: () -> Bool
     ) async {
@@ -45,7 +56,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         }
     }
 
-    func testSendsSequentiallyInOrder() async {
+    static func testSendsSequentiallyInOrder() async {
         let recorder = Recorder()
         let queue = makeQueue(recorder: recorder)
 
@@ -75,7 +86,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         XCTAssertFalse(recorder.summaries.first?.wasCancelled ?? true)
     }
 
-    func testTimeoutCountsAsFailureAndAdvances() async {
+    static func testTimeoutCountsAsFailureAndAdvances() async {
         let recorder = Recorder()
         let queue = makeQueue(recorder: recorder, checkTimeout: .milliseconds(20)) { duration in
             try await Task.sleep(for: duration)
@@ -102,7 +113,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         XCTAssertEqual(summary?.succeeded, 1)
     }
 
-    func testCancelStopsProcessing() async {
+    static func testCancelStopsProcessing() async {
         let recorder = Recorder()
         let queue = makeQueue(recorder: recorder)
 
@@ -117,7 +128,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         XCTAssertEqual(summary?.wasCancelled, true)
     }
 
-    func testIgnoresResponseForDeviceNotInQueue() async {
+    static func testIgnoresResponseForDeviceNotInQueue() async {
         let recorder = Recorder()
         let queue = makeQueue(recorder: recorder)
 
@@ -138,7 +149,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         XCTAssertEqual(recorder.summaries.first?.succeeded, 1)
     }
 
-    func testConcurrencyDispatchesMultipleInFlight() async {
+    static func testConcurrencyDispatchesMultipleInFlight() async {
         let recorder = Recorder()
         let queue = makeQueue(recorder: recorder, concurrency: 3)
 
@@ -160,7 +171,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         XCTAssertEqual(recorder.summaries.first?.succeeded, 4)
     }
 
-    func testUpdateRetriesSendUntilTransmitted() async {
+    static func testUpdateRetriesSendUntilTransmitted() async {
         // Simulates a WebSocket blip: the first two send attempts fail to
         // transmit (as if mid-reconnect), the third succeeds. The queue
         // should retry rather than silently stalling — see #144.
@@ -196,7 +207,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         await waitUntil { !queue.isActive }
     }
 
-    func testUpdateTimeoutRetriesOnceBeforeFailing() async {
+    static func testUpdateTimeoutRetriesOnceBeforeFailing() async {
         // A missed completion event (socket down when Z2M published it) looks
         // identical to a genuinely stuck device: no response before timeout.
         // Update requests get one reissue before being marked failed — the
@@ -227,7 +238,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
         XCTAssertEqual(recorder.summaries.first?.failed, 0)
     }
 
-    func testEnqueueWhileRunningAppendsToCurrentRun() async {
+    static func testEnqueueWhileRunningAppendsToCurrentRun() async {
         let recorder = Recorder()
         let queue = makeQueue(recorder: recorder)
 
