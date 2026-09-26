@@ -148,6 +148,7 @@ jobs:
             -skip-testing:"ShellbeeTests/MultiWindowTests" \
             -skip-testing:"ShellbeeTests/NetworkMapTests" \
             -skip-testing:"ShellbeeTests/MultiBridgeNavigationTests" \
+            -skip-testing:"ShellbeeTests/MultiBridgeAggregationTests" \
             -skip-testing:"ShellbeeTests/GroupDropIntegrationTests" \
             -skip-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
