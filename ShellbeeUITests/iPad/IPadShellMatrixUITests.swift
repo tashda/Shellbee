@@ -56,7 +56,7 @@ final class IPadShellMatrixUITests: XCTestCase {
         openSidebarSection("Groups", expectedTitle: "Groups")
         app.buttons["Filter"].firstMatch.tapWhenReady(timeout: 10)
         app.buttons["Bridge"].tapWhenReady(timeout: 10)
-        app.buttons["Secondary"].tapWhenReady(timeout: 10)
+        selectSecondaryBridgeFilter()
         visibleCell(containing: "All Lights")
             .tapWhenReady(timeout: 15)
         assertSecondaryDetail(title: "All Lights")
@@ -64,7 +64,7 @@ final class IPadShellMatrixUITests: XCTestCase {
         openSidebarSection("Activity", expectedTitle: "Activity")
         app.buttons["Filter"].tapWhenReady(timeout: 15)
         app.buttons["Bridge"].tapWhenReady(timeout: 10)
-        app.buttons["Secondary"].tapWhenReady(timeout: 10)
+        selectSecondaryBridgeFilter()
         app.cells.containing(.any, identifier: "activity-log-Secondary")
             .firstMatch
             .assertExists(timeout: 20)
@@ -99,6 +99,14 @@ final class IPadShellMatrixUITests: XCTestCase {
     @MainActor
     private func waitForBothBridges() {
         app.staticTexts["Secondary"].firstMatch.assertExists(timeout: 25)
+    }
+
+    @MainActor
+    private func selectSecondaryBridgeFilter() {
+        app.descendants(matching: .any)
+            .matching(identifier: "Secondary")
+            .lastMatch
+            .tapWhenReady(timeout: 10)
     }
 
     @MainActor
