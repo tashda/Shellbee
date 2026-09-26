@@ -30,7 +30,7 @@ final class IPadShellMatrixUITests: XCTestCase {
             .firstMatch
             .assertExists(timeout: 15)
 
-        openSidebarSection("Activity", expectedTitle: "Logs")
+        openSidebarSection("Activity", expectedTitle: "Activity")
         XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15), "Activity did not load any rows")
 
         openSidebarSection("Network Map", expectedTitle: "Network Map")
@@ -55,13 +55,16 @@ final class IPadShellMatrixUITests: XCTestCase {
 
         openSidebarSection("Groups", expectedTitle: "Groups")
         app.buttons["Filter"].firstMatch.tapWhenReady(timeout: 10)
+        app.buttons["Bridge"].tapWhenReady(timeout: 10)
         app.buttons["Secondary"].tapWhenReady(timeout: 10)
         visibleCell(containing: "All Lights")
             .tapWhenReady(timeout: 15)
         assertSecondaryDetail(title: "All Lights")
 
-        openSidebarSection("Activity", expectedTitle: "Logs")
-        app.buttons["Secondary"].tapWhenReady(timeout: 15)
+        openSidebarSection("Activity", expectedTitle: "Activity")
+        app.buttons["Filter"].tapWhenReady(timeout: 15)
+        app.buttons["Bridge"].tapWhenReady(timeout: 10)
+        app.buttons["Secondary"].tapWhenReady(timeout: 10)
         app.cells.containing(.any, identifier: "activity-log-Secondary")
             .firstMatch
             .assertExists(timeout: 20)
