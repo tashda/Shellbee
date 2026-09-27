@@ -167,7 +167,9 @@ nonisolated enum DesignTokens {
         static let lightPaletteSwatch: CGFloat = 28
         static let lightCustomPreview: CGFloat = 88
         static let docStepCircle: CGFloat = 28
-        static let docStepConnector: CGFloat = 2
+        static let docCheckCircleStroke: CGFloat = 2
+        static let pairingBarRing: CGFloat = 28
+        static let pairingBarRingStroke: CGFloat = 3
         static let docOptionPaddingV: CGFloat = 3
         static let docInfoIconFrame: CGFloat = 28
         static let docSectionIconFrame: CGFloat = 32
@@ -194,6 +196,9 @@ nonisolated enum DesignTokens {
         static let iPadContentColumnIdealWidth: CGFloat = 380
         static let iPadContentColumnMaximumWidth: CGFloat = 460
         static let readableContentMaxWidth: CGFloat = 720
+        /// Width at which the Documentation page splits into prose and a side column.
+        static let docTwoColumnMinimumWidth: CGFloat = 900
+        static let docSideColumnWidth: CGFloat = 360
         static let notificationMaxWidth: CGFloat = 640
         static let permitJoinRingStroke: CGFloat = 8
         static let lightSelectionStroke: CGFloat = 2
