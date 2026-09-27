@@ -20,7 +20,6 @@ nonisolated enum DesignTokens {
         static let card: CGFloat = 26
         static let summaryRowSymbolBackground: CGFloat = 10
         static let xl: CGFloat = 28
-        static let noteBar: CGFloat = 1.5
         static let liveActivityGalleryIsland: CGFloat = 44
         static let liveActivityStageCard: CGFloat = 24
         static let liveActivityStageScreen: CGFloat = 62
@@ -170,10 +169,7 @@ nonisolated enum DesignTokens {
         static let docCheckCircleStroke: CGFloat = 2
         static let pairingBarRing: CGFloat = 28
         static let pairingBarRingStroke: CGFloat = 3
-        static let docOptionPaddingV: CGFloat = 3
-        static let docInfoIconFrame: CGFloat = 28
         static let docSectionIconFrame: CGFloat = 32
-        static let docNoteBarWidth: CGFloat = 3
         static let chipVerticalPadding: CGFloat = 3
         static let splashIcon: CGFloat = 60
         static let splashTitle: CGFloat = 40
@@ -187,7 +183,6 @@ nonisolated enum DesignTokens {
         static let mainTabBarInset: CGFloat = 58
         static let permitJoinQR: CGFloat = 220
         static let homeAddDividerInset: CGFloat = 60
-        static let docLabelColumnWidth: CGFloat = 90
         static let iPadStandardWindowMinimumWidth: CGFloat = 700
         static let iPadThreeColumnMinimumWidth: CGFloat = 1100
         static let iPadSidebarMinimumWidth: CGFloat = 220
