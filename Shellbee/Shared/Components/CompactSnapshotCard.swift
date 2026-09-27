@@ -22,7 +22,7 @@ struct CompactSnapshotCard<Content: View>: View {
             .padding(DesignTokens.Spacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                Color(.secondarySystemGroupedBackground),
+                .shellbeeSurface,
                 in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
             )
     }

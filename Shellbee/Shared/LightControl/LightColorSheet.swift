@@ -36,6 +36,7 @@ struct LightColorSheet: View {
         .padding(.horizontal, DesignTokens.Spacing.xl)
         .padding(.top, DesignTokens.Spacing.xxl)
         .padding(.bottom, DesignTokens.Spacing.lg)
+        .shellbeeThemedCanvas()
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         .frame(maxHeight: .infinity, alignment: .top)
         .presentationDetents(contentHeight > 0 ? [.height(contentHeight)] : [.medium])

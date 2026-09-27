@@ -45,21 +45,24 @@ struct ActivityNotificationSettingsView: View {
 
     var body: some View {
         Form {
-            ForEach(visibleSections, id: \.self) { section in
-                Section(section.title) {
-                    ForEach(visibleCategories.filter { $0.section == section }, id: \.self) { category in
-                        Toggle(category.displayName, isOn: binding(for: category))
+            SwiftUI.Group {
+                ForEach(visibleSections, id: \.self) { section in
+                    Section(section.title) {
+                        ForEach(visibleCategories.filter { $0.section == section }, id: \.self) { category in
+                            Toggle(category.displayName, isOn: binding(for: category))
+                        }
                     }
                 }
-            }
 
-            if environment.notificationPreferences.hasCustomSelection {
-                Section {
-                    Button("Reset to Defaults", role: .destructive) {
-                        environment.notificationPreferences.resetToDefaults(bridgeLogLevel: bridgeLogLevel)
+                if environment.notificationPreferences.hasCustomSelection {
+                    Section {
+                        Button("Reset to Defaults", role: .destructive) {
+                            environment.notificationPreferences.resetToDefaults(bridgeLogLevel: bridgeLogLevel)
+                        }
                     }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Notifications")

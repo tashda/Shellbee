@@ -51,67 +51,70 @@ struct MQTTSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                SettingsTextField("Server URL", text: $server, placeholder: "mqtt://localhost:1883")
-                SettingsTextField("Base Topic", text: $baseTopic, placeholder: "zigbee2mqtt")
-            } header: {
-                Text("Broker Connection")
-            } footer: {
-                Text("Updating connection settings may cause the bridge to temporarily disconnect while applying the changes.")
-            }
-
-            Section {
-                SettingsTextField("Client ID", text: $clientID, placeholder: "zigbee2mqtt")
-                SettingsTextField("Username", text: $user, placeholder: "Optional")
-
-                LabeledContent("Password") {
-                    SecureField("Optional", text: $password)
-                        .multilineTextAlignment(.trailing)
-                }
-            } header: {
-                Text("Authentication")
-            }
-
-            Section {
-                SettingsTextField("CA Certificate", text: $ca, placeholder: "Absolute path")
-                SettingsTextField("Client Certificate", text: $cert, placeholder: "Absolute path")
-                SettingsTextField("Client Key", text: $key, placeholder: "Absolute path")
-
-                Toggle("Reject Untrusted Certificates", isOn: $rejectUnauthorized)
-            } header: {
-                Text("SSL / TLS")
-            }
-
-            Section {
-                InlineIntField("Keepalive Interval", value: $keepalive, unit: "s", range: 10...3600)
-
-                Picker("Protocol Version", selection: $version) {
-                    Text("v3.1.1 (v4)").tag(4)
-                    Text("v5.0 (v5)").tag(5)
-                }
-            } header: {
-                Text("Protocol Options")
-            }
-
-            Section {
-                Toggle("Include Device Metadata", isOn: $includeDeviceInformation)
-                Toggle("Retain Messages", isOn: Binding(
-                    get: { !forceDisableRetain },
-                    set: { forceDisableRetain = !$0 }
-                ))
-
-                Picker("QoS Level", selection: $qos) {
-                    Text("QoS 0 — At most once").tag(0)
-                    Text("QoS 1 — At least once").tag(1)
-                    Text("QoS 2 — Exactly once").tag(2)
+            SwiftUI.Group {
+                Section {
+                    SettingsTextField("Server URL", text: $server, placeholder: "mqtt://localhost:1883")
+                    SettingsTextField("Base Topic", text: $baseTopic, placeholder: "zigbee2mqtt")
+                } header: {
+                    Text("Broker Connection")
+                } footer: {
+                    Text("Updating connection settings may cause the bridge to temporarily disconnect while applying the changes.")
                 }
 
-                InlineIntField("Max Packet Size", value: $maximumPacketSize, unit: "bytes", range: 1024...10485760)
-            } header: {
-                Text("Advanced")
-            } footer: {
-                Text("Include Device Metadata adds model and vendor info to every state message. Turning off Retain Messages means the broker won't store the last state for new subscribers.")
+                Section {
+                    SettingsTextField("Client ID", text: $clientID, placeholder: "zigbee2mqtt")
+                    SettingsTextField("Username", text: $user, placeholder: "Optional")
+
+                    LabeledContent("Password") {
+                        SecureField("Optional", text: $password)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("Authentication")
+                }
+
+                Section {
+                    SettingsTextField("CA Certificate", text: $ca, placeholder: "Absolute path")
+                    SettingsTextField("Client Certificate", text: $cert, placeholder: "Absolute path")
+                    SettingsTextField("Client Key", text: $key, placeholder: "Absolute path")
+
+                    Toggle("Reject Untrusted Certificates", isOn: $rejectUnauthorized)
+                } header: {
+                    Text("SSL / TLS")
+                }
+
+                Section {
+                    InlineIntField("Keepalive Interval", value: $keepalive, unit: "s", range: 10...3600)
+
+                    Picker("Protocol Version", selection: $version) {
+                        Text("v3.1.1 (v4)").tag(4)
+                        Text("v5.0 (v5)").tag(5)
+                    }
+                } header: {
+                    Text("Protocol Options")
+                }
+
+                Section {
+                    Toggle("Include Device Metadata", isOn: $includeDeviceInformation)
+                    Toggle("Retain Messages", isOn: Binding(
+                        get: { !forceDisableRetain },
+                        set: { forceDisableRetain = !$0 }
+                    ))
+
+                    Picker("QoS Level", selection: $qos) {
+                        Text("QoS 0 — At most once").tag(0)
+                        Text("QoS 1 — At least once").tag(1)
+                        Text("QoS 2 — Exactly once").tag(2)
+                    }
+
+                    InlineIntField("Max Packet Size", value: $maximumPacketSize, unit: "bytes", range: 1024...10485760)
+                } header: {
+                    Text("Advanced")
+                } footer: {
+                    Text("Include Device Metadata adds model and vendor info to every state message. Turning off Retain Messages means the broker won't store the last state for new subscribers.")
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("MQTT")

@@ -342,12 +342,18 @@ private struct ActivityLogContent: View {
     private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         if let selection {
             List(selection: selection) {
-                content()
+                SwiftUI.Group {
+                    content()
+                }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
         } else {
             List {
-                content()
+                SwiftUI.Group {
+                    content()
+                }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
         }

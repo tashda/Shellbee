@@ -45,25 +45,28 @@ struct GlobalSearchView: View {
     @ViewBuilder
     private var resultsList: some View {
         List {
-            if !query.isEmpty, !results.isEmpty {
-                Section {
-                    GlobalSearchScopeBar(selection: $scope, results: results)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                }
-                .listSectionSpacing(.compact)
-                if scope == .all {
-                    ForEach(GlobalSearchScope.categories.filter { results.count(for: $0) > 0 }) { category in
-                        mixedSection(for: category)
-                    }
-                } else {
+            SwiftUI.Group {
+                if !query.isEmpty, !results.isEmpty {
                     Section {
-                        GlobalSearchResultRows(scope: scope, results: results)
-                    } header: {
-                        sectionHeader(for: scope)
+                        GlobalSearchScopeBar(selection: $scope, results: results)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+                    .listSectionSpacing(.compact)
+                    if scope == .all {
+                        ForEach(GlobalSearchScope.categories.filter { results.count(for: $0) > 0 }) { category in
+                            mixedSection(for: category)
+                        }
+                    } else {
+                        Section {
+                            GlobalSearchResultRows(scope: scope, results: results)
+                        } header: {
+                            sectionHeader(for: scope)
+                        }
                     }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .listStyle(.insetGrouped)

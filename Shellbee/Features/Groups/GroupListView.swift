@@ -280,11 +280,17 @@ struct GroupListView: View {
     private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         if let selection {
             List(selection: selection) {
-                content()
+                SwiftUI.Group {
+                    content()
+                }
+                .shellbeeThemedRows()
             }
         } else {
             List {
-                content()
+                SwiftUI.Group {
+                    content()
+                }
+                .shellbeeThemedRows()
             }
         }
     }

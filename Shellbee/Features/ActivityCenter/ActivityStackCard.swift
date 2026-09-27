@@ -43,7 +43,7 @@ struct ActivityStackCard: View {
             bottomLeadingRadius: DesignTokens.ActivityFeed.peekCornerRadius,
             bottomTrailingRadius: DesignTokens.ActivityFeed.peekCornerRadius
         )
-        .fill(Color(.secondarySystemGroupedBackground).opacity(opacity))
+        .fill(.shellbeeSurface.opacity(opacity))
         .frame(height: height)
         .padding(.horizontal, inset)
     }

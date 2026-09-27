@@ -20,36 +20,39 @@ struct NetworkMapDeviceQuickLookSheet: View {
 
     var body: some View {
         List {
-            IdentityRow(
-                name: device.friendlyName,
-                subtitle: device.cardSubtitle,
-                isListRow: true
-            ) {
-                DeviceImageView(device: device, isAvailable: isOnline, size: DesignTokens.Size.deviceRowImage)
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-
-            chipsRow
+            SwiftUI.Group {
+                IdentityRow(
+                    name: device.friendlyName,
+                    subtitle: device.cardSubtitle,
+                    isListRow: true
+                ) {
+                    DeviceImageView(device: device, isAvailable: isOnline, size: DesignTokens.Size.deviceRowImage)
+                }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
 
-            Section {
-                if let connection {
-                    LabeledContent("Connected To") { Text(connection.parentName) }
-                    if let quality = connection.linkQuality {
-                        LabeledContent("Signal") {
-                            Text("\(quality)")
-                                .foregroundStyle(hasWeakLink ? .red : .secondary)
-                                .monospacedDigit()
+                chipsRow
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                Section {
+                    if let connection {
+                        LabeledContent("Connected To") { Text(connection.parentName) }
+                        if let quality = connection.linkQuality {
+                            LabeledContent("Signal") {
+                                Text("\(quality)")
+                                    .foregroundStyle(hasWeakLink ? .red : .secondary)
+                                    .monospacedDigit()
+                            }
                         }
+                    } else if node.role == .coordinator {
+                        LabeledContent("Connected To") { Text("—") }
                     }
-                } else if node.role == .coordinator {
-                    LabeledContent("Connected To") { Text("—") }
+                    Button("Show Device", action: onViewDetails)
                 }
-                Button("Show Device", action: onViewDetails)
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .presentationDetents([.medium, .large])
@@ -74,7 +77,7 @@ struct NetworkMapDeviceQuickLookSheet: View {
                     }
                     .padding(.horizontal, DesignTokens.Spacing.sm + DesignTokens.Spacing.xxs)
                     .padding(.vertical, DesignTokens.Spacing.xs)
-                    .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+                    .background(.shellbeeSurface, in: Capsule())
                 }
             }
             .padding(.horizontal, DesignTokens.Spacing.lg)

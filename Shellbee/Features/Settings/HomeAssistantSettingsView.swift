@@ -25,31 +25,34 @@ struct HomeAssistantSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Toggle("Enable Home Assistant", isOn: $enabled)
-            } footer: {
-                Text("Enables native Home Assistant MQTT discovery. Devices will appear automatically in Home Assistant when it is also connected to the same MQTT broker.")
-            }
-
-            if enabled {
+            SwiftUI.Group {
                 Section {
-                    SettingsTextField("Discovery Topic", text: $discoveryTopic, placeholder: "homeassistant")
-                    SettingsTextField("Status Topic", text: $statusTopic, placeholder: "homeassistant/status")
-                } header: {
-                    Text("Topics")
+                    Toggle("Enable Home Assistant", isOn: $enabled)
                 } footer: {
-                    Text("Discovery Topic must match the MQTT discovery prefix set in Home Assistant (default: homeassistant). Status Topic is watched to detect when Home Assistant restarts so devices can be re-announced.")
+                    Text("Enables native Home Assistant MQTT discovery. Devices will appear automatically in Home Assistant when it is also connected to the same MQTT broker.")
                 }
 
-                Section {
-                    Toggle("Legacy Action Sensor", isOn: $legacyActionSensor)
-                    Toggle("Event Entities", isOn: $experimentalEventEntities)
-                } header: {
-                    Text("Compatibility")
-                } footer: {
-                    Text("Legacy Action Sensor creates a sensor entity for button and remote actions (deprecated in newer Home Assistant versions). Event Entities use the newer Home Assistant event model instead.")
+                if enabled {
+                    Section {
+                        SettingsTextField("Discovery Topic", text: $discoveryTopic, placeholder: "homeassistant")
+                        SettingsTextField("Status Topic", text: $statusTopic, placeholder: "homeassistant/status")
+                    } header: {
+                        Text("Topics")
+                    } footer: {
+                        Text("Discovery Topic must match the MQTT discovery prefix set in Home Assistant (default: homeassistant). Status Topic is watched to detect when Home Assistant restarts so devices can be re-announced.")
+                    }
+
+                    Section {
+                        Toggle("Legacy Action Sensor", isOn: $legacyActionSensor)
+                        Toggle("Event Entities", isOn: $experimentalEventEntities)
+                    } header: {
+                        Text("Compatibility")
+                    } footer: {
+                        Text("Legacy Action Sensor creates a sensor entity for button and remote actions (deprecated in newer Home Assistant versions). Event Entities use the newer Home Assistant event model instead.")
+                    }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Home Assistant")

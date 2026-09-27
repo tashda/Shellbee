@@ -10,9 +10,12 @@ struct LightAdvancedSheet: View {
     var body: some View {
         NavigationStack {
             List(features) { feature in
-                LightAdvancedFeatureRow(feature: feature) { value in
-                    onChange(feature.payload(value))
+                SwiftUI.Group {
+                    LightAdvancedFeatureRow(feature: feature) { value in
+                        onChange(feature.payload(value))
+                    }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle(title)

@@ -25,6 +25,7 @@ struct PermitJoinActiveSheet: View {
                 }
                 .padding(.horizontal, DesignTokens.Spacing.xl)
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
         }

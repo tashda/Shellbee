@@ -8,18 +8,21 @@ struct OnboardingConnectPage: View {
         SwiftUI.Group {
             if let viewModel {
                 List {
-                    Section {
-                        Label {
-                            Text("Tap a server below to connect, or use the **+** button to add one manually if your bridge isn't on this network.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        } icon: {
-                            Image(systemName: "info.circle")
-                                .foregroundStyle(.tint)
+                    SwiftUI.Group {
+                        Section {
+                            Label {
+                                Text("Tap a server below to connect, or use the **+** button to add one manually if your bridge isn't on this network.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            } icon: {
+                                Image(systemName: "info.circle")
+                                    .foregroundStyle(.tint)
+                            }
                         }
+                        ConnectionHistorySection(viewModel: viewModel)
+                        ConnectionDiscoverySection(viewModel: viewModel)
                     }
-                    ConnectionHistorySection(viewModel: viewModel)
-                    ConnectionDiscoverySection(viewModel: viewModel)
+                    .shellbeeThemedRows()
                 }
                 .shellbeeThemedCanvas()
                 .toolbar {

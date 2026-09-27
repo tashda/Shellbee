@@ -5,61 +5,64 @@ struct AcknowledgementsView: View {
 
     var body: some View {
         Form {
-            Section("Open Source") {
-                acknowledgementRow(
-                    title: "Zigbee2MQTT",
-                    subtitle: "The open-source Zigbee gateway this app connects to",
-                    badge: "AGPL-3.0",
-                    url: URL(string: "https://github.com/Koenkk/zigbee2mqtt")!
-                )
-                acknowledgementRow(
-                    title: "zigbee2mqtt.io",
-                    subtitle: "Documentation and device library used in Shellbee",
-                    badge: "GPL-3.0",
-                    url: URL(string: "https://github.com/Koenkk/zigbee2mqtt.io")!
-                )
-                acknowledgementRow(
-                    title: "Sentry Cocoa SDK",
-                    subtitle: "Powers opt-in crash reporting (off by default)",
-                    badge: "MIT",
-                    url: URL(string: "https://github.com/getsentry/sentry-cocoa")!
-                )
-            }
-
-            if !contributors.isEmpty {
-                Section("Contributors") {
-                    ContributorsGrid(contributors: contributors)
-                        .listRowInsets(EdgeInsets(
-                            top: DesignTokens.Spacing.md,
-                            leading: DesignTokens.Spacing.md,
-                            bottom: DesignTokens.Spacing.md,
-                            trailing: DesignTokens.Spacing.md
-                        ))
+            SwiftUI.Group {
+                Section("Open Source") {
+                    acknowledgementRow(
+                        title: "Zigbee2MQTT",
+                        subtitle: "The open-source Zigbee gateway this app connects to",
+                        badge: "AGPL-3.0",
+                        url: URL(string: "https://github.com/Koenkk/zigbee2mqtt")!
+                    )
+                    acknowledgementRow(
+                        title: "zigbee2mqtt.io",
+                        subtitle: "Documentation and device library used in Shellbee",
+                        badge: "GPL-3.0",
+                        url: URL(string: "https://github.com/Koenkk/zigbee2mqtt.io")!
+                    )
+                    acknowledgementRow(
+                        title: "Sentry Cocoa SDK",
+                        subtitle: "Powers opt-in crash reporting (off by default)",
+                        badge: "MIT",
+                        url: URL(string: "https://github.com/getsentry/sentry-cocoa")!
+                    )
                 }
-            }
 
-            Section("Support") {
-                Link(destination: URL(string: "https://github.com/sponsors/Koenkk")!) {
-                    HStack(spacing: DesignTokens.Spacing.md) {
-                        Image(systemName: "heart.fill")
-                            .font(.body)
-                            .foregroundStyle(.pink)
-                            .frame(width: DesignTokens.Size.settingsIconFrame)
-                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                            Text("Donate to Koenkk")
-                                .foregroundStyle(.primary)
-                            Text("Support the creator of Zigbee2MQTT")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                if !contributors.isEmpty {
+                    Section("Contributors") {
+                        ContributorsGrid(contributors: contributors)
+                            .listRowInsets(EdgeInsets(
+                                top: DesignTokens.Spacing.md,
+                                leading: DesignTokens.Spacing.md,
+                                bottom: DesignTokens.Spacing.md,
+                                trailing: DesignTokens.Spacing.md
+                            ))
                     }
                 }
-                .foregroundStyle(.primary)
+
+                Section("Support") {
+                    Link(destination: URL(string: "https://github.com/sponsors/Koenkk")!) {
+                        HStack(spacing: DesignTokens.Spacing.md) {
+                            Image(systemName: "heart.fill")
+                                .font(.body)
+                                .foregroundStyle(.pink)
+                                .frame(width: DesignTokens.Size.settingsIconFrame)
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                                Text("Donate to Koenkk")
+                                    .foregroundStyle(.primary)
+                                Text("Support the creator of Zigbee2MQTT")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Acknowledgements")

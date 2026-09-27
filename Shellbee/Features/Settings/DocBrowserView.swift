@@ -30,25 +30,28 @@ struct DocBrowserView: View {
 
     var body: some View {
         List {
-            if searchText.isEmpty {
-                ForEach(sectionData, id: \.vendor) { section in
-                    Section {
-                        ForEach(section.entries, id: \.docKey) { entry in
-                            NavigationLink(destination: DocBrowserDetailView(entry: entry)) {
-                                DocEntryRow(entry: entry)
+            SwiftUI.Group {
+                if searchText.isEmpty {
+                    ForEach(sectionData, id: \.vendor) { section in
+                        Section {
+                            ForEach(section.entries, id: \.docKey) { entry in
+                                NavigationLink(destination: DocBrowserDetailView(entry: entry)) {
+                                    DocEntryRow(entry: entry)
+                                }
                             }
+                        } header: {
+                            Text(section.vendor)
                         }
-                    } header: {
-                        Text(section.vendor)
                     }
-                }
-            } else {
-                ForEach(flatSearchResults) { entry in
-                    NavigationLink(destination: DocBrowserDetailView(entry: entry)) {
-                        DocEntryRow(entry: entry, showVendor: true)
+                } else {
+                    ForEach(flatSearchResults) { entry in
+                        NavigationLink(destination: DocBrowserDetailView(entry: entry)) {
+                            DocEntryRow(entry: entry, showVendor: true)
+                        }
                     }
                 }
             }
+            .shellbeeThemedRows()
         }
         .listStyle(.insetGrouped)
         .shellbeeThemedCanvas()
@@ -242,17 +245,20 @@ private struct ManufacturerFilterSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                if let current = selected {
-                    Button(role: .destructive) {
-                        selected = nil
-                        dismiss()
-                    } label: {
-                        Label("Clear: \(current)", systemImage: "xmark.circle.fill")
+                SwiftUI.Group {
+                    if let current = selected {
+                        Button(role: .destructive) {
+                            selected = nil
+                            dismiss()
+                        } label: {
+                            Label("Clear: \(current)", systemImage: "xmark.circle.fill")
+                        }
+                    }
+                    ForEach(filteredVendors, id: \.self) { vendor in
+                        vendorRow(vendor)
                     }
                 }
-                ForEach(filteredVendors, id: \.self) { vendor in
-                    vendorRow(vendor)
-                }
+                .shellbeeThemedRows()
             }
             .searchable(text: $search, prompt: "Search manufacturers")
             .shellbeeThemedCanvas()

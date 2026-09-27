@@ -23,24 +23,27 @@ struct RenameGroupSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    HStack(spacing: DesignTokens.Spacing.md) {
-                        GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceActionSheetImage)
-                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                            Text(group.friendlyName)
-                                .font(.headline)
-                            Text("Group #\(group.id)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                SwiftUI.Group {
+                    Section {
+                        HStack(spacing: DesignTokens.Spacing.md) {
+                            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceActionSheetImage)
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                                Text(group.friendlyName)
+                                    .font(.headline)
+                                Text("Group #\(group.id)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
-                }
 
-                Section {
-                    TextField("New name", text: $newName)
-                        .submitLabel(.done)
-                        .onSubmit { saveIfPossible() }
+                    Section {
+                        TextField("New name", text: $newName)
+                            .submitLabel(.done)
+                            .onSubmit { saveIfPossible() }
+                    }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Rename Group")

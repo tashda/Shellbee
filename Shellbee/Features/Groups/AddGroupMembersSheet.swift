@@ -74,16 +74,19 @@ struct AddGroupMembersSheet: View {
 
     private var deviceList: some View {
         List {
-            ForEach(filteredDevices) { device in
-                AddGroupMemberDeviceRow(
-                    device: device,
-                    isAvailable: bridgeStore.isAvailable(device.friendlyName),
-                    isSelected: selectedDevices[device.ieeeAddress] != nil,
-                    selectedEndpoint: selectedDevices[device.ieeeAddress] ?? device.availableEndpoints[0],
-                    onTap: { toggleSelection(device) },
-                    onEndpointChange: { selectedDevices[device.ieeeAddress] = $0 }
-                )
+            SwiftUI.Group {
+                ForEach(filteredDevices) { device in
+                    AddGroupMemberDeviceRow(
+                        device: device,
+                        isAvailable: bridgeStore.isAvailable(device.friendlyName),
+                        isSelected: selectedDevices[device.ieeeAddress] != nil,
+                        selectedEndpoint: selectedDevices[device.ieeeAddress] ?? device.availableEndpoints[0],
+                        onTap: { toggleSelection(device) },
+                        onEndpointChange: { selectedDevices[device.ieeeAddress] = $0 }
+                    )
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .listStyle(.plain)

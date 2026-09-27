@@ -1,8 +1,8 @@
 import XCTest
 
-/// Color themes only reach screens that apply `.shellbeeThemedCanvas()`.
-/// This scans the app's sources so a new `List` or `Form` screen can't ship
-/// without it and show up as the one untinted page in a theme.
+/// Color themes only reach screens that apply `.shellbeeThemedCanvas()` and
+/// rows wrapped in `.shellbeeThemedRows()`. This scans the app's sources so a
+/// new `List` or `Form` screen can't ship as the one untinted page in a theme.
 final class ThemeCoverageTests: XCTestCase {
     /// Files whose lists deliberately keep the system background.
     private let exempt: Set<String> = [
@@ -31,12 +31,13 @@ final class ThemeCoverageTests: XCTestCase {
             let range = NSRange(body.startIndex..., in: body)
             guard listRoot.firstMatch(in: body, range: range) != nil else { continue }
             scanned += 1
-            if !body.contains("shellbeeThemedCanvas") && !body.contains("AdaptiveListStyle(") {
+            let hasCanvas = body.contains("shellbeeThemedCanvas") || body.contains("AdaptiveListStyle(")
+            if !hasCanvas || !body.contains("shellbeeThemedRows") {
                 missing.append(relative)
             }
         }
 
         XCTAssertGreaterThan(scanned, 50, "Expected to scan the app's list screens")
-        XCTAssertEqual(missing.sorted(), [], "Apply .shellbeeThemedCanvas() to these screens")
+        XCTAssertEqual(missing.sorted(), [], "Apply .shellbeeThemedCanvas() and .shellbeeThemedRows() to these screens")
     }
 }

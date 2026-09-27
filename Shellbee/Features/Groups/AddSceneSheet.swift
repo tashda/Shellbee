@@ -12,14 +12,17 @@ struct AddSceneSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("Scene Name", text: $name)
-                        .focused($nameFieldFocused)
-                        .submitLabel(.done)
-                        .autocorrectionDisabled()
-                } footer: {
-                    Text("Saves the current group light state as a named scene.")
+                SwiftUI.Group {
+                    Section {
+                        TextField("Scene Name", text: $name)
+                            .focused($nameFieldFocused)
+                            .submitLabel(.done)
+                            .autocorrectionDisabled()
+                    } footer: {
+                        Text("Saves the current group light state as a named scene.")
+                    }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Save Scene")

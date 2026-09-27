@@ -19,7 +19,6 @@ struct ShellbeeApp: App {
                 .environment(environment)
                 .preferredColorScheme(appearanceMode.colorScheme)
                 .environment(\.shellbeeTheme, theme)
-                .tint(theme.palette?.accent)
         } defaultValue: {
             .home
         }

@@ -31,19 +31,22 @@ struct DeviceReportingView: View {
 
     var body: some View {
         List {
-            if reportings.isEmpty {
-                ContentUnavailableView(
-                    "No Configured Reporting",
-                    systemImage: "waveform",
-                    description: Text("No attribute reporting is configured for this device.")
-                )
-            } else {
-                Section("Configured Reporting") {
-                    ForEach(reportings) { reporting in
-                        ReportingRow(reporting: reporting)
+            SwiftUI.Group {
+                if reportings.isEmpty {
+                    ContentUnavailableView(
+                        "No Configured Reporting",
+                        systemImage: "waveform",
+                        description: Text("No attribute reporting is configured for this device.")
+                    )
+                } else {
+                    Section("Configured Reporting") {
+                        ForEach(reportings) { reporting in
+                            ReportingRow(reporting: reporting)
+                        }
                     }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Reporting")

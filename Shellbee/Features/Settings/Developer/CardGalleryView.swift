@@ -8,17 +8,20 @@ struct CardGalleryView: View {
 
     var body: some View {
         List(CardGalleryCatalog.previews.indices, id: \.self) { index in
-            let preview = CardGalleryCatalog.previews[index]
-            Button {
-                staged = StagedCard(index: index)
-            } label: {
-                LabeledContent {
-                    Text(preview.detail)
+            SwiftUI.Group {
+                let preview = CardGalleryCatalog.previews[index]
+                Button {
+                    staged = StagedCard(index: index)
                 } label: {
-                    Label(preview.title, systemImage: preview.symbol)
+                    LabeledContent {
+                        Text(preview.detail)
+                    } label: {
+                        Label(preview.title, systemImage: preview.symbol)
+                    }
                 }
+                .foregroundStyle(.primary)
             }
-            .foregroundStyle(.primary)
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .fullScreenCover(item: $staged) { staged in

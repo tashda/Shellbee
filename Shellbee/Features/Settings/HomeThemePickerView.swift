@@ -7,19 +7,22 @@ struct HomeThemePickerView: View {
 
     var body: some View {
         List {
-            ForEach(ShellbeeTheme.allCases, id: \.self) { theme in
-                Section {
-                    Button {
-                        withAnimation { themeRawValue = theme.rawValue }
-                    } label: {
-                        row(for: theme)
+            SwiftUI.Group {
+                ForEach(ShellbeeTheme.allCases, id: \.self) { theme in
+                    Section {
+                        Button {
+                            withAnimation { themeRawValue = theme.rawValue }
+                        } label: {
+                            row(for: theme)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(theme.displayName). \(theme.summary)")
+                        .accessibilityAddTraits(theme == selected ? .isSelected : [])
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(theme.displayName). \(theme.summary)")
-                    .accessibilityAddTraits(theme == selected ? .isSelected : [])
                 }
             }
+            .shellbeeThemedRows()
         }
         .listSectionSpacing(.compact)
         .shellbeeThemedCanvas()

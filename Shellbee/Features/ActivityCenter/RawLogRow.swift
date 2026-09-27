@@ -61,7 +61,7 @@ struct RawLogRow: View {
         .padding(.leading, DesignTokens.ActivityFeed.cardHorizontalPadding)
         .padding(.trailing, DesignTokens.ActivityFeed.cardHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: shape)
+        .background(.shellbeeSurface, in: shape)
         .contentShape(shape)
         .accessibilityElement(children: .combine)
     }

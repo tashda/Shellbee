@@ -45,14 +45,17 @@ struct ConnectionEditorView: View {
 
     var body: some View {
         Form {
-            if let testStatusText {
-                Section {
-                    Label(testStatusText, systemImage: testStatusIcon)
-                        .foregroundStyle(testStatusColor)
-                        .font(.subheadline)
+            SwiftUI.Group {
+                if let testStatusText {
+                    Section {
+                        Label(testStatusText, systemImage: testStatusIcon)
+                            .foregroundStyle(testStatusColor)
+                            .font(.subheadline)
+                    }
                 }
+                ConnectionServerSection(draft: $draft, focusedField: $focusedField)
             }
-            ConnectionServerSection(draft: $draft, focusedField: $focusedField)
+            .shellbeeThemedRows()
         }
         .scrollContentBackground(.hidden)
         .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))

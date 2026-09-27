@@ -1,10 +1,10 @@
 import SwiftUI
 import UIKit
 
-/// An optional colour identity layered over the system look. A theme only
-/// supplies a canvas, a soft glow at the top of it and an accent. Rows,
-/// cards and text keep their system colours, so every list, form, sheet and
-/// card stays legible without per-screen tuning. `.system` changes nothing.
+/// An optional colour identity layered over the system look. A theme
+/// supplies a canvas with a soft glow at the top, a matching surface for rows
+/// and cards, and an accent for content controls. Text keeps its system
+/// colours and toolbars keep the system tint. `.system` changes nothing.
 nonisolated enum ShellbeeTheme: String, CaseIterable, Codable, Sendable {
     case system
     case honey
@@ -50,20 +50,27 @@ nonisolated enum ShellbeeTheme: String, CaseIterable, Codable, Sendable {
     var palette: Palette? {
         switch self {
         case .system: nil
-        case .honey: Palette(canvas: (0xF7F1E3, 0x100C06), accent: (0xA8660C, 0xF4B63F))
-        case .meadow: Palette(canvas: (0xEEF3EA, 0x090E0A), accent: (0x3B7A4B, 0x7FCB93))
-        case .harbor: Palette(canvas: (0xEAF1F5, 0x070D13), accent: (0x1D6A8A, 0x66BCE0))
-        case .lavender: Palette(canvas: (0xF2EFF7, 0x0E0B15), accent: (0x6650B0, 0xB6A5F2))
-        case .ember: Palette(canvas: (0xF7EEE8, 0x120B08), accent: (0xB0503A, 0xF08F71))
+        case .honey: Palette(canvas: (0xF3EAD6, 0x100C06), surface: (0xFBF6EC, 0x221D14), accent: (0xA8660C, 0xF4B63F))
+        case .meadow: Palette(canvas: (0xE9EFE3, 0x090E0A), surface: (0xF6F9F2, 0x18201A), accent: (0x3B7A4B, 0x7FCB93))
+        case .harbor: Palette(canvas: (0xE3ECF2, 0x070D13), surface: (0xF4F8FB, 0x151D24), accent: (0x1D6A8A, 0x66BCE0))
+        case .lavender: Palette(canvas: (0xEDE8F5, 0x0E0B15), surface: (0xF8F6FC, 0x1E1A28), accent: (0x6650B0, 0xB6A5F2))
+        case .ember: Palette(canvas: (0xF3E6DE, 0x120B08), surface: (0xFCF6F2, 0x241A16), accent: (0xB0503A, 0xF08F71))
         }
     }
 
     struct Palette: Sendable {
+        /// The screen background behind rows and cards.
         let canvas: Color
+        /// Rows, cards and grouped forms: a whisper of the canvas over white,
+        /// or a tinted step above the canvas in dark mode.
+        let surface: Color
         let accent: Color
 
-        init(canvas: (light: UInt32, dark: UInt32), accent: (light: UInt32, dark: UInt32)) {
+        init(canvas: (light: UInt32, dark: UInt32),
+             surface: (light: UInt32, dark: UInt32),
+             accent: (light: UInt32, dark: UInt32)) {
             self.canvas = Self.dynamic(canvas)
+            self.surface = Self.dynamic(surface)
             self.accent = Self.dynamic(accent)
         }
 
@@ -82,12 +89,12 @@ nonisolated enum ShellbeeTheme: String, CaseIterable, Codable, Sendable {
     }
 }
 
-private struct ShellbeeThemeKey: EnvironmentKey {
+nonisolated private struct ShellbeeThemeKey: EnvironmentKey {
     static let defaultValue: ShellbeeTheme = .defaultTheme
 }
 
 extension EnvironmentValues {
-    var shellbeeTheme: ShellbeeTheme {
+    nonisolated var shellbeeTheme: ShellbeeTheme {
         get { self[ShellbeeThemeKey.self] }
         set { self[ShellbeeThemeKey.self] = newValue }
     }

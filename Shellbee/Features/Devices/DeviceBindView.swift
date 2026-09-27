@@ -21,26 +21,29 @@ struct DeviceBindView: View {
 
     var body: some View {
         List {
-            if bindings.isEmpty {
-                ContentUnavailableView(
-                    "No Bindings",
-                    systemImage: "link.badge.plus",
-                    description: Text("Bind this device to control others directly over Zigbee.")
-                )
-            } else {
-                Section("Active Bindings") {
-                    ForEach(bindings) { binding in
-                        bindingRow(binding)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    bindingToRemove = binding
-                                } label: {
-                                    Label("Remove", systemImage: "trash")
+            SwiftUI.Group {
+                if bindings.isEmpty {
+                    ContentUnavailableView(
+                        "No Bindings",
+                        systemImage: "link.badge.plus",
+                        description: Text("Bind this device to control others directly over Zigbee.")
+                    )
+                } else {
+                    Section("Active Bindings") {
+                        ForEach(bindings) { binding in
+                            bindingRow(binding)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        bindingToRemove = binding
+                                    } label: {
+                                        Label("Remove", systemImage: "trash")
+                                    }
                                 }
-                            }
+                        }
                     }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Bind")

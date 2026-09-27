@@ -31,20 +31,23 @@ struct CommandPaletteView: View {
     var body: some View {
         NavigationStack {
             List {
-                if results.isEmpty {
-                    ContentUnavailableView.search(text: query)
-                } else {
-                    ForEach(CommandPaletteCategory.allCases, id: \.self) { category in
-                        let commands = results.filter { $0.category == category }
-                        if !commands.isEmpty {
-                            Section(category.rawValue) {
-                                ForEach(commands) { command in
-                                    commandRow(command)
+                SwiftUI.Group {
+                    if results.isEmpty {
+                        ContentUnavailableView.search(text: query)
+                    } else {
+                        ForEach(CommandPaletteCategory.allCases, id: \.self) { category in
+                            let commands = results.filter { $0.category == category }
+                            if !commands.isEmpty {
+                                Section(category.rawValue) {
+                                    ForEach(commands) { command in
+                                        commandRow(command)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Commands")

@@ -38,11 +38,14 @@ struct InstrumentStageScreen: View {
     /// shows them that way too.
     private var homeActivitySection: some View {
         List {
-            Section("Activity") {
-                ForEach(items) { item in
-                    HomeActivityRow(item: item)
+            SwiftUI.Group {
+                Section("Activity") {
+                    ForEach(items) { item in
+                        HomeActivityRow(item: item)
+                    }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .listStyle(.insetGrouped)

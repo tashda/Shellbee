@@ -14,7 +14,7 @@ struct FeatureDetailSheet<Content: View>: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) { content() }
-                    .background(Color(.secondarySystemGroupedBackground))
+                    .background(.shellbeeSurface)
                     .clipShape(RoundedRectangle(
                         cornerRadius: DesignTokens.CornerRadius.lg,
                         style: .continuous

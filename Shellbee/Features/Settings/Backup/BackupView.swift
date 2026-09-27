@@ -26,68 +26,71 @@ struct BackupView: View {
 
     var body: some View {
         Form {
-            Section {
-                Button {
-                    triggerBackup()
-                } label: {
-                    HStack {
-                        Text("Create Backup")
-                        Spacer()
-                        if status == .running {
-                            ProgressView()
-                        }
-                    }
-                }
-                .disabled(status == .running || !scope.isConnected)
-
-                if let url = lastBackupURL, let size = lastBackupSize {
-                    Button {
-                        shareItem = ShareItem(url: url)
-                    } label: {
-                        LabeledContent("Share Backup", value: formatted(size: size))
-                    }
-                }
-            } footer: {
-                statusFooter
-            }
-
-            if !history.isEmpty {
+            SwiftUI.Group {
                 Section {
-                    ForEach(history) { entry in
-                        LabeledContent {
-                            Text(formatted(size: entry.size))
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Text(entry.timestamp, format: .dateTime.day().month().year().hour().minute())
+                    Button {
+                        triggerBackup()
+                    } label: {
+                        HStack {
+                            Text("Create Backup")
+                            Spacer()
+                            if status == .running {
+                                ProgressView()
+                            }
                         }
                     }
-                    .onDelete { indices in
-                        history.remove(atOffsets: indices)
-                        HistoryEntry.save(history)
-                    }
-                } header: {
-                    Text("Recent Backups")
-                } footer: {
-                    Text("Shellbee does not retain backup files — save them to Files or iCloud Drive when prompted.")
-                }
-            }
+                    .disabled(status == .running || !scope.isConnected)
 
-            Section {
-                Button {
-                    showRestoreGuide = true
-                } label: {
-                    HStack {
-                        Text("Restore Guide")
-                            .foregroundStyle(Color.primary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                    if let url = lastBackupURL, let size = lastBackupSize {
+                        Button {
+                            shareItem = ShareItem(url: url)
+                        } label: {
+                            LabeledContent("Share Backup", value: formatted(size: size))
+                        }
+                    }
+                } footer: {
+                    statusFooter
+                }
+
+                if !history.isEmpty {
+                    Section {
+                        ForEach(history) { entry in
+                            LabeledContent {
+                                Text(formatted(size: entry.size))
+                                    .foregroundStyle(.secondary)
+                            } label: {
+                                Text(entry.timestamp, format: .dateTime.day().month().year().hour().minute())
+                            }
+                        }
+                        .onDelete { indices in
+                            history.remove(atOffsets: indices)
+                            HistoryEntry.save(history)
+                        }
+                    } header: {
+                        Text("Recent Backups")
+                    } footer: {
+                        Text("Shellbee does not retain backup files — save them to Files or iCloud Drive when prompted.")
                     }
                 }
-            } footer: {
-                Text("Restoring requires host-level access to your Z2M data directory. Shellbee can't perform the restore.")
+
+                Section {
+                    Button {
+                        showRestoreGuide = true
+                    } label: {
+                        HStack {
+                            Text("Restore Guide")
+                                .foregroundStyle(Color.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                } footer: {
+                    Text("Restoring requires host-level access to your Z2M data directory. Shellbee can't perform the restore.")
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Backup")

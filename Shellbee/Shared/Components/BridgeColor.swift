@@ -132,7 +132,7 @@ struct BridgeRowLeadingBar: View {
         // Read colorRevision so SwiftUI tracks it as a dependency.
         let _ = colorRevision
 
-        Color(.secondarySystemGroupedBackground)
+        Rectangle().fill(.shellbeeSurface)
             .overlay(alignment: .leading) {
                 if isVisible, let bridgeID {
                     Rectangle()

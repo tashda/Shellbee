@@ -165,7 +165,7 @@ private struct CapabilityCard: View {
         }
         .padding(DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .background(.shellbeeSurface, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
     }
 }
 

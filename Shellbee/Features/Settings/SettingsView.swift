@@ -67,11 +67,14 @@ struct SettingsView: View {
 
     private var settingsContent: some View {
         Form {
-            if isMultiBridge {
-                multiBridgeLayout
-            } else {
-                singleBridgeLayout
+            SwiftUI.Group {
+                if isMultiBridge {
+                    multiBridgeLayout
+                } else {
+                    singleBridgeLayout
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Settings")

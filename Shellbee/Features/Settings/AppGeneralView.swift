@@ -8,49 +8,52 @@ struct AppGeneralView: View {
 
     var body: some View {
         Form {
-            Section {
-                Picker("Recently Added", selection: $recentDeviceWindowMinutes) {
-                    ForEach(AppConfig.UX.recentDeviceWindowOptionsMinutes, id: \.self) { minutes in
-                        Text(label(for: minutes)).tag(minutes)
+            SwiftUI.Group {
+                Section {
+                    Picker("Recently Added", selection: $recentDeviceWindowMinutes) {
+                        ForEach(AppConfig.UX.recentDeviceWindowOptionsMinutes, id: \.self) { minutes in
+                            Text(label(for: minutes)).tag(minutes)
+                        }
                     }
+                } header: {
+                    Text("Devices")
+                } footer: {
+                    Text("How long a freshly paired device stays in Recently Added. Turn off Show Recents in the Devices sort menu to hide that section.")
                 }
-            } header: {
-                Text("Devices")
-            } footer: {
-                Text("How long a freshly paired device stays in Recently Added. Turn off Show Recents in the Devices sort menu to hide that section.")
-            }
 
-            Section {
-                InlineIntField(
-                    "Reconnect Limit",
-                    value: $maxReconnectAttempts,
-                    unit: "attempts",
-                    range: ConnectionSessionController.maxReconnectAttemptsRange
-                )
-            } header: {
-                Text("Connection")
-            } footer: {
-                Text("How many times Shellbee retries before giving up. Opening the app always tries again.")
-            }
+                Section {
+                    InlineIntField(
+                        "Reconnect Limit",
+                        value: $maxReconnectAttempts,
+                        unit: "attempts",
+                        range: ConnectionSessionController.maxReconnectAttemptsRange
+                    )
+                } header: {
+                    Text("Connection")
+                } footer: {
+                    Text("How many times Shellbee retries before giving up. Opening the app always tries again.")
+                }
 
-            Section {
-                Toggle("Automatically Share Crash Reports", isOn: Binding(
-                    get: { consent.alwaysShare },
-                    set: { consent.alwaysShare = $0 }
-                ))
-            } header: {
-                Text("Diagnostics")
-            } footer: {
-                Text("When off, Shellbee asks before sending a crash report.")
-            }
+                Section {
+                    Toggle("Automatically Share Crash Reports", isOn: Binding(
+                        get: { consent.alwaysShare },
+                        set: { consent.alwaysShare = $0 }
+                    ))
+                } header: {
+                    Text("Diagnostics")
+                } footer: {
+                    Text("When off, Shellbee asks before sending a crash report.")
+                }
 
-            Section {
-                Toggle("Developer Mode", isOn: $developerModeEnabled)
-            } header: {
-                Text("Advanced")
-            } footer: {
-                Text("Adds power-user tools to Settings and Network Map on iPad.")
+                Section {
+                    Toggle("Developer Mode", isOn: $developerModeEnabled)
+                } header: {
+                    Text("Advanced")
+                } footer: {
+                    Text("Adds power-user tools to Settings and Network Map on iPad.")
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("General")

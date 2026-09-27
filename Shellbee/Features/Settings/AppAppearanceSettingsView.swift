@@ -7,52 +7,55 @@ struct AppAppearanceSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Picker("Appearance", selection: $appearanceMode) {
-                    Text("System").tag(AppearanceMode.system)
-                    Text("Light").tag(AppearanceMode.light)
-                    Text("Dark").tag(AppearanceMode.dark)
+            SwiftUI.Group {
+                Section {
+                    Picker("Appearance", selection: $appearanceMode) {
+                        Text("System").tag(AppearanceMode.system)
+                        Text("Light").tag(AppearanceMode.light)
+                        Text("Dark").tag(AppearanceMode.dark)
+                    }
+                    NavigationLink {
+                        HomeThemePickerView()
+                    } label: {
+                        LabeledContent("Color Theme") {
+                            Text(ShellbeeTheme.stored(themeRawValue).displayName)
+                        }
+                    }
+                    ShellbeeThemePreview(theme: ShellbeeTheme.stored(themeRawValue))
+                        .listRowInsets(EdgeInsets(top: DesignTokens.Spacing.md,
+                                                  leading: DesignTokens.Spacing.lg,
+                                                  bottom: DesignTokens.Spacing.md,
+                                                  trailing: DesignTokens.Spacing.lg))
+                } header: {
+                    Text("Theme")
+                } footer: {
+                    Text("Themes tint the background and accent of every screen.")
                 }
-                NavigationLink {
-                    HomeThemePickerView()
-                } label: {
-                    LabeledContent("Color Theme") {
-                        Text(ShellbeeTheme.stored(themeRawValue).displayName)
+
+                Section("Home") {
+                    NavigationLink { HomeSettingsView() } label: {
+                        SettingsNavigationLabel(
+                            title: "Home",
+                            systemImage: "house.fill",
+                            color: .blue
+                        )
                     }
                 }
-                ShellbeeThemePreview(theme: ShellbeeTheme.stored(themeRawValue))
-                    .listRowInsets(EdgeInsets(top: DesignTokens.Spacing.md,
-                                              leading: DesignTokens.Spacing.lg,
-                                              bottom: DesignTokens.Spacing.md,
-                                              trailing: DesignTokens.Spacing.lg))
-            } header: {
-                Text("Theme")
-            } footer: {
-                Text("Themes tint the background and accent of every screen.")
-            }
 
-            Section("Home") {
-                NavigationLink { HomeSettingsView() } label: {
-                    SettingsNavigationLabel(
-                        title: "Home",
-                        systemImage: "house.fill",
-                        color: .blue
-                    )
-                }
-            }
-
-            Section {
-                Picker("Show", selection: $indicatorModeRaw) {
-                    ForEach(BridgeGradientMode.allCases) { mode in
-                        Text(mode.label).tag(mode.rawValue)
+                Section {
+                    Picker("Show", selection: $indicatorModeRaw) {
+                        ForEach(BridgeGradientMode.allCases) { mode in
+                            Text(mode.label).tag(mode.rawValue)
+                        }
                     }
+                    BridgeIndicatorPreview(mode: indicatorMode)
+                } header: {
+                    Text("Bridge Indicators")
+                } footer: {
+                    Text(indicatorMode.description)
                 }
-                BridgeIndicatorPreview(mode: indicatorMode)
-            } header: {
-                Text("Bridge Indicators")
-            } footer: {
-                Text(indicatorMode.description)
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Appearance")

@@ -22,20 +22,23 @@ struct BridgeSettingsView: View {
 
     var body: some View {
         Form {
-            if scope.bridgeInfo?.restartRequired == true {
-                restartRequiredNotice
-            }
+            SwiftUI.Group {
+                if scope.bridgeInfo?.restartRequired == true {
+                    restartRequiredNotice
+                }
 
-            statusHeader
-            bridgeConfigSection
-            loggingSection
-            integrationsSection
-            networkSection
-            toolsSection
+                statusHeader
+                bridgeConfigSection
+                loggingSection
+                integrationsSection
+                networkSection
+                toolsSection
 
-            if session?.isConnected == true || (session?.controller.hasBeenConnected ?? false) {
-                dangerSection
+                if session?.isConnected == true || (session?.controller.hasBeenConnected ?? false) {
+                    dangerSection
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle(displayName)

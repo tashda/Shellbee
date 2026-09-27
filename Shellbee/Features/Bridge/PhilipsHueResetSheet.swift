@@ -35,19 +35,22 @@ struct PhilipsHueResetSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    SettingsTextField("Serial Numbers", text: $serialNumbersRaw, placeholder: "e.g. a1b2c3, d4e5f6")
-                } footer: {
-                    Text("Enter comma-separated 6-character hex serial numbers printed on each bulb.")
-                }
+                SwiftUI.Group {
+                    Section {
+                        SettingsTextField("Serial Numbers", text: $serialNumbersRaw, placeholder: "e.g. a1b2c3, d4e5f6")
+                    } footer: {
+                        Text("Enter comma-separated 6-character hex serial numbers printed on each bulb.")
+                    }
 
-                Section {
-                    SettingsTextField("Extended PAN ID", text: $customPanId, placeholder: "0x\(String(repeating: "0", count: 16))")
-                } header: {
-                    Text("Advanced")
-                } footer: {
-                    Text("Leave blank to use the network's extended PAN ID. Format: 0x followed by 16 hex characters.")
+                    Section {
+                        SettingsTextField("Extended PAN ID", text: $customPanId, placeholder: "0x\(String(repeating: "0", count: 16))")
+                    } header: {
+                        Text("Advanced")
+                    } footer: {
+                        Text("Leave blank to use the network's extended PAN ID. Format: 0x followed by 16 hex characters.")
+                    }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Philips Hue Reset")

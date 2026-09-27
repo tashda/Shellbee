@@ -18,19 +18,22 @@ struct HealthSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                InlineIntField("Check Interval", value: $interval, unit: "min", range: 0...120)
-            } header: {
-                Text("Interval")
-            } footer: {
-                Text("How often the bridge checks its own health. Set to 0 to disable health checks entirely.")
-            }
+            SwiftUI.Group {
+                Section {
+                    InlineIntField("Check Interval", value: $interval, unit: "min", range: 0...120)
+                } header: {
+                    Text("Interval")
+                } footer: {
+                    Text("How often the bridge checks its own health. Set to 0 to disable health checks entirely.")
+                }
 
-            Section {
-                Toggle("Reset Adapter on Each Check", isOn: $resetOnCheck)
-            } footer: {
-                Text("When enabled, the bridge adapter is reset each time the health check runs. Only enable if you experience reliability issues.")
+                Section {
+                    Toggle("Reset Adapter on Each Check", isOn: $resetOnCheck)
+                } footer: {
+                    Text("When enabled, the bridge adapter is reset each time the health check runs. Only enable if you experience reliability issues.")
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Health Checks")

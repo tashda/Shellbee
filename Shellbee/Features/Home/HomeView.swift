@@ -433,7 +433,7 @@ struct HomeView: View {
             }
             VStack(spacing: 0, content: content)
                 .background(
-                    Color(.secondarySystemGroupedBackground),
+                    .shellbeeSurface,
                     in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card, style: .continuous)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card, style: .continuous))

@@ -10,7 +10,7 @@ extension View {
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                Color(.secondarySystemGroupedBackground),
+                .shellbeeSurface,
                 in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card, style: .continuous)
             )
     }

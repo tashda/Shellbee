@@ -35,19 +35,22 @@ struct PairingWizardView: View {
     var body: some View {
         NavigationStack {
             List {
-                bridgeSection
-                permitJoinSection
-                if !sessionDevices.isEmpty {
-                    Section {
-                        ForEach(sessionDevices, id: \.ieeeAddress) { device in
-                            wizardRow(for: device)
+                SwiftUI.Group {
+                    bridgeSection
+                    permitJoinSection
+                    if !sessionDevices.isEmpty {
+                        Section {
+                            ForEach(sessionDevices, id: \.ieeeAddress) { device in
+                                wizardRow(for: device)
+                            }
+                        } header: {
+                            Text("New Devices")
+                        } footer: {
+                            Text("Swipe a device left or right for actions, or long-press for more options.")
                         }
-                    } header: {
-                        Text("New Devices")
-                    } footer: {
-                        Text("Swipe a device left or right for actions, or long-press for more options.")
                     }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Add Devices")

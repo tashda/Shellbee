@@ -29,34 +29,37 @@ struct AvailabilitySettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Toggle("Track Device Availability", isOn: $enabled)
-            } footer: {
-                Text("When enabled, the bridge tracks whether each device is online or offline. Mains-powered devices use a short timeout; battery-powered devices use a longer one.")
-            }
-
-            if enabled {
+            SwiftUI.Group {
                 Section {
-                    InlineIntField("Timeout", value: $activeTimeout, unit: "min", range: 1...60)
-                    Toggle("Retry with Backoff", isOn: $activeBackoff)
-                    if activeBackoff {
-                        InlineIntField("Pause After", value: $activePauseOnBackoffGt, unit: "retries", range: 0...20)
+                    Toggle("Track Device Availability", isOn: $enabled)
+                } footer: {
+                    Text("When enabled, the bridge tracks whether each device is online or offline. Mains-powered devices use a short timeout; battery-powered devices use a longer one.")
+                }
+
+                if enabled {
+                    Section {
+                        InlineIntField("Timeout", value: $activeTimeout, unit: "min", range: 1...60)
+                        Toggle("Retry with Backoff", isOn: $activeBackoff)
+                        if activeBackoff {
+                            InlineIntField("Pause After", value: $activePauseOnBackoffGt, unit: "retries", range: 0...20)
+                        }
+                        InlineIntField("Max Jitter", value: $activeMaxJitter, unit: "ms", range: 0...60000)
+                    } header: {
+                        Text("Mains-Powered Devices")
+                    } footer: {
+                        Text("Time in minutes before a mains-powered device is considered offline. Backoff reduces check frequency when a device is consistently offline. Jitter spreads out reconnection attempts to avoid overloading the network.")
                     }
-                    InlineIntField("Max Jitter", value: $activeMaxJitter, unit: "ms", range: 0...60000)
-                } header: {
-                    Text("Mains-Powered Devices")
-                } footer: {
-                    Text("Time in minutes before a mains-powered device is considered offline. Backoff reduces check frequency when a device is consistently offline. Jitter spreads out reconnection attempts to avoid overloading the network.")
-                }
 
-                Section {
-                    InlineIntField("Timeout", value: $passiveTimeout, unit: "min", range: 60...10000)
-                } header: {
-                    Text("Battery-Powered Devices")
-                } footer: {
-                    Text("Time in minutes before a battery-powered device is considered offline. Should be longer than the device's reporting interval.")
+                    Section {
+                        InlineIntField("Timeout", value: $passiveTimeout, unit: "min", range: 60...10000)
+                    } header: {
+                        Text("Battery-Powered Devices")
+                    } footer: {
+                        Text("Time in minutes before a battery-powered device is considered offline. Should be longer than the device's reporting interval.")
+                    }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Availability")

@@ -36,51 +36,54 @@ struct FrontendSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Toggle("Enabled", isOn: $enabled)
-                InlineIntField("Port", value: $port, range: 1...65535)
-                SettingsTextField("Host", text: $host, placeholder: "0.0.0.0")
-            } header: {
-                Text("Frontend Server")
-            } footer: {
-                Text("Disabling the frontend turns off Zigbee2MQTT's own web UI. Shellbee connects over MQTT/WebSocket directly and is unaffected, but you'll lose the browser-based interface.")
-            }
-
-            Section {
-                SettingsTextField("External URL", text: $url, placeholder: "e.g. https://z2m.example.com")
-                SettingsTextField("Base URL Path", text: $baseUrl, placeholder: "/")
-            } header: {
-                Text("URLs")
-            } footer: {
-                Text("External URL overrides the address advertised to browsers, useful behind a reverse proxy. Base URL Path serves the frontend from a subpath instead of the root.")
-            }
-
-            Section {
-                LabeledContent("Auth Token") {
-                    SecureField("Optional", text: $authToken)
-                        .multilineTextAlignment(.trailing)
+            SwiftUI.Group {
+                Section {
+                    Toggle("Enabled", isOn: $enabled)
+                    InlineIntField("Port", value: $port, range: 1...65535)
+                    SettingsTextField("Host", text: $host, placeholder: "0.0.0.0")
+                } header: {
+                    Text("Frontend Server")
+                } footer: {
+                    Text("Disabling the frontend turns off Zigbee2MQTT's own web UI. Shellbee connects over MQTT/WebSocket directly and is unaffected, but you'll lose the browser-based interface.")
                 }
-            } header: {
-                Text("Authentication")
-            } footer: {
-                Text("When set, the web frontend requires this token to connect. Leave empty for no authentication.")
-            }
 
-            Section {
-                SettingsTextField("SSL Certificate", text: $sslCert, placeholder: "Absolute path")
-                SettingsTextField("SSL Key", text: $sslKey, placeholder: "Absolute path")
-            } header: {
-                Text("SSL / TLS")
-            }
+                Section {
+                    SettingsTextField("External URL", text: $url, placeholder: "e.g. https://z2m.example.com")
+                    SettingsTextField("Base URL Path", text: $baseUrl, placeholder: "/")
+                } header: {
+                    Text("URLs")
+                } footer: {
+                    Text("External URL overrides the address advertised to browsers, useful behind a reverse proxy. Base URL Path serves the frontend from a subpath instead of the root.")
+                }
 
-            Section {
-                Toggle("Disable UI File Serving", isOn: $disableUiServing)
-                SettingsTextField("Package Override", text: $packageOverride, placeholder: "Optional")
-            } header: {
-                Text("Advanced")
-            } footer: {
-                Text("Disable UI File Serving keeps the API reachable while turning off the static web UI. Package Override points the frontend at an alternate npm package.")
+                Section {
+                    LabeledContent("Auth Token") {
+                        SecureField("Optional", text: $authToken)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("Authentication")
+                } footer: {
+                    Text("When set, the web frontend requires this token to connect. Leave empty for no authentication.")
+                }
+
+                Section {
+                    SettingsTextField("SSL Certificate", text: $sslCert, placeholder: "Absolute path")
+                    SettingsTextField("SSL Key", text: $sslKey, placeholder: "Absolute path")
+                } header: {
+                    Text("SSL / TLS")
+                }
+
+                Section {
+                    Toggle("Disable UI File Serving", isOn: $disableUiServing)
+                    SettingsTextField("Package Override", text: $packageOverride, placeholder: "Optional")
+                } header: {
+                    Text("Advanced")
+                } footer: {
+                    Text("Disable UI File Serving keeps the API reachable while turning off the static web UI. Package Override points the frontend at an alternate npm package.")
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Frontend")

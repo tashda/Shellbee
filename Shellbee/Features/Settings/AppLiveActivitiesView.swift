@@ -9,15 +9,18 @@ struct AppLiveActivitiesView: View {
 
     var body: some View {
         Form {
-            Section {
-                Toggle("Permit Join", isOn: $permitJoinLiveActivityEnabled)
-                Toggle("Touchlink", isOn: $touchlinkLiveActivityEnabled)
-                Toggle("OTA Updates", isOn: $otaLiveActivityEnabled)
-                Toggle("Scheduled OTAs", isOn: $otaScheduledLiveActivityEnabled)
-                    .disabled(!otaLiveActivityEnabled)
-            } header: {
-                Text("Lock Screen and Dynamic Island")
+            SwiftUI.Group {
+                Section {
+                    Toggle("Permit Join", isOn: $permitJoinLiveActivityEnabled)
+                    Toggle("Touchlink", isOn: $touchlinkLiveActivityEnabled)
+                    Toggle("OTA Updates", isOn: $otaLiveActivityEnabled)
+                    Toggle("Scheduled OTAs", isOn: $otaScheduledLiveActivityEnabled)
+                        .disabled(!otaLiveActivityEnabled)
+                } header: {
+                    Text("Lock Screen and Dynamic Island")
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Live Activities")

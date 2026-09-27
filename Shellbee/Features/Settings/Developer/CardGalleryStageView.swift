@@ -97,20 +97,23 @@ private struct CardGalleryStageScreen: View {
 
     var body: some View {
         List {
-            switch surface {
-            case .devicePage:
-                if let sample = preview.sample {
-                    devicePage(sample)
-                } else {
-                    groupPage
-                }
-            case .logDetail:
-                if let sample = preview.sample {
-                    logDetailPage(sample)
-                } else {
-                    logDetailGroupPage
+            SwiftUI.Group {
+                switch surface {
+                case .devicePage:
+                    if let sample = preview.sample {
+                        devicePage(sample)
+                    } else {
+                        groupPage
+                    }
+                case .logDetail:
+                    if let sample = preview.sample {
+                        logDetailPage(sample)
+                    } else {
+                        logDetailGroupPage
+                    }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .id("\(preview.id)-\(surface.id)")

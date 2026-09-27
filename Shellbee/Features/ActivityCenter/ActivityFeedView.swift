@@ -48,12 +48,12 @@ struct ActivityFeedView: View {
             .frame(maxWidth: .infinity)
         }
         .modifier(LiveFeedScrollTracking(state: liveFeed, liveItems: liveSections))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .toolbar {
             FollowLiveToolbarContent(isVisible: liveFeed.isReadingHistory) {
                 liveFeed.requestReturnToLive()
             }
         }
-        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .onChange(of: viewModel.filterSignature) {
             liveFeed.followLive()
         }

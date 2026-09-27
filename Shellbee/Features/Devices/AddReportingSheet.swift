@@ -26,42 +26,45 @@ struct AddReportingSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Data Source") {
-                    if endpoints.count > 1 {
-                        Picker("Endpoint", selection: $endpoint) {
-                            Text("Choose").tag(0)
-                            ForEach(endpoints, id: \.self) { ep in
-                                Text("EP \(ep)").tag(ep)
+                SwiftUI.Group {
+                    Section("Data Source") {
+                        if endpoints.count > 1 {
+                            Picker("Endpoint", selection: $endpoint) {
+                                Text("Choose").tag(0)
+                                ForEach(endpoints, id: \.self) { ep in
+                                    Text("EP \(ep)").tag(ep)
+                                }
                             }
                         }
-                    }
-                    if !clustersForEndpoint.isEmpty {
-                        Picker("Cluster", selection: $cluster) {
-                            Text("Choose").tag("")
-                            ForEach(clustersForEndpoint, id: \.self) { c in
-                                Text(c).tag(c)
+                        if !clustersForEndpoint.isEmpty {
+                            Picker("Cluster", selection: $cluster) {
+                                Text("Choose").tag("")
+                                ForEach(clustersForEndpoint, id: \.self) { c in
+                                    Text(c).tag(c)
+                                }
                             }
+                        } else {
+                            TextField("Cluster (e.g. genOnOff)", text: $cluster)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
                         }
-                    } else {
-                        TextField("Cluster (e.g. genOnOff)", text: $cluster)
+                        TextField("Attribute (e.g. onOff)", text: $attribute)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                     }
-                    TextField("Attribute (e.g. onOff)", text: $attribute)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                }
 
-                Section("Reporting Interval") {
-                    InlineIntField("Min Interval", value: $minInterval, unit: "s", range: 0...3600)
-                    InlineIntField("Max Interval", value: $maxInterval, unit: "s", range: 0...65535)
-                }
+                    Section("Reporting Interval") {
+                        InlineIntField("Min Interval", value: $minInterval, unit: "s", range: 0...3600)
+                        InlineIntField("Max Interval", value: $maxInterval, unit: "s", range: 0...65535)
+                    }
 
-                Section {
-                    InlineIntField("Min Change", value: $reportableChange, range: 0...1000)
-                } footer: {
-                    Text("Minimum change in value before a report is sent. Set to 0 to report on any change.")
+                    Section {
+                        InlineIntField("Min Change", value: $reportableChange, range: 0...1000)
+                    } footer: {
+                        Text("Minimum change in value before a report is sent. Set to 0 to report on any change.")
+                    }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Add Reporting")

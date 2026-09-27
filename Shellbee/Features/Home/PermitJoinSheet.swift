@@ -3,6 +3,7 @@ import SwiftUI
 struct PermitJoinSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.shellbeeTheme) private var theme
 
     /// Phase 2 multi-bridge: target bridge for permit-join. Nil = focused
     /// bridge (single-bridge fallback). The picker auto-selects on appear
@@ -37,8 +38,11 @@ struct PermitJoinSheet: View {
                 } else {
                     VStack(spacing: 0) {
                         Form {
-                            bridgeSection
-                            permitJoinSection
+                            SwiftUI.Group {
+                                bridgeSection
+                                permitJoinSection
+                            }
+                            .shellbeeThemedRows()
                         }
                         actionBar
                     }
@@ -61,6 +65,7 @@ struct PermitJoinSheet: View {
         .padding(.horizontal, DesignTokens.Spacing.xl)
         .padding(.top, DesignTokens.Spacing.xxl)
         .padding(.bottom, DesignTokens.Spacing.lg)
+        .shellbeeThemedCanvas()
     }
 
     private var fittedInactiveContent: some View {
@@ -214,7 +219,7 @@ struct PermitJoinSheet: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .tint(isSelectedBridgePermitJoinOpen ? .red : nil)
+        .tint(isSelectedBridgePermitJoinOpen ? .red : theme.accent)
         .controlSize(.large)
         .padding(.horizontal, DesignTokens.Spacing.xl)
         .padding(.bottom, DesignTokens.Spacing.md)

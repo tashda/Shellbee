@@ -9,23 +9,26 @@ struct GroupAvatarPickerSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    if memberDevices.isEmpty {
-                        Text("This group has no members yet.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(memberDevices, id: \.ieeeAddress) { device in
-                            Button {
-                                toggle(device)
-                            } label: {
-                                row(for: device)
+                SwiftUI.Group {
+                    Section {
+                        if memberDevices.isEmpty {
+                            Text("This group has no members yet.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(memberDevices, id: \.ieeeAddress) { device in
+                                Button {
+                                    toggle(device)
+                                } label: {
+                                    row(for: device)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
+                    } footer: {
+                        Text("Pick up to two members. Selecting a third replaces the earliest pick. Leave both unchecked to fall back to the default.")
                     }
-                } footer: {
-                    Text("Pick up to two members. Selecting a third replaces the earliest pick. Leave both unchecked to fall back to the default.")
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Group Avatar")

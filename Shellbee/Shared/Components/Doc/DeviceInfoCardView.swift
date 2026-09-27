@@ -20,7 +20,7 @@ struct DeviceInfoCardView: View {
                 }
             }
         }
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
+        .background(.shellbeeSurface, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
     }
 
     private struct InfoRow: View {

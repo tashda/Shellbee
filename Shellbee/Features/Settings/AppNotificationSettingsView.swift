@@ -6,30 +6,33 @@ struct AppNotificationSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Toggle("Show Activity Center", isOn: $isActivityCenterEnabled)
-                Picker("Show", selection: $displayModeRaw) {
-                    ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
-                        Text(mode.title).tag(mode.rawValue)
+            SwiftUI.Group {
+                Section {
+                    Toggle("Show Activity Center", isOn: $isActivityCenterEnabled)
+                    Picker("Show", selection: $displayModeRaw) {
+                        ForEach(ActivityAccessoryDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .disabled(!isActivityCenterEnabled)
+
+                    ActivityCenterPresentationPreview(mode: displayMode)
+                        .opacity(isActivityCenterEnabled ? 1 : DesignTokens.Opacity.disabled)
+                } footer: {
+                    Text(displayMode.detail)
+                }
+
+                Section("Notifications") {
+                    NavigationLink { ActivityNotificationSettingsView() } label: {
+                        SettingsNavigationLabel(
+                            title: "Notifications",
+                            systemImage: "bell.badge.fill",
+                            color: .red
+                        )
                     }
                 }
-                .disabled(!isActivityCenterEnabled)
-
-                ActivityCenterPresentationPreview(mode: displayMode)
-                    .opacity(isActivityCenterEnabled ? 1 : DesignTokens.Opacity.disabled)
-            } footer: {
-                Text(displayMode.detail)
             }
-
-            Section("Notifications") {
-                NavigationLink { ActivityNotificationSettingsView() } label: {
-                    SettingsNavigationLabel(
-                        title: "Notifications",
-                        systemImage: "bell.badge.fill",
-                        color: .red
-                    )
-                }
-            }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Activity Center")

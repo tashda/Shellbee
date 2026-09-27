@@ -8,33 +8,36 @@ struct ActivityIconGalleryView: View {
 
     var body: some View {
         List {
-            Section {
-                Picker("Appearance", selection: $colorScheme) {
-                    Text("Light").tag(ColorScheme.light)
-                    Text("Dark").tag(ColorScheme.dark)
+            SwiftUI.Group {
+                Section {
+                    Picker("Appearance", selection: $colorScheme) {
+                        Text("Light").tag(ColorScheme.light)
+                        Text("Dark").tag(ColorScheme.dark)
+                    }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.segmented)
-            }
 
-            Section("Bridge Events") {
-                ForEach(ActivityIconGallerySample.bridgeEvents) { sample in
-                    row(sample)
+                Section("Bridge Events") {
+                    ForEach(ActivityIconGallerySample.bridgeEvents) { sample in
+                        row(sample)
+                    }
+                }
+
+                Section {
+                    ForEach(ActivityIconGallerySample.tiers) { sample in
+                        row(sample)
+                    }
+                } header: {
+                    Text("Emphasis and Outcomes")
+                } footer: {
+                    Text("Quiet for noise, tinted for ordinary events, solid for failures. Pips mark success, warning and failure so colour is never the only signal.")
+                }
+
+                Section("Tab Bar Accessory") {
+                    accessoryPreview
                 }
             }
-
-            Section {
-                ForEach(ActivityIconGallerySample.tiers) { sample in
-                    row(sample)
-                }
-            } header: {
-                Text("Emphasis and Outcomes")
-            } footer: {
-                Text("Quiet for noise, tinted for ordinary events, solid for failures. Pips mark success, warning and failure so colour is never the only signal.")
-            }
-
-            Section("Tab Bar Accessory") {
-                accessoryPreview
-            }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .environment(\.colorScheme, colorScheme)

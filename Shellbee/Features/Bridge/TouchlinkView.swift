@@ -64,14 +64,17 @@ struct TouchlinkView: View {
 
     private var deviceList: some View {
         List(store.touchlinkDevices) { device in
-            TouchlinkDeviceRow(
-                device: device,
-                knownName: store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName,
-                identifyInProgress: store.touchlinkIdentifyInProgress,
-                resetInProgress: store.touchlinkResetInProgress,
-                onIdentify: identify,
-                onReset: factoryReset
-            )
+            SwiftUI.Group {
+                TouchlinkDeviceRow(
+                    device: device,
+                    knownName: store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName,
+                    identifyInProgress: store.touchlinkIdentifyInProgress,
+                    resetInProgress: store.touchlinkResetInProgress,
+                    onIdentify: identify,
+                    onReset: factoryReset
+                )
+            }
+            .shellbeeThemedRows()
         }
     }
 

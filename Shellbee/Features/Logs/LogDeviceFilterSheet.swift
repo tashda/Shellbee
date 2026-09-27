@@ -63,26 +63,29 @@ struct LogDeviceFilterSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    ForEach(candidates) { device in
-                        Button {
-                            toggle(device)
-                        } label: {
-                            HStack {
-                                DeviceFilterRow(
-                                    device: device,
-                                    isAvailable: availability(of: device)
-                                )
-                                SelectionIndicator(isSelected: draft.contains(device.friendlyName))
+                SwiftUI.Group {
+                    Section {
+                        ForEach(candidates) { device in
+                            Button {
+                                toggle(device)
+                            } label: {
+                                HStack {
+                                    DeviceFilterRow(
+                                        device: device,
+                                        isAvailable: availability(of: device)
+                                    )
+                                    SelectionIndicator(isSelected: draft.contains(device.friendlyName))
+                                }
                             }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    } header: {
+                        Text("Devices")
+                    } footer: {
+                        Text(selectionSummary)
                     }
-                } header: {
-                    Text("Devices")
-                } footer: {
-                    Text(selectionSummary)
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .listStyle(.insetGrouped)

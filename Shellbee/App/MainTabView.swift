@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
+    @Environment(\.shellbeeTheme) private var theme
     @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     @State private var tabSelection: AppTab = .home
     @State private var isCommandPalettePresented = false
@@ -81,17 +82,17 @@ struct MainTabView: View {
         if #available(iOS 18.0, *) {
             TabView(selection: $tabSelection) {
                 Tab(value: AppTab.home) {
-                    HomeView()
+                    HomeView().tint(nil)
                 } label: {
                     Label(AppTab.home.title, symbol: AppTab.home.symbol)
                 }
                 Tab(value: AppTab.devices) {
-                    DeviceListView()
+                    DeviceListView().tint(nil)
                 } label: {
                     Label(AppTab.devices.title, symbol: AppTab.devices.symbol)
                 }
                 Tab(value: AppTab.groups) {
-                    GroupListView()
+                    GroupListView().tint(nil)
                 } label: {
                     Label(AppTab.groups.title, symbol: AppTab.groups.symbol)
                 }
@@ -101,27 +102,32 @@ struct MainTabView: View {
                             LogsView(usesActivityFeed: true, navigationTitle: "Activity")
                         }
                         .configuredTopScrollEdgeEffect()
+                        .tint(nil)
                     } label: {
                         Label(AppTab.logs.title, symbol: AppTab.logs.symbol)
                     }
                     Tab(value: AppTab.networkMap) {
-                        NetworkMapView()
+                        NetworkMapView().tint(nil)
                     } label: {
                         Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol)
                     }
                 }
                 Tab(value: AppTab.settings) {
-                    SettingsView()
+                    SettingsView().tint(nil)
                 } label: {
                     Label(AppTab.settings.title, symbol: AppTab.settings.symbol)
                 }
                 .badge(anyBridgeNeedsRestart ? Text("!") : nil)
                 Tab(value: AppTab.search, role: .search) {
-                    GlobalSearchView()
+                    GlobalSearchView().tint(nil)
                 } label: {
                     Label(AppTab.search.title, symbol: AppTab.search.symbol)
                 }
             }
+            // The theme accent marks the selected tab. Each tab's content
+            // clears it again so toolbars stay system black and white; themed
+            // screens re-apply it to their own content.
+            .tint(theme.palette?.accent)
             .modifier(SearchTabActivation())
         } else {
             TabView(selection: $tabSelection) {

@@ -17,32 +17,35 @@ struct HomeSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                toggle(.network, isOn: $showsNetwork)
-                toggle(.linkQuality, isOn: $showsLinkQuality)
-                toggle(.batteries, isOn: $showsBatteries)
-                toggle(.vendors, isOn: $showsVendors)
-                toggle(.bridgeHealth, isOn: $showsBridgeHealth)
-                toggle(.activity, isOn: $showsActivity)
-            } header: {
-                Text("Cards")
-            } footer: {
-                Text("Cards appear on Home in this order, under Needs attention.")
-            }
-
-            if showsActivity {
+            SwiftUI.Group {
                 Section {
-                    Picker("Events", selection: $recentEventsCount) {
-                        ForEach(HomeSettings.recentEventsOptions, id: \.self) { count in
-                            Text("\(count)").tag(count)
-                        }
-                    }
+                    toggle(.network, isOn: $showsNetwork)
+                    toggle(.linkQuality, isOn: $showsLinkQuality)
+                    toggle(.batteries, isOn: $showsBatteries)
+                    toggle(.vendors, isOn: $showsVendors)
+                    toggle(.bridgeHealth, isOn: $showsBridgeHealth)
+                    toggle(.activity, isOn: $showsActivity)
                 } header: {
-                    Text("Activity")
+                    Text("Cards")
                 } footer: {
-                    Text("How many recent events the card shows before \"See all\".")
+                    Text("Cards appear on Home in this order, under Needs attention.")
+                }
+
+                if showsActivity {
+                    Section {
+                        Picker("Events", selection: $recentEventsCount) {
+                            ForEach(HomeSettings.recentEventsOptions, id: \.self) { count in
+                                Text("\(count)").tag(count)
+                            }
+                        }
+                    } header: {
+                        Text("Activity")
+                    } footer: {
+                        Text("How many recent events the card shows before \"See all\".")
+                    }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Home")

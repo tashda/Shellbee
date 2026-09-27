@@ -74,43 +74,46 @@ struct AddBindingSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                if !availableClusters.isEmpty {
-                    Section("Clusters to Bind") {
-                        ForEach(availableClusters, id: \.self) { cluster in
-                            Toggle(isOn: Binding(
-                                get: { selectedClusters.contains(cluster) },
-                                set: { if $0 { selectedClusters.insert(cluster) } else { selectedClusters.remove(cluster) } }
-                            )) {
-                                Text(cluster).font(.system(.subheadline, design: .monospaced))
+                SwiftUI.Group {
+                    if !availableClusters.isEmpty {
+                        Section("Clusters to Bind") {
+                            ForEach(availableClusters, id: \.self) { cluster in
+                                Toggle(isOn: Binding(
+                                    get: { selectedClusters.contains(cluster) },
+                                    set: { if $0 { selectedClusters.insert(cluster) } else { selectedClusters.remove(cluster) } }
+                                )) {
+                                    Text(cluster).font(.system(.subheadline, design: .monospaced))
+                                }
+                            }
+                        }
+                    }
+
+                    Section("Infrastructure") {
+                        Button { send("coordinator") } label: { CoordinatorRow() }
+                    }
+
+                    if !filteredDevices.isEmpty || !searchText.isEmpty {
+                        Section("Devices") {
+                            ForEach(filteredDevices) { target in
+                                Button { send(target.friendlyName) } label: {
+                                    BindTargetRow(device: target)
+                                }
+                            }
+                        }
+                    }
+
+                    if !sourceStore.groups.isEmpty {
+                        Section("Groups") {
+                            ForEach(sourceStore.groups) { group in
+                                Button { send(group.friendlyName) } label: {
+                                    Label(group.friendlyName, systemImage: "rectangle.3.group.fill")
+                                        .foregroundStyle(.primary)
+                                }
                             }
                         }
                     }
                 }
-
-                Section("Infrastructure") {
-                    Button { send("coordinator") } label: { CoordinatorRow() }
-                }
-
-                if !filteredDevices.isEmpty || !searchText.isEmpty {
-                    Section("Devices") {
-                        ForEach(filteredDevices) { target in
-                            Button { send(target.friendlyName) } label: {
-                                BindTargetRow(device: target)
-                            }
-                        }
-                    }
-                }
-
-                if !sourceStore.groups.isEmpty {
-                    Section("Groups") {
-                        ForEach(sourceStore.groups) { group in
-                            Button { send(group.friendlyName) } label: {
-                                Label(group.friendlyName, systemImage: "rectangle.3.group.fill")
-                                    .foregroundStyle(.primary)
-                            }
-                        }
-                    }
-                }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .listStyle(.plain)

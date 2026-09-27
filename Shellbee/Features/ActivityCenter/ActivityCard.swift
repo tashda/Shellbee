@@ -27,7 +27,7 @@ struct ActivityCard: View {
         .padding(.vertical, DesignTokens.ActivityFeed.cardVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            Color(.secondarySystemGroupedBackground),
+            .shellbeeSurface,
             in: .rect(cornerRadius: DesignTokens.ActivityFeed.cardCornerRadius)
         )
         .contentShape(.rect(cornerRadius: DesignTokens.ActivityFeed.cardCornerRadius))

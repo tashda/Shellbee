@@ -30,52 +30,55 @@ struct DeviceDetailView: View {
         let otaStatus = scope.store.otaStatus(for: device.friendlyName)
 
         List {
-            DeviceCard(
-                device: device,
-                state: state,
-                isAvailable: isAvailable,
-                otaStatus: otaStatus,
-                bridgeID: bridgeID,
-                bridgeName: environment.attributionBridgeName(for: bridgeID),
-                lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-                onRenameTapped: { showRenameSheet = true },
-                onNameHiddenChange: { isNameHidden = $0 }
-            )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            SwiftUI.Group {
+                DeviceCard(
+                    device: device,
+                    state: state,
+                    isAvailable: isAvailable,
+                    otaStatus: otaStatus,
+                    bridgeID: bridgeID,
+                    bridgeName: environment.attributionBridgeName(for: bridgeID),
+                    lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                    onRenameTapped: { showRenameSheet = true },
+                    onNameHiddenChange: { isNameHidden = $0 }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
-            heroAndSettingsSections(for: device, state: state)
+                heroAndSettingsSections(for: device, state: state)
 
-            if device.definition != nil {
-                Section("Documentation") {
-                    NavigationLink {
-                        DeviceDocView(bridgeID: bridgeID, device: device)
-                    } label: {
-                        Label("Device Documentation", systemImage: "doc.text")
+                if device.definition != nil {
+                    Section("Documentation") {
+                        NavigationLink {
+                            DeviceDocView(bridgeID: bridgeID, device: device)
+                        } label: {
+                            Label("Device Documentation", systemImage: "doc.text")
+                        }
+                        Button {
+                            showPairingSheet = true
+                        } label: {
+                            Label("How to Pair", systemImage: "personalhotspot")
+                        }
                     }
-                    Button {
-                        showPairingSheet = true
-                    } label: {
-                        Label("How to Pair", systemImage: "personalhotspot")
+                }
+
+                Section("Device Info") {
+                    if let model = device.definition?.model {
+                        CopyableRow(label: "Model", value: model)
+                    }
+                    CopyableRow(label: "Zigbee Model", value: device.modelId ?? "Unknown")
+                    CopyableRow(label: "IEEE Address", value: device.ieeeAddress)
+                    CopyableRow(label: "Network Address", value: "\(device.networkAddress)")
+                    CopyableRow(label: "MQTT Topic", value: "zigbee2mqtt/\(device.friendlyName)")
+                    if let fw = device.softwareBuildId {
+                        CopyableRow(label: "Firmware", value: fw)
                     }
                 }
-            }
 
-            Section("Device Info") {
-                if let model = device.definition?.model {
-                    CopyableRow(label: "Model", value: model)
-                }
-                CopyableRow(label: "Zigbee Model", value: device.modelId ?? "Unknown")
-                CopyableRow(label: "IEEE Address", value: device.ieeeAddress)
-                CopyableRow(label: "Network Address", value: "\(device.networkAddress)")
-                CopyableRow(label: "MQTT Topic", value: "zigbee2mqtt/\(device.friendlyName)")
-                if let fw = device.softwareBuildId {
-                    CopyableRow(label: "Firmware", value: fw)
-                }
+                logsSection
             }
-
-            logsSection
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .contentMargins(.top, 0, for: .scrollContent)

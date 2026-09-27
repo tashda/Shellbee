@@ -113,7 +113,7 @@ private struct FlowChips: View {
             .foregroundStyle(chip.color ?? .primary)
             .padding(.horizontal, DesignTokens.Spacing.sm + DesignTokens.Spacing.xxs)
             .padding(.vertical, DesignTokens.Spacing.xs)
-            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+            .background(.shellbeeSurface, in: Capsule())
             .accessibilityElement(children: .combine)
         }
     }

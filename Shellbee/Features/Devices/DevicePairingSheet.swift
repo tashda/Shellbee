@@ -14,6 +14,7 @@ struct DevicePairingSheet: View {
     var body: some View {
         NavigationStack {
             content
+                .shellbeeThemedCanvas()
                 .navigationTitle("How to Pair")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

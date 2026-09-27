@@ -53,20 +53,23 @@ struct LogDetailView: View {
 
     var body: some View {
         List {
-            if let group = resolvedGroup {
-                singleGroupSection(group)
-            } else if displayDevices.count == 1, let (_, device) = displayDevices.first {
-                singleDeviceSection(device)
-            } else if displayDevices.count > 1 {
-                LogDetailDevicesSection(bridgeID: bridgeID, devices: displayDevices)
-            }
+            SwiftUI.Group {
+                if let group = resolvedGroup {
+                    singleGroupSection(group)
+                } else if displayDevices.count == 1, let (_, device) = displayDevices.first {
+                    singleDeviceSection(device)
+                } else if displayDevices.count > 1 {
+                    LogDetailDevicesSection(bridgeID: bridgeID, devices: displayDevices)
+                }
 
-            if viewMode == .parsed {
-                parsedBody
-            } else {
-                jsonSection
-            }
+                if viewMode == .parsed {
+                    parsedBody
+                } else {
+                    jsonSection
+                }
 
+            }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)

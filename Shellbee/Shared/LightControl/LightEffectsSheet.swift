@@ -14,17 +14,20 @@ struct LightEffectsSheet: View {
     var body: some View {
         NavigationStack {
             List(values, id: \.self) { effect in
-                Button {
-                    onChange(.string(effect))
-                } label: {
-                    HStack {
-                        Text(effect.replacingOccurrences(of: "_", with: " ").capitalized)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        SelectionIndicator(isSelected: currentValue == effect)
+                SwiftUI.Group {
+                    Button {
+                        onChange(.string(effect))
+                    } label: {
+                        HStack {
+                            Text(effect.replacingOccurrences(of: "_", with: " ").capitalized)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            SelectionIndicator(isSelected: currentValue == effect)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Effects")

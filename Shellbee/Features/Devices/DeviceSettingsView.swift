@@ -35,97 +35,100 @@ struct DeviceSettingsView: View {
 
     var body: some View {
         List {
-            Section {
-                Button {
-                    showRename = true
-                } label: {
-                    Label("Rename Device", systemImage: "pencil")
-                }
-            }
-
-            // Each device-specific option gets its own Section so the
-            // description renders as a proper iOS-style footer beneath a
-            // standard-height row — matches Settings > General etc.
-            ForEach(Array(deviceOptions.enumerated()), id: \.offset) { index, expose in
-                let key = expose.property ?? expose.name ?? ""
+            SwiftUI.Group {
                 Section {
-                    DeviceOptionRow(
-                        expose: expose,
-                        currentValue: optionValues[key],
-                        onChange: { sendOption(key, value: $0) }
-                    )
-                } header: {
-                    if index == 0 { Text("Device Options") }
-                } footer: {
-                    if let desc = expose.description, !desc.isEmpty {
-                        Text(desc)
+                    Button {
+                        showRename = true
+                    } label: {
+                        Label("Rename Device", systemImage: "pencil")
                     }
                 }
-            }
 
-            Section {
-                Toggle("Retain", isOn: Binding(
-                    get: { optionValues["retain"]?.boolValue ?? false },
-                    set: { sendOption("retain", value: .bool($0)) }
-                ))
-                Picker("QoS", selection: Binding(
-                    get: { optionValues["qos"]?.intValue ?? -1 },
-                    set: { sendOption("qos", value: $0 < 0 ? .null : .int($0)) }
-                )) {
-                    Text("Default").tag(-1)
-                    Text("QoS 0 — At most once").tag(0)
-                    Text("QoS 1 — At least once").tag(1)
-                    Text("QoS 2 — Exactly once").tag(2)
-                }
-                InlineIntField("Throttle", value: $throttle, unit: "s", range: 0...300, offLabel: "Off")
-                    .onChange(of: throttle) { _, v in
-                        sendOption("throttle", value: v == 0 ? .null : .int(v))
-                    }
-                InlineIntField("Retention", value: $retention, unit: "s", range: 0...86400, offLabel: "Off")
-                    .onChange(of: retention) { _, v in
-                        sendOption("retention", value: v == 0 ? .null : .int(v))
-                    }
-            } header: {
-                Text("MQTT")
-            } footer: {
-                Text("Changes apply immediately.")
-            }
-
-            Section {
-                Toggle("Optimistic", isOn: Binding(
-                    get: { optionValues["optimistic"]?.boolValue ?? true },
-                    set: { sendOption("optimistic", value: .bool($0)) }
-                ))
-                Toggle("Disabled", isOn: Binding(
-                    get: { optionValues["disabled"]?.boolValue ?? currentDevice.disabled },
-                    set: { sendOption("disabled", value: .bool($0)) }
-                ))
-                InlineIntField("Debounce", value: $debounce, unit: "s", range: 0...60, offLabel: "Off")
-                    .onChange(of: debounce) { _, v in
-                        sendOption("debounce", value: v == 0 ? .null : .int(v))
-                    }
-            } header: {
-                Text("General")
-            } footer: {
-                Text("Disabled and Debounce require a Zigbee2MQTT restart.")
-            }
-
-            Section {
-                LabeledContent("Device Name") {
-                    TextField("Same as friendly name", text: $haName)
-                        .multilineTextAlignment(.trailing)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .focused($haNameFocused)
-                        .onChange(of: haNameFocused) { _, isFocused in
-                            if !isFocused { sendHAName() }
+                // Each device-specific option gets its own Section so the
+                // description renders as a proper iOS-style footer beneath a
+                // standard-height row — matches Settings > General etc.
+                ForEach(Array(deviceOptions.enumerated()), id: \.offset) { index, expose in
+                    let key = expose.property ?? expose.name ?? ""
+                    Section {
+                        DeviceOptionRow(
+                            expose: expose,
+                            currentValue: optionValues[key],
+                            onChange: { sendOption(key, value: $0) }
+                        )
+                    } header: {
+                        if index == 0 { Text("Device Options") }
+                    } footer: {
+                        if let desc = expose.description, !desc.isEmpty {
+                            Text(desc)
                         }
+                    }
                 }
-            } header: {
-                Text("Home Assistant")
-            } footer: {
-                Text("Overrides the Home Assistant display name for this device.")
+
+                Section {
+                    Toggle("Retain", isOn: Binding(
+                        get: { optionValues["retain"]?.boolValue ?? false },
+                        set: { sendOption("retain", value: .bool($0)) }
+                    ))
+                    Picker("QoS", selection: Binding(
+                        get: { optionValues["qos"]?.intValue ?? -1 },
+                        set: { sendOption("qos", value: $0 < 0 ? .null : .int($0)) }
+                    )) {
+                        Text("Default").tag(-1)
+                        Text("QoS 0 — At most once").tag(0)
+                        Text("QoS 1 — At least once").tag(1)
+                        Text("QoS 2 — Exactly once").tag(2)
+                    }
+                    InlineIntField("Throttle", value: $throttle, unit: "s", range: 0...300, offLabel: "Off")
+                        .onChange(of: throttle) { _, v in
+                            sendOption("throttle", value: v == 0 ? .null : .int(v))
+                        }
+                    InlineIntField("Retention", value: $retention, unit: "s", range: 0...86400, offLabel: "Off")
+                        .onChange(of: retention) { _, v in
+                            sendOption("retention", value: v == 0 ? .null : .int(v))
+                        }
+                } header: {
+                    Text("MQTT")
+                } footer: {
+                    Text("Changes apply immediately.")
+                }
+
+                Section {
+                    Toggle("Optimistic", isOn: Binding(
+                        get: { optionValues["optimistic"]?.boolValue ?? true },
+                        set: { sendOption("optimistic", value: .bool($0)) }
+                    ))
+                    Toggle("Disabled", isOn: Binding(
+                        get: { optionValues["disabled"]?.boolValue ?? currentDevice.disabled },
+                        set: { sendOption("disabled", value: .bool($0)) }
+                    ))
+                    InlineIntField("Debounce", value: $debounce, unit: "s", range: 0...60, offLabel: "Off")
+                        .onChange(of: debounce) { _, v in
+                            sendOption("debounce", value: v == 0 ? .null : .int(v))
+                        }
+                } header: {
+                    Text("General")
+                } footer: {
+                    Text("Disabled and Debounce require a Zigbee2MQTT restart.")
+                }
+
+                Section {
+                    LabeledContent("Device Name") {
+                        TextField("Same as friendly name", text: $haName)
+                            .multilineTextAlignment(.trailing)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .focused($haNameFocused)
+                            .onChange(of: haNameFocused) { _, isFocused in
+                                if !isFocused { sendHAName() }
+                            }
+                    }
+                } header: {
+                    Text("Home Assistant")
+                } footer: {
+                    Text("Overrides the Home Assistant display name for this device.")
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Device Settings")

@@ -14,31 +14,34 @@ struct ActivityInstrumentGalleryView: View {
 
     var body: some View {
         List {
-            Section {
-                Picker("Coverage", selection: $scope) {
-                    ForEach(ActivityInstrumentGalleryScope.allCases) { scope in
-                        Text(scope.label).tag(scope)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            } footer: {
-                Text("\(samples.count) samples across \(ActivityInstrumentKind.allCases.count) instruments. Open one to see it in Activity, Recent Events and the tab bar.")
-            }
-
-            ForEach(visibleSections, id: \.self) { section in
-                Section(section) {
-                    ForEach(samples.filter { $0.section == section }) { sample in
-                        Button {
-                            staged = StagedSample(index: samples.firstIndex { $0.id == sample.id } ?? 0)
-                        } label: {
-                            sampleRow(sample)
+            SwiftUI.Group {
+                Section {
+                    Picker("Coverage", selection: $scope) {
+                        ForEach(ActivityInstrumentGalleryScope.allCases) { scope in
+                            Text(scope.label).tag(scope)
                         }
-                        .foregroundStyle(.primary)
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                } footer: {
+                    Text("\(samples.count) samples across \(ActivityInstrumentKind.allCases.count) instruments. Open one to see it in Activity, Recent Events and the tab bar.")
+                }
+
+                ForEach(visibleSections, id: \.self) { section in
+                    Section(section) {
+                        ForEach(samples.filter { $0.section == section }) { sample in
+                            Button {
+                                staged = StagedSample(index: samples.firstIndex { $0.id == sample.id } ?? 0)
+                            } label: {
+                                sampleRow(sample)
+                            }
+                            .foregroundStyle(.primary)
+                        }
                     }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Activity Instruments")

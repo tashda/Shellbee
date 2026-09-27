@@ -13,11 +13,14 @@ struct SavedBridgesView: View {
 
     var body: some View {
         Form {
-            if environment.history.connections.isEmpty {
-                emptyStateSection
-            } else {
-                bridgesSection
+            SwiftUI.Group {
+                if environment.history.connections.isEmpty {
+                    emptyStateSection
+                } else {
+                    bridgesSection
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Saved Bridges")

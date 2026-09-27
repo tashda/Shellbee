@@ -22,80 +22,83 @@ struct ServerDetailView: View {
 
     var body: some View {
         Form {
-            if let config {
-                Section {
-                    if let name = config.name, !name.isEmpty {
-                        CopyableRow(label: "Name", value: name)
-                    }
-                    CopyableRow(label: "Host", value: config.host)
-                    CopyableRow(label: "Port", value: String(config.port))
-                    CopyableRow(label: "URL", value: config.displayURL)
-                    CopyableRow(label: "Protocol", value: config.useTLS ? "WSS (TLS)" : "WS (Plain)")
-                    if config.useTLS && config.allowInvalidCertificates {
-                        LabeledContent("Certificate") {
-                            Text("Self-signed allowed").foregroundStyle(.orange)
+            SwiftUI.Group {
+                if let config {
+                    Section {
+                        if let name = config.name, !name.isEmpty {
+                            CopyableRow(label: "Name", value: name)
                         }
-                    }
-                    LabeledContent("Authentication") {
-                        if let token = config.authToken, !token.isEmpty {
-                            Text(String(repeating: "•", count: min(token.count, 12)))
-                                .monospaced()
-                        } else {
-                            Text("None").foregroundStyle(.secondary)
+                        CopyableRow(label: "Host", value: config.host)
+                        CopyableRow(label: "Port", value: String(config.port))
+                        CopyableRow(label: "URL", value: config.displayURL)
+                        CopyableRow(label: "Protocol", value: config.useTLS ? "WSS (TLS)" : "WS (Plain)")
+                        if config.useTLS && config.allowInvalidCertificates {
+                            LabeledContent("Certificate") {
+                                Text("Self-signed allowed").foregroundStyle(.orange)
+                            }
                         }
+                        LabeledContent("Authentication") {
+                            if let token = config.authToken, !token.isEmpty {
+                                Text(String(repeating: "•", count: min(token.count, 12)))
+                                    .monospaced()
+                            } else {
+                                Text("None").foregroundStyle(.secondary)
+                            }
+                        }
+                        LabeledContent("Status") { statusLabel }
                     }
-                    LabeledContent("Status") { statusLabel }
+                } else {
+                    Section {
+                        Text("No server configured").foregroundStyle(.secondary)
+                    }
                 }
-            } else {
-                Section {
-                    Text("No server configured").foregroundStyle(.secondary)
-                }
-            }
 
-            if bridgeInfo != nil {
-                Section("Bridge") {
-                    if let version = bridgeInfo?.version {
-                        CopyableRow(label: "Zigbee2MQTT", value: version)
-                    }
-                    if let commit = bridgeInfo?.commit {
-                        CopyableRow(label: "Commit", value: String(commit.prefix(12)))
-                    }
-                    if let coordinator = bridgeInfo?.coordinator.type {
-                        CopyableRow(label: "Coordinator", value: coordinator)
-                    }
-                    if let ieee = bridgeInfo?.coordinator.ieeeAddress {
-                        CopyableRow(label: "IEEE Address", value: ieee)
-                    }
-                    if let logLevel = bridgeInfo?.logLevel {
-                        LabeledContent("Log Level", value: logLevel.capitalized)
-                    }
-                }
-            }
-
-            if let network = bridgeInfo?.network {
-                Section("Zigbee Network") {
-                    CopyableRow(label: "Channel", value: "\(network.channel)")
-                    CopyableRow(label: "PAN ID", value: String(format: "0x%04X", network.panID))
-                    if case .string(let ext) = network.extendedPanID {
-                        CopyableRow(label: "Extended PAN ID", value: ext)
-                    }
-                }
-            }
-
-            if scope.isConnected {
-                Section {
-                    NavigationLink {
-                        DeviceStatisticsView(bridgeID: bridgeID)
-                    } label: {
-                        HStack(spacing: DesignTokens.Spacing.md) {
-                            Image(systemName: "chart.bar.fill")
-                                .foregroundStyle(.secondary)
-                            Text("Device Statistics")
-                                .foregroundStyle(.primary)
+                if bridgeInfo != nil {
+                    Section("Bridge") {
+                        if let version = bridgeInfo?.version {
+                            CopyableRow(label: "Zigbee2MQTT", value: version)
+                        }
+                        if let commit = bridgeInfo?.commit {
+                            CopyableRow(label: "Commit", value: String(commit.prefix(12)))
+                        }
+                        if let coordinator = bridgeInfo?.coordinator.type {
+                            CopyableRow(label: "Coordinator", value: coordinator)
+                        }
+                        if let ieee = bridgeInfo?.coordinator.ieeeAddress {
+                            CopyableRow(label: "IEEE Address", value: ieee)
+                        }
+                        if let logLevel = bridgeInfo?.logLevel {
+                            LabeledContent("Log Level", value: logLevel.capitalized)
                         }
                     }
                 }
+
+                if let network = bridgeInfo?.network {
+                    Section("Zigbee Network") {
+                        CopyableRow(label: "Channel", value: "\(network.channel)")
+                        CopyableRow(label: "PAN ID", value: String(format: "0x%04X", network.panID))
+                        if case .string(let ext) = network.extendedPanID {
+                            CopyableRow(label: "Extended PAN ID", value: ext)
+                        }
+                    }
+                }
+
+                if scope.isConnected {
+                    Section {
+                        NavigationLink {
+                            DeviceStatisticsView(bridgeID: bridgeID)
+                        } label: {
+                            HStack(spacing: DesignTokens.Spacing.md) {
+                                Image(systemName: "chart.bar.fill")
+                                    .foregroundStyle(.secondary)
+                                Text("Device Statistics")
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+                    }
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle("Server")

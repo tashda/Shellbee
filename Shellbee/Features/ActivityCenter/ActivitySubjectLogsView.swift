@@ -34,9 +34,12 @@ struct ActivitySubjectLogsView: View {
 
     var body: some View {
         List {
-            ForEach(items) { item in
-                ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
+            SwiftUI.Group {
+                ForEach(items) { item in
+                    ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .listStyle(.plain)

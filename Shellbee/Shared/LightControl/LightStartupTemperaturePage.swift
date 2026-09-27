@@ -33,50 +33,53 @@ struct LightStartupTemperaturePage: View {
 
     var body: some View {
         List {
-            if !feature.presets.isEmpty {
-                Section {
-                    ForEach(feature.presets, id: \.name) { preset in
-                        presetRow(preset)
-                    }
-                } footer: {
-                    Text("Previous keeps the colour temperature the light had before it lost power.")
-                }
-            }
-            if let range {
-                Section {
-                    Button {
-                        selectCustom(in: range)
-                    } label: {
-                        HStack {
-                            Text("Custom")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            SelectionIndicator(isSelected: selection == .custom)
+            SwiftUI.Group {
+                if !feature.presets.isEmpty {
+                    Section {
+                        ForEach(feature.presets, id: \.name) { preset in
+                            presetRow(preset)
                         }
+                    } footer: {
+                        Text("Previous keeps the colour temperature the light had before it lost power.")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selection == .custom ? .isSelected : [])
+                }
+                if let range {
+                    Section {
+                        Button {
+                            selectCustom(in: range)
+                        } label: {
+                            HStack {
+                                Text("Custom")
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                SelectionIndicator(isSelected: selection == .custom)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(selection == .custom ? .isSelected : [])
 
-                    if selection == .custom {
-                        LabeledContent("Temperature") {
-                            Text(Self.kelvinText(draft))
-                                .monospacedDigit()
+                        if selection == .custom {
+                            LabeledContent("Temperature") {
+                                Text(Self.kelvinText(draft))
+                                    .monospacedDigit()
+                            }
+                            // Kelvin runs opposite to mireds, so the slider is
+                            // flipped to read warm on the left, cool on the right.
+                            Slider(
+                                value: Binding(get: { range.upperBound + range.lowerBound - draft },
+                                               set: { draft = range.upperBound + range.lowerBound - $0 }),
+                                in: range
+                            ) { editing in
+                                guard !editing else { return }
+                                onChange(draft)
+                            }
+                            .tint(Self.swatch(for: draft))
+                            .accessibilityHint("Adjusts the Custom color temperature")
                         }
-                        // Kelvin runs opposite to mireds, so the slider is
-                        // flipped to read warm on the left, cool on the right.
-                        Slider(
-                            value: Binding(get: { range.upperBound + range.lowerBound - draft },
-                                           set: { draft = range.upperBound + range.lowerBound - $0 }),
-                            in: range
-                        ) { editing in
-                            guard !editing else { return }
-                            onChange(draft)
-                        }
-                        .tint(Self.swatch(for: draft))
-                        .accessibilityHint("Adjusts the Custom color temperature")
                     }
                 }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .navigationTitle(feature.displayLabel)

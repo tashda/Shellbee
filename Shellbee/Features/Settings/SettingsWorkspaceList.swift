@@ -13,8 +13,11 @@ struct SettingsWorkspaceList: View {
         let _ = bridgeColorRevision
 
         List(selection: $selection) {
-            bridgesSection
-            applicationSection
+            SwiftUI.Group {
+                bridgesSection
+                applicationSection
+            }
+            .shellbeeThemedRows()
         }
         // The settings content column is a Settings-style surface in its own
         // right-hand pane. A plain list makes it read like an old table view:

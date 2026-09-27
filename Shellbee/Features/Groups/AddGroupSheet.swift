@@ -20,30 +20,33 @@ struct AddGroupSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                bridgeSection
-                Section {
-                    TextField("Group Name", text: $name)
-                        .focused($nameFieldFocused)
-                        .submitLabel(.done)
-                        .autocorrectionDisabled()
-                    Toggle("Custom Group ID", isOn: $showIDField)
-                    if showIDField {
-                        TextField("Group ID (optional)", text: $customID)
-                            .keyboardType(.numberPad)
-                    }
-                } header: {
-                    Text("Groups let you control multiple devices together.")
-                        .textCase(nil)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } footer: {
-                    if name.contains("/") {
-                        Text("Name cannot contain \"/\"")
-                            .foregroundStyle(.red)
-                    } else if showIDField {
-                        Text("Leave empty to auto-assign the next available ID.")
+                SwiftUI.Group {
+                    bridgeSection
+                    Section {
+                        TextField("Group Name", text: $name)
+                            .focused($nameFieldFocused)
+                            .submitLabel(.done)
+                            .autocorrectionDisabled()
+                        Toggle("Custom Group ID", isOn: $showIDField)
+                        if showIDField {
+                            TextField("Group ID (optional)", text: $customID)
+                                .keyboardType(.numberPad)
+                        }
+                    } header: {
+                        Text("Groups let you control multiple devices together.")
+                            .textCase(nil)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } footer: {
+                        if name.contains("/") {
+                            Text("Name cannot contain \"/\"")
+                                .foregroundStyle(.red)
+                        } else if showIDField {
+                            Text("Leave empty to auto-assign the next available ID.")
+                        }
                     }
                 }
+                .shellbeeThemedRows()
             }
             .shellbeeThemedCanvas()
             .navigationTitle("Create Group")

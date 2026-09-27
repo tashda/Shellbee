@@ -8,16 +8,19 @@ struct LiveActivityGalleryView: View {
 
     var body: some View {
         List(LiveActivityGalleryKind.allCases) { kind in
-            Button {
-                staged = kind
-            } label: {
-                LabeledContent {
-                    Text(kind.defaultStyle.name)
+            SwiftUI.Group {
+                Button {
+                    staged = kind
                 } label: {
-                    Label(kind.name, symbol: kind.symbol)
+                    LabeledContent {
+                        Text(kind.defaultStyle.name)
+                    } label: {
+                        Label(kind.name, symbol: kind.symbol)
+                    }
                 }
+                .foregroundStyle(.primary)
             }
-            .foregroundStyle(.primary)
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .fullScreenCover(item: $staged) { kind in

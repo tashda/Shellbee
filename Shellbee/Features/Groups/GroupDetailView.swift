@@ -97,67 +97,70 @@ struct GroupDetailView: View {
 
     var body: some View {
         List {
-            GroupCard(
-                group: currentGroup,
-                memberDevices: memberDevices,
-                state: groupState,
-                bridgeID: bridgeID,
-                bridgeName: environment.attributionBridgeName(for: bridgeID),
-                membersOnCount: membersOnCount,
-                onRenameTapped: { showRenameSheet = true },
-                onNameHiddenChange: { isNameHidden = $0 }
-            )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            SwiftUI.Group {
+                GroupCard(
+                    group: currentGroup,
+                    memberDevices: memberDevices,
+                    state: groupState,
+                    bridgeID: bridgeID,
+                    bridgeName: environment.attributionBridgeName(for: bridgeID),
+                    membersOnCount: membersOnCount,
+                    onRenameTapped: { showRenameSheet = true },
+                    onNameHiddenChange: { isNameHidden = $0 }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
-            if let lightContext = groupLightContext {
-                Section {
-                    LightControlCard(context: lightContext, mode: .interactive) { payload in
-                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                if let lightContext = groupLightContext {
+                    Section {
+                        LightControlCard(context: lightContext, mode: .interactive) { payload in
+                            scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
-            } else if let switchContext = groupSwitchContext {
-                Section {
-                    SwitchControlCard(context: switchContext, mode: .interactive) { payload in
-                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                } else if let switchContext = groupSwitchContext {
+                    Section {
+                        SwitchControlCard(context: switchContext, mode: .interactive) { payload in
+                            scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
-            } else if let coverContext = groupCoverContext {
-                Section {
-                    CoverControlCard(context: coverContext, mode: .interactive) { payload in
-                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                } else if let coverContext = groupCoverContext {
+                    Section {
+                        CoverControlCard(context: coverContext, mode: .interactive) { payload in
+                            scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                }
-                if let device = memberDevices.first {
-                    FeatureSectionsList(
-                        exposes: CoverFeatureSections.tiltExposes(for: device),
-                        state: groupState
-                    ) { payload in
-                        scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                    if let device = memberDevices.first {
+                        FeatureSectionsList(
+                            exposes: CoverFeatureSections.tiltExposes(for: device),
+                            state: groupState
+                        ) { payload in
+                            scope.send(topic: Z2MTopics.deviceSet(currentGroup.friendlyName), payload: payload)
+                        }
                     }
+                } else if !groupState.isEmpty {
+                    PayloadSectionsView(payload: groupState)
                 }
-            } else if !groupState.isEmpty {
-                PayloadSectionsView(payload: groupState)
+
+                GroupMembersSection(
+                    bridgeID: bridgeID,
+                    group: currentGroup,
+                    selection: memberSelection,
+                    onRemove: { memberToRemove = $0 },
+                    onAdd: { showAddMembers = true }
+                )
+
+                GroupScenesSection(bridgeID: bridgeID, group: currentGroup, viewModel: viewModel)
+
+                logsSection
             }
-
-            GroupMembersSection(
-                bridgeID: bridgeID,
-                group: currentGroup,
-                selection: memberSelection,
-                onRemove: { memberToRemove = $0 },
-                onAdd: { showAddMembers = true }
-            )
-
-            GroupScenesSection(bridgeID: bridgeID, group: currentGroup, viewModel: viewModel)
-
-            logsSection
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
         .contentMargins(.top, 0, for: .scrollContent)
