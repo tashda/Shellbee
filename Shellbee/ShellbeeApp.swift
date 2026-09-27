@@ -5,6 +5,7 @@ struct ShellbeeApp: App {
     @State private var environment = AppEnvironment()
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(ShellbeeTheme.storageKey) private var themeRawValue = ShellbeeTheme.defaultTheme.rawValue
+    @AppStorage(StatusTone.themedStorageKey) private var themesStatusColors = false
 
     private var theme: ShellbeeTheme { ShellbeeTheme.stored(themeRawValue) }
 
@@ -19,6 +20,7 @@ struct ShellbeeApp: App {
                 .environment(environment)
                 .preferredColorScheme(appearanceMode.colorScheme)
                 .environment(\.shellbeeTheme, theme)
+                .environment(\.shellbeeThemesStatusColors, themesStatusColors)
         } defaultValue: {
             .home
         }

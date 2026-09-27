@@ -74,7 +74,7 @@ nonisolated enum ShellbeeTheme: String, CaseIterable, Codable, Sendable {
             self.accent = Self.dynamic(accent)
         }
 
-        private static func dynamic(_ hex: (light: UInt32, dark: UInt32)) -> Color {
+        static func dynamic(_ hex: (light: UInt32, dark: UInt32)) -> Color {
             Color(uiColor: UIColor { traits in
                 rgb(traits.userInterfaceStyle == .dark ? hex.dark : hex.light)
             })

@@ -84,14 +84,14 @@ struct DeviceRowView: View {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 if let battery = state.battery {
                     Image(systemName: battery.batterySymbol)
-                        .foregroundStyle(battery.batteryColor)
+                        .foregroundStyle(.status(battery.batteryTone))
                 }
                 if let lqi = state.linkQuality {
                     HStack(spacing: DesignTokens.Spacing.summaryRowTextSpacing) {
                         Image(systemName: lqi.lqiSymbol)
                         Text("\(lqi)")
                     }
-                    .foregroundStyle(lqi.lqiColor)
+                    .foregroundStyle(lqi.lqiTone.map { AnyShapeStyle(.status($0)) } ?? AnyShapeStyle(.secondary))
                 }
             }
             .font(.caption.weight(.medium))

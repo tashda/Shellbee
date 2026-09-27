@@ -11,21 +11,22 @@ extension Int {
         }
     }
 
-    var batteryColor: Color {
-        if DesignTokens.Threshold.isLowBattery(self) { return .red }
-        if self < 50 { return .orange }
-        return .green
+    var batteryTone: StatusTone {
+        if DesignTokens.Threshold.isLowBattery(self) { return .poor }
+        if self < 50 { return .fair }
+        return .excellent
     }
 
     var lqiSymbol: String {
         self < DesignTokens.Threshold.weakSignal ? "wifi.exclamationmark" : "wifi"
     }
 
-    var lqiColor: Color {
-        if self == 0 { return .secondary }
-        if self < DesignTokens.Threshold.weakSignal { return .red }
-        if self < 80 { return .orange }
-        if self < 150 { return .blue }
-        return .green
+    /// `nil` for an LQI of 0, which z2m reports before it has measured one.
+    var lqiTone: StatusTone? {
+        if self == 0 { return nil }
+        if self < DesignTokens.Threshold.weakSignal { return .poor }
+        if self < 80 { return .fair }
+        if self < 150 { return .good }
+        return .excellent
     }
 }

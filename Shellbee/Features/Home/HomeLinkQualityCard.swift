@@ -63,11 +63,13 @@ struct HomeLinkQualityCard: View {
 
     /// One hue in three weights, so the shape carries the meaning and only
     /// the band you'd act on takes a colour.
-    private func fill(for band: HomeSnapshot.LinkQualityBand) -> Color {
-        if band.needsAttention { return band.count > 0 ? .red : Color(.tertiarySystemFill) }
+    private func fill(for band: HomeSnapshot.LinkQualityBand) -> AnyShapeStyle {
+        if band.needsAttention {
+            return band.count > 0 ? AnyShapeStyle(.status(.poor)) : AnyShapeStyle(Color(.tertiarySystemFill))
+        }
         let share = Double(band.count) / Double(peak)
-        return Color.primary.opacity(DesignTokens.Opacity.chartBarFloor
-            + share * DesignTokens.Opacity.chartBarRange)
+        return AnyShapeStyle(Color.primary.opacity(DesignTokens.Opacity.chartBarFloor
+            + share * DesignTokens.Opacity.chartBarRange))
     }
 }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct AppAppearanceSettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(ShellbeeTheme.storageKey) private var themeRawValue = ShellbeeTheme.defaultTheme.rawValue
+    @AppStorage(StatusTone.themedStorageKey) private var themesStatusColors = false
     @AppStorage(BridgeGradientMode.storageKey) private var indicatorModeRaw = BridgeGradientMode.default.rawValue
 
     var body: some View {
@@ -26,10 +27,15 @@ struct AppAppearanceSettingsView: View {
                                                   leading: DesignTokens.Spacing.lg,
                                                   bottom: DesignTokens.Spacing.md,
                                                   trailing: DesignTokens.Spacing.lg))
+                    if ShellbeeTheme.stored(themeRawValue) != .system {
+                        Toggle("Themed Status Colors", isOn: $themesStatusColors)
+                    }
                 } header: {
                     Text("Theme")
                 } footer: {
-                    Text("Themes tint the background and accent of every screen.")
+                    Text(ShellbeeTheme.stored(themeRawValue) == .system
+                         ? "Themes tint the background, rows and accent of every screen."
+                         : "Themes tint the background, rows and accent of every screen. Themed Status Colors also recolors link quality, battery and weak link warnings to match.")
                 }
 
                 Section("Home") {

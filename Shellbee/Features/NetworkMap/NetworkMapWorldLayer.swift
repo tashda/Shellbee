@@ -96,7 +96,7 @@ struct NetworkMapWorldLayer: View, Equatable {
                 : DesignTokens.Opacity.networkMapFadedEdge
             edgeContext.stroke(
                 path,
-                with: .color(edgeColor(linkQuality: quality, online: online)),
+                with: edgeShading(linkQuality: quality, online: online),
                 style: StrokeStyle(
                     lineWidth: edge.isPrimary
                         ? DesignTokens.Size.networkMapEdgeWidth
@@ -110,11 +110,9 @@ struct NetworkMapWorldLayer: View, Equatable {
 
     /// Healthy links stay neutral so the map reads calmly; only links worth
     /// attention (marginal or weak LQI) pick up a colour.
-    private func edgeColor(linkQuality: Int?, online: Bool) -> Color {
-        guard online, let linkQuality else { return .secondary }
-        if linkQuality >= 100 { return .secondary }
-        if linkQuality >= 50 { return .orange }
-        return .red
+    private func edgeShading(linkQuality: Int?, online: Bool) -> GraphicsContext.Shading {
+        guard online, let linkQuality, linkQuality < 100 else { return .style(.secondary) }
+        return .style(.status(linkQuality >= 50 ? .fair : .poor))
     }
 
     private func accessibilityStatus(for node: NetworkTopologyNode) -> String {

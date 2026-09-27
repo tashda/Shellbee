@@ -24,7 +24,7 @@ struct HomeAttentionItem: Identifiable {
     let symbol: String
     /// Set only when the value needs attention; otherwise the row stays in
     /// the label colours.
-    let tint: Color
+    let tint: AnyShapeStyle
     /// Set when the row is about one bridge rather than the network as a
     /// whole. Those rows are grouped under a section headed with the
     /// bridge's name, so which bridge is never something you infer.
@@ -43,7 +43,7 @@ struct HomeAttentionItem: Identifiable {
                 title: "Offline",
                 value: deviceCount(snapshot.offlineDevices),
                 symbol: "antenna.radiowaves.left.and.right.slash",
-                tint: .red,
+                tint: AnyShapeStyle(Color.red),
                 action: .devices(.offline)
             ))
         }
@@ -54,7 +54,7 @@ struct HomeAttentionItem: Identifiable {
                 title: "Low battery",
                 value: deviceCount(snapshot.lowBatteryDevices),
                 symbol: "battery.25",
-                tint: .red,
+                tint: AnyShapeStyle(.status(.poor)),
                 action: .devices(.batteryLow)
             ))
         }
@@ -65,7 +65,7 @@ struct HomeAttentionItem: Identifiable {
                 title: "Weak signal",
                 value: deviceCount(snapshot.weakSignalDevices),
                 symbol: "cellularbars",
-                tint: .orange,
+                tint: AnyShapeStyle(.status(.fair)),
                 action: .devices(.weakSignal)
             ))
         }
@@ -76,7 +76,7 @@ struct HomeAttentionItem: Identifiable {
                 title: "Firmware updates",
                 value: "\(snapshot.devicesWithUpdates) ready",
                 symbol: "arrow.down.circle.fill",
-                tint: .blue,
+                tint: AnyShapeStyle(Color.blue),
                 action: .devices(.updatesAvailable)
             ))
         }
@@ -100,7 +100,7 @@ struct HomeAttentionItem: Identifiable {
                 title: "Restart required",
                 value: "To apply configuration",
                 symbol: "arrow.triangle.2.circlepath.circle.fill",
-                tint: .orange,
+                tint: AnyShapeStyle(Color.orange),
                 bridgeID: bridge.id,
                 action: .restart(bridge.id)
             ))
@@ -113,7 +113,7 @@ struct HomeAttentionItem: Identifiable {
                 title: "Zigbee2MQTT",
                 value: "\(normalize(latest)) available",
                 symbol: "arrow.down.circle.fill",
-                tint: .blue,
+                tint: AnyShapeStyle(Color.blue),
                 bridgeID: bridge.id,
                 action: .release(url)
             ))
