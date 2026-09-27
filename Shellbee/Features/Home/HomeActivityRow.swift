@@ -13,7 +13,9 @@ struct HomeActivityRow: View {
             instrument: item.instrument,
             content: item.content,
             timestamp: item.timestamp,
-            instrumentSize: thumbnailSize
+            instrumentSize: thumbnailSize,
+            bridgeID: item.bridgeID,
+            bridgeName: item.bridgeName
         )
         .padding(.vertical, DesignTokens.Spacing.xxs)
         .contentShape(Rectangle())

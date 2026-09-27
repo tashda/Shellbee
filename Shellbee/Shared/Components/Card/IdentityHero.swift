@@ -15,7 +15,8 @@ struct IdentityChip: Identifiable {
 /// Header for Device and Group detail, like the top of a contact or Apple
 /// Account page: the image on the left, the name and a readable
 /// description beside it, and one line of neutral status capsules below.
-/// The bridge appears under the description when several are saved.
+/// When several bridges are saved, the last capsule names the bridge with
+/// its monogram.
 struct IdentityHero<Artwork: View>: View {
     let name: String
     let subtitle: String
@@ -44,19 +45,21 @@ struct IdentityHero<Artwork: View>: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
-                    if let bridgeID, let bridgeName, !bridgeName.isEmpty {
-                        BridgeAttributionLine(bridgeID: bridgeID, bridgeName: bridgeName)
-                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if !chips.isEmpty {
-                FlowChips(chips: chips)
+            if !chips.isEmpty || bridgeChip != nil {
+                FlowChips(chips: chips, bridge: bridgeChip)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignTokens.Spacing.xs)
+    }
+
+    private var bridgeChip: FlowChips.Bridge? {
+        guard let bridgeID, let bridgeName, !bridgeName.isEmpty else { return nil }
+        return FlowChips.Bridge(id: bridgeID, name: bridgeName)
     }
 
     @ViewBuilder
@@ -82,7 +85,16 @@ struct IdentityHero<Artwork: View>: View {
 
 /// Status capsules on one line; they scroll sideways rather than wrap.
 private struct FlowChips: View {
+    struct Bridge {
+        let id: UUID
+        let name: String
+    }
+
     let chips: [IdentityChip]
+    var bridge: Bridge? = nil
+
+    @Environment(AppEnvironment.self) private var environment
+    @AppStorage(BridgeGradientMode.storageKey) private var indicatorModeRaw = BridgeGradientMode.default.rawValue
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -93,6 +105,7 @@ private struct FlowChips: View {
         }
     }
 
+    @ViewBuilder
     private var chipViews: some View {
         ForEach(chips) { chip in
             HStack(spacing: DesignTokens.Spacing.xs) {
@@ -116,6 +129,20 @@ private struct FlowChips: View {
             .background(.shellbeeSurface, in: Capsule())
             .accessibilityElement(children: .combine)
         }
+        if let bridge, BridgeGradientMode.stored(indicatorModeRaw).showsIndicators(in: environment) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                BridgeMonogram(bridgeID: bridge.id, bridgeName: bridge.name)
+                Text(bridge.name)
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .padding(.leading, DesignTokens.Spacing.xs + DesignTokens.Spacing.xxs)
+            .padding(.trailing, DesignTokens.Spacing.sm + DesignTokens.Spacing.xxs)
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .background(.shellbeeSurface, in: Capsule())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Bridge: \(bridge.name)")
+        }
     }
 }
 
@@ -135,4 +162,5 @@ private struct FlowChips: View {
         }
         .listRowBackground(Color.clear)
     }
+    .environment(AppEnvironment())
 }

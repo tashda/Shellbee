@@ -4,7 +4,6 @@ import UIKit
 #endif
 
 struct DeviceListRow: View {
-    @Environment(\.isSelectableListContext) private var isSelectableListContext
 
     let device: Device
     let state: [String: JSONValue]
@@ -72,11 +71,6 @@ struct DeviceListRow: View {
 
     @ViewBuilder
     private var rowBody: some View {
-        // Multi-bridge attribution lives entirely on the trailing chevron via
-        // `.tint(BridgeColor.color(for:))` on the NavigationLink (see
-        // `rowContent`). The earlier leading color-bar variant was tested but
-        // read as decorative noise when most rows were from the same bridge —
-        // the chevron tint wins when only the outlier rows stand out.
         DeviceRowView(
             device: device,
             state: state,
@@ -95,12 +89,6 @@ struct DeviceListRow: View {
             // Phase 1: push a `DeviceRoute` that carries the device's source
             // bridge id alongside the device. The destination resolves the
             // right `BridgeScope` from the route.
-            //
-            // Multi-bridge attribution is handled at the row-background
-            // layer (`.listRowBackground` below) — `.tint()` on a
-            // NavigationLink does NOT propagate to the system disclosure
-            // chevron in iOS 17+, so we rely on a subtle leading-edge
-            // gradient on the row instead.
             NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { rowBody }
         } else if navigates {
             // Defensive: a nav-capable row with no bridgeID has nothing to
@@ -113,12 +101,6 @@ struct DeviceListRow: View {
 
     var body: some View {
         rowContent
-        // Multi-bridge attribution: a thin colored bar on the cell's leading
-        // edge, full row height. Visibility honors the Bridge Indicator
-        // setting (Settings → Application → General → Appearance).
-        // Skipped in iPad 3-column mode — iPadOS 26's row selection chrome
-        // overlays a custom listRowBackground and squashes row content.
-        .modifier(BridgeRowLeadingBarBackground(bridgeID: bridgeID, enabled: !isSelectableListContext))
         .draggable(transferPayload) {
             DeviceTransferPreview(
                 device: device,

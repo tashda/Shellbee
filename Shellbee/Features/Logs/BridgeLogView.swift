@@ -59,10 +59,6 @@ struct BridgeLogView: View {
                                 bottom: DesignTokens.Spacing.bridgeLogRowVerticalInset,
                                 trailing: DesignTokens.Spacing.bridgeLogRowHorizontalInset
                             ))
-                            .modifier(BridgeRowLeadingBarBackground(
-                                bridgeID: item.bridgeID,
-                                enabled: selection == nil
-                            ))
                     }
                 }
                 .listStyle(.plain)
@@ -104,11 +100,11 @@ struct BridgeLogView: View {
     private func bridgeLogRow(_ item: BridgeBoundLogEntry) -> some View {
         if selection != nil {
             NavigationLink(value: LogsPaneRoute.bridge(LogRoute(bridgeID: item.bridgeID, entry: item.entry))) {
-                BridgeLogRowView(entry: item.entry)
+                BridgeLogRowView(entry: item.entry, bridgeID: item.bridgeID)
             }
         } else {
             NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
-                BridgeLogRowView(entry: item.entry)
+                BridgeLogRowView(entry: item.entry, bridgeID: item.bridgeID)
             }
         }
     }
@@ -137,6 +133,8 @@ struct BridgeLogView: View {
 
 struct BridgeLogRowView: View {
     let entry: LogEntry
+    /// The source bridge, marked with its monogram beside the time.
+    var bridgeID: UUID? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.summaryRowVerticalPadding) {
@@ -157,6 +155,9 @@ struct BridgeLogRowView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
+                if let bridgeID {
+                    BridgeMonogram(bridgeID: bridgeID, size: DesignTokens.Size.bridgeMonogramCompact)
+                }
                 Text(entry.timestamp, format: .dateTime.hour().minute().second())
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.tertiary)

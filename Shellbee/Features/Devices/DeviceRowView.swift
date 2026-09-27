@@ -7,11 +7,7 @@ struct DeviceRowView: View {
     let otaStatus: OTAUpdateStatus?
     var checkResult: AppStore.DeviceCheckResult? = nil
     var isDeleting: Bool = false
-    /// Phase 2 multi-bridge: source-bridge tag. Surfaces as a thin leading
-    /// bar drawn by `BridgeRowLeadingBar` via `DeviceListRow.listRowBackground`
-    /// — uniform across Devices, Groups, and Logs. The fields are kept here
-    /// for callers that pass them, but the row body itself doesn't render any
-    /// per-row bridge chrome.
+    /// The source bridge, marked with its monogram before the vendor.
     var bridgeID: UUID? = nil
     var bridgeName: String = ""
 
@@ -30,11 +26,17 @@ struct DeviceRowView: View {
             )
 
             VStack(alignment: .leading, spacing: 0) {
-                if let vendor = device.definition?.vendor {
-                    Text(vendor.uppercased())
-                        .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary.opacity(DesignTokens.Opacity.secondaryText))
-                        .lineLimit(1)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if let bridgeID {
+                        BridgeMonogram(bridgeID: bridgeID, bridgeName: bridgeName,
+                                       size: DesignTokens.Size.bridgeMonogramCompact)
+                    }
+                    if let vendor = device.definition?.vendor {
+                        Text(vendor.uppercased())
+                            .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
+                            .foregroundStyle(.secondary.opacity(DesignTokens.Opacity.secondaryText))
+                            .lineLimit(1)
+                    }
                 }
 
                 Text(device.friendlyName)

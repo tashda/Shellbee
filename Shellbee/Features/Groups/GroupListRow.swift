@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct GroupListRow: View {
-    @Environment(\.isSelectableListContext) private var isSelectableListContext
 
     let group: Group
     let memberDevices: [Device]
@@ -33,10 +32,6 @@ struct GroupListRow: View {
 
     private var rowContent: some View {
         navContent
-        // Multi-bridge attribution: thin colored bar on the leading edge.
-        // Skipped in iPad 3-column mode — see DeviceListRow for the
-        // selection-chrome interaction.
-        .modifier(BridgeRowLeadingBarBackground(bridgeID: bridgeID, enabled: !isSelectableListContext))
         .dropDestination(for: DeviceTransferPayload.self) { payloads, _ in
             guard let onDropDevice, payloads.count == 1, let payload = payloads.first else { return false }
             return onDropDevice(payload)
@@ -66,7 +61,7 @@ struct GroupListRow: View {
     private var navContent: some View {
         if let bridgeID {
             NavigationLink(value: GroupRoute(bridgeID: bridgeID, group: group)) {
-                GroupRowView(group: group, memberDevices: memberDevices)
+                GroupRowView(group: group, memberDevices: memberDevices, bridgeID: bridgeID)
             }
         } else {
             NavigationLink(value: group) {

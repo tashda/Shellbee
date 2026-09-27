@@ -5,10 +5,12 @@ import SwiftUI
 struct ActivityStackCard: View {
     let stack: ActivityStack
     let content: ActivityCardContent
+    var bridgeName: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
-            ActivityCard(entry: stack.latest, content: content, moreText: moreText)
+            ActivityCard(entry: stack.latest, content: content, moreText: moreText,
+                         bridgeID: stack.bridgeID, bridgeName: bridgeName)
                 .zIndex(2)
             if stack.isStacked {
                 peek(

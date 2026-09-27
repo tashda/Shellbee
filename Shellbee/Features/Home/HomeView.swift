@@ -228,7 +228,6 @@ struct HomeView: View {
                 groupedRow(HomeBridgeRow(entry: entry) {
                     presentedSheet = .bridge(entry.id)
                 })
-                .background(BridgeRowLeadingBar(bridgeID: entry.id))
                 if index < bridgeCardEntries.count - 1 {
                     Divider().padding(.leading, DesignTokens.Spacing.lg)
                 }

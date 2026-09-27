@@ -70,10 +70,6 @@ struct ActivitySubjectEvents {
                         }
                     }
                 }
-                .modifier(BridgeRowLeadingBarBackground(
-                    bridgeID: bridgeID,
-                    enabled: showsBridgeIndicator
-                ))
             }
         }
 
@@ -82,7 +78,9 @@ struct ActivitySubjectEvents {
                 instrument: item.instrument,
                 content: item.content,
                 timestamp: item.timestamp,
-                instrumentSize: DesignTokens.ActivityFeed.thumbnail
+                instrumentSize: DesignTokens.ActivityFeed.thumbnail,
+                bridgeID: showsBridgeIndicator ? bridgeID : nil,
+                bridgeName: bridgeName
             )
             .padding(.vertical, DesignTokens.Spacing.sm)
             .accessibilityIdentifier("activity-log-\(bridgeName)")

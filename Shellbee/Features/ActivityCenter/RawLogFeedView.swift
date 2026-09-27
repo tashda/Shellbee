@@ -37,7 +37,8 @@ struct RawLogFeedView: View {
                         } label: {
                             RawLogRow(
                                 entry: item.entry,
-                                position: RawLogRow.Position(index: index, count: block.lines.count)
+                                position: RawLogRow.Position(index: index, count: block.lines.count),
+                                bridgeID: item.bridgeID
                             )
                         }
                         .buttonStyle(.plain)

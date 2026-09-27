@@ -130,7 +130,8 @@ struct ActivityFeedView: View {
             } label: {
                 ActivityStackCard(
                     stack: stack,
-                    content: ActivityCardContent(entry: stack.latest, subject: stack.subject, bridgeName: bridgeName)
+                    content: ActivityCardContent(entry: stack.latest, subject: stack.subject, bridgeName: bridgeName),
+                    bridgeName: bridgeName
                 )
             }
             .buttonStyle(.plain)
@@ -155,7 +156,9 @@ struct ActivityFeedView: View {
             } label: {
                 ActivityCard(
                     entry: entry,
-                    content: ActivityCardContent(entry: entry, subject: stack.subject, bridgeName: bridgeName)
+                    content: ActivityCardContent(entry: entry, subject: stack.subject, bridgeName: bridgeName),
+                    bridgeID: stack.bridgeID,
+                    bridgeName: bridgeName
                 )
             }
             .buttonStyle(.plain)

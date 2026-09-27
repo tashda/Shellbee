@@ -7,6 +7,8 @@ struct ActivityCard: View {
     let timestamp: Date
     /// "13 more updates" on the top card of a collapsed stack.
     var moreText: String? = nil
+    var bridgeID: UUID? = nil
+    var bridgeName: String = ""
     @ScaledMetric(relativeTo: .subheadline) private var thumbnailSize = DesignTokens.ActivityFeed.thumbnail
 
     var body: some View {
@@ -14,7 +16,9 @@ struct ActivityCard: View {
             instrument: instrument,
             content: content,
             timestamp: timestamp,
-            instrumentSize: thumbnailSize
+            instrumentSize: thumbnailSize,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName
         ) {
             if let moreText {
                 Text(moreText)
@@ -43,12 +47,15 @@ struct ActivityCard: View {
 }
 
 extension ActivityCard {
-    init(entry: LogEntry, content: ActivityCardContent, moreText: String? = nil) {
+    init(entry: LogEntry, content: ActivityCardContent, moreText: String? = nil,
+         bridgeID: UUID? = nil, bridgeName: String = "") {
         self.init(
             instrument: ActivityInstrumentResolver.instrument(for: entry),
             content: content,
             timestamp: entry.timestamp,
-            moreText: moreText
+            moreText: moreText,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName
         )
     }
 }

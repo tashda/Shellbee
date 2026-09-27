@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// One bridge on Home, read like an account row in Settings: a status dot,
-/// the name, and one line of detail. Tapping it opens `BridgeInfoSheet`,
+/// One bridge on Home, read like an account row in Settings: the bridge's
+/// monogram carrying a status dot (or the dot alone when bridge indicators
+/// are hidden), the name, and one line of detail. Tapping it opens `BridgeInfoSheet`,
 /// where the bridge's own figures — version, coordinator, channel, MQTT,
 /// memory — already live.
 ///
@@ -12,13 +13,13 @@ struct HomeBridgeRow: View {
     let entry: HomeBridgeCardEntry
     let action: () -> Void
 
+    @Environment(AppEnvironment.self) private var environment
+    @AppStorage(BridgeGradientMode.storageKey) private var indicatorModeRaw = BridgeGradientMode.default.rawValue
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: DesignTokens.Spacing.md) {
-                Circle()
-                    .fill(.themedStatus(statusColor))
-                    .frame(width: DesignTokens.Size.statusDotHero,
-                           height: DesignTokens.Size.statusDotHero)
+                leadingMark
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text(entry.name)
@@ -48,6 +49,29 @@ struct HomeBridgeRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(entry.name), \(detail)")
         .accessibilityHint("Shows this bridge's connection and network details")
+    }
+
+    @ViewBuilder
+    private var leadingMark: some View {
+        if BridgeGradientMode.stored(indicatorModeRaw).showsIndicators(in: environment) {
+            BridgeMonogram(bridgeID: entry.id, bridgeName: entry.name,
+                           size: DesignTokens.Size.bridgeMonogramLarge)
+                .overlay(alignment: .bottomTrailing) {
+                    statusDot
+                        .overlay(Circle().stroke(.shellbeeSurface, lineWidth: DesignTokens.Size.bridgeMonogramStatusRing))
+                        .offset(x: DesignTokens.Size.bridgeMonogramStatusOffset,
+                                y: DesignTokens.Size.bridgeMonogramStatusOffset)
+                }
+        } else {
+            statusDot
+        }
+    }
+
+    private var statusDot: some View {
+        Circle()
+            .fill(.themedStatus(statusColor))
+            .frame(width: DesignTokens.Size.statusDotHero,
+                   height: DesignTokens.Size.statusDotHero)
     }
 
     /// Colour is state and nothing else: green while it works, red when the

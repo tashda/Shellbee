@@ -18,6 +18,8 @@ struct RawLogRow: View {
 
     let entry: LogEntry
     let position: Position
+    /// The source bridge, marked with its monogram beside the time.
+    var bridgeID: UUID? = nil
 
     var body: some View {
         let content = RawLogLineContent(entry: entry)
@@ -41,6 +43,10 @@ struct RawLogRow: View {
                         .background(.fill.tertiary, in: .rect(cornerRadius: DesignTokens.RawLog.tagCornerRadius))
                 }
                 Spacer(minLength: 0)
+                if let bridgeID {
+                    BridgeMonogram(bridgeID: bridgeID)
+                        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + DesignTokens.Size.bridgeMonogramBaselineOffset }
+                }
                 Text(entry.timestamp, format: .dateTime.hour().minute().second())
                     .font(.caption)
                     .monospacedDigit()

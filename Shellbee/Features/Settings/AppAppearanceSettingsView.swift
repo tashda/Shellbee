@@ -87,33 +87,23 @@ struct AppAppearanceSettingsView: View {
     }
 }
 
+/// Two device rows as the Devices list draws them, with the monogram of
+/// each row's bridge before its vendor.
 private struct BridgeIndicatorPreview: View {
     let mode: BridgeGradientMode
 
     var body: some View {
         VStack(spacing: .zero) {
-            previewRow(
-                "Hall Motion",
-                device: .fallbackPreview,
-                bridgeName: "Home",
-                color: .blue
-            )
+            previewRow("Hall Motion", vendor: "Aqara", device: .fallbackPreview,
+                       bridgeName: "Home", color: DesignTokens.Bridge.palette[3])
             Divider()
-            previewRow(
-                "Kitchen Light",
-                device: .preview,
-                bridgeName: "Studio",
-                color: .orange
-            )
+            previewRow("Kitchen Light", vendor: "Philips", device: .preview,
+                       bridgeName: "Studio", color: DesignTokens.Bridge.palette[4])
         }
     }
 
-    private func previewRow(
-        _ title: String,
-        device: Device,
-        bridgeName: String,
-        color: Color
-    ) -> some View {
+    private func previewRow(_ title: String, vendor: String, device: Device,
+                            bridgeName: String, color: Color) -> some View {
         HStack(spacing: DesignTokens.Spacing.md) {
             DeviceImageView(
                 device: device,
@@ -121,27 +111,28 @@ private struct BridgeIndicatorPreview: View {
                 size: DesignTokens.Size.logRowDeviceImage,
                 showsAvailabilityIndicator: false
             )
-            Text(title)
-                .lineLimit(1)
-            Spacer()
-            Text(bridgeName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, DesignTokens.Spacing.md)
-        .overlay(alignment: .leading) {
-            if mode != .off {
-                Rectangle()
-                    .fill(color)
-                    .frame(width: DesignTokens.Size.levelIndicatorWidth)
-                    .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if mode != .off {
+                        BridgeMonogramMark(initial: BridgeMonogram.initial(for: bridgeName), color: color,
+                                           size: DesignTokens.Size.bridgeMonogramCompact)
+                    }
+                    Text(vendor.uppercased())
+                        .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
             }
+            Spacer()
         }
+        .padding(.vertical, DesignTokens.Spacing.sm)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             mode == .off
                 ? "\(title), no bridge indicator"
-                : "\(title), \(bridgeName) bridge indicator"
+                : "\(title), \(bridgeName) bridge"
         )
     }
 }
@@ -149,9 +140,9 @@ private struct BridgeIndicatorPreview: View {
 private extension BridgeGradientMode {
     var description: String {
         switch self {
-        case .always: "Each row shows its source bridge."
-        case .auto: "Source bridges appear when more than one bridge is connected."
-        case .off: "Rows stay free of bridge source indicators."
+        case .always: "Devices, groups and events always show their bridge's monogram."
+        case .auto: "Bridge monograms appear when more than one bridge is connected."
+        case .off: "Devices, groups and events aren't marked with their bridge."
         }
     }
 }

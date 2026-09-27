@@ -30,6 +30,17 @@ nonisolated enum DesignTokens {
     nonisolated enum Size {
         static let statusDot: CGFloat = 10
         static let statusDotHero: CGFloat = 8
+        /// Bridge monogram beside row metadata and in chips.
+        static let bridgeMonogram: CGFloat = 14
+        /// Bridge monogram beside a small caps caption, like a vendor.
+        static let bridgeMonogramCompact: CGFloat = 12
+        /// Bridge monogram leading a bridge's own row.
+        static let bridgeMonogramLarge: CGFloat = 28
+        /// Lowers a monogram so it sits on the text baseline beside it.
+        static let bridgeMonogramBaselineOffset: CGFloat = 4
+        /// The status dot tucked on a large monogram's corner, and its ring.
+        static let bridgeMonogramStatusOffset: CGFloat = 3
+        static let bridgeMonogramStatusRing: CGFloat = 2
         static let statusDotInline: CGFloat = 6
         static let chipFont: CGFloat = 10
         static let chipSymbol: CGFloat = 9
@@ -403,6 +414,8 @@ nonisolated enum DesignTokens {
     /// that's 27% of the tile size). Use these instead of inline percentages
     /// so the whole layout scales consistently.
     nonisolated enum Ratio {
+        static let bridgeMonogramCorner: CGFloat = 0.28
+        static let bridgeMonogramGlyph: CGFloat = 0.62
         // Log row icon (device thumbnail badge inside the log level circle)
         static let logRowBadgeSize: CGFloat = 0.47
         static let logRowBadgeBorder: CGFloat = 0.1

@@ -10,6 +10,9 @@ struct ActivityEventRow<Footer: View>: View {
     let timestamp: Date
     var instrumentSize: CGFloat
     var alignment: VerticalAlignment = .top
+    /// The event's bridge, marked with its monogram beside the time.
+    var bridgeID: UUID? = nil
+    var bridgeName: String = ""
     @ViewBuilder var footer: () -> Footer
 
     var body: some View {
@@ -22,7 +25,13 @@ struct ActivityEventRow<Footer: View>: View {
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
                     Spacer(minLength: 0)
-                    ActivityRelativeTime(date: timestamp)
+                    HStack(spacing: DesignTokens.Spacing.xs) {
+                        if let bridgeID {
+                            BridgeMonogram(bridgeID: bridgeID, bridgeName: bridgeName)
+                                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + DesignTokens.Size.bridgeMonogramBaselineOffset }
+                        }
+                        ActivityRelativeTime(date: timestamp)
+                    }
                 }
                 Text(content.message)
                     .font(.subheadline)
@@ -45,7 +54,9 @@ extension ActivityEventRow where Footer == EmptyView {
         content: ActivityCardContent,
         timestamp: Date,
         instrumentSize: CGFloat,
-        alignment: VerticalAlignment = .top
+        alignment: VerticalAlignment = .top,
+        bridgeID: UUID? = nil,
+        bridgeName: String = ""
     ) {
         self.init(
             instrument: instrument,
@@ -53,6 +64,8 @@ extension ActivityEventRow where Footer == EmptyView {
             timestamp: timestamp,
             instrumentSize: instrumentSize,
             alignment: alignment,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName,
             footer: { EmptyView() }
         )
     }
