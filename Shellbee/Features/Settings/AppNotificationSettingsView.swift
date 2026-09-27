@@ -14,6 +14,7 @@ struct AppNotificationSettingsView: View {
                             Text(mode.title).tag(mode.rawValue)
                         }
                     }
+                    .tint(.secondary)
                     .disabled(!isActivityCenterEnabled)
 
                     ActivityCenterPresentationPreview(mode: displayMode)

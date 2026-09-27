@@ -15,6 +15,7 @@ struct AppAppearanceSettingsView: View {
                         Text("Light").tag(AppearanceMode.light)
                         Text("Dark").tag(AppearanceMode.dark)
                     }
+                    .tint(.secondary)
                     NavigationLink {
                         HomeThemePickerView()
                     } label: {
@@ -54,6 +55,7 @@ struct AppAppearanceSettingsView: View {
                             Text(mode.label).tag(mode.rawValue)
                         }
                     }
+                    .tint(.secondary)
                     BridgeIndicatorPreview(mode: indicatorMode)
                 } header: {
                     Text("Bridge Indicators")

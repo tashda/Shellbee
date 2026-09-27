@@ -35,6 +35,7 @@ struct AddReportingSheet: View {
                                     Text("EP \(ep)").tag(ep)
                                 }
                             }
+                            .tint(.secondary)
                         }
                         if !clustersForEndpoint.isEmpty {
                             Picker("Cluster", selection: $cluster) {
@@ -43,6 +44,7 @@ struct AddReportingSheet: View {
                                     Text(c).tag(c)
                                 }
                             }
+                            .tint(.secondary)
                         } else {
                             TextField("Cluster (e.g. genOnOff)", text: $cluster)
                                 .autocorrectionDisabled()

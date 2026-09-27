@@ -10,7 +10,7 @@ final class ThemeCoverageTests: XCTestCase {
         "App/MainSplitView.swift",
     ]
 
-    private let listRoot = try! NSRegularExpression(pattern: #"^\s*(List|Form)\s*[({]"#, options: .anchorsMatchLines)
+    private let listRoot = try! NSRegularExpression(pattern: #"^\s*(?:return\s+|let\s+\w+\s*=\s*)?(List|Form)\s*[({]"#, options: .anchorsMatchLines)
 
     func testEveryListAndFormScreenAppliesThemedCanvas() throws {
         let appRoot = URL(fileURLWithPath: #filePath)
@@ -29,10 +29,12 @@ final class ThemeCoverageTests: XCTestCase {
             // Previews may show a list without the app's theme.
             let body = source.components(separatedBy: "#Preview").first ?? source
             let range = NSRange(body.startIndex..., in: body)
-            guard listRoot.firstMatch(in: body, range: range) != nil else { continue }
+            let lists = listRoot.numberOfMatches(in: body, range: range)
+            guard lists > 0 else { continue }
             scanned += 1
             let hasCanvas = body.contains("shellbeeThemedCanvas") || body.contains("AdaptiveListStyle(")
-            if !hasCanvas || !body.contains("shellbeeThemedRows") {
+            let themedRows = body.components(separatedBy: ".shellbeeThemedRows()").count - 1
+            if !hasCanvas || themedRows < lists {
                 missing.append(relative)
             }
         }

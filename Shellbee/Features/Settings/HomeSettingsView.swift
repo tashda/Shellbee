@@ -38,6 +38,7 @@ struct HomeSettingsView: View {
                                 Text("\(count)").tag(count)
                             }
                         }
+                        .tint(.secondary)
                     } header: {
                         Text("Activity")
                     } footer: {

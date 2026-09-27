@@ -156,6 +156,7 @@ struct BridgeSettingsView: View {
             } label: {
                 settingsLabel(title: "Logging Level", systemImage: "slider.horizontal.below.square.filled.and.square", color: .gray)
             }
+            .tint(.secondary)
             NavigationLink { LogOutputView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Log Output", systemImage: "doc.text.magnifyingglass", color: Color(.systemGray2))
             }

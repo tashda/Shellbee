@@ -22,6 +22,7 @@ struct GroupSettingsView: View {
                         Text("All Members Off").tag("all_members_off")
                         Text("Last Member State").tag("last_member_state")
                     }
+                    .tint(.secondary)
                     Toggle("Optimistic", isOn: Binding(
                         get: { currentOptions["optimistic"]?.boolValue ?? true },
                         set: { sendOption("optimistic", value: .bool($0)) }
@@ -39,6 +40,7 @@ struct GroupSettingsView: View {
                         Text("QoS 1 — At least once").tag(1)
                         Text("QoS 2 — Exactly once").tag(2)
                     }
+                    .tint(.secondary)
                 } header: {
                     Text("General")
                 } footer: {

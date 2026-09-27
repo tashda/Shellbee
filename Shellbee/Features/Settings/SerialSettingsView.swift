@@ -44,6 +44,7 @@ struct SerialSettingsView: View {
                                 Text(opt).tag(opt)
                             }
                         }
+                        .tint(.secondary)
                         .labelsHidden()
                     }
                     Picker("Baud Rate", selection: $baudrate) {
@@ -51,6 +52,7 @@ struct SerialSettingsView: View {
                         Text("57600").tag(57600)
                         Text("38400").tag(38400)
                     }
+                    .tint(.secondary)
                     Toggle("RTS/CTS Flow Control", isOn: $rtscts)
                 } header: {
                     Text("Connection")

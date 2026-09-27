@@ -347,6 +347,7 @@ struct SettingsView: View {
             } label: {
                 settingsLabel(title: "Logging Level", systemImage: "slider.horizontal.below.square.filled.and.square", color: .gray)
             }
+            .tint(.secondary)
             if showsSidebarDestinationsInSettings && !isActivityCenterEnabled {
                 NavigationLink {
                     LogsView(usesActivityFeed: true, navigationTitle: "")

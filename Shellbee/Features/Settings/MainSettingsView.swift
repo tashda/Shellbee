@@ -41,6 +41,7 @@ struct MainSettingsView: View {
                             Text(format.label).tag(format)
                         }
                     }
+                    .tint(.secondary)
                     Toggle("Show Elapsed Time", isOn: $elapsed)
                     LabeledContent("Timestamp Format") {
                         TextField("YYYY-MM-DD HH:mm:ss", text: $timestampFormat)
@@ -78,6 +79,7 @@ struct MainSettingsView: View {
                         Text(BridgeSettings.OutputFormat.json.label).tag(BridgeSettings.OutputFormat.json)
                         Text(BridgeSettings.OutputFormat.attributeAndJson.label).tag(BridgeSettings.OutputFormat.attributeAndJson)
                     }
+                    .tint(.secondary)
                 } header: {
                     Text("Output")
                 } footer: {

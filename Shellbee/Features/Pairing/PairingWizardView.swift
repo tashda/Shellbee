@@ -282,12 +282,14 @@ private struct PermitJoinControls: View {
                     Text(device.friendlyName).tag(String?.some(device.friendlyName))
                 }
             }
+            .tint(.secondary)
             Picker("Duration", selection: $duration) {
                 Text("1 min").tag(60)
                 Text("2 min").tag(120)
                 Text("3 min").tag(180)
                 Text("~4 min").tag(254)
             }
+            .tint(.secondary)
         } header: {
             Text("Open the network")
         } footer: {

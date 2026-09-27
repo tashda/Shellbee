@@ -90,6 +90,7 @@ struct MQTTSettingsView: View {
                         Text("v3.1.1 (v4)").tag(4)
                         Text("v5.0 (v5)").tag(5)
                     }
+                    .tint(.secondary)
                 } header: {
                     Text("Protocol Options")
                 }
@@ -106,6 +107,7 @@ struct MQTTSettingsView: View {
                         Text("QoS 1 — At least once").tag(1)
                         Text("QoS 2 — Exactly once").tag(2)
                     }
+                    .tint(.secondary)
 
                     InlineIntField("Max Packet Size", value: $maximumPacketSize, unit: "bytes", range: 1024...10485760)
                 } header: {

@@ -140,6 +140,7 @@ struct ConnectionServerSection: View {
                 Text("HTTP").tag(false)
                 Text("HTTPS").tag(true)
             }
+            .tint(.secondary)
             .pickerStyle(.automatic)
             .onChange(of: draft.useTLS) { oldValue, newValue in
                 guard oldValue != newValue else { return }

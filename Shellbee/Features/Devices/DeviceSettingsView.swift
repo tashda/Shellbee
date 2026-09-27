@@ -78,6 +78,7 @@ struct DeviceSettingsView: View {
                         Text("QoS 1 — At least once").tag(1)
                         Text("QoS 2 — Exactly once").tag(2)
                     }
+                    .tint(.secondary)
                     InlineIntField("Throttle", value: $throttle, unit: "s", range: 0...300, offLabel: "Off")
                         .onChange(of: throttle) { _, v in
                             sendOption("throttle", value: v == 0 ? .null : .int(v))
@@ -271,6 +272,7 @@ private struct EnumOption: View {
                     Text(displayValue(v)).tag(v)
                 }
             }
+            .tint(.secondary)
         } else {
             LabeledContent(label) {
                 Text(currentValue?.stringValue.map(displayValue) ?? "—")

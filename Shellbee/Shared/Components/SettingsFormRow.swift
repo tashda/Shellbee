@@ -59,6 +59,7 @@ struct SettingsFormRow: View {
                     Text(prettify(v)).tag(v)
                 }
             }
+            .tint(.secondary)
         } else {
             LabeledContent(label) { Text(prettify(current.isEmpty ? "—" : current)) }
         }

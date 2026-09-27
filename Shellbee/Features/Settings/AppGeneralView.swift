@@ -15,6 +15,7 @@ struct AppGeneralView: View {
                             Text(label(for: minutes)).tag(minutes)
                         }
                     }
+                    .tint(.secondary)
                 } header: {
                     Text("Devices")
                 } footer: {

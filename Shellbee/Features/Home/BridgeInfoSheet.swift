@@ -43,63 +43,66 @@ struct BridgeInfoSheet: View {
         let health = session.store.bridgeHealth
 
         return Form {
-            Section("Connection") {
-                LabeledContent("Status", value: statusText(for: session))
-                CopyableRow(label: "URL", value: config.displayURL)
-                if let webSocket = webSocketText(for: config) {
-                    CopyableRow(label: "WebSocket", value: webSocket)
-                        .monospaced()
-                }
-                LabeledContent("TLS", value: config.useTLS ? "On" : "Off")
-                if config.useTLS && config.allowInvalidCertificates {
-                    LabeledContent("Certificate Validation", value: "Off")
-                }
-                LabeledContent("Auth Token", value: config.authToken?.isEmpty == false ? "Configured" : "None")
-            }
-
-            if let info {
-                Section("Zigbee2MQTT") {
-                    CopyableRow(label: "Version", value: info.version)
-                    if let commit = info.commit, !commit.isEmpty {
-                        CopyableRow(label: "Commit", value: String(commit.prefix(7)))
+            SwiftUI.Group {
+                Section("Connection") {
+                    LabeledContent("Status", value: statusText(for: session))
+                    CopyableRow(label: "URL", value: config.displayURL)
+                    if let webSocket = webSocketText(for: config) {
+                        CopyableRow(label: "WebSocket", value: webSocket)
                             .monospaced()
                     }
-                    LabeledContent("Bridge", value: session.store.bridgeOnline ? "Online" : "Offline")
-                    LabeledContent("Log Level", value: info.logLevel.capitalized)
-                    if info.restartRequired {
-                        LabeledContent("Restart Required", value: "Yes")
+                    LabeledContent("TLS", value: config.useTLS ? "On" : "Off")
+                    if config.useTLS && config.allowInvalidCertificates {
+                        LabeledContent("Certificate Validation", value: "Off")
                     }
+                    LabeledContent("Auth Token", value: config.authToken?.isEmpty == false ? "Configured" : "None")
                 }
 
-                Section("Coordinator") {
-                    if let type = info.coordinator.type {
-                        CopyableRow(label: "Type", value: type)
-                    }
-                    if let ieee = info.coordinator.ieeeAddress {
-                        CopyableRow(label: "IEEE Address", value: ieee)
-                            .monospaced()
-                    }
-                    if let revision = info.coordinator.meta?["revision"]?.stringified {
-                        CopyableRow(label: "Revision", value: revision)
-                    }
-                }
-
-                if let network = info.network {
-                    Section("Network") {
-                        CopyableRow(label: "Channel", value: "\(network.channel)")
-                        CopyableRow(label: "PAN ID", value: String(format: "0x%04X", network.panID))
-                            .monospaced()
-                        if let extended = network.extendedPanID?.stringified {
-                            CopyableRow(label: "Extended PAN ID", value: extended)
+                if let info {
+                    Section("Zigbee2MQTT") {
+                        CopyableRow(label: "Version", value: info.version)
+                        if let commit = info.commit, !commit.isEmpty {
+                            CopyableRow(label: "Commit", value: String(commit.prefix(7)))
                                 .monospaced()
+                        }
+                        LabeledContent("Bridge", value: session.store.bridgeOnline ? "Online" : "Offline")
+                        LabeledContent("Log Level", value: info.logLevel.capitalized)
+                        if info.restartRequired {
+                            LabeledContent("Restart Required", value: "Yes")
+                        }
+                    }
+
+                    Section("Coordinator") {
+                        if let type = info.coordinator.type {
+                            CopyableRow(label: "Type", value: type)
+                        }
+                        if let ieee = info.coordinator.ieeeAddress {
+                            CopyableRow(label: "IEEE Address", value: ieee)
+                                .monospaced()
+                        }
+                        if let revision = info.coordinator.meta?["revision"]?.stringified {
+                            CopyableRow(label: "Revision", value: revision)
+                        }
+                    }
+
+                    if let network = info.network {
+                        Section("Network") {
+                            CopyableRow(label: "Channel", value: "\(network.channel)")
+                            CopyableRow(label: "PAN ID", value: String(format: "0x%04X", network.panID))
+                                .monospaced()
+                            if let extended = network.extendedPanID?.stringified {
+                                CopyableRow(label: "Extended PAN ID", value: extended)
+                                    .monospaced()
+                            }
                         }
                     }
                 }
-            }
 
-            if let health {
-                healthSection(health)
+                if let health {
+                    healthSection(health)
+                }
             }
+            .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
     }

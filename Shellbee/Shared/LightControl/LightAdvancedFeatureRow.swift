@@ -37,6 +37,7 @@ struct LightAdvancedFeatureRow: View {
                     Text(value.replacingOccurrences(of: "_", with: " ").capitalized).tag(value)
                 }
             }
+            .tint(.secondary)
         case .numeric(let range, let step):
             if feature.isColorTemperatureMireds {
                 temperatureRow(range: range)
