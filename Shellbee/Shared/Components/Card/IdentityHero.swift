@@ -98,7 +98,7 @@ private struct FlowChips: View {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 if let dotColor = chip.dotColor {
                     Circle()
-                        .fill(dotColor)
+                        .fill(.themedStatus(dotColor))
                         .frame(width: DesignTokens.Size.statusDotHero, height: DesignTokens.Size.statusDotHero)
                 }
                 if let systemImage = chip.systemImage {

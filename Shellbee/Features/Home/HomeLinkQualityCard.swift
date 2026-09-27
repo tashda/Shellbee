@@ -34,7 +34,7 @@ struct HomeLinkQualityCard: View {
         VStack(spacing: DesignTokens.Spacing.xs) {
             Text("\(band.count)")
                 .font(.caption2)
-                .foregroundStyle(band.needsAttention && band.count > 0 ? .red : .secondary)
+                .foregroundStyle(.themedStatus(band.needsAttention && band.count > 0 ? .red : .secondary))
                 .monospacedDigit()
                 .lineLimit(1)
 

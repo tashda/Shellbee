@@ -36,7 +36,7 @@ struct IdentityRow<Artwork: View>: View {
             if let status, status.needsAttention {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Circle()
-                        .fill(status.color)
+                        .fill(.themedStatus(status.color))
                         .frame(width: DesignTokens.Size.statusDotHero, height: DesignTokens.Size.statusDotHero)
                     Text(status.title)
                         .font(.subheadline)

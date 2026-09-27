@@ -29,7 +29,7 @@ struct HomeBridgeHealthGroupCard: View {
                         Spacer(minLength: DesignTokens.Spacing.sm)
                         Text(status(for: entry))
                             .font(.footnote)
-                            .foregroundStyle(needsAttention(entry) ? .orange : .secondary)
+                            .foregroundStyle(.themedStatus(needsAttention(entry) ? .orange : .secondary))
                         Image(systemName: "chevron.right")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(.tertiary)

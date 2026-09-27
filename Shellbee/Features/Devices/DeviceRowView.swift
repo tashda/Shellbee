@@ -79,7 +79,7 @@ struct DeviceRowView: View {
         } else if !isAvailable {
             Text("Offline")
                 .font(.caption.weight(.medium))
-                .foregroundStyle(.red)
+                .foregroundStyle(.themedStatus(.red))
         } else {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 if let battery = state.battery {

@@ -21,7 +21,7 @@ struct CardHeader<Accessory: View>: View {
                     Image(systemName: systemImage)
                         .font(DesignTokens.Typography.cardHeaderSymbol)
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(tint)
+                        .foregroundStyle(.themedStatus(tint))
                         .contentTransition(.symbolEffect(.replace))
                 }
             }
@@ -35,7 +35,7 @@ struct CardHeader<Accessory: View>: View {
             if let value, !value.isEmpty {
                 Text(value)
                     .font(DesignTokens.Typography.cardHeaderValue)
-                    .foregroundStyle(valueColor)
+                    .foregroundStyle(.themedStatus(valueColor))
                     .monospacedDigit()
                     .lineLimit(1)
                     .contentTransition(.numericText())

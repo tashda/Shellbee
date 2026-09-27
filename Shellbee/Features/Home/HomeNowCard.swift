@@ -85,7 +85,7 @@ struct HomeNowCard: View {
                 Button("Stop") { onStopPermitJoin(join.bridgeID) }
                     .font(.subheadline.weight(.semibold))
                     .buttonStyle(.plain)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.themedStatus(.red))
             }
         }
     }

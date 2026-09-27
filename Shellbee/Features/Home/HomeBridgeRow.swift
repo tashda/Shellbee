@@ -16,7 +16,7 @@ struct HomeBridgeRow: View {
         Button(action: action) {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Circle()
-                    .fill(statusColor)
+                    .fill(.themedStatus(statusColor))
                     .frame(width: DesignTokens.Size.statusDotHero,
                            height: DesignTokens.Size.statusDotHero)
 

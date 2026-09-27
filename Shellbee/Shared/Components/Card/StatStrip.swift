@@ -36,19 +36,19 @@ struct StatStrip: View {
             HStack(spacing: DesignTokens.Spacing.xs) {
                 if let dotColor = item.dotColor {
                     Circle()
-                        .fill(dotColor)
+                        .fill(.themedStatus(dotColor))
                         .frame(width: DesignTokens.Size.statusDotHero,
                                height: DesignTokens.Size.statusDotHero)
                 }
                 if let systemImage = item.systemImage {
                     Image(systemName: systemImage, variableValue: item.symbolVariableValue)
                         .font(DesignTokens.Typography.statCaption.weight(.semibold))
-                        .foregroundStyle(item.valueColor ?? .primary)
+                        .foregroundStyle(.themedStatus(item.valueColor ?? .primary))
                 }
                 Text(item.value)
                     .font(DesignTokens.Typography.statValue)
                     .monospacedDigit()
-                    .foregroundStyle(item.valueColor ?? .primary)
+                    .foregroundStyle(.themedStatus(item.valueColor ?? .primary))
                     .lineLimit(1)
                     .minimumScaleFactor(DesignTokens.Typography.scaleFactorMild)
                     .contentTransition(.numericText())

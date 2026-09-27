@@ -73,13 +73,13 @@ struct HomeBatteriesCard: View {
 
             Image(systemName: Self.symbol(for: reading.percent))
                 .font(.subheadline)
-                .foregroundStyle(reading.isLow ? .red : .secondary)
+                .foregroundStyle(.themedStatus(reading.isLow ? .red : .secondary))
 
             Text("\(reading.percent) %")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(reading.isLow ? .red : .primary)
+                .foregroundStyle(.themedStatus(reading.isLow ? .red : .primary))
                 .frame(minWidth: DesignTokens.Size.batteryPercentColumn, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
