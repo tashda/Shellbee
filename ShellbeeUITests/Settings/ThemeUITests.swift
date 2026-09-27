@@ -11,7 +11,11 @@ final class ThemeUITests: ShellbeeUITestCase {
     func testDarkPreviewAndThemeSelection() {
         waitForMainTab()
         app.tapSettingsTab()
-        app.cells.containing(.staticText, identifier: "Appearance").firstMatch.tapWhenReady()
+        let appearance = app.buttons["Appearance"].firstMatch
+        for _ in 0..<6 where !appearance.isHittable {
+            app.swipeUp()
+        }
+        appearance.tapWhenReady()
 
         XCTAssertTrue(app.staticTexts["Color Theme"].firstMatch.waitForExistence(timeout: 5))
         app.staticTexts["Color Theme"].firstMatch.tap()
@@ -28,6 +32,7 @@ final class ThemeUITests: ShellbeeUITestCase {
         XCTAssertTrue(harbor.waitForExistence(timeout: 5))
         harbor.tap()
         app.navigationBars["Color Theme"].buttons.firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Harbor"].firstMatch.waitForExistence(timeout: 5))
+        let themeRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Harbor")).firstMatch
+        XCTAssertTrue(themeRow.waitForExistence(timeout: 5))
     }
 }
