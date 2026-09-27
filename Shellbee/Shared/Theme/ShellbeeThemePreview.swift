@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// A miniature settings screen in the theme: its canvas and glow, a system
-/// row and the accent on a toggle and a bar. Follows the current light or
-/// dark appearance.
+/// A still miniature of a themed screen: the canvas and glow, a card in the
+/// surface colour with a device and a status line, and the accent on the
+/// device's glyph. It shows no controls, so it doesn't read as something to
+/// tap. Follows the current light or dark appearance and Card Tint.
 struct ShellbeeThemePreview: View {
     let theme: ShellbeeTheme
 
@@ -13,35 +14,42 @@ struct ShellbeeThemePreview: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             canvas
-            HStack(spacing: DesignTokens.Spacing.md) {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundStyle(accent)
-                RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm)
-                    .fill(accent.opacity(DesignTokens.Opacity.chipFill))
-                    .overlay(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm)
-                            .fill(accent)
-                            .frame(width: DesignTokens.Theme.previewBarFill)
-                    }
-                    .frame(width: DesignTokens.Theme.previewBarWidth,
-                           height: DesignTokens.Theme.previewBarHeight)
-                Spacer()
-                Toggle("", isOn: .constant(true))
-                    .labelsHidden()
-                    .tint(accent)
-                    .allowsHitTesting(false)
+            VStack(spacing: .zero) {
+                row(symbol: "lightbulb.fill", symbolStyle: AnyShapeStyle(accent),
+                    title: "Living Room", value: "80 %", valueStyle: AnyShapeStyle(.secondary))
+                Divider()
+                    .padding(.leading, DesignTokens.Theme.previewDividerInset)
+                row(symbol: "wifi", symbolStyle: AnyShapeStyle(.status(.good)),
+                    title: "Link quality", value: "142", valueStyle: AnyShapeStyle(.status(.good)))
             }
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .frame(minHeight: DesignTokens.Theme.previewRowHeight)
             .background(
-                Color(.secondarySystemGroupedBackground),
+                .shellbeeSurface,
                 in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md, style: .continuous)
             )
             .padding(DesignTokens.Spacing.md)
         }
+        .environment(\.shellbeeTheme, theme)
         .frame(height: DesignTokens.Theme.previewHeight)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private func row(symbol: String, symbolStyle: AnyShapeStyle, title: String,
+                     value: String, valueStyle: AnyShapeStyle) -> some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: symbol)
+                .foregroundStyle(symbolStyle)
+                .frame(width: DesignTokens.Theme.previewSymbolWidth)
+            Text(title)
+            Spacer(minLength: DesignTokens.Spacing.sm)
+            Text(value)
+                .foregroundStyle(valueStyle)
+                .monospacedDigit()
+        }
+        .font(.footnote)
+        .padding(.horizontal, DesignTokens.Spacing.md)
+        .frame(minHeight: DesignTokens.Theme.previewRowHeight)
     }
 
     @ViewBuilder

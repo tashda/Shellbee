@@ -4,49 +4,59 @@ struct AppAppearanceSettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(ShellbeeTheme.storageKey) private var themeRawValue = ShellbeeTheme.defaultTheme.rawValue
     @AppStorage(StatusTone.themedStorageKey) private var themesStatusColors = false
+    @AppStorage(ShellbeeTheme.surfaceTintKey) private var surfaceTint = ShellbeeTheme.defaultSurfaceTint
     @AppStorage(BridgeGradientMode.storageKey) private var indicatorModeRaw = BridgeGradientMode.default.rawValue
 
     var body: some View {
         Form {
             SwiftUI.Group {
                 Section {
+                    ShellbeeThemePreview(theme: theme)
+                        .listRowInsets(EdgeInsets(top: DesignTokens.Spacing.md,
+                                                  leading: DesignTokens.Spacing.lg,
+                                                  bottom: DesignTokens.Spacing.md,
+                                                  trailing: DesignTokens.Spacing.lg))
+                    NavigationLink {
+                        HomeThemePickerView()
+                    } label: {
+                        LabeledContent("Color Theme") {
+                            Text(theme.displayName)
+                        }
+                    }
                     Picker("Appearance", selection: $appearanceMode) {
                         Text("System").tag(AppearanceMode.system)
                         Text("Light").tag(AppearanceMode.light)
                         Text("Dark").tag(AppearanceMode.dark)
                     }
                     .tint(.secondary)
-                    NavigationLink {
-                        HomeThemePickerView()
-                    } label: {
-                        LabeledContent("Color Theme") {
-                            Text(ShellbeeTheme.stored(themeRawValue).displayName)
-                        }
-                    }
-                    ShellbeeThemePreview(theme: ShellbeeTheme.stored(themeRawValue))
-                        .listRowInsets(EdgeInsets(top: DesignTokens.Spacing.md,
-                                                  leading: DesignTokens.Spacing.lg,
-                                                  bottom: DesignTokens.Spacing.md,
-                                                  trailing: DesignTokens.Spacing.lg))
-                    if ShellbeeTheme.stored(themeRawValue) != .system {
-                        Toggle("Themed Status Colors", isOn: $themesStatusColors)
-                    }
                 } header: {
                     Text("Theme")
                 } footer: {
-                    Text(ShellbeeTheme.stored(themeRawValue) == .system
-                         ? "Themes tint the background, rows and accent of every screen."
-                         : "Themes tint the background, rows and accent of every screen. Themed Status Colors also recolors link quality, battery and weak link warnings to match.")
+                    Text("Themes tint the background, rows, cards and controls of every screen.")
                 }
 
-                Section("Home") {
-                    NavigationLink { HomeSettingsView() } label: {
-                        SettingsNavigationLabel(
-                            title: "Home",
-                            systemImage: "house.fill",
-                            color: .blue
-                        )
+                if theme != .system {
+                    Section {
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                            Text("Card Tint")
+                            Slider(value: $surfaceTint, in: 0...1) {
+                                Text("Card Tint")
+                            } minimumValueLabel: {
+                                Image(systemName: "square")
+                                    .foregroundStyle(.secondary)
+                            } maximumValueLabel: {
+                                Image(systemName: "square.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Toggle("Themed Status Colors", isOn: $themesStatusColors)
+                    } footer: {
+                        Text("Card Tint sets how strongly rows and cards take on the theme. Themed Status Colors recolors link quality, battery, offline and warning states to match it.")
                     }
+                }
+
+                Section("Layout") {
+                    NavigationLink("Home Screen") { HomeSettingsView() }
                 }
 
                 Section {
@@ -69,6 +79,8 @@ struct AppAppearanceSettingsView: View {
         .navigationTitle("Appearance")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private var theme: ShellbeeTheme { ShellbeeTheme.stored(themeRawValue) }
 
     private var indicatorMode: BridgeGradientMode {
         BridgeGradientMode(rawValue: indicatorModeRaw) ?? BridgeGradientMode.default

@@ -44,18 +44,43 @@ private struct ShellbeeThemedCanvas: ViewModifier {
     }
 }
 
-/// The row and card colour: the theme's surface, or the system's grouped
-/// secondary background when no theme is chosen. Use it anywhere a view
-/// would reach for `secondarySystemGroupedBackground`.
+/// The row and card colour. With no theme it's the system's grouped
+/// secondary background. With a theme it blends from there toward the theme
+/// by the Card Tint setting: toward the canvas in light mode, and toward the
+/// accent in dark mode, where the canvas is darker than the card. Use it
+/// anywhere a view would reach for `secondarySystemGroupedBackground`.
 nonisolated struct ShellbeeSurfaceStyle: ShapeStyle {
     func resolve(in environment: EnvironmentValues) -> Color.Resolved {
-        let color = environment.shellbeeTheme.palette?.surface ?? Color(.secondarySystemGroupedBackground)
-        return color.resolve(in: environment)
+        let base = Color(.secondarySystemGroupedBackground).resolve(in: environment)
+        guard let palette = environment.shellbeeTheme.palette else { return base }
+        let dark = environment.colorScheme == .dark
+        let target = (dark ? palette.accent : palette.canvas).resolve(in: environment)
+        let reach = dark ? DesignTokens.Theme.surfaceReachDark : DesignTokens.Theme.surfaceReachLight
+        let amount = Float(environment.shellbeeSurfaceTint * reach)
+        return Color.Resolved(
+            red: base.red + (target.red - base.red) * amount,
+            green: base.green + (target.green - base.green) * amount,
+            blue: base.blue + (target.blue - base.blue) * amount,
+            opacity: base.opacity
+        )
     }
 }
 
 extension ShapeStyle where Self == ShellbeeSurfaceStyle {
     static var shellbeeSurface: ShellbeeSurfaceStyle { ShellbeeSurfaceStyle() }
+}
+
+/// The ink for monochrome charts (link quality bars, vendor rankings): the
+/// primary label colour, or the theme accent when a theme is chosen. Vary
+/// weight with `.opacity(_:)`.
+nonisolated struct ShellbeeChartInkStyle: ShapeStyle {
+    func resolve(in environment: EnvironmentValues) -> Color.Resolved {
+        (environment.shellbeeTheme.palette?.accent ?? .primary).resolve(in: environment)
+    }
+}
+
+extension ShapeStyle where Self == ShellbeeChartInkStyle {
+    static var shellbeeChartInk: ShellbeeChartInkStyle { ShellbeeChartInkStyle() }
 }
 
 private struct ShellbeeThemedRows: ViewModifier {

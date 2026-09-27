@@ -72,6 +72,15 @@ nonisolated extension ShellbeeTheme {
     }
 }
 
+nonisolated extension ShellbeeTheme {
+    /// Series colours for categorical charts such as the device type donut:
+    /// the accent, a companion from the theme's family, then grey.
+    var categoricalColors: [Color] {
+        guard let palette, let companion = statusColor(.fair) else { return [.blue, .orange, .gray] }
+        return [palette.accent, companion, .gray]
+    }
+}
+
 extension EnvironmentValues {
     /// The colour to draw for a system status colour in this environment:
     /// the theme's tone when Themed Status Colors is on, otherwise unchanged.

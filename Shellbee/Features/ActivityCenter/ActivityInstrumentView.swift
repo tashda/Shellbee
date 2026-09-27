@@ -11,11 +11,7 @@ struct ActivityInstrumentView: View {
             var scaled = context
             let grid = DesignTokens.ActivityInstrument.grid
             scaled.scaleBy(x: canvasSize.width / grid, y: canvasSize.height / grid)
-            ActivityInstrumentDrawing(
-                instrument: instrument,
-                pen: ActivityInstrumentPen(context: scaled),
-                tint: context.environment.themedStatusColor(instrument.tint)
-            ).draw()
+            ActivityInstrumentDrawing(instrument: instrument, pen: ActivityInstrumentPen(context: scaled)).draw()
         }
         .frame(width: size, height: size)
         // Cut-outs erase to transparent, so the Canvas needs its own layer.
@@ -31,7 +27,7 @@ struct ActivityInstrumentDrawing {
     let instrument: ActivityInstrument
     let pen: ActivityInstrumentPen
 
-    let tint: Color
+    var tint: Color { instrument.tint }
     var value: Double { instrument.normalizedValue }
 
     func draw() {

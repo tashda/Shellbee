@@ -68,7 +68,7 @@ struct HomeLinkQualityCard: View {
             return band.count > 0 ? AnyShapeStyle(.status(.poor)) : AnyShapeStyle(Color(.tertiarySystemFill))
         }
         let share = Double(band.count) / Double(peak)
-        return AnyShapeStyle(Color.primary.opacity(DesignTokens.Opacity.chartBarFloor
+        return AnyShapeStyle(.shellbeeChartInk.opacity(DesignTokens.Opacity.chartBarFloor
             + share * DesignTokens.Opacity.chartBarRange))
     }
 }

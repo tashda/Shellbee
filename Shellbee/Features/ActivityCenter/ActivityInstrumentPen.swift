@@ -9,23 +9,29 @@ struct ActivityInstrumentPen {
     static let markWidth = DesignTokens.ActivityInstrument.markWidth
     static let trackOpacity = DesignTokens.ActivityInstrument.trackOpacity
 
+    /// Status colours follow Themed Status Colors; gradients passed as
+    /// shading (a colour wheel, the air quality scale) keep their real hues.
+    private func themed(_ color: Color) -> Color {
+        context.environment.themedStatusColor(color)
+    }
+
     // MARK: - Strokes
 
     func line(_ from: CGPoint, _ to: CGPoint, _ color: Color, width: CGFloat = markWidth, opacity: Double = 1) {
         var path = Path()
         path.move(to: from)
         path.addLine(to: to)
-        stroke(path, color.opacity(opacity), width: width)
+        stroke(path, themed(color).opacity(opacity), width: width)
     }
 
     func polyline(_ points: [CGPoint], _ color: Color, width: CGFloat = markWidth, opacity: Double = 1) {
         var path = Path()
         path.addLines(points)
-        stroke(path, color.opacity(opacity), width: width)
+        stroke(path, themed(color).opacity(opacity), width: width)
     }
 
     func ring(_ center: CGPoint, radius: CGFloat, _ color: Color, width: CGFloat = markWidth, opacity: Double = 1) {
-        stroke(Path(ellipseIn: Self.circle(center, radius)), color.opacity(opacity), width: width)
+        stroke(Path(ellipseIn: Self.circle(center, radius)), themed(color).opacity(opacity), width: width)
     }
 
     /// Angles in degrees, 0 pointing right, increasing clockwise on screen.
@@ -41,11 +47,11 @@ struct ActivityInstrumentPen {
         _ center: CGPoint, radius: CGFloat, from start: Double, to end: Double,
         _ color: Color, width: CGFloat = markWidth, opacity: Double = 1
     ) {
-        arc(center, radius: radius, from: start, to: end, .color(color.opacity(opacity)), width: width)
+        arc(center, radius: radius, from: start, to: end, .color(themed(color).opacity(opacity)), width: width)
     }
 
     func stroke(_ path: Path, _ color: Color, width: CGFloat = markWidth) {
-        stroke(path, .color(color), width: width)
+        stroke(path, .color(themed(color)), width: width)
     }
 
     func stroke(_ path: Path, _ shading: GraphicsContext.Shading, width: CGFloat = markWidth) {
@@ -55,11 +61,11 @@ struct ActivityInstrumentPen {
     // MARK: - Fills
 
     func dot(_ center: CGPoint, radius: CGFloat, _ color: Color, opacity: Double = 1) {
-        context.fill(Path(ellipseIn: Self.circle(center, radius)), with: .color(color.opacity(opacity)))
+        context.fill(Path(ellipseIn: Self.circle(center, radius)), with: .color(themed(color).opacity(opacity)))
     }
 
     func fill(_ path: Path, _ color: Color, opacity: Double = 1) {
-        context.fill(path, with: .color(color.opacity(opacity)))
+        context.fill(path, with: .color(themed(color).opacity(opacity)))
     }
 
     func fill(_ path: Path, _ shading: GraphicsContext.Shading) {
@@ -77,7 +83,7 @@ struct ActivityInstrumentPen {
             layer.fill(
                 Path(CGRect(x: 0, y: surface, width: DesignTokens.ActivityInstrument.grid, height: span.upperBound - surface + 4)),
                 with: .linearGradient(
-                    Gradient(colors: [top, bottom]),
+                    Gradient(colors: [themed(top), themed(bottom)]),
                     startPoint: CGPoint(x: 0, y: span.lowerBound),
                     endPoint: CGPoint(x: 0, y: span.upperBound)
                 )

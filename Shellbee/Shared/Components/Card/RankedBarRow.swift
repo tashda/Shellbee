@@ -22,7 +22,7 @@ struct RankedBarRow: View {
                 .frame(width: DesignTokens.Size.vendorBar, height: DesignTokens.Size.vendorBarHeight)
                 .overlay(alignment: .leading) {
                     Capsule()
-                        .fill(Color.primary.opacity(weight))
+                        .fill(.shellbeeChartInk.opacity(weight))
                         .frame(
                             width: DesignTokens.Size.vendorBar * CGFloat(count) / CGFloat(max(peak, 1)),
                             height: DesignTokens.Size.vendorBarHeight

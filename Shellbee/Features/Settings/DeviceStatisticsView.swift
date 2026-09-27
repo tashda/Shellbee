@@ -250,7 +250,7 @@ struct DeviceStatisticsView: View {
 
     private func chartColor(index: Int, total: Int) -> Color {
         if total <= 3 {
-            let palette: [Color] = [.blue, .orange, .gray]
+            let palette = theme.categoricalColors
             return palette[min(index, palette.count - 1)]
         }
         let progress = total <= 1 ? 0 : Double(index) / Double(total - 1)
