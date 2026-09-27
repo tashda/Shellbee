@@ -36,10 +36,13 @@ struct DocOptionRowView: View {
 
 extension DocOption {
     /// z2m's label from the device definition when there is one, otherwise
-    /// the catalog's readable form of the key.
+    /// the key humanised the way z2m builds its labels ("color_sync" →
+    /// "Color sync").
     func label(in definition: DeviceDefinition?) -> String {
         let match = definition?.options?.first { $0.property == name || $0.name == name }
-        return match?.label ?? FeatureCatalog.label(for: name)
+        if let label = match?.label { return label }
+        let words = name.replacingOccurrences(of: "_", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
 
     var typeText: String? {

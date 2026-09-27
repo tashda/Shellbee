@@ -85,18 +85,20 @@ actor DocBrowserIndex {
     static let shared = DocBrowserIndex()
 
     private nonisolated let log = Logger(subsystem: "dev.echodb.shellbee", category: "DocBrowserIndex")
-    private var entries: [DocBrowserEntry]?
-    private var loaded = false
+    /// One shared load, so callers that arrive while the index is still
+    /// decoding wait for it instead of getting an empty list.
+    private var loadTask: Task<[DocBrowserEntry], Never>?
 
     private init() {}
 
     func allEntries() async -> [DocBrowserEntry] {
-        if !loaded { await load() }
-        return entries ?? []
+        if let loadTask { return await loadTask.value }
+        let task = Task { await Self.load(log: log) }
+        loadTask = task
+        return await task.value
     }
 
-    private func load() async {
-        loaded = true
+    private static func load(log: Logger) async -> [DocBrowserEntry] {
         let result: [DocBrowserEntry]? = await Task.detached(priority: .userInitiated) {
             guard
                 let url        = Bundle.main.url(forResource: "device_index", withExtension: "lzfse"),
@@ -107,11 +109,11 @@ actor DocBrowserIndex {
             return list
         }.value
 
-        entries = result
-        if let entries {
-            log.info("Device index loaded: \(entries.count) entries")
+        if let result {
+            log.info("Device index loaded: \(result.count) entries")
         } else {
             log.warning("Device index unavailable")
         }
+        return result ?? []
     }
 }

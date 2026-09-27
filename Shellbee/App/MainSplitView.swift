@@ -106,6 +106,11 @@ struct MainSplitView: View {
             applyInitialDestinationIfPossible()
         }
         .focusedSceneValue(\.appKeyboardActions, keyboardActions)
+        .task(id: selection == .library) {
+            if selection == .library, libraryEntries.isEmpty {
+                libraryEntries = await DocBrowserIndex.shared.allEntries()
+            }
+        }
     }
 
     @ViewBuilder
@@ -128,7 +133,7 @@ struct MainSplitView: View {
 
     private func twoColumnShell(usesWideHomeLayout: Bool) -> some View {
         NavigationSplitView(columnVisibility: $twoColumnVisibility) {
-            sidebar
+            sidebar(showsLibraryFilters: false)
                 .navigationTitle("Shellbee")
                 .navigationSplitViewColumnWidth(
                     min: DesignTokens.Size.iPadSidebarMinimumWidth,
@@ -155,7 +160,7 @@ struct MainSplitView: View {
         // shell tears down. `.transaction` strips animation off the
         // .id-driven rebuild so it's instant.
         NavigationSplitView(columnVisibility: $threeColumnVisibility) {
-            sidebar
+            sidebar(showsLibraryFilters: true)
                 .navigationTitle("Shellbee")
                 .navigationSplitViewColumnWidth(
                     min: DesignTokens.Size.iPadSidebarMinimumWidth,
@@ -181,7 +186,7 @@ struct MainSplitView: View {
         .navigationSplitViewStyle(.balanced)
     }
 
-    private var sidebar: some View {
+    private func sidebar(showsLibraryFilters: Bool) -> some View {
         List(selection: $selection) {
             // No section title: the sidebar's navigation title already
             // reads "Shellbee".
@@ -196,7 +201,7 @@ struct MainSplitView: View {
             if selection == .logs {
                 ActivityWorkspaceFilters(workspace: logsWorkspace)
             }
-            if selection == .library {
+            if selection == .library, showsLibraryFilters {
                 DocLibraryWorkspaceFilters(scope: $libraryScope, entries: libraryEntries)
             }
             if selection == .networkMap {
@@ -333,7 +338,6 @@ struct MainSplitView: View {
             SettingsWorkspaceList(selection: $selectedSettingsRoute)
         case .library:
             DocLibraryListView(scope: libraryScope, allEntries: libraryEntries, selection: $selectedLibraryEntry)
-                .task { libraryEntries = await DocBrowserIndex.shared.allEntries() }
         case .home, .search:
             EmptyView()
         }
