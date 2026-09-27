@@ -344,6 +344,7 @@
 				Features/Settings/DocLibraryListView.swift,
 				Features/Settings/DocLibraryScope.swift,
 				Features/Settings/DocLibraryTypeGrid.swift,
+				Features/Settings/DocLibraryWorkspaceFilters.swift,
 				Features/Settings/FrontendSettingsView.swift,
 				Features/Settings/HealthSettingsView.swift,
 				Features/Settings/HomeAssistantSettingsView.swift,

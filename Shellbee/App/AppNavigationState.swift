@@ -1,7 +1,9 @@
 import SwiftUI
 
 enum AppTab: String, Codable, Hashable, CaseIterable {
-    case home, devices, groups, logs, networkMap, settings, search
+    /// `library` is an iPad sidebar section only; iPhone reaches the Device
+    /// Library from Settings.
+    case home, devices, groups, logs, networkMap, settings, library, search
 
     static let keyboardSections: [AppTab] = [
         .home, .devices, .groups, .logs, .networkMap, .settings
@@ -15,6 +17,7 @@ enum AppTab: String, Codable, Hashable, CaseIterable {
         case .logs: "Activity"
         case .networkMap: "Network Map"
         case .settings: "Settings"
+        case .library: "Device Library"
         case .search: "Search"
         }
     }
@@ -27,6 +30,7 @@ enum AppTab: String, Codable, Hashable, CaseIterable {
         case .logs: "list.bullet.rectangle"
         case .networkMap: "point.3.connected.trianglepath.dotted"
         case .settings: "gearshape.fill"
+        case .library: "books.vertical.fill"
         case .search: "magnifyingglass"
         }
     }
@@ -43,6 +47,7 @@ enum AppTab: String, Codable, Hashable, CaseIterable {
         case .logs: .custom("activity")
         case .networkMap: .custom("mesh")
         case .settings: .custom("settings")
+        case .library: .custom("library")
         case .search: .custom("search")
         }
     }

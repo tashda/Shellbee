@@ -18,7 +18,6 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
     case appearance
     case appGeneral
     case liveActivities
-    case deviceLibrary
     case about
     case developer
 
@@ -33,7 +32,7 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
              .availability(let id), .ota(let id), .health(let id), .network(let id),
              .deviceFiltering(let id), .touchlink(let id), .backup(let id): id
         case .appearance, .appGeneral, .liveActivities,
-             .deviceLibrary, .about, .developer: nil
+             .about, .developer: nil
         }
     }
 
@@ -65,7 +64,6 @@ enum SettingsWorkspaceRoute: Hashable, Identifiable {
         case .appearance: "appearance"
         case .appGeneral: "app-general"
         case .liveActivities: "live-activities"
-        case .deviceLibrary: "device-library"
         case .about: "about"
         case .developer: "developer"
         }

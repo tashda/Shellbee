@@ -58,9 +58,6 @@ struct SettingsWorkspaceList: View {
                 routeRow(.liveActivities, title: "Live Activities", systemImage: "rectangle.inset.filled.and.person.filled", color: .pink)
                 routeRow(.about, title: "About", systemImage: "info.circle.fill", color: Color(.systemGray2))
             }
-            Section("Tools") {
-                routeRow(.deviceLibrary, title: "Device Library", systemImage: "books.vertical.fill", color: .orange)
-            }
             if developerModeEnabled {
                 Section("Developer") {
                     routeRow(.developer, title: "Developer", systemImage: "hammer.fill", color: .purple)

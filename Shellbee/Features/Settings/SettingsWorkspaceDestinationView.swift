@@ -23,7 +23,6 @@ struct SettingsWorkspaceDestinationView: View {
         case .appearance: AppAppearanceSettingsView()
         case .appGeneral: AppGeneralView()
         case .liveActivities: AppLiveActivitiesView()
-        case .deviceLibrary: DocBrowserView()
         case .about: AboutView()
         case .developer: DeveloperSettingsView()
         }

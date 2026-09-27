@@ -10,9 +10,8 @@ import SwiftUI
 ///   Each section pushes detail within its own column (Reminders/Files
 ///   pattern).
 ///
-/// `Logs` and `Device Library` are sidebar-only entries; the iPhone tab
-/// bar declares its four tabs explicitly and never iterates
-/// `AppTab.allCases`.
+/// `Device Library` is a sidebar-only entry; the iPhone tab bar declares
+/// its tabs explicitly and never iterates `AppTab.allCases`.
 ///
 /// The iPad shell uses the system-provided sidebar toggle. The optional soft
 /// top-edge treatment is applied separately so turning it off restores the
@@ -35,6 +34,9 @@ struct MainSplitView: View {
     @State private var didApplyInitialDestination = false
     @State private var networkMapFilters: Set<NetworkMapFilter> = []
     @State private var networkMapBridgeID: UUID?
+    @State private var libraryScope: DocLibraryScope = .all
+    @State private var libraryEntries: [DocBrowserEntry] = []
+    @State private var selectedLibraryEntry: DocBrowserEntry?
 
     init(initialDestination: ShellbeeWindowDestination = .home) {
         self.initialDestination = initialDestination
@@ -47,7 +49,7 @@ struct MainSplitView: View {
     private func usesThreeColumns(wideIPadLayout: Bool) -> Bool {
         guard wideIPadLayout else { return false }
         switch selection ?? .home {
-        case .devices, .groups, .logs, .settings: return true
+        case .devices, .groups, .logs, .settings, .library: return true
         case .home, .networkMap, .search: return false
         }
     }
@@ -194,6 +196,9 @@ struct MainSplitView: View {
             if selection == .logs {
                 ActivityWorkspaceFilters(workspace: logsWorkspace)
             }
+            if selection == .library {
+                DocLibraryWorkspaceFilters(scope: $libraryScope, entries: libraryEntries)
+            }
             if selection == .networkMap {
                 NetworkMapWorkspaceFilters(
                     filters: $networkMapFilters,
@@ -289,6 +294,10 @@ struct MainSplitView: View {
                         SettingsWorkspaceDestinationView(route: route)
                     }
             }
+        case .library:
+            NavigationStack {
+                DocBrowserView()
+            }
         }
     }
 
@@ -322,6 +331,9 @@ struct MainSplitView: View {
             )
         case .settings:
             SettingsWorkspaceList(selection: $selectedSettingsRoute)
+        case .library:
+            DocLibraryListView(scope: libraryScope, allEntries: libraryEntries, selection: $selectedLibraryEntry)
+                .task { libraryEntries = await DocBrowserIndex.shared.allEntries() }
         case .home, .search:
             EmptyView()
         }
@@ -396,6 +408,19 @@ struct MainSplitView: View {
                     "Select a Device",
                     image: "shellbee.devices",
                     description: Text("Pick a node from the map to view its device details.")
+                )
+            }
+        case .library:
+            if let entry = selectedLibraryEntry {
+                NavigationStack {
+                    DocBrowserDetailView(entry: entry)
+                }
+                .id(entry)
+            } else {
+                ContentUnavailableView(
+                    "Select a Device",
+                    systemImage: "books.vertical",
+                    description: Text("Pick a device from the library to read its documentation.")
                 )
             }
         case .home, .search:
