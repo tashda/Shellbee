@@ -131,6 +131,7 @@ struct DeviceDocCapability: Sendable, Identifiable {
     nonisolated var valueSummary: String? {
         if let rangeText { return rangeText }
         switch kind {
+        case "binary" where values.count == 2: return values.joined(separator: ", ")
         case "binary": return "On, Off"
         case "enum" where values.count > 4: return "\(values.count) options"
         case "enum" where !values.isEmpty: return values.joined(separator: ", ")

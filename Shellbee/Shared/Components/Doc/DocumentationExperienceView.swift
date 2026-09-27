@@ -21,16 +21,7 @@ struct DocumentationExperienceView: View {
 
     private var hasBodyContent: Bool {
         !normalized.capabilities.isEmpty || !normalized.options.isEmpty
-            || !normalized.notesSections.isEmpty || !moreSections.isEmpty
-    }
-
-    /// The markdown "Exposes" section repeats what the capability rows show,
-    /// so it only appears when there are none (Device Library entries).
-    private var moreSections: [DocSection] {
-        normalized.additionalSections.filter { section in
-            normalized.capabilities.isEmpty
-                || DeviceDocNormalizer.normalizeTitle(section.title) != "exposes"
-        }
+            || !normalized.notesSections.isEmpty || !normalized.additionalSections.isEmpty
     }
 
     var body: some View {
@@ -116,7 +107,7 @@ struct DocumentationExperienceView: View {
             )
         }
         DocNotesSection(title: "Notes", sections: normalized.notesSections, sourcePath: documentation.sourcePath)
-        DocNotesSection(title: "More", sections: moreSections, sourcePath: documentation.sourcePath)
+        DocNotesSection(title: "More", sections: normalized.additionalSections, sourcePath: documentation.sourcePath)
     }
 }
 

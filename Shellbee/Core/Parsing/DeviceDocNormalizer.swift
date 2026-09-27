@@ -17,7 +17,8 @@ enum DeviceDocNormalizer {
             supportsOTA: supportsOTA
         )
 
-        let capabilities = makeCapabilities(from: device.definition?.exposes ?? [])
+        var capabilities = makeCapabilities(from: device.definition?.exposes ?? [])
+        var exposesSection: DocSection?
 
         var pairingSourceBlocks: [DocBlock] = []
         var pairingRelatedBlocks: [DocBlock] = []
@@ -63,7 +64,7 @@ enum DeviceDocNormalizer {
             }
 
             if normalizedTitle == "exposes" {
-                advancedSections.append(section)
+                exposesSection = section
                 continue
             }
 
@@ -72,6 +73,16 @@ enum DeviceDocNormalizer {
             } else {
                 miscSections.append(section)
             }
+        }
+
+        // Library entries have no device definition; read the capabilities
+        // from the docs instead. The markdown section only stays when
+        // neither source gives any.
+        if capabilities.isEmpty, let exposesSection {
+            capabilities = makeCapabilities(from: DeviceDocExposesParser.exposes(from: exposesSection))
+        }
+        if capabilities.isEmpty, let exposesSection {
+            advancedSections.append(exposesSection)
         }
 
         let pairing = makePairingGuide(

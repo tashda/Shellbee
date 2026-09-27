@@ -129,6 +129,7 @@
 				Core/Networking/Z2MTopics.swift,
 				Core/Networking/Z2MWebSocketClient.swift,
 				Core/Networking/Z2MWebSocketSessionDelegate.swift,
+				Core/Parsing/DeviceDocExposesParser.swift,
 				Core/Parsing/DeviceDocNormalizer.swift,
 				"Core/Parsing/DeviceDocNormalizer+Pairing.swift",
 				Core/Parsing/DeviceDocumentationModels.swift,
