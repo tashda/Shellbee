@@ -9,7 +9,6 @@ struct DeviceDocView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var documentation: DeviceDocumentation?
     @State private var loadError: DeviceDocError?
-    @State private var isLoading = false
     @State private var showPairingGuide = false
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
@@ -49,21 +48,21 @@ struct DeviceDocView: View {
 
     @ViewBuilder
     private var placeholder: some View {
-        if isLoading {
+        if let error = loadError {
+            errorView(error)
+        } else if documentation != nil || device.definition?.model == nil {
+            ContentUnavailableView(
+                "No Documentation",
+                systemImage: "doc.questionmark",
+                description: Text("No documentation is available for \(device.definition?.model ?? "this device").")
+            )
+        } else {
             VStack(spacing: DesignTokens.Spacing.md) {
                 ProgressView()
                 Text("Loading documentation")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-        } else if let error = loadError {
-            errorView(error)
-        } else if documentation != nil {
-            ContentUnavailableView(
-                "No Documentation",
-                systemImage: "doc.questionmark",
-                description: Text("No documentation is available for \(device.definition?.model ?? "this device").")
-            )
         }
     }
 
@@ -83,8 +82,6 @@ struct DeviceDocView: View {
         }
         let version = scope.bridgeInfo?.version ?? "master"
         log.debug("loadDoc: model=\(model) version=\(version)")
-        isLoading = true
-        defer { isLoading = false }
         do {
             documentation = try await DeviceDocService.shared.doc(for: device, z2mVersion: version)
             log.debug("loadDoc: success, sections=\(documentation?.parsed.sections.count ?? 0)")
