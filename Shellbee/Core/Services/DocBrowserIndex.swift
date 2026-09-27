@@ -40,6 +40,32 @@ enum DocDeviceType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// One device of this type, for a Type stat ("Light").
+    var singularTitle: String {
+        switch self {
+        case .light: "Light"
+        case .switch_: "Switch"
+        case .sensor: "Sensor"
+        case .thermostat: "Thermostat"
+        case .cover: "Cover"
+        case .remote: "Remote"
+        case .energy: "Meter"
+        }
+    }
+
+    /// A browse tile or list title ("Lights").
+    var pluralTitle: String {
+        switch self {
+        case .light: "Lights"
+        case .switch_: "Switches and plugs"
+        case .sensor: "Sensors"
+        case .thermostat: "Thermostats"
+        case .cover: "Covers"
+        case .remote: "Remotes"
+        case .energy: "Energy meters"
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .light:      "lightbulb.fill"

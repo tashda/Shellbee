@@ -32,13 +32,11 @@ struct AddSceneSheet: View {
                     onConfirm(name.trimmingCharacters(in: .whitespaces))
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.sheetAction)
                 .disabled(!isNameValid)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .shellbeeThemedBar()
             }
         }
         .configuredTopScrollEdgeEffect()

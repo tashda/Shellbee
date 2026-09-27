@@ -50,12 +50,10 @@ struct RemoveGroupSheet: View {
                     onConfirm(forceRemove)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.sheetAction)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .shellbeeThemedBar()
             }
         }
         .configuredTopScrollEdgeEffect()

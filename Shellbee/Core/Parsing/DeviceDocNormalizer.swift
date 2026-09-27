@@ -14,8 +14,7 @@ enum DeviceDocNormalizer {
             model: device.definition?.model ?? device.modelId ?? "Unknown Model",
             description: device.definition?.description ?? device.description ?? "",
             imageURL: device.imageURL,
-            supportsOTA: supportsOTA,
-            exposesSummary: exposesSummary(device.definition?.exposes ?? [])
+            supportsOTA: supportsOTA
         )
 
         let capabilities = makeCapabilities(from: device.definition?.exposes ?? [])
@@ -220,78 +219,9 @@ enum DeviceDocNormalizer {
     }
 
     private static nonisolated func makeCapabilities(from exposes: [Expose]) -> [DeviceDocCapability] {
-        exposes.flattened.map { expose in
-            let title = expose.label ?? expose.name ?? expose.property ?? expose.type.capitalized
-            let subtitle = expose.property ?? expose.name
-            let detailChips = capabilityChips(for: expose)
-            return DeviceDocCapability(
-                title: title,
-                subtitle: subtitle == title ? nil : subtitle,
-                summary: capabilitySummary(for: expose),
-                kind: expose.type,
-                unit: expose.unit,
-                isReadable: expose.isReadable,
-                isWritable: expose.isWritable,
-                detailChips: detailChips
-            )
-        }
-    }
-
-    private static nonisolated func capabilitySummary(for expose: Expose) -> String {
-        if let description = expose.description, !description.isEmpty {
-            return description
-        }
-
-        var parts: [String] = []
-        if let values = expose.values, !values.isEmpty {
-            parts.append("Possible values: \(values.joined(separator: ", "))")
-        }
-        if let min = expose.valueMin, let max = expose.valueMax {
-            let range = "\(formatNumber(min)) to \(formatNumber(max))"
-            if let unit = expose.unit, !unit.isEmpty {
-                parts.append("Range \(range) \(unit)")
-            } else {
-                parts.append("Range \(range)")
-            }
-        } else if let unit = expose.unit, !unit.isEmpty {
-            parts.append("Reports in \(unit)")
-        }
-
-        let access: String
-        switch (expose.isReadable, expose.isWritable) {
-        case (true, true): access = "Readable and writable."
-        case (true, false): access = "Read-only."
-        case (false, true): access = "Write-only."
-        default: access = "State only."
-        }
-        parts.append(access)
-
-        return parts.joined(separator: ". ")
-    }
-
-    private static nonisolated func capabilityChips(for expose: Expose) -> [String] {
-        var chips: [String] = []
-        if let endpoint = expose.endpoint, !endpoint.isEmpty { chips.append(endpoint.uppercased()) }
-        if let values = expose.values, !values.isEmpty, values.count <= 3 { chips.append(values.joined(separator: " / ")) }
-        if let step = expose.valueStep { chips.append("Step \(formatNumber(step))") }
-        return orderedUnique(chips)
-    }
-
-    private static nonisolated func orderedUnique(_ items: [String]) -> [String] {
-        var seen: Set<String> = []
-        return items.filter { seen.insert($0).inserted }
-    }
-
-    private static nonisolated func formatNumber(_ value: Double) -> String {
-        value.rounded() == value ? String(Int(value)) : String(value)
-    }
-
-    private static nonisolated func exposesSummary(_ exposes: [Expose]) -> String? {
-        let labels = exposes.flattened
-            .map { $0.label ?? $0.name ?? $0.type.capitalized }
-            .filter { !$0.isEmpty }
-        guard !labels.isEmpty else { return nil }
-        return Array(labels.prefix(5)).joined(separator: ", ")
+        exposes.flattenedLeaves
+            .filter { $0.property != nil }
+            .map(DeviceDocCapability.init(expose:))
     }
 
     /// Detects OTA support from the canonical Z2M doc phrasing. Z2M device pages emit

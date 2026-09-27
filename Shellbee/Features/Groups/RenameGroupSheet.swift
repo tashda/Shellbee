@@ -52,13 +52,11 @@ struct RenameGroupSheet: View {
                 Button("Save Changes") {
                     saveIfPossible()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.sheetAction)
                 .disabled(!canSave)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .shellbeeThemedBar()
             }
         }
         .configuredTopScrollEdgeEffect()

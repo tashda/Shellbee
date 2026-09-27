@@ -72,12 +72,8 @@ struct PermitJoinActiveSheet: View {
             dismiss()
         } label: {
             Text("Disable Join")
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.red)
-        .controlSize(.large)
+        .buttonStyle(.sheetAction)
     }
 
     private func remainingSeconds(at date: Date) -> Int? {

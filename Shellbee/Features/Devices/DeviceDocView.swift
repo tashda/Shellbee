@@ -15,80 +15,55 @@ struct DeviceDocView: View {
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
     var body: some View {
-        ScrollView {
-            content
-        }
-        .environment(\.docContextDevice, device)
-        .environment(\.docContextBridgeID, bridgeID)
-        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
-        .navigationTitle("Documentation")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            if documentation?.normalized.pairing != nil {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showPairingGuide = true
-                    } label: {
-                        Label("Pairing Guide", systemImage: "personalhotspot")
-                    }
-                }
-            }
-        }
-        .task { await loadDoc() }
-        .sheet(isPresented: $showPairingGuide) {
-            if let documentation {
-                NavigationStack {
-                    PairingGuideExperienceView(
+        content
+            .environment(\.docContextDevice, device)
+            .environment(\.docContextBridgeID, bridgeID)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .task { await loadDoc() }
+            .sheet(isPresented: $showPairingGuide) {
+                if let documentation {
+                    PairingGuideSheet(
+                        bridgeID: bridgeID,
                         device: device,
-                        identity: documentation.normalized.identity,
-                        pairing: documentation.normalized.pairing,
-                        sourcePath: documentation.sourcePath
+                        documentation: documentation
                     )
-                    .navigationTitle("How to Pair")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button("Done") { showPairingGuide = false }
-                        }
-                    }
                 }
-                .configuredTopScrollEdgeEffect()
             }
-        }
     }
 
     @ViewBuilder
     private var content: some View {
+        if let documentation, !documentation.parsed.isEmpty {
+            DocumentationExperienceView(
+                device: device,
+                documentation: documentation,
+                openPairing: documentation.normalized.pairing == nil ? nil : { showPairingGuide = true }
+            )
+        } else {
+            placeholder
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
+        }
+    }
+
+    @ViewBuilder
+    private var placeholder: some View {
         if isLoading {
-            HStack {
-                Spacer()
-                VStack(spacing: DesignTokens.Spacing.md) {
-                    ProgressView()
-                    Text("Loading documentation")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
+            VStack(spacing: DesignTokens.Spacing.md) {
+                ProgressView()
+                Text("Loading documentation")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.top, DesignTokens.Spacing.xxl)
         } else if let error = loadError {
             errorView(error)
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-        } else if let documentation {
-            if documentation.parsed.isEmpty {
-                ContentUnavailableView(
-                    "No Documentation",
-                    systemImage: "doc.questionmark",
-                    description: Text("No documentation is available for \(device.definition?.model ?? "this device").")
-                )
-                .padding(.top, DesignTokens.Spacing.xxl)
-            } else {
-                DocumentationExperienceView(
-                    device: device,
-                    documentation: documentation,
-                    openPairing: documentation.normalized.pairing == nil ? nil : { showPairingGuide = true }
-                )
-            }
+        } else if documentation != nil {
+            ContentUnavailableView(
+                "No Documentation",
+                systemImage: "doc.questionmark",
+                description: Text("No documentation is available for \(device.definition?.model ?? "this device").")
+            )
         }
     }
 

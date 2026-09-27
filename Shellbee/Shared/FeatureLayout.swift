@@ -61,11 +61,11 @@ enum FeatureLayout {
     }
 
     /// Diagnostics always come last, so every device page ends the same way.
-    private static let displayOrder: [FeatureCategory] = [
+    static let displayOrder: [FeatureCategory] = [
         .operation, .behaviour, .indicator, .maintenance, .sensor, .advanced, .diagnostic
     ]
 
-    private static func title(for category: FeatureCategory) -> String {
+    static func title(for category: FeatureCategory) -> String {
         switch category {
         case .operation:    return "Controls"
         case .sensor:       return "Status"

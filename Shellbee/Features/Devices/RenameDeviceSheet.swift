@@ -53,7 +53,7 @@ struct RenameDeviceSheet: View {
             .shellbeeThemedCanvas()
             .navigationTitle("Rename Device")
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .bottom) { actionBar }
+            .safeAreaInset(edge: .bottom) { actionBar.shellbeeThemedBar() }
         }
         .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
@@ -64,10 +64,7 @@ struct RenameDeviceSheet: View {
         Button("Save Changes") {
             saveIfPossible()
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .fontWeight(.semibold)
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.sheetAction)
         .disabled(!canSave)
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)

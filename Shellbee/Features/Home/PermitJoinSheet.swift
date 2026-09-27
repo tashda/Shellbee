@@ -3,7 +3,6 @@ import SwiftUI
 struct PermitJoinSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.shellbeeTheme) private var theme
 
     /// Phase 2 multi-bridge: target bridge for permit-join. Nil = focused
     /// bridge (single-bridge fallback). The picker auto-selects on appear
@@ -208,7 +207,7 @@ struct PermitJoinSheet: View {
     }
 
     private var actionBar: some View {
-        Button {
+        Button(role: isSelectedBridgePermitJoinOpen ? .destructive : nil) {
             if isSelectedBridgePermitJoinOpen {
                 onStop(resolvedBridgeID)
             } else {
@@ -217,12 +216,8 @@ struct PermitJoinSheet: View {
             dismiss()
         } label: {
             Text(isSelectedBridgePermitJoinOpen ? "Close Network" : "Open Network")
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(isSelectedBridgePermitJoinOpen ? .red : theme.accent)
-        .controlSize(.large)
+        .buttonStyle(.sheetAction)
         .padding(.horizontal, DesignTokens.Spacing.xl)
         .padding(.bottom, DesignTokens.Spacing.md)
     }

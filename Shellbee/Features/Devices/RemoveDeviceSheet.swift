@@ -49,7 +49,7 @@ struct RemoveDeviceSheet: View {
             .shellbeeThemedCanvas()
             .navigationTitle("Remove Device")
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .bottom) { actionBar }
+            .safeAreaInset(edge: .bottom) { actionBar.shellbeeThemedBar() }
         }
         .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
@@ -61,11 +61,7 @@ struct RemoveDeviceSheet: View {
             onConfirm(forceRemove, blockJoining)
             dismiss()
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.red)
-        .controlSize(.large)
-        .fontWeight(.semibold)
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.sheetAction)
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)
     }

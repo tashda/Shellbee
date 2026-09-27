@@ -95,7 +95,29 @@ private struct ShellbeeThemedRows: ViewModifier {
     }
 }
 
+/// A bottom action bar (a `safeAreaInset` holding a sheet's main button):
+/// the canvas colour behind it and the accent on its controls. The bar sits
+/// outside the screen's canvas modifier, so it needs both itself.
+private struct ShellbeeThemedBar: ViewModifier {
+    @Environment(\.shellbeeTheme) private var theme
+
+    func body(content: Content) -> some View {
+        if let palette = theme.palette {
+            content
+                .tint(palette.accent)
+                .background(palette.canvas.ignoresSafeArea(edges: .bottom))
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
+    /// Apply to the content of a bottom `safeAreaInset` bar.
+    func shellbeeThemedBar() -> some View {
+        modifier(ShellbeeThemedBar())
+    }
+
     /// Paints every row inside a `List`/`Form` with the theme surface. Apply
     /// to the list's content (a `SwiftUI.Group` around its sections), since
     /// row backgrounds can't be set from outside the list. Rows that set

@@ -58,13 +58,11 @@ struct AddGroupSheet: View {
                     onConfirm(trimmed, id, bridgeID)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.sheetAction)
                 .disabled(!isNameValid)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .shellbeeThemedBar()
             }
         }
         .configuredTopScrollEdgeEffect()

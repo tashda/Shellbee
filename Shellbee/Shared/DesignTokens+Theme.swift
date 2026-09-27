@@ -10,6 +10,8 @@ extension DesignTokens {
         /// in light mode, toward the accent in dark mode.
         static let surfaceReachLight: Double = 0.8
         static let surfaceReachDark: Double = 0.2
+        /// Fill luminance above which a button's label turns black.
+        static let darkLabelLuminance: Float = 0.35
         static let previewHeight: CGFloat = 124
         static let previewRowHeight: CGFloat = 38
         static let previewSymbolWidth: CGFloat = 20
