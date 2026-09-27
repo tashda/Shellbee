@@ -52,7 +52,8 @@ enum DeviceDocExposesParser {
         }
         if !bullets.isEmpty {
             return bullets.compactMap { bullet in
-                guard let property = firstMatch(#"^`([^`]+)`"#, in: bullet) else { return nil }
+                // Payload examples under a feature ("`{"color": …}`") aren't features.
+                guard let property = firstMatch(#"^`([a-z0-9_]+)`"#, in: bullet) else { return nil }
                 let type = property == "state" ? "binary" : bullet.contains("number between") ? "numeric" : "composite"
                 return expose(
                     type: type,
@@ -178,8 +179,14 @@ enum DeviceDocExposesParser {
         (readable ? 1 : 0) | (writable ? 2 : 0) | (gettable ? 4 : 0)
     }
 
-    /// "color_temp" → "Color temp", the way z2m builds labels.
+    /// "color_temp" → "Color temp", the way z2m builds labels, with the few
+    /// labels z2m spells out itself.
     static nonisolated func humanised(_ key: String) -> String {
+        switch key {
+        case "color_xy": return "Color (X/Y)"
+        case "color_hs": return "Color (HS)"
+        default: break
+        }
         let words = key.replacingOccurrences(of: "_", with: " ")
         return words.prefix(1).uppercased() + words.dropFirst()
     }

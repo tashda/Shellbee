@@ -46,8 +46,16 @@ struct DocCapabilitySections: View {
     }
 
     private func category(for capability: DeviceDocCapability) -> FeatureCategory {
-        capability.isDiagnostic ? .diagnostic : meta(for: capability).category
+        if capability.isDiagnostic { return .diagnostic }
+        if Self.primaryControls.contains(capability.property ?? "") { return .operation }
+        return meta(for: capability).category
     }
+
+    /// Features a typed card operates, which the settings catalog leaves out
+    /// because the card already shows them.
+    private static let primaryControls: Set<String> = [
+        "state", "effect", "color_xy", "color_hs", "position", "tilt"
+    ]
 
     private func meta(for capability: DeviceDocCapability) -> FeatureMeta {
         FeatureCatalog.meta(for: capability.property ?? "", exposeType: capability.kind)
