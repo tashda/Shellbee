@@ -166,7 +166,7 @@ private struct BridgeRow: View {
                     if isDefault {
                         Image(systemName: "star.fill")
                             .font(.caption2)
-                            .foregroundStyle(.yellow)
+                            .foregroundStyle(.themedStatus(.yellow))
                             .accessibilityLabel("Default bridge")
                     }
                     if isMuted {
@@ -180,8 +180,8 @@ private struct BridgeRow: View {
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, DesignTokens.Spacing.xs)
                             .padding(.vertical, 1)
-                            .background(Color.blue.opacity(0.15), in: Capsule())
-                            .foregroundStyle(.blue)
+                            .background(.themedStatus(.blue).opacity(0.15), in: Capsule())
+                            .foregroundStyle(.themedStatus(.blue))
                     }
                 }
                 Text(config.displayURL)

@@ -80,7 +80,7 @@ struct AcknowledgementsView: View {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
                     .font(.body)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.themedStatus(.green))
                     .frame(width: DesignTokens.Size.settingsIconFrame)
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     HStack(spacing: DesignTokens.Spacing.sm) {

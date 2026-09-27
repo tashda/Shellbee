@@ -25,7 +25,7 @@ struct PairingGuideExperienceView: View {
                                 ForEach(Array(pairing.prerequisites.enumerated()), id: \.offset) { _, spans in
                                     HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.blue)
+                                            .foregroundStyle(.themedStatus(.blue))
                                         PairingInlineTextView(spans: spans, sourcePath: sourcePath)
                                             .font(.body)
                                     }
@@ -143,7 +143,7 @@ private struct PhilipsHueSerialResetCard: View {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: "light.cylindrical.ceiling.fill")
                     .font(.title2)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.themedStatus(.blue))
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     Text("Philips Hue Reset by Serial Numbers")
                         .font(.headline)
@@ -162,7 +162,7 @@ private struct PhilipsHueSerialResetCard: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DesignTokens.Spacing.lg)
-        .background(Color.blue.opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .background(.themedStatus(.blue).opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
                 .strokeBorder(Color.blue.opacity(DesignTokens.Opacity.accentFill))
@@ -199,7 +199,7 @@ private struct TouchlinkResetCard: View {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: "wave.3.left.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(.themedStatus(.teal))
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                     Text("Touchlink Factory Reset")
                         .font(.headline)
@@ -218,7 +218,7 @@ private struct TouchlinkResetCard: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DesignTokens.Spacing.lg)
-        .background(Color.teal.opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
+        .background(.themedStatus(.teal).opacity(DesignTokens.Opacity.hairline), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous)
                 .strokeBorder(Color.teal.opacity(DesignTokens.Opacity.accentFill))
@@ -275,7 +275,7 @@ private struct PairingStepListView: View {
                 HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
                     ZStack {
                         Circle()
-                            .fill(Color.blue)
+                            .fill(.themedStatus(.blue))
                             .frame(width: DesignTokens.Size.docStepCircle, height: DesignTokens.Size.docStepCircle)
                         Text("\(step.number)")
                             .font(.subheadline.weight(.semibold))

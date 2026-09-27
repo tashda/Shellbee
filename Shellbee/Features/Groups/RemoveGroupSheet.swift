@@ -36,7 +36,7 @@ struct RemoveGroupSheet: View {
                     } footer: {
                         if forceRemove {
                             Text("Force remove deletes the group even if the bridge cannot reach all members.")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(.themedStatus(.orange))
                         }
                     }
                 }

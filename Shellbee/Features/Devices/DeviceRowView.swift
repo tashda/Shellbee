@@ -58,7 +58,7 @@ struct DeviceRowView: View {
         if isDeleting {
             Label("Deleting", systemImage: "trash")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.red)
+                .foregroundStyle(.themedStatus(.red))
                 .labelStyle(.titleAndIcon)
         } else if isInterviewing {
             Label("Interviewing", systemImage: "waveform.path.ecg")
@@ -68,7 +68,7 @@ struct DeviceRowView: View {
         } else if let otaStatus, otaStatus.isActive {
             Text(otaPhaseLabel(otaStatus))
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.blue)
+                .foregroundStyle(.themedStatus(.blue))
         } else if let checkResult {
             checkResultLabel(checkResult)
         } else if !device.availabilityTrackingEnabled {
@@ -110,12 +110,12 @@ struct DeviceRowView: View {
         case .updateFound:
             Label("Update found", systemImage: "arrow.up.circle.fill")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.blue)
+                .foregroundStyle(.themedStatus(.blue))
                 .labelStyle(.titleAndIcon)
         case .failed:
             Label("Error", systemImage: "exclamationmark.triangle.fill")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(.themedStatus(.orange))
                 .labelStyle(.titleAndIcon)
         }
     }

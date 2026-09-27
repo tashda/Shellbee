@@ -238,7 +238,7 @@ struct BridgeSettingsView: View {
                         .font(.title3)
                         .foregroundStyle(.white)
                         .frame(width: DesignTokens.Size.restartIconFrame, height: DesignTokens.Size.restartIconFrame)
-                        .background(.red, in: Circle())
+                        .background(.themedStatus(.red), in: Circle())
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                         Text("Restart Required")
                             .font(.headline)

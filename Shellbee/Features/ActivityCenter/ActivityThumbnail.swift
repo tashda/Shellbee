@@ -69,7 +69,7 @@ struct ActivityThumbnail: View {
         case .standard:
             glyph.foregroundStyle(tint)
         case .loud:
-            glyph.foregroundStyle(.red)
+            glyph.foregroundStyle(.themedStatus(.red))
         }
     }
 

@@ -89,7 +89,7 @@ struct SettingsWorkspaceList: View {
                         Spacer()
                         if session?.store.bridgeInfo?.restartRequired == true {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.themedStatus(.red))
                                 .accessibilityLabel("Restart required")
                         }
                         BridgeConnectToggle(config: config)

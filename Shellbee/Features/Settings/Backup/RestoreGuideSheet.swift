@@ -12,7 +12,7 @@ struct RestoreGuideSheet: View {
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                                 Text("Host-only operation")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(.themedStatus(.orange))
                                 Text("Shellbee cannot perform the restore. Run these steps on the machine that runs Zigbee2MQTT.")
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
@@ -20,7 +20,7 @@ struct RestoreGuideSheet: View {
                             }
                         } icon: {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(.themedStatus(.orange))
                         }
                     }
 
@@ -82,7 +82,7 @@ struct RestoreGuideSheet: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: DesignTokens.Size.restoreStepCircle, height: DesignTokens.Size.restoreStepCircle)
-                .background(.indigo, in: Circle())
+                .background(.themedStatus(.indigo), in: Circle())
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(title).font(.subheadline.weight(.semibold))
                 Text(body).font(.footnote).foregroundStyle(.secondary)

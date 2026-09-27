@@ -40,7 +40,7 @@ struct AddGroupSheet: View {
                     } footer: {
                         if name.contains("/") {
                             Text("Name cannot contain \"/\"")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.themedStatus(.red))
                         } else if showIDField {
                             Text("Leave empty to auto-assign the next available ID.")
                         }

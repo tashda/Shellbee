@@ -66,7 +66,7 @@ struct DeviceImageView: View {
         let dotSize = max(DesignTokens.Ratio.deviceImageDotMin,
                           size * DesignTokens.Ratio.deviceImageDot)
         return Circle()
-            .fill(Color.red)
+            .fill(.themedStatus(.red))
             .frame(width: dotSize, height: dotSize)
             .overlay(Circle().strokeBorder(Color(.systemBackground), lineWidth: max(1, dotSize * 0.22)))
             .offset(x: dotSize * 0.3, y: -(dotSize * 0.3))

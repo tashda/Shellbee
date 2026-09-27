@@ -90,7 +90,7 @@ private struct PairingSummaryCard: View {
                     ForEach(Array(pairing.prerequisites.enumerated()), id: \.offset) { _, spans in
                         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(.themedStatus(.blue))
                             DocumentationInlineTextView(spans: spans, sourcePath: sourcePath)
                                 .font(.subheadline)
                         }

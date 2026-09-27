@@ -174,7 +174,7 @@ private struct DeviceGridItem: View {
                     Spacer()
                     if actions.state.hasUpdateAvailable {
                         Image(systemName: "arrow.up.circle.fill")
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(.themedStatus(.blue))
                             .accessibilityLabel("OTA update available")
                     }
                 }

@@ -34,7 +34,7 @@ struct ServerDetailView: View {
                         CopyableRow(label: "Protocol", value: config.useTLS ? "WSS (TLS)" : "WS (Plain)")
                         if config.useTLS && config.allowInvalidCertificates {
                             LabeledContent("Certificate") {
-                                Text("Self-signed allowed").foregroundStyle(.orange)
+                                Text("Self-signed allowed").foregroundStyle(.themedStatus(.orange))
                             }
                         }
                         LabeledContent("Authentication") {
@@ -179,14 +179,14 @@ struct ServerDetailView: View {
                 Text("Connecting")
             }
         case .connected:
-            Text("Connected").foregroundStyle(.green)
+            Text("Connected").foregroundStyle(.themedStatus(.green))
         case .reconnecting(let n):
             HStack(spacing: DesignTokens.Spacing.xs) {
                 ProgressView().controlSize(.small)
                 Text("Reconnecting (\(n))")
             }
         case .failed(let msg), .lost(let msg):
-            Text(msg).foregroundStyle(.red).lineLimit(2)
+            Text(msg).foregroundStyle(.themedStatus(.red)).lineLimit(2)
         }
     }
 }

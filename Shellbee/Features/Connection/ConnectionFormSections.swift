@@ -200,7 +200,7 @@ struct ConnectionServerSection: View {
                 Text("Shellbee connects to Zigbee2MQTT over WebSocket. Leave Base Path as “/” unless your server is behind a reverse proxy on a subpath.")
                 if draft.useTLS && draft.allowInvalidCertificates {
                     Text("Certificate validation is disabled for this server. The connection is encrypted, but anyone on the network path could impersonate the server. Only use on networks you trust.")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.themedStatus(.orange))
                 }
             }
         }

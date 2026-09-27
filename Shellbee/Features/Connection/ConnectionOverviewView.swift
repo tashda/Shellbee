@@ -22,7 +22,7 @@ struct ConnectionOverviewView: View {
                                 Image(systemName: "books.vertical.fill")
                                     .foregroundStyle(.white)
                                     .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                                    .background(.orange, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
+                                    .background(.themedStatus(.orange), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
                             }
                         }
                     }

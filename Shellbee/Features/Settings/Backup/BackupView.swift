@@ -114,7 +114,7 @@ struct BackupView: View {
             Text("Backup ready. Use Share Backup to save it.")
         case .failed(let reason):
             Text(reason)
-                .foregroundStyle(.red)
+                .foregroundStyle(.themedStatus(.red))
         }
     }
 

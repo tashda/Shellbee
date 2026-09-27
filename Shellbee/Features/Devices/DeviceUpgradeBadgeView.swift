@@ -100,7 +100,7 @@ struct DeviceUpgradeBadgeView: View {
             // Center Icon
             Image(systemName: iconName(for: status.phase))
                 .font(.system(size: size * (DesignTokens.Size.deviceUpgradeIconScale * 1.1), weight: .black))
-                .foregroundStyle(.blue)
+                .foregroundStyle(.themedStatus(.blue))
                 .contentTransition(.symbolEffect(.replace))
         }
         .frame(width: badgeSize, height: badgeSize)

@@ -54,7 +54,7 @@ struct PermitJoinActiveSheet: View {
             } else {
                 ShellbeeSymbol.permitJoin.image
                     .font(DesignTokens.Typography.permitJoinSymbol)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.themedStatus(.green))
                     .symbolEffect(.pulse)
             }
         }

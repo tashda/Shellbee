@@ -25,7 +25,7 @@ struct NetworkAccessSettingsView: View {
                     HStack(spacing: DesignTokens.Spacing.lg) {
                         Image(systemName: "lock.shield.fill")
                             .font(.largeTitle)
-                            .foregroundStyle(.cyan)
+                            .foregroundStyle(.themedStatus(.cyan))
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                             Text("Device Filtering")
                                 .font(.headline)
@@ -79,7 +79,7 @@ struct NetworkAccessSettingsView: View {
                             .onSubmit { addBlocklistEntry() }
                         Button(action: addBlocklistEntry) {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.themedStatus(.red))
                         }
                         .buttonStyle(.plain)
                         .disabled(newBlocklistEntry.isEmpty)

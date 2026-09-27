@@ -134,7 +134,7 @@ private struct DonePage: View {
             Spacer()
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 80))
-                .foregroundStyle(.green)
+                .foregroundStyle(.themedStatus(.green))
                 .bounceSymbolEffectIfAvailable()
             Text("You're all set")
                 .font(.largeTitle.weight(.bold))

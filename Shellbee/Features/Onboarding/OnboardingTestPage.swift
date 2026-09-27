@@ -53,11 +53,11 @@ struct OnboardingTestPage: View {
                 .controlSize(.large)
         case .connected:
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(.themedStatus(.green))
                 .bounceSymbolEffectIfAvailable()
         case .failed, .lost:
             Image(systemName: "xmark.circle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(.themedStatus(.red))
         case .idle:
             Image(systemName: "circle.dotted")
                 .foregroundStyle(.secondary)
