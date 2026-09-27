@@ -27,6 +27,7 @@ struct GroupAvatarPickerSheet: View {
                     Text("Pick up to two members. Selecting a third replaces the earliest pick. Leave both unchecked to fall back to the default.")
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Group Avatar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

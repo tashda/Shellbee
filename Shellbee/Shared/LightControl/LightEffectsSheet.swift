@@ -26,6 +26,7 @@ struct LightEffectsSheet: View {
                 }
                 .buttonStyle(.plain)
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Effects")
             .navigationBarTitleDisplayMode(.inline)
         }

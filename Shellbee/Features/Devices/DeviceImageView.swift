@@ -75,7 +75,7 @@ struct DeviceImageView: View {
     private var fallbackIcon: some View {
         Image(systemName: device.categorySystemImage)
             .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
-            .foregroundStyle(isAvailable ? Color.accentColor : .secondary.opacity(DesignTokens.Opacity.overlay))
+            .foregroundStyle(isAvailable ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary.opacity(DesignTokens.Opacity.overlay)))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Optional: add a very subtle circle for fallbacks only 
             // to maintain visual weight parity with real images

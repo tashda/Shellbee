@@ -14,6 +14,7 @@ struct LightAdvancedSheet: View {
                     onChange(feature.payload(value))
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

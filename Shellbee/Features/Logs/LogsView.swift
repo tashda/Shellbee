@@ -344,10 +344,12 @@ private struct ActivityLogContent: View {
             List(selection: selection) {
                 content()
             }
+            .shellbeeThemedCanvas()
         } else {
             List {
                 content()
             }
+            .shellbeeThemedCanvas()
         }
     }
 }

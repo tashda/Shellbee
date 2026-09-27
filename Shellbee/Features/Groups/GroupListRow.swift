@@ -25,7 +25,7 @@ struct GroupListRow: View {
         // `.listRowBackground` unconditionally would also blank out the
         // native selection tint in iPad 3-column mode.
         if isDropTargeted {
-            rowContent.listRowBackground(Color.accentColor.opacity(DesignTokens.Opacity.chipFill))
+            rowContent.listRowBackground(Rectangle().fill(.tint.opacity(DesignTokens.Opacity.chipFill)))
         } else {
             rowContent
         }

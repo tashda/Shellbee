@@ -47,6 +47,7 @@ struct RenameDeviceSheet: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Rename Device")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) { actionBar }

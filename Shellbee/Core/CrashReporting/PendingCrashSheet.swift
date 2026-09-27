@@ -67,6 +67,7 @@ struct PendingCrashSheet: View {
                 }
                 .padding(DesignTokens.Spacing.lg)
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Shellbee crashed")
             .navigationBarTitleDisplayMode(.inline)
         }

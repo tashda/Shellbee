@@ -40,7 +40,7 @@ struct AddGroupMemberDeviceRow: View {
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: DesignTokens.Size.summaryRowTrailingIcon, weight: .medium))
-                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                    .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                     .symbolEffect(.bounce, value: isSelected)
             }
             .padding(.vertical, DesignTokens.Spacing.xs)

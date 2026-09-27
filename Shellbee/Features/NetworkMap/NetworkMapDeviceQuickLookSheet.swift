@@ -51,6 +51,7 @@ struct NetworkMapDeviceQuickLookSheet: View {
                 Button("Show Device", action: onViewDetails)
             }
         }
+        .shellbeeThemedCanvas()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .networkMapQuickLookPresentationSizing()

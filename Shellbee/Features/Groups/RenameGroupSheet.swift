@@ -42,6 +42,7 @@ struct RenameGroupSheet: View {
                         .onSubmit { saveIfPossible() }
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Rename Group")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {

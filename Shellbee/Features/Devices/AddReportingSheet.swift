@@ -63,6 +63,7 @@ struct AddReportingSheet: View {
                     Text("Minimum change in value before a report is sent. Set to 0 to report on any change.")
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Add Reporting")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

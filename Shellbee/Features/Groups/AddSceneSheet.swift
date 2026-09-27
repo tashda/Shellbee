@@ -21,6 +21,7 @@ struct AddSceneSheet: View {
                     Text("Saves the current group light state as a named scene.")
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Save Scene")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {

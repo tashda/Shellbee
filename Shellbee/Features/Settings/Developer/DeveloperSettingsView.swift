@@ -45,6 +45,7 @@ struct DeveloperSettingsView: View {
                 Text("Direct access to Zigbee2MQTT options not yet exposed elsewhere in the app. Changes are sent straight to bridge/request/options — double check before applying.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Developer")
     }
 }

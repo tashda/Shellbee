@@ -55,7 +55,7 @@ struct ConnectionEditorView: View {
             ConnectionServerSection(draft: $draft, focusedField: $focusedField)
         }
         .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .connectionEditorPresentationSizing()
         .navigationTitle(viewModel.editorTitle)
         .navigationBarTitleDisplayMode(.inline)

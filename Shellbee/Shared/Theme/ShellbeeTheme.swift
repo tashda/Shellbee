@@ -42,6 +42,9 @@ nonisolated enum ShellbeeTheme: String, CaseIterable, Codable, Sendable {
         Self(rawValue: rawValue) ?? defaultTheme
     }
 
+    /// The accent for places that need a concrete `Color` rather than `.tint`.
+    var accent: Color { palette?.accent ?? .accentColor }
+
     /// `nil` for `.system`. Colours are dynamic, so they follow light and
     /// dark mode on their own.
     var palette: Palette? {

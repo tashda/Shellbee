@@ -61,6 +61,7 @@ struct AcknowledgementsView: View {
                 .foregroundStyle(.primary)
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Acknowledgements")
         .navigationBarTitleDisplayMode(.inline)
         .task {

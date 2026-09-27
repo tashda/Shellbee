@@ -89,6 +89,7 @@ struct BackupView: View {
                 Text("Restoring requires host-level access to your Z2M data directory. Shellbee can't perform the restore.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Backup")
         .sheet(isPresented: $showRestoreGuide) {
             RestoreGuideSheet()

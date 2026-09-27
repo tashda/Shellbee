@@ -44,6 +44,7 @@ struct PermitJoinSheet: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .toolbar(.hidden, for: .navigationBar)
         }
         .configuredTopScrollEdgeEffect()

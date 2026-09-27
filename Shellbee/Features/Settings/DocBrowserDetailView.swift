@@ -15,7 +15,7 @@ struct DocBrowserDetailView: View {
         ScrollView {
             content
         }
-        .background(Color(.systemGroupedBackground))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .navigationTitle(entry.model)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

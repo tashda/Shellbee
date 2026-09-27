@@ -122,6 +122,7 @@ private struct SubscribeView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .listStyle(.plain)
         .searchable(text: $store.filter, prompt: "Filter topics")
         .autocorrectionDisabled()
@@ -294,6 +295,7 @@ private struct PublishView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

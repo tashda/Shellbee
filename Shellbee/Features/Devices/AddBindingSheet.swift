@@ -112,6 +112,7 @@ struct AddBindingSheet: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .listStyle(.plain)
             .searchable(text: $searchText, prompt: "Search")
             .overlay {

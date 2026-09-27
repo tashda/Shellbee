@@ -14,7 +14,6 @@ struct NetworkMapScanLiveView: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             if let fraction = scan.fractionComplete {
                 ProgressView(value: fraction)
-                    .tint(.accentColor)
             }
 
             Text(statusLine)

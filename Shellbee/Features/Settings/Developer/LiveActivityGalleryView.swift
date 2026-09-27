@@ -19,6 +19,7 @@ struct LiveActivityGalleryView: View {
             }
             .foregroundStyle(.primary)
         }
+        .shellbeeThemedCanvas()
         .fullScreenCover(item: $staged) { kind in
             if #available(iOS 26.0, *) {
                 LiveActivityStageView(kind: kind)

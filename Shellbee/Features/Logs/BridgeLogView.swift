@@ -119,10 +119,12 @@ struct BridgeLogView: View {
             List(selection: selection) {
                 content()
             }
+            .shellbeeThemedCanvas()
         } else {
             List {
                 content()
             }
+            .shellbeeThemedCanvas()
         }
     }
 }
@@ -269,6 +271,7 @@ struct BridgeLogDetailView: View {
             }
             .padding(DesignTokens.Spacing.lg)
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Raw Log")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

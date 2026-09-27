@@ -29,7 +29,6 @@ struct GroupScenesSection: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .tint(.accentColor)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {

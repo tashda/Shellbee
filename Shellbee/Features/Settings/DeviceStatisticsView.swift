@@ -3,6 +3,7 @@ import SwiftUI
 
 struct DeviceStatisticsView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.shellbeeTheme) private var theme
     let bridgeID: UUID
     @State private var selectedBridgeID: UUID?
 
@@ -253,7 +254,7 @@ struct DeviceStatisticsView: View {
             return palette[min(index, palette.count - 1)]
         }
         let progress = total <= 1 ? 0 : Double(index) / Double(total - 1)
-        return Color.accentColor.opacity(DesignTokens.Opacity.statisticsChartHigh
+        return theme.accent.opacity(DesignTokens.Opacity.statisticsChartHigh
             - progress * DesignTokens.Opacity.statisticsChartRange)
     }
 

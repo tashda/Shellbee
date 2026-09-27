@@ -65,6 +65,7 @@ struct ShellbeeDeveloperView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Shellbee")
         .navigationBarTitleDisplayMode(.inline)
     }

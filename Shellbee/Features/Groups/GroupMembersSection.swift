@@ -91,9 +91,9 @@ struct GroupMembersSection: View {
             }
             .buttonStyle(.plain)
             .listRowBackground(
-                isSelected(route, selection: selection)
-                    ? Color.accentColor.opacity(DesignTokens.Opacity.chipFill)
-                    : Color.clear
+                Rectangle().fill(isSelected(route, selection: selection)
+                    ? AnyShapeStyle(.tint.opacity(DesignTokens.Opacity.chipFill))
+                    : AnyShapeStyle(Color.clear))
             )
             .accessibilityValue(isSelected(route, selection: selection) ? "Selected" : "")
         } else {

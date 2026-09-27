@@ -79,7 +79,7 @@ struct DocBrowserView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemGroupedBackground))
+                .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
             } else if !searchText.isEmpty && flatSearchResults.isEmpty {
                 ContentUnavailableView.search(text: searchText)
             } else if sectionData.isEmpty {

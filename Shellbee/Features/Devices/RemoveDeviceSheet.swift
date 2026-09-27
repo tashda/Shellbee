@@ -43,6 +43,7 @@ struct RemoveDeviceSheet: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Remove Device")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) { actionBar }

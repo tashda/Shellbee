@@ -10,6 +10,7 @@ struct NetworkMapRefreshProgressView: View {
     let onRetry: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.shellbeeTheme) private var theme
 
     private var isWorking: Bool {
         switch phase {
@@ -110,7 +111,7 @@ struct NetworkMapRefreshProgressView: View {
             ForEach(0..<6, id: \.self) { index in
                 let angle = Angle.degrees(Double(index) * 60 + rotation)
                 Circle()
-                    .fill(index.isMultiple(of: 2) ? Color.accentColor : Color.secondary.opacity(0.48))
+                    .fill(index.isMultiple(of: 2) ? theme.accent : Color.secondary.opacity(0.48))
                     .frame(
                         width: index.isMultiple(of: 2)
                             ? DesignTokens.Size.networkMapRefreshActiveDot
@@ -151,7 +152,7 @@ struct NetworkMapRefreshProgressView: View {
         switch phase {
         case .completed(let summary): summary.failedDeviceNames.isEmpty ? .green : .orange
         case .failed: .red
-        case .idle, .requesting, .building: .accentColor
+        case .idle, .requesting, .building: theme.accent
         }
     }
 }

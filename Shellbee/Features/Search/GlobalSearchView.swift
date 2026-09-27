@@ -65,6 +65,7 @@ struct GlobalSearchView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .listStyle(.insetGrouped)
         .overlay { emptyState }
     }

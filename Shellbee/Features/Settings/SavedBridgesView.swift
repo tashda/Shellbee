@@ -19,6 +19,7 @@ struct SavedBridgesView: View {
                 bridgesSection
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Saved Bridges")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

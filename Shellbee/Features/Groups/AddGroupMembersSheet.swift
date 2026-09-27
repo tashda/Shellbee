@@ -85,6 +85,7 @@ struct AddGroupMembersSheet: View {
                 )
             }
         }
+        .shellbeeThemedCanvas()
         .listStyle(.plain)
         .overlay {
             if !searchText.isEmpty && filteredDevices.isEmpty {

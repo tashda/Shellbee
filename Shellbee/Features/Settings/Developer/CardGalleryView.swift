@@ -20,6 +20,7 @@ struct CardGalleryView: View {
             }
             .foregroundStyle(.primary)
         }
+        .shellbeeThemedCanvas()
         .fullScreenCover(item: $staged) { staged in
             if #available(iOS 26.0, *) {
                 CardGalleryStageView(

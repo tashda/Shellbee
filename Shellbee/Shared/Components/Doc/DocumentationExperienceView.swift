@@ -177,7 +177,7 @@ private struct CapabilityKindBadge: View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, DesignTokens.Spacing.sm)
             .padding(.vertical, DesignTokens.Size.compactChipVerticalPadding)
-            .background(Color.accentColor.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
+            .background(.tint.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
             .fixedSize()
     }
 }
@@ -462,7 +462,7 @@ private struct DocumentationStepListView: View {
                 HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
                     ZStack {
                         Circle()
-                            .fill(Color.accentColor)
+                            .fill(.tint)
                             .frame(width: DesignTokens.Size.docStepCircle, height: DesignTokens.Size.docStepCircle)
                         Text("\(step.number)")
                             .font(.subheadline.weight(.semibold))

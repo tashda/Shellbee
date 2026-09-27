@@ -112,6 +112,7 @@ private struct CardGalleryStageScreen: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .id("\(preview.id)-\(surface.id)")
         .contentMargins(.top, 0, for: .scrollContent)
         .listSectionSpacing(DesignTokens.Spacing.lg)

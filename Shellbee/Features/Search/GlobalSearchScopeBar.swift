@@ -71,15 +71,17 @@ struct GlobalSearchScopeBar: View {
 private struct GlobalSearchBubbleBackground: ViewModifier {
     let isSelected: Bool
 
+    @Environment(\.shellbeeTheme) private var theme
+
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content.glassEffect(
-                isSelected ? .regular.tint(.accentColor).interactive() : .regular.interactive(),
+                isSelected ? .regular.tint(theme.accent).interactive() : .regular.interactive(),
                 in: Capsule()
             )
         } else if isSelected {
-            content.background(Capsule().fill(Color.accentColor))
+            content.background(Capsule().fill(.tint))
         } else {
             content.background(.ultraThinMaterial, in: Capsule())
         }

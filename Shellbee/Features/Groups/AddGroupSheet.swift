@@ -45,6 +45,7 @@ struct AddGroupSheet: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Create Group")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {

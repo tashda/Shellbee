@@ -44,6 +44,7 @@ struct InstrumentStageScreen: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .listStyle(.insetGrouped)
         .scrollDisabled(true)
         .frame(height: DesignTokens.ActivityInstrument.stageListHeight)

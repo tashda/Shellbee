@@ -78,6 +78,7 @@ struct LightStartupTemperaturePage: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle(feature.displayLabel)
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -70,6 +70,7 @@ struct DeviceAlternativePresentation: View {
             }
             .padding(DesignTokens.Spacing.lg)
         }
+        .shellbeeThemedCanvas()
     }
 
     private var table: some View {
@@ -88,6 +89,7 @@ struct DeviceAlternativePresentation: View {
             }
             .padding(.horizontal, DesignTokens.Spacing.md)
         }
+        .shellbeeThemedCanvas()
     }
 
     private var showsBridgeColumn: Bool {
@@ -182,7 +184,7 @@ private struct DeviceGridItem: View {
             .background(.background.secondary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
             .overlay {
                 RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
-                    .strokeBorder(isSelected ? Color.accentColor : Color.secondary.opacity(DesignTokens.Opacity.hairline))
+                    .strokeBorder(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.secondary.opacity(DesignTokens.Opacity.hairline)))
             }
         }
         .modifier(DevicePresentationActionsModifier(bound: bound, actions: actions))
@@ -276,7 +278,7 @@ private struct DeviceTableItem: View {
             }
             .padding(.vertical, DesignTokens.Spacing.sm)
             .contentShape(Rectangle())
-            .background(isSelected ? Color.accentColor.opacity(DesignTokens.Opacity.chipFill) : Color.clear)
+            .background(isSelected ? AnyShapeStyle(.tint.opacity(DesignTokens.Opacity.chipFill)) : AnyShapeStyle(Color.clear))
         }
         .modifier(DevicePresentationActionsModifier(bound: bound, actions: actions))
     }

@@ -55,7 +55,7 @@ struct RawLogFeedView: View {
                 liveFeed.requestReturnToLive()
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .onChange(of: viewModel.filterSignature) {
             liveFeed.followLive()
         }

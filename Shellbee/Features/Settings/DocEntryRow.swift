@@ -56,7 +56,7 @@ struct DocEntryRow: View {
             } placeholder: {
                 Image(systemName: entry.deviceType?.systemImage ?? "cpu")
                     .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.tint)
             }
             .frame(width: size, height: size)
         }

@@ -36,6 +36,7 @@ struct ActivityIconGalleryView: View {
                 accessoryPreview
             }
         }
+        .shellbeeThemedCanvas()
         .environment(\.colorScheme, colorScheme)
         .navigationTitle("Activity Icons")
         .navigationBarTitleDisplayMode(.inline)

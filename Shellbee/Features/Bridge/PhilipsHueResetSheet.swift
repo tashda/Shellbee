@@ -49,6 +49,7 @@ struct PhilipsHueResetSheet: View {
                     Text("Leave blank to use the network's extended PAN ID. Format: 0x followed by 16 hex characters.")
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Philips Hue Reset")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

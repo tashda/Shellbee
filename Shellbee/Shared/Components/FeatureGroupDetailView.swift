@@ -17,6 +17,7 @@ struct FeatureGroupDetailView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle(group.label)
         .navigationBarTitleDisplayMode(.inline)
     }

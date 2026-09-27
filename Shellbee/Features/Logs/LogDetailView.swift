@@ -68,6 +68,7 @@ struct LogDetailView: View {
             }
 
         }
+        .shellbeeThemedCanvas()
         .contentMargins(.top, DesignTokens.Spacing.sm, for: .scrollContent)
         .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)

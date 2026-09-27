@@ -84,6 +84,7 @@ struct LogDeviceFilterSheet: View {
                     Text(selectionSummary)
                 }
             }
+            .shellbeeThemedCanvas()
             .listStyle(.insetGrouped)
             .searchable(text: $searchText, prompt: "Search devices")
             .overlay {

@@ -49,6 +49,7 @@ struct PairingWizardView: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Add Devices")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

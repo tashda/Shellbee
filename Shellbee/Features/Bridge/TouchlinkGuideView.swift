@@ -31,7 +31,7 @@ struct TouchlinkGuideView: View {
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.lg)
         }
-        .background(Color(.systemGroupedBackground))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .navigationTitle("Touchlink Guide")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showHueResetSheet) {

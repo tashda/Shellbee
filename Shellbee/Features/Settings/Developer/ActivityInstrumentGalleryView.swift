@@ -40,6 +40,7 @@ struct ActivityInstrumentGalleryView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Activity Instruments")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Find a device, change, or activity")

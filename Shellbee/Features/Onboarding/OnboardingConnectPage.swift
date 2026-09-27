@@ -21,6 +21,7 @@ struct OnboardingConnectPage: View {
                     ConnectionHistorySection(viewModel: viewModel)
                     ConnectionDiscoverySection(viewModel: viewModel)
                 }
+                .shellbeeThemedCanvas()
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {

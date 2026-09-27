@@ -72,6 +72,7 @@ struct TouchlinkView: View {
                 onReset: factoryReset
             )
         }
+        .shellbeeThemedCanvas()
     }
 
     @ToolbarContentBuilder

@@ -46,6 +46,7 @@ struct CommandPaletteView: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Commands")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
@@ -86,7 +87,7 @@ struct CommandPaletteView: View {
         } label: {
             HStack(spacing: DesignTokens.Spacing.md) {
                 Image(systemName: command.systemImage)
-                    .foregroundStyle(command.isEnabled ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(command.isEnabled ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                     .frame(width: DesignTokens.Size.settingsIconFrame)
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
                     Text(command.title)

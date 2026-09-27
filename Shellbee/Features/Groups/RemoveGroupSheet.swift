@@ -39,6 +39,7 @@ struct RemoveGroupSheet: View {
                     }
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Remove Group")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {

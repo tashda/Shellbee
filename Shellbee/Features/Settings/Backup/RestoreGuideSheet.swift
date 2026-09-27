@@ -61,6 +61,7 @@ struct RestoreGuideSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Restoring a Backup")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -45,7 +45,7 @@ struct IconGalleryView: View {
             .frame(maxWidth: DesignTokens.ActivityFeed.maxContentWidth)
             .frame(maxWidth: .infinity)
         }
-        .background(Color(.systemGroupedBackground))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .navigationTitle("Icon Gallery")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Find an icon")
