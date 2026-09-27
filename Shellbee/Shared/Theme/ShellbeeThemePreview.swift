@@ -6,7 +6,9 @@ import SwiftUI
 struct ShellbeeThemePreview: View {
     let theme: ShellbeeTheme
 
-    private var accent: Color { theme.palette?.accent ?? .accentColor }
+    // The system blue rather than `.accentColor`, which follows the tint of
+    // whichever theme is currently applied.
+    private var accent: Color { theme.palette?.accent ?? Color(.systemBlue) }
 
     var body: some View {
         ZStack(alignment: .bottom) {

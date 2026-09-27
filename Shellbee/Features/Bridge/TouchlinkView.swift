@@ -20,6 +20,7 @@ struct TouchlinkView: View {
                 deviceList
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Touchlink")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarItems }
@@ -72,7 +73,6 @@ struct TouchlinkView: View {
                 onReset: factoryReset
             )
         }
-        .shellbeeThemedCanvas()
     }
 
     @ToolbarContentBuilder

@@ -169,6 +169,7 @@ struct MainSplitView: View {
                 .environment(\.isSelectableListContext, true)
         } detail: {
             threeColumnDetail
+                .shellbeeThemedCanvas()
                 .toolbar {
                     collapsedSidebarToggle(for: threeColumnVisibility)
                 }
