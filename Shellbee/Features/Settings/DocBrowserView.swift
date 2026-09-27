@@ -1,52 +1,51 @@
 import SwiftUI
 
-// MARK: - Filter state
-
-struct DocBrowserFilters: Equatable {
-    var deviceType: DocDeviceType? = nil
-    var batteryOnly: Bool = false
-    var mainsOnly: Bool = false
-    var vendor: String? = nil
-
-    var isActive: Bool { deviceType != nil || batteryOnly || mainsOnly || vendor != nil }
-}
-
-// MARK: - Private data model
-
-private struct SectionData {
-    let vendor: String
-    let entries: [DocBrowserEntry]
-}
-
-// MARK: - Main view
-
+/// Device Library home: the models already in your network, a grid of
+/// device types and every manufacturer. Searching the library happens in
+/// the app-wide Search, so the page has no search field of its own.
 struct DocBrowserView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var allEntries: [DocBrowserEntry] = []
     @State private var isLoading = true
-    @State private var searchText = ""
-    @State private var filters = DocBrowserFilters()
-    @State private var showManufacturerSheet = false
+    @State private var pushedScope: DocLibraryScope?
+
+    private var ownedCount: Int {
+        DocLibraryScope.owned.entries(from: allEntries, owned: environment.ownedLibraryModels).count
+    }
 
     var body: some View {
         List {
             SwiftUI.Group {
-                if searchText.isEmpty {
-                    ForEach(sectionData, id: \.vendor) { section in
+                if !isLoading {
+                    if ownedCount > 0 {
                         Section {
-                            ForEach(section.entries, id: \.docKey) { entry in
-                                NavigationLink(destination: DocBrowserDetailView(entry: entry)) {
-                                    DocEntryRow(entry: entry)
+                            NavigationLink {
+                                DocLibraryListView(scope: .owned, allEntries: allEntries)
+                            } label: {
+                                LabeledContent {
+                                    Text("\(ownedCount)")
+                                } label: {
+                                    Label(DocLibraryScope.owned.title, systemImage: DocLibraryScope.owned.systemImage)
                                 }
                             }
-                        } header: {
-                            Text(section.vendor)
                         }
                     }
-                } else {
-                    ForEach(flatSearchResults) { entry in
-                        NavigationLink(destination: DocBrowserDetailView(entry: entry)) {
-                            DocEntryRow(entry: entry, showVendor: true)
+
+                    Section("Browse by type") {
+                        DocLibraryTypeGrid(entries: allEntries) { pushedScope = $0 }
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+
+                    Section("Manufacturers") {
+                        ForEach(vendors, id: \.name) { vendor in
+                            NavigationLink {
+                                DocLibraryListView(scope: .vendor(vendor.name), allEntries: allEntries)
+                            } label: {
+                                LabeledContent(vendor.name) {
+                                    Text("\(vendor.count)")
+                                }
+                            }
                         }
                     }
                 }
@@ -57,21 +56,8 @@ struct DocBrowserView: View {
         .shellbeeThemedCanvas()
         .navigationTitle("Device Library")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search model, vendor, description")
-        .minimizeSearchToolbarIfAvailable()
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if filters.isActive {
-                    ClearFiltersToolbarButton { filters = DocBrowserFilters() }
-                }
-                DocBrowserFilterMenu(
-                    filters: $filters,
-                    showManufacturerSheet: $showManufacturerSheet
-                )
-            }
-        }
-        .sheet(isPresented: $showManufacturerSheet) {
-            ManufacturerFilterSheet(selected: $filters.vendor, allVendors: allVendors)
+        .navigationDestination(item: $pushedScope) { scope in
+            DocLibraryListView(scope: scope, allEntries: allEntries)
         }
         .overlay {
             if isLoading {
@@ -81,216 +67,20 @@ struct DocBrowserView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
-            } else if !searchText.isEmpty && flatSearchResults.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-            } else if sectionData.isEmpty {
-                ContentUnavailableView(
-                    "No Devices Found",
-                    systemImage: "line.3.horizontal.decrease.circle",
-                    description: Text("Try removing some filters.")
-                )
             }
         }
         .task { await loadIndex() }
     }
 
-    // MARK: Data
-
-    private var filtered: [DocBrowserEntry] {
-        allEntries.filter { entry in
-            if let t = filters.deviceType, entry.deviceType != t { return false }
-            if filters.batteryOnly && !entry.isBatteryPowered { return false }
-            if filters.mainsOnly   &&  entry.isBatteryPowered { return false }
-            if let v = filters.vendor, entry.vendor != v { return false }
-            return true
-        }
-    }
-
-    private var flatSearchResults: [DocBrowserEntry] {
-        // Tokenize on whitespace and require every token to appear (as a
-        // substring) somewhere in the combined vendor/model/description.
-        // This makes "Shelly Mini", "Shell Mini", "mini shelly", etc. all
-        // match "Shelly 1 Mini Gen 4". Single-word substring search is
-        // preserved for queries without spaces.
-        let tokens = searchText
-            .lowercased()
-            .split(whereSeparator: { $0.isWhitespace })
-            .map(String.init)
-        guard !tokens.isEmpty else { return [] }
-        return filtered.filter { entry in
-            let haystack = "\(entry.vendor) \(entry.model) \(entry.description)".lowercased()
-            return tokens.allSatisfy { haystack.contains($0) }
-        }
-        .sorted { ($0.vendor, $0.model) < ($1.vendor, $1.model) }
-    }
-
-    private var sectionData: [SectionData] {
-        let byVendor = Dictionary(grouping: filtered, by: \.vendor)
-        let typeOrder: (DocDeviceType?) -> Int = { type in
-            guard let t = type else { return DocDeviceType.allCases.count }
-            return DocDeviceType.allCases.firstIndex(of: t) ?? DocDeviceType.allCases.count
-        }
-        return byVendor.keys.sorted().map { vendor in
-            let sorted = byVendor[vendor]!.sorted {
-                let to = typeOrder($0.deviceType)
-                let tn = typeOrder($1.deviceType)
-                return to != tn ? to < tn : $0.model < $1.model
-            }
-            return SectionData(vendor: vendor, entries: sorted)
-        }
-    }
-
-    private var allVendors: [String] {
-        Array(Set(allEntries.map(\.vendor))).sorted()
+    private var vendors: [(name: String, count: Int)] {
+        Dictionary(grouping: allEntries, by: \.vendor)
+            .map { (name: $0.key, count: $0.value.count) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     private func loadIndex() async {
         allEntries = await DocBrowserIndex.shared.allEntries()
         isLoading = false
-    }
-}
-
-// MARK: - Filter menu
-
-private struct DocBrowserFilterMenu: View {
-    @Binding var filters: DocBrowserFilters
-    @Binding var showManufacturerSheet: Bool
-
-    var body: some View {
-        Menu {
-            Menu {
-                Picker("Device Type", selection: $filters.deviceType) {
-                    Label("All Types", systemImage: FilterMenuSymbol.all)
-                        .tag(DocDeviceType?.none)
-                    ForEach(DocDeviceType.allCases) { type in
-                        Label(type.rawValue, systemImage: type.systemImage)
-                            .tag(DocDeviceType?.some(type))
-                    }
-                }
-                .pickerStyle(.inline)
-            } label: {
-                FilterSubmenuLabel(
-                    name: "Type",
-                    systemImage: "tag",
-                    value: filters.deviceType?.rawValue,
-                    valueSystemImage: filters.deviceType?.systemImage
-                )
-            }
-
-            Menu {
-                Picker("Power Source", selection: powerBinding) {
-                    Label("All Power Sources", systemImage: FilterMenuSymbol.all).tag(PowerFilter.any)
-                    Label("Battery", systemImage: "battery.100").tag(PowerFilter.battery)
-                    Label("Mains / USB", systemImage: "powerplug.fill").tag(PowerFilter.mains)
-                }
-                .pickerStyle(.inline)
-            } label: {
-                switch currentPower {
-                case .battery:
-                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: "Battery", valueSystemImage: "battery.100")
-                case .mains:
-                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: "Mains / USB", valueSystemImage: "powerplug.fill")
-                case .any:
-                    FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle")
-                }
-            }
-
-            Button {
-                showManufacturerSheet = true
-            } label: {
-                FilterSubmenuLabel(name: "Manufacturer", systemImage: "building.2", value: filters.vendor)
-            }
-
-            ClearFiltersMenuItem(isActive: filters.isActive) {
-                filters = DocBrowserFilters()
-            }
-        } label: {
-            FilterMenuLabel(isActive: filters.isActive)
-        }
-    }
-
-    private enum PowerFilter: Hashable { case any, battery, mains }
-
-    private var currentPower: PowerFilter {
-        if filters.batteryOnly { return .battery }
-        if filters.mainsOnly   { return .mains }
-        return .any
-    }
-
-    private var powerBinding: Binding<PowerFilter> {
-        Binding(
-            get: { currentPower },
-            set: {
-                filters.batteryOnly = ($0 == .battery)
-                filters.mainsOnly   = ($0 == .mains)
-            }
-        )
-    }
-}
-
-// MARK: - Manufacturer filter sheet
-
-private struct ManufacturerFilterSheet: View {
-    @Binding var selected: String?
-    let allVendors: [String]
-    @Environment(\.dismiss) private var dismiss
-    @State private var search = ""
-
-    private var filteredVendors: [String] {
-        search.isEmpty ? allVendors : allVendors.filter { $0.localizedCaseInsensitiveContains(search) }
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                SwiftUI.Group {
-                    if let current = selected {
-                        Button(role: .destructive) {
-                            selected = nil
-                            dismiss()
-                        } label: {
-                            Label("Clear: \(current)", systemImage: "xmark.circle.fill")
-                        }
-                    }
-                    ForEach(filteredVendors, id: \.self) { vendor in
-                        vendorRow(vendor)
-                    }
-                }
-                .shellbeeThemedRows()
-            }
-            .searchable(text: $search, prompt: "Search manufacturers")
-            .shellbeeThemedCanvas()
-            .minimizeSearchToolbarIfAvailable()
-            .navigationTitle("Manufacturer")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-        .configuredTopScrollEdgeEffect()
-    }
-
-    @ViewBuilder
-    private func vendorRow(_ vendor: String) -> some View {
-        HStack {
-            Text(vendor)
-                .foregroundStyle(.primary)
-            Spacer()
-            if selected == vendor {
-                Image(systemName: "checkmark")
-                    .foregroundStyle(.tint)
-                    .fontWeight(.semibold)
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selected = vendor
-            dismiss()
-        }
     }
 }
 

@@ -1,41 +1,45 @@
 import SwiftUI
 
+/// A Device Library entry: z2m's description as the title, the model (and
+/// the vendor when the list isn't already grouped by it) in secondary text.
 struct DocEntryRow: View {
     let entry: DocBrowserEntry
     var showVendor: Bool = false
+    /// How many of these are paired, shown as a trailing count.
+    var ownedCount: Int? = nil
 
     @State private var bundledImageData: Data?
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
+        HStack(spacing: DesignTokens.Spacing.md) {
             deviceImage
-            VStack(alignment: .leading, spacing: 0) {
-                if showVendor {
-                    Text(entry.vendor.uppercased())
-                        .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary.opacity(DesignTokens.Opacity.secondaryText))
-                        .lineLimit(1)
-                }
-                Text(entry.model)
-                    .font(.subheadline.weight(.semibold))
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                Text(entry.description.isEmpty ? entry.model : entry.description)
                     .foregroundStyle(.primary)
+                    .lineLimit(2)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
-                if !entry.description.isEmpty {
-                    Text(entry.description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let ownedCount {
+                Text("\(ownedCount)")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
         }
-        .padding(.vertical, DesignTokens.Spacing.xs)
         .task(id: entry.docKey) {
             bundledImageData = nil
             if let key = entry.imageKey {
                 bundledImageData = await BundledImageStore.shared.imageData(for: key)
             }
         }
+    }
+
+    private var subtitle: String {
+        if entry.description.isEmpty { return entry.vendor }
+        return showVendor ? "\(entry.vendor) · \(entry.model)" : entry.model
     }
 
     @ViewBuilder
@@ -56,7 +60,7 @@ struct DocEntryRow: View {
             } placeholder: {
                 Image(systemName: entry.deviceType?.systemImage ?? "cpu")
                     .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(.secondary)
             }
             .frame(width: size, height: size)
         }

@@ -199,6 +199,7 @@ nonisolated enum DesignTokens {
         /// Width at which the Documentation page splits into prose and a side column.
         static let docTwoColumnMinimumWidth: CGFloat = 900
         static let docSideColumnWidth: CGFloat = 360
+        static let libraryTileMinimumWidth: CGFloat = 150
         static let notificationMaxWidth: CGFloat = 640
         static let permitJoinRingStroke: CGFloat = 8
         static let lightSelectionStroke: CGFloat = 2
