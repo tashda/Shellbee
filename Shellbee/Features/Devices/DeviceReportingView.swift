@@ -45,6 +45,7 @@ struct DeviceReportingView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Reporting")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

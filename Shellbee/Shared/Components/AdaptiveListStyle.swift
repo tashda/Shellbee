@@ -12,9 +12,9 @@ struct AdaptiveListStyle: ViewModifier {
 
     func body(content: Content) -> some View {
         if useGrouped {
-            content.listStyle(.insetGrouped)
+            content.listStyle(.insetGrouped).shellbeeThemedCanvas()
         } else {
-            content.listStyle(.plain)
+            content.listStyle(.plain).shellbeeThemedCanvas()
         }
     }
 }

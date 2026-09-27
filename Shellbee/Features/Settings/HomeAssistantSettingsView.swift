@@ -51,6 +51,7 @@ struct HomeAssistantSettingsView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Home Assistant")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

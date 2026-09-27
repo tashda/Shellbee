@@ -127,6 +127,7 @@ struct DeviceSettingsView: View {
                 Text("Overrides the Home Assistant display name for this device.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Device Settings")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { syncState() }

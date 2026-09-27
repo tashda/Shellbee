@@ -44,6 +44,7 @@ struct GroupSettingsView: View {
                 Text("Changes apply immediately.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Group Settings")
         .navigationBarTitleDisplayMode(.inline)
     }

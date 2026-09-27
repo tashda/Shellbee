@@ -3,47 +3,49 @@ import SwiftUI
 struct HomeThemePickerView: View {
     @AppStorage(ShellbeeTheme.storageKey) private var themeRawValue = ShellbeeTheme.defaultTheme.rawValue
 
+    private var selected: ShellbeeTheme { ShellbeeTheme.stored(themeRawValue) }
+
     var body: some View {
         List {
             ForEach(ShellbeeTheme.allCases, id: \.self) { theme in
-                Button {
-                    themeRawValue = theme.rawValue
-                } label: {
-                    HStack(spacing: DesignTokens.Spacing.md) {
-                        swatch(for: theme)
-                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                            Text(theme.displayName)
-                                .foregroundStyle(.primary)
-                            Text(theme.summary)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: DesignTokens.Spacing.sm)
-                        if theme == ShellbeeTheme.stored(themeRawValue) {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.tint)
-                        }
+                Section {
+                    Button {
+                        withAnimation { themeRawValue = theme.rawValue }
+                    } label: {
+                        row(for: theme)
                     }
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(theme.displayName). \(theme.summary)")
+                    .accessibilityAddTraits(theme == selected ? .isSelected : [])
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(theme.displayName), \(theme.summary)")
-                .accessibilityValue(theme == ShellbeeTheme.stored(themeRawValue) ? "Selected" : "")
             }
         }
-        .navigationTitle("Color theme")
+        .listSectionSpacing(.compact)
+        .shellbeeThemedCanvas()
+        .navigationTitle("Color Theme")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func swatch(for theme: ShellbeeTheme) -> some View {
-        RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm)
-            .fill(LinearGradient(
-                colors: theme.swatchColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ))
-            .frame(width: DesignTokens.HomeTheme.swatchWidth,
-                   height: DesignTokens.HomeTheme.swatchHeight)
-            .accessibilityHidden(true)
+    private func row(for theme: ShellbeeTheme) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            ShellbeeThemePreview(theme: theme)
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    Text(theme.displayName)
+                        .font(.headline)
+                    Text(theme.summary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: DesignTokens.Spacing.sm)
+                if theme == selected {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.tint)
+                }
+            }
+        }
+        .contentShape(Rectangle())
     }
 }

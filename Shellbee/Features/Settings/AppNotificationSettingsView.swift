@@ -31,6 +31,7 @@ struct AppNotificationSettingsView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Activity Center")
         .navigationBarTitleDisplayMode(.inline)
     }

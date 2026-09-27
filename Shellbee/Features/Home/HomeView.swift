@@ -6,8 +6,6 @@ struct HomeView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
     @Environment(\.openURL) private var openURL
-    @Environment(\.shellbeeTheme) private var theme
-    @Environment(\.colorScheme) private var colorScheme
 
     @State private var isPermitJoinConfigPresented = false
     @State private var showingRestartAlert = false
@@ -156,11 +154,7 @@ struct HomeView: View {
                 .frame(maxWidth: DesignTokens.Size.readableContentMaxWidth)
                 .frame(maxWidth: .infinity)
             }
-            .background(
-                HomeAmbientBackground(theme: theme)
-                    .ignoresSafeArea()
-            )
-            .tint(theme.accentColor(for: colorScheme) ?? .accentColor)
+            .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
             .navigationDestination(isPresented: $showingStatistics) {
                 if let bridgeID = selectedBridgeID {
                     DeviceStatisticsView(bridgeID: bridgeID, defaultsToAllBridges: true)

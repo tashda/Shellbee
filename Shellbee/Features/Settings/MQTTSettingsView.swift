@@ -113,6 +113,7 @@ struct MQTTSettingsView: View {
                 Text("Include Device Metadata adds model and vendor info to every state message. Turning off Retain Messages means the broker won't store the last state for new subscribers.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("MQTT")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -37,6 +37,7 @@ struct BridgeSettingsView: View {
                 dangerSection
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
         // Match SettingsView — Logs is reachable from per-bridge settings via

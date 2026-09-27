@@ -67,7 +67,7 @@ struct DeviceStatisticsView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .navigationTitle("Device Statistics")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

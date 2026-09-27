@@ -21,7 +21,7 @@ struct FeatureDetailSheet<Content: View>: View {
                     ))
                     .padding(DesignTokens.Spacing.lg)
             }
-            .background(Color(.systemGroupedBackground))
+            .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

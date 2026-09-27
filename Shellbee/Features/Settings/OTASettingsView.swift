@@ -86,6 +86,7 @@ struct OTASettingsView: View {
                 Text("Controls how Shellbee paces \"Check All for Updates\". Higher concurrency finishes faster but can flood the Zigbee coordinator.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("OTA Updates")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

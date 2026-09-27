@@ -51,6 +51,7 @@ struct DocBrowserView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .shellbeeThemedCanvas()
         .navigationTitle("Device Library")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $searchText, prompt: "Search model, vendor, description")
@@ -254,6 +255,7 @@ private struct ManufacturerFilterSheet: View {
                 }
             }
             .searchable(text: $search, prompt: "Search manufacturers")
+            .shellbeeThemedCanvas()
             .minimizeSearchToolbarIfAvailable()
             .navigationTitle("Manufacturer")
             .navigationBarTitleDisplayMode(.inline)

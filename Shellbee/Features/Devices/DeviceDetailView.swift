@@ -77,6 +77,7 @@ struct DeviceDetailView: View {
 
             logsSection
         }
+        .shellbeeThemedCanvas()
         .contentMargins(.top, 0, for: .scrollContent)
         .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)

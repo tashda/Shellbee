@@ -101,6 +101,7 @@ struct BridgeInfoSheet: View {
                 healthSection(health)
             }
         }
+        .shellbeeThemedCanvas()
     }
 
     @ViewBuilder

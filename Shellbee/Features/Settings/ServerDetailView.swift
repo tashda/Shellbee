@@ -97,6 +97,7 @@ struct ServerDetailView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Server")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

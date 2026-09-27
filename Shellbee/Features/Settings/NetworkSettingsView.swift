@@ -51,6 +51,7 @@ struct NetworkSettingsView: View {
                 Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrency and message delay affect how fast commands are sent to the adapter.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Network & Hardware")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

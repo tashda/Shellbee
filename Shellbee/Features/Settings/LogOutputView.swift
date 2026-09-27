@@ -93,6 +93,7 @@ struct LogOutputView: View {
                 Text("Regular expression to suppress debug messages from matching namespaces. Leave empty to log all namespaces.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Log Output")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -52,6 +52,7 @@ struct AppGeneralView: View {
                 Text("Adds power-user tools to Settings and Network Map on iPad.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("General")
         .navigationBarTitleDisplayMode(.inline)
     }

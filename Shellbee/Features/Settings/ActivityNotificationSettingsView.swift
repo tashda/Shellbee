@@ -61,6 +61,7 @@ struct ActivityNotificationSettingsView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
     }

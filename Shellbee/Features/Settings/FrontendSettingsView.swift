@@ -82,6 +82,7 @@ struct FrontendSettingsView: View {
                 Text("Disable UI File Serving keeps the API reachable while turning off the static web UI. Package Override points the frontend at an alternate npm package.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Frontend")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -16,14 +16,19 @@ struct AppAppearanceSettingsView: View {
                 NavigationLink {
                     HomeThemePickerView()
                 } label: {
-                    LabeledContent("Color theme") {
+                    LabeledContent("Color Theme") {
                         Text(ShellbeeTheme.stored(themeRawValue).displayName)
                     }
                 }
+                ShellbeeThemePreview(theme: ShellbeeTheme.stored(themeRawValue))
+                    .listRowInsets(EdgeInsets(top: DesignTokens.Spacing.md,
+                                              leading: DesignTokens.Spacing.lg,
+                                              bottom: DesignTokens.Spacing.md,
+                                              trailing: DesignTokens.Spacing.lg))
             } header: {
                 Text("Theme")
             } footer: {
-                Text("Color themes currently change the Home background and accent.")
+                Text("Themes tint the background and accent of every screen.")
             }
 
             Section("Home") {
@@ -49,6 +54,7 @@ struct AppAppearanceSettingsView: View {
                 Text(indicatorMode.description)
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Appearance")
         .navigationBarTitleDisplayMode(.inline)
     }

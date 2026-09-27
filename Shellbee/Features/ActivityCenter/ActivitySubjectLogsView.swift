@@ -38,6 +38,7 @@ struct ActivitySubjectLogsView: View {
                 ActivitySubjectEvents.Row(item: item, bridgeID: bridgeID)
             }
         }
+        .shellbeeThemedCanvas()
         .listStyle(.plain)
         .overlay { emptyState }
         .searchable(text: $searchText, prompt: "Search activity")

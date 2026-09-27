@@ -42,6 +42,7 @@ struct DeviceBindView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Bind")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

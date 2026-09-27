@@ -89,6 +89,7 @@ struct NetworkAccessSettingsView: View {
                 Text("Devices here are always rejected, even during an active join window.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Device Filtering")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

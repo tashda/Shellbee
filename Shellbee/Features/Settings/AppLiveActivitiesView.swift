@@ -19,6 +19,7 @@ struct AppLiveActivitiesView: View {
                 Text("Lock Screen and Dynamic Island")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Live Activities")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: permitJoinLiveActivityEnabled) { _, _ in

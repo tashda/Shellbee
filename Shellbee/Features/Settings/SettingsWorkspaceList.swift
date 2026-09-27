@@ -21,6 +21,7 @@ struct SettingsWorkspaceList: View {
         // full-bleed white rows, no grouping, and no visual relationship to
         // the grouped controls in the detail column.
         .listStyle(.insetGrouped)
+        .shellbeeThemedCanvas()
         .scrollContentBackground(.visible)
         .navigationTitle("Settings")
         .toolbar {

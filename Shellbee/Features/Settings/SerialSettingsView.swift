@@ -68,6 +68,7 @@ struct SerialSettingsView: View {
                 Text("Controls the indicator LED on the Zigbee adapter, if supported.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Adapter")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

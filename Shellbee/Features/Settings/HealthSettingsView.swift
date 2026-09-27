@@ -32,6 +32,7 @@ struct HealthSettingsView: View {
                 Text("When enabled, the bridge adapter is reset each time the health check runs. Only enable if you experience reliability issues.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Health Checks")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

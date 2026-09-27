@@ -83,6 +83,7 @@ struct MainSettingsView: View {
                 Text("JSON publishes all device properties in a single message. Both adds a separate per-topic message for each property alongside JSON. Shellbee requires JSON to be included.")
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("General")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

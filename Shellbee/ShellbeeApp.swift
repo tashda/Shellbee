@@ -6,6 +6,8 @@ struct ShellbeeApp: App {
     @AppStorage("appearanceMode") private var appearanceMode: AppearanceMode = .system
     @AppStorage(ShellbeeTheme.storageKey) private var themeRawValue = ShellbeeTheme.defaultTheme.rawValue
 
+    private var theme: ShellbeeTheme { ShellbeeTheme.stored(themeRawValue) }
+
     init() {
         SentryService.shared.start()
     }
@@ -16,7 +18,8 @@ struct ShellbeeApp: App {
                 .configuredTopScrollEdgeEffect()
                 .environment(environment)
                 .preferredColorScheme(appearanceMode.colorScheme)
-                .environment(\.shellbeeTheme, ShellbeeTheme.stored(themeRawValue))
+                .environment(\.shellbeeTheme, theme)
+                .tint(theme.palette?.accent)
         } defaultValue: {
             .home
         }

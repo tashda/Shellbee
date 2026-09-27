@@ -58,6 +58,7 @@ struct AvailabilitySettingsView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Availability")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

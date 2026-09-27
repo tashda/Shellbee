@@ -17,6 +17,7 @@ struct AboutView: View {
             shellbeeSection
             connectSection
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -44,6 +44,7 @@ struct HomeSettingsView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Home")
         .navigationBarTitleDisplayMode(.inline)
     }

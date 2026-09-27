@@ -20,7 +20,7 @@ struct DeviceDocView: View {
         }
         .environment(\.docContextDevice, device)
         .environment(\.docContextBridgeID, bridgeID)
-        .background(Color(.systemGroupedBackground))
+        .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
         .navigationTitle("Documentation")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

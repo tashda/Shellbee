@@ -73,6 +73,7 @@ struct SettingsView: View {
                 singleBridgeLayout
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Settings")
         // Inside LogsView's log-detail screen, the device/group hero card
         // uses NavigationLink(value:) to push a DeviceRoute / GroupRoute.
