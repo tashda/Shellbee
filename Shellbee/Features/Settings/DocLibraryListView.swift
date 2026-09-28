@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// One slice of the Device Library as rows, grouped by manufacturer (or by
-/// type on a manufacturer's page), with a Power Source filter. With a
+/// type on a manufacturer's page), with power, feature and In your
+/// network filters shown as removable chips. With a
 /// `selection` it's the content column of the iPad library; otherwise rows
 /// push the Documentation page.
 struct DocLibraryListView: View {
@@ -10,17 +11,18 @@ struct DocLibraryListView: View {
     var selection: Binding<DocBrowserEntry?>? = nil
 
     @Environment(AppEnvironment.self) private var environment
-    @State private var power: PowerFilter = .any
+    @State private var filters = DocLibraryFilters()
 
     private var owned: [String: Int] { environment.ownedLibraryModels }
 
     private var entries: [DocBrowserEntry] {
-        scope.entries(from: allEntries, owned: owned).filter { entry in
-            switch power {
-            case .any: true
-            case .battery: entry.isBatteryPowered
-            case .mains: !entry.isBatteryPowered
-            }
+        scope.entries(from: allEntries, owned: owned).filter { filters.matches($0, owned: owned) }
+    }
+
+    private var features: [DocLibraryFeature] {
+        switch scope {
+        case .type(let type): DocLibraryFeature.features(for: type)
+        case .owned, .all, .other, .vendor: []
         }
     }
 
@@ -33,7 +35,7 @@ struct DocLibraryListView: View {
                     ContentUnavailableView(
                         "No Devices",
                         systemImage: FilterMenuSymbol.all,
-                        description: Text(power == .any ? "Nothing in the library matches." : "Try another power source.")
+                        description: Text(filters.isActive ? "Try removing a filter." : "Nothing in the library matches.")
                     )
                 }
             }
@@ -70,7 +72,15 @@ struct DocLibraryListView: View {
         }
     }
 
+    @ViewBuilder
     private func rows<Row: View>(@ViewBuilder _ content: @escaping (DocBrowserEntry) -> Row) -> some View {
+        if filters.isActive {
+            Section {
+                activeChips
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
         ForEach(sections, id: \.title) { section in
             Section(section.title) {
                 ForEach(section.entries, id: \.docKey) { entry in
@@ -111,31 +121,62 @@ struct DocLibraryListView: View {
 
     // MARK: - Filter
 
-    private enum PowerFilter: Hashable { case any, battery, mains }
-
-    private var filterMenu: some View {
-        Menu {
-            Menu {
-                Picker("Power Source", selection: $power) {
-                    Label("All Power Sources", systemImage: FilterMenuSymbol.all).tag(PowerFilter.any)
-                    Label("Battery", systemImage: "battery.100").tag(PowerFilter.battery)
-                    Label("Mains / USB", systemImage: "powerplug.fill").tag(PowerFilter.mains)
+    private var activeChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                if let power = filters.powerTitle {
+                    RemovableFilterChip(title: power) { filters.power = .any }
                 }
-                .pickerStyle(.inline)
-            } label: {
-                FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: powerValue)
+                if filters.inNetworkOnly {
+                    RemovableFilterChip(title: DocLibraryScope.owned.title) { filters.inNetworkOnly = false }
+                }
+                ForEach(features.filter(filters.features.contains)) { feature in
+                    RemovableFilterChip(title: feature.title) { filters.features.remove(feature) }
+                }
             }
-            ClearFiltersMenuItem(isActive: power != .any) { power = .any }
-        } label: {
-            FilterMenuLabel(isActive: power != .any)
+            .padding(.horizontal, DesignTokens.Spacing.lg)
         }
     }
 
-    private var powerValue: String? {
-        switch power {
-        case .any: nil
-        case .battery: "Battery"
-        case .mains: "Mains / USB"
+    private var filterMenu: some View {
+        Menu {
+            if !features.isEmpty {
+                Section("Features") {
+                    ForEach(features) { feature in
+                        Toggle(isOn: featureBinding(feature)) {
+                            Label(feature.title, systemImage: feature.systemImage)
+                        }
+                    }
+                }
+            }
+            Menu {
+                Picker("Power Source", selection: $filters.power) {
+                    Label("All Power Sources", systemImage: FilterMenuSymbol.all).tag(DocLibraryFilters.Power.any)
+                    Label("Battery", systemImage: "battery.100").tag(DocLibraryFilters.Power.battery)
+                    Label("Mains / USB", systemImage: "powerplug.fill").tag(DocLibraryFilters.Power.mains)
+                }
+                .pickerStyle(.inline)
+            } label: {
+                FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: filters.powerTitle)
+            }
+            if scope != .owned {
+                Toggle(isOn: $filters.inNetworkOnly) {
+                    Label(DocLibraryScope.owned.title, systemImage: DocLibraryScope.owned.systemImage)
+                }
+            }
+            ClearFiltersMenuItem(isActive: filters.isActive) { filters = DocLibraryFilters() }
+        } label: {
+            FilterMenuLabel(isActive: filters.isActive)
         }
+        .menuActionDismissBehavior(.disabled)
+    }
+
+    private func featureBinding(_ feature: DocLibraryFeature) -> Binding<Bool> {
+        Binding(
+            get: { filters.features.contains(feature) },
+            set: { isOn in
+                if isOn { filters.features.insert(feature) } else { filters.features.remove(feature) }
+            }
+        )
     }
 }
