@@ -9,6 +9,8 @@ final class AppStore {
     /// Position of each device in `devices` by friendly name, rebuilt on
     /// every change, so rows looking up their device don't scan the list.
     @ObservationIgnored private(set) var deviceIndexByName: [String: Int] = [:]
+    /// Per-device observation handles, see `DeviceLiveState`.
+    @ObservationIgnored var liveStates: [String: DeviceLiveState] = [:]
     /// Set once `bridge/devices` has arrived for this connection, so the
     /// splash can tell an empty network from one still loading.
     var hasReceivedDevices = false
@@ -142,6 +144,7 @@ final class AppStore {
         isConnected = false
         deviceStates = [:]
         deviceAvailability = [:]
+        publishAllLiveStates()
         pendingRenames = []
         otaUpdates = [:]
         logEntries = []

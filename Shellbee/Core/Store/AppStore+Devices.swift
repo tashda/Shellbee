@@ -79,6 +79,8 @@ extension AppStore {
         if let state = deviceStates.removeValue(forKey: from) {
             deviceStates[to] = state
         }
+        publishLiveState(for: from)
+        publishLiveState(for: to)
         pendingRenames.append((from: from, to: to))
     }
 
@@ -94,5 +96,7 @@ extension AppStore {
         if let state = deviceStates.removeValue(forKey: to) {
             deviceStates[from] = state
         }
+        publishLiveState(for: from)
+        publishLiveState(for: to)
     }
 }

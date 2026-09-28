@@ -597,42 +597,21 @@ struct DeviceListContent: View {
 
     // MARK: - Row composition
 
-    @ViewBuilder
     private func deviceRow(
         for device: Device,
         store: AppStore,
         bridgeName: String,
         bridgeID: UUID
     ) -> some View {
-        let state = store.state(for: device.friendlyName)
-        let isAvailable = store.isAvailable(device.friendlyName)
-        let otaStatus = store.otaStatus(for: device.friendlyName)
-        let bound = BridgeBoundDevice(bridgeID: bridgeID, bridgeName: bridgeName, device: device)
-        DeviceListRow(
+        LiveDeviceListRow(
             device: device,
-            state: state,
-            isAvailable: isAvailable,
-            otaStatus: otaStatus,
-            checkResult: store.deviceCheckResults[device.friendlyName],
-            isDeleting: store.pendingRemovals.contains(device.friendlyName),
-            isIdentifying: store.identifyInProgress.contains(device.friendlyName),
+            store: store,
             bridgeID: bridgeID,
             bridgeName: bridgeName,
-            onRename: { onRename(bound) },
-            onRemove: { onRemove(bound) },
-            onReconfigure: { onPendingAlert(.reconfigure(device), bridgeID) },
-            onInterview: { onPendingAlert(.interview(device), bridgeID) },
-            onIdentify: {
-                environment.scope(for: bridgeID).identifyDevice(device.friendlyName)
-            },
-            onUpdate: state.hasUpdateAvailable
-                ? { viewModel.updateDevice(device, environment: environment, bridgeID: bridgeID) }
-                : nil,
-            onCheckUpdate: { viewModel.checkDeviceUpdate(device, environment: environment, bridgeID: bridgeID) },
-            onSchedule: state.hasUpdateAvailable
-                ? { viewModel.scheduleDeviceUpdate(device, environment: environment, bridgeID: bridgeID) }
-                : nil,
-            onUnschedule: { viewModel.unscheduleDeviceUpdate(device, environment: environment, bridgeID: bridgeID) }
+            viewModel: viewModel,
+            onRename: onRename,
+            onRemove: onRemove,
+            onPendingAlert: onPendingAlert
         )
     }
 }
