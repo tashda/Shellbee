@@ -137,7 +137,33 @@ private struct ShellbeeActiveTint: ViewModifier {
     }
 }
 
+/// A swipe action's colour. With Themed Indicators on, each system colour
+/// takes the theme's matching tone (red to its warning red, orange to its
+/// warm tone, blue and green to its accent family, purple to its secondary
+/// tone), so adjacent actions stay distinct. Grey and the toggle off leave
+/// the colour as it is.
+private struct ShellbeeSwipeTint: ViewModifier {
+    let color: Color
+
+    @Environment(\.self) private var environment
+
+    func body(content: Content) -> some View {
+        content.tint(resolved)
+    }
+
+    private var resolved: Color {
+        guard environment.shellbeeThemesStatusColors else { return color }
+        if color == .purple, let good = environment.shellbeeTheme.statusColor(.good) { return good }
+        return environment.themedStatusColor(color)
+    }
+}
+
 extension View {
+    /// Tints a swipe action; see `ShellbeeSwipeTint`.
+    func shellbeeSwipeTint(_ color: Color) -> some View {
+        modifier(ShellbeeSwipeTint(color: color))
+    }
+
     /// Tints a toggle, slider or progress bar that shows something is on.
     func shellbeeActiveTint(standard: Color) -> some View {
         modifier(ShellbeeActiveTint(standard: standard))

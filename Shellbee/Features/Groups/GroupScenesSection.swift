@@ -36,6 +36,7 @@ struct GroupScenesSection: View {
                         } label: {
                             Label("Remove", systemImage: "trash")
                         }
+                        .shellbeeSwipeTint(.red)
                     }
                 }
             }

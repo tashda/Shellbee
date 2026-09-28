@@ -40,11 +40,11 @@ struct GroupListRow: View {
             Button(action: onRemove) {
                 swipeActionLabel("Delete", systemImage: "trash")
             }
-            .tint(.red)
+            .shellbeeSwipeTint(.red)
             Button(action: onRename) {
                 swipeActionLabel("Rename", systemImage: "pencil")
             }
-            .tint(.orange)
+            .shellbeeSwipeTint(.orange)
         }
         .contextMenu {
             Button(action: onRename) {

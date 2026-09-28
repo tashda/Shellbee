@@ -204,6 +204,7 @@ private struct BridgeRow: View {
             Button(role: .destructive, action: onRemove) {
                 Label("Remove", systemImage: "trash")
             }
+            .shellbeeSwipeTint(.red)
             Button(action: onRename) {
                 Label("Rename", systemImage: "pencil")
             }

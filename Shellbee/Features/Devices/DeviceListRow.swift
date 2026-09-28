@@ -117,12 +117,12 @@ struct DeviceListRow: View {
                 Button(action: onUnschedule) {
                     Label("Cancel", systemImage: "xmark.circle")
                 }
-                .tint(.orange)
+                .shellbeeSwipeTint(.orange)
             } else if let rejection = rejectionMessage {
                 Button(action: rejectSwipe) {
                     Label(rejection.text, systemImage: rejection.icon)
                 }
-                .tint(.gray)
+                .shellbeeSwipeTint(.gray)
             } else {
                 Button(action: onCheckUpdate) {
                     Label("Check", systemImage: "arrow.triangle.2.circlepath")
@@ -133,26 +133,26 @@ struct DeviceListRow: View {
                         Button(action: onSchedule) {
                             Label("Schedule", systemImage: "calendar.badge.clock")
                         }
-                        .tint(.indigo)
+                        .shellbeeSwipeTint(.indigo)
                     }
                     if let onUpdate {
                         Button(action: onUpdate) {
                             Label("Update", systemImage: "arrow.up.circle")
                         }
-                        .tint(.green)
+                        .shellbeeSwipeTint(.green)
                     }
                 } else {
                     if let onUpdate {
                         Button(action: onUpdate) {
                             Label("Update", systemImage: "arrow.up.circle")
                         }
-                        .tint(.green)
+                        .shellbeeSwipeTint(.green)
                     }
                     if let onSchedule {
                         Button(action: onSchedule) {
                             Label("Schedule", systemImage: "calendar.badge.clock")
                         }
-                        .tint(.indigo)
+                        .shellbeeSwipeTint(.indigo)
                     }
                 }
             }
@@ -166,25 +166,25 @@ struct DeviceListRow: View {
             Button(action: { if !isDeleting { onRemove() } }) {
                 Label("Delete", systemImage: "trash")
             }
-            .tint(.red)
+            .shellbeeSwipeTint(.red)
             Button(action: onRename) {
                 Label("Rename", systemImage: "pencil")
             }
-            .tint(.orange)
+            .shellbeeSwipeTint(.orange)
             Button(action: onReconfigure) {
                 Label("Config", systemImage: "gearshape")
             }
-            .tint(.gray)
+            .shellbeeSwipeTint(.gray)
             Button(action: onInterview) {
                 Label("Interview", systemImage: "questionmark.circle")
             }
-            .tint(.purple)
+            .shellbeeSwipeTint(.purple)
             if device.supportsIdentify {
                 Button(action: onIdentify) {
                     Label(isIdentifying ? "Identifying" : "Identify",
                           systemImage: isIdentifying ? "wave.3.right" : "wave.3.right.circle")
                 }
-                .tint(.teal)
+                .shellbeeSwipeTint(.teal)
                 .disabled(isIdentifying)
             }
         }

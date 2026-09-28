@@ -43,6 +43,7 @@ struct ConnectionHistorySection: View {
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
+                        .shellbeeSwipeTint(.red)
 
                         Button {
                             viewModel.presentEditor(for: config)
