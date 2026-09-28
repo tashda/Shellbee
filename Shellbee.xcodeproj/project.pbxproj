@@ -140,6 +140,7 @@
 				Core/Services/DeviceDocService.swift,
 				Core/Services/DocBrowserIndex.swift,
 				Core/Services/GuideDocService.swift,
+				"Core/Store/AppStore+UpdateCheck.swift",
 				Core/Store/AppStore.swift,
 				"Core/Store/AppStore+Devices.swift",
 				"Core/Store/AppStore+Events.swift",

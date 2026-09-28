@@ -10,6 +10,7 @@ final class OTABulkOperationQueueTests: XCTestCase {
     func testUpdateRetriesSendUntilTransmitted() async { await OTABulkOperationQueueTestDriver.testUpdateRetriesSendUntilTransmitted() }
     func testUpdateTimeoutRetriesOnceBeforeFailing() async { await OTABulkOperationQueueTestDriver.testUpdateTimeoutRetriesOnceBeforeFailing() }
     func testEnqueueWhileRunningAppendsToCurrentRun() async { await OTABulkOperationQueueTestDriver.testEnqueueWhileRunningAppendsToCurrentRun() }
+    func testReportsProgressAsDevicesComplete() async { await OTABulkOperationQueueTestDriver.testReportsProgressAsDevicesComplete() }
 }
 
 @MainActor
@@ -18,6 +19,7 @@ private enum OTABulkOperationQueueTestDriver {
     private final class Recorder {
         var sends: [(topic: String, id: String)] = []
         var summaries: [OTABulkOperationQueue.CompletionSummary] = []
+        var progress: [OTABulkOperationQueue.Progress] = []
     }
 
     private final class SendGate {
@@ -51,6 +53,9 @@ private enum OTABulkOperationQueueTestDriver {
             },
             onCompletion: { summary in
                 recorder.summaries.append(summary)
+            },
+            onProgress: { progress in
+                recorder.progress.append(progress)
             },
             updateTimeout: updateTimeout,
             sleep: sleep,
@@ -98,6 +103,25 @@ private enum OTABulkOperationQueueTestDriver {
         XCTAssertEqual(recorder.summaries.first?.succeeded, 3)
         XCTAssertEqual(recorder.summaries.first?.failed, 0)
         XCTAssertFalse(recorder.summaries.first?.wasCancelled ?? true)
+    }
+
+    static func testReportsProgressAsDevicesComplete() async {
+        let recorder = Recorder()
+        let queue = makeQueue(recorder: recorder)
+
+        queue.enqueue(["a", "b"], kind: .check)
+        await waitUntil { recorder.sends.count == 1 }
+        queue.handleResponse(friendlyName: "a", success: false, kind: .check)
+        await waitUntil { recorder.sends.count == 2 }
+        queue.handleResponse(friendlyName: "b", success: true, kind: .check)
+        await waitUntil { !queue.isActive }
+
+        let last = recorder.progress.last
+        XCTAssertEqual(last?.kind, .check)
+        XCTAssertEqual(last?.total, 2)
+        XCTAssertEqual(last?.completed, 2)
+        XCTAssertEqual(last?.failed, 1)
+        XCTAssertTrue(recorder.progress.contains { $0.completed == 1 })
     }
 
     static func testTimeoutCountsAsFailureAndAdvances() async {

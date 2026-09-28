@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// What is happening right now: pairing open and counting down, firmware
-/// in flight, a device being interviewed.
+/// What is happening right now: pairing open and counting down, a check
+/// for updates, firmware in flight, a device being interviewed.
 ///
 /// This is the one card on Home, because it is the one thing here you
 /// operate — everything else you only read. It exists only while something
@@ -28,15 +28,19 @@ struct HomeNowCard: View {
     /// Mean progress across the devices actually flashing, 0–1.
     let updateProgress: Double?
     let interviewingCount: Int
+    /// Check All for Updates while it runs.
+    var updateCheck: OTACheckProgress? = nil
     let onOpenUpdates: () -> Void
     let onStopPermitJoin: (UUID) -> Void
+    var onStopUpdateCheck: () -> Void = {}
 
     static func hasContent(
         permitJoins: [PermitJoin],
         updatingCount: Int,
-        interviewingCount: Int
+        interviewingCount: Int,
+        updateCheck: OTACheckProgress? = nil
     ) -> Bool {
-        !permitJoins.isEmpty || updatingCount > 0 || interviewingCount > 0
+        !permitJoins.isEmpty || updatingCount > 0 || interviewingCount > 0 || updateCheck != nil
     }
 
     var body: some View {
@@ -46,13 +50,18 @@ struct HomeNowCard: View {
                 permitJoinRow(join)
             }
 
-            if updatingCount > 0 {
+            if let updateCheck {
                 if !permitJoins.isEmpty { Divider() }
+                updateCheckRow(updateCheck)
+            }
+
+            if updatingCount > 0 {
+                if !permitJoins.isEmpty || updateCheck != nil { Divider() }
                 updatingRow
             }
 
             if interviewingCount > 0 {
-                if !permitJoins.isEmpty || updatingCount > 0 { Divider() }
+                if !permitJoins.isEmpty || updateCheck != nil || updatingCount > 0 { Divider() }
                 CardHeader(
                     instrument: .init(kind: .pairing),
                     title: "Interviewing",
@@ -96,6 +105,31 @@ struct HomeNowCard: View {
     }
 
     // MARK: - Firmware
+
+    /// "37 of 142 · 3 found · 1 no reply", with the bar filling as the
+    /// check works through the network.
+    private func updateCheckRow(_ check: OTACheckProgress) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            CardHeader(
+                instrument: .init(kind: .update, normalizedValue: check.fraction),
+                title: "Checking for updates",
+                value: updateCheckValue(check)
+            ) {
+                Button("Stop", action: onStopUpdateCheck)
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.themedStatus(.red))
+            }
+            ProgressView(value: check.fraction)
+                .shellbeeActiveTint(standard: .blue)
+        }
+    }
+
+    private func updateCheckValue(_ check: OTACheckProgress) -> String {
+        var parts = ["\(check.completed) of \(check.total)", "\(check.found) found"]
+        if check.failed > 0 { parts.append("\(check.failed) no reply") }
+        return parts.joined(separator: " · ")
+    }
 
     private var updatingRow: some View {
         Button(action: onOpenUpdates) {

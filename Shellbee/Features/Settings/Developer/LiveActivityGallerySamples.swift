@@ -8,6 +8,7 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
     case otaUpdate
     case touchlinkScan
     case touchlinkIdentify
+    case updateCheck
 
     var id: String { rawValue }
 
@@ -17,6 +18,7 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
         case .otaUpdate: return "OTA Update"
         case .touchlinkScan: return "Touchlink Scan"
         case .touchlinkIdentify: return "Touchlink Identify"
+        case .updateCheck: return "Check for Updates"
         }
     }
 
@@ -26,6 +28,7 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
         case .otaUpdate: return .custom("firmware")
         case .touchlinkScan: return .custom("touchlink")
         case .touchlinkIdentify: return .custom("identify")
+        case .updateCheck: return .custom("firmware")
         }
     }
 
@@ -36,6 +39,7 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
         case .otaUpdate: return .otaUpdateDefault
         case .touchlinkScan: return .touchlinkScanDefault
         case .touchlinkIdentify: return .touchlinkIdentifyDefault
+        case .updateCheck: return .otaCheckDefault
         }
     }
 
@@ -46,6 +50,7 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
         case .otaUpdate: return [.hero, .queue, .track, .ring, .spotlight, .scoreboard, .classic]
         case .touchlinkScan: return [.ring, .spotlight, .scoreboard, .hero, .track, .classic]
         case .touchlinkIdentify: return [.spotlight, .ring, .hero, .track, .classic]
+        case .updateCheck: return [.track, .ring, .scoreboard, .classic]
         }
     }
 
@@ -56,6 +61,7 @@ enum LiveActivityGalleryKind: String, CaseIterable, Identifiable {
         case .otaUpdate: return OTAUpdateGallerySamples.all(anchor: anchor)
         case .touchlinkScan: return TouchlinkGallerySamples.scan(anchor: anchor)
         case .touchlinkIdentify: return TouchlinkGallerySamples.identify(anchor: anchor)
+        case .updateCheck: return TouchlinkGallerySamples.updateCheck(anchor: anchor)
         }
     }
 }

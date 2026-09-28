@@ -202,18 +202,22 @@ struct HomeView: View {
     @ViewBuilder
     private var nowSection: some View {
         let joins = permitJoins
+        let updateCheck = environment.otaCheckProgress
         if HomeNowCard.hasContent(
             permitJoins: joins,
             updatingCount: snapshot.updatingDevices,
-            interviewingCount: snapshot.interviewingDevices
+            interviewingCount: snapshot.interviewingDevices,
+            updateCheck: updateCheck
         ) {
             HomeNowCard(
                 permitJoins: joins,
                 updatingCount: snapshot.updatingDevices,
                 updateProgress: updateProgress,
                 interviewingCount: snapshot.interviewingDevices,
+                updateCheck: updateCheck,
                 onOpenUpdates: { showDevices(filter: .updatesAvailable) },
-                onStopPermitJoin: { stopPermitJoin(bridgeID: $0) }
+                onStopPermitJoin: { stopPermitJoin(bridgeID: $0) },
+                onStopUpdateCheck: { environment.cancelOTAChecks() }
             )
         }
     }

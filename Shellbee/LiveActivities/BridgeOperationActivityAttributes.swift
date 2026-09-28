@@ -5,6 +5,7 @@ nonisolated struct BridgeOperationActivityAttributes: ActivityAttributes, Sendab
     nonisolated enum Operation: String, Codable, Sendable {
         case touchlinkScan
         case touchlinkIdentify
+        case otaCheck
     }
 
     nonisolated struct ContentState: Codable, Hashable, Sendable {
@@ -19,6 +20,11 @@ nonisolated struct BridgeOperationActivityAttributes: ActivityAttributes, Sendab
         let foundCount: Int
         let startedAt: Date
         let endsAt: Date
+        /// Check All for Updates: devices checked, in total, and that
+        /// didn't answer. `foundCount` holds updates found.
+        var completedCount = 0
+        var totalCount = 0
+        var failedCount = 0
     }
 
     let identifier: String

@@ -60,6 +60,9 @@ final class OTABulkOperationQueue {
 
     private let sender: @MainActor (String, JSONValue) async -> Bool
     private let onCompletion: (@MainActor (CompletionSummary) -> Void)?
+    /// Called whenever `progress` changes, for surfaces outside SwiftUI
+    /// (the Live Activity).
+    private let onProgress: (@MainActor (Progress) -> Void)?
     private let updateTimeout: Duration
     private let sleep: @Sendable (Duration) async throws -> Void
     private let settingsProvider: @MainActor () -> (concurrency: Int, checkTimeout: Duration)
@@ -77,12 +80,14 @@ final class OTABulkOperationQueue {
     init(
         sender: @escaping @MainActor (String, JSONValue) async -> Bool,
         onCompletion: (@MainActor (CompletionSummary) -> Void)? = nil,
+        onProgress: (@MainActor (Progress) -> Void)? = nil,
         updateTimeout: Duration = .seconds(600),
         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
         settingsProvider: (@MainActor () -> (concurrency: Int, checkTimeout: Duration))? = nil
     ) {
         self.sender = sender
         self.onCompletion = onCompletion
+        self.onProgress = onProgress
         self.updateTimeout = updateTimeout
         self.sleep = sleep
         self.settingsProvider = settingsProvider ?? Self.defaultSettingsProvider
@@ -238,12 +243,14 @@ final class OTABulkOperationQueue {
             return
         }
         let currentInFlight = (progress?.inFlight ?? 0) + inFlightDelta
-        progress = Progress(
+        let updated = Progress(
             kind: kind,
             total: totalCount,
             completed: completedCount,
             inFlight: max(0, currentInFlight),
             failed: failedCount
         )
+        progress = updated
+        onProgress?(updated)
     }
 }

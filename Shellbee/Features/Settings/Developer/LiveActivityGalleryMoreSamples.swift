@@ -63,6 +63,7 @@ enum OTAUpdateGallerySamples {
     }
 }
 
+/// Touchlink and Check for Updates, the bridge operation activities.
 enum TouchlinkGallerySamples {
     typealias State = BridgeOperationActivityAttributes.ContentState
 
@@ -92,6 +93,22 @@ enum TouchlinkGallerySamples {
             sample("Complete", State(phase: .completed, detail: "Living Room Light", foundCount: 0, startedAt: anchor, endsAt: anchor)),
             sample("Missed result", State(phase: .active, detail: "Living Room Light", foundCount: 0, startedAt: anchor.addingTimeInterval(-20), endsAt: anchor.addingTimeInterval(-1))),
             sample("Failed", State(phase: .failed, detail: "No response", foundCount: 0, startedAt: anchor, endsAt: anchor))
+        ]
+    }
+
+    static func updateCheck(anchor: Date) -> [LiveActivityGallerySample] {
+        let attributes = BridgeOperationActivityAttributes(identifier: "gallery", operation: .otaCheck, bridgeDisplayName: "")
+        func sample(_ name: String, _ state: State) -> LiveActivityGallerySample {
+            LiveActivityGallerySample(name: name, layout: .bridgeOperation(attributes: attributes, state: state, isStale: false))
+        }
+        func state(_ phase: State.Phase, completed: Int, found: Int, failed: Int) -> State {
+            State(phase: phase, detail: "", foundCount: found, startedAt: anchor, endsAt: anchor,
+                  completedCount: completed, totalCount: 142, failedCount: failed)
+        }
+        return [
+            sample("Checking", state(.active, completed: 37, found: 3, failed: 1)),
+            sample("Complete", state(.completed, completed: 142, found: 3, failed: 1)),
+            sample("Stopped", state(.failed, completed: 60, found: 2, failed: 0))
         ]
     }
 }

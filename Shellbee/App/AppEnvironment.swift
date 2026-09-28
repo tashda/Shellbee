@@ -127,6 +127,28 @@ final class AppEnvironment {
         return makeOrFetchQueue(for: session.store, bridgeID: bridgeID)
     }
 
+    /// Check All for Updates across every bridge running one, for Home's
+    /// Now card. Nil when no check is running.
+    var otaCheckProgress: OTACheckProgress? {
+        let running = otaQueues.compactMap { bridgeID, queue -> (UUID, OTABulkOperationQueue.Progress)? in
+            guard let progress = queue.progress, progress.kind == .check else { return nil }
+            return (bridgeID, progress)
+        }
+        guard !running.isEmpty else { return nil }
+        return OTACheckProgress(
+            completed: running.reduce(0) { $0 + $1.1.completed },
+            total: running.reduce(0) { $0 + $1.1.total },
+            failed: running.reduce(0) { $0 + $1.1.failed },
+            found: running.reduce(0) { $0 + (registry.session(for: $1.0)?.store.devicesWithUpdateAvailable ?? 0) }
+        )
+    }
+
+    func cancelOTAChecks() {
+        for queue in otaQueues.values where queue.progress?.kind == .check {
+            queue.cancelAll()
+        }
+    }
+
     // MARK: - Connection lifecycle
 
     /// Connect to a bridge. Existing sessions stay live — connecting a new
@@ -337,8 +359,21 @@ final class AppEnvironment {
             sender: { [weak self, bridgeID] topic, payload in
                 await self?.sendAwaitingTransmission(bridge: bridgeID, topic: topic, payload: payload) ?? false
             },
-            onCompletion: { [weak store] summary in
+            onCompletion: { [weak store, bridgeID] summary in
                 store?.enqueueOTABulkSummary(summary)
+                guard summary.kind == .check, let store else { return }
+                BridgeOperationLiveActivityCoordinator.shared.finishOTACheck(
+                    bridgeID: bridgeID, summary: summary, found: store.devicesWithUpdateAvailable
+                )
+            },
+            onProgress: { [weak self, weak store, bridgeID] progress in
+                guard let store else { return }
+                BridgeOperationLiveActivityCoordinator.shared.syncOTACheck(
+                    bridgeID: bridgeID,
+                    bridgeDisplayName: self?.registry.session(for: bridgeID)?.displayName ?? "",
+                    progress: progress,
+                    found: store.devicesWithUpdateAvailable
+                )
             }
         )
         store.otaResponseForwarding = { [weak queue] name, success, kind in

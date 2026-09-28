@@ -12,6 +12,7 @@ final class BridgeOperationLiveActivityCoordinator {
 
     private var tracked: [String: BridgeOperationActivityAttributes] = [:]
     private var expiryTasks: [String: Task<Void, Never>] = [:]
+    private var otaCheckStarts: [String: Date] = [:]
 
     private init() {}
 
@@ -73,6 +74,62 @@ final class BridgeOperationLiveActivityCoordinator {
             foundCount: 0,
             success: success
         )
+    }
+
+    // MARK: - Check All for Updates
+
+    private static var isOTACheckEnabled: Bool {
+        UserDefaults.standard.object(forKey: ConnectionSessionController.otaLiveActivityEnabledKey) as? Bool ?? true
+    }
+
+    /// Starts or updates the check's activity with the queue's progress.
+    func syncOTACheck(bridgeID: UUID, bridgeDisplayName: String, progress: OTABulkOperationQueue.Progress, found: Int) {
+        guard Self.isOTACheckEnabled, progress.kind == .check else { return }
+        let attributes = makeAttributes(bridgeID: bridgeID, operation: .otaCheck, bridgeDisplayName: bridgeDisplayName)
+        let key = attributes.identifier
+        let isNew = tracked[key] == nil
+        tracked[key] = attributes
+        let state = BridgeOperationActivityAttributes.ContentState(
+            phase: .active,
+            detail: "",
+            foundCount: found,
+            startedAt: otaCheckStarts[key] ?? .now,
+            endsAt: .distantFuture,
+            completedCount: progress.completed,
+            totalCount: progress.total,
+            failedCount: progress.failed
+        )
+        if isNew {
+            otaCheckStarts[key] = state.startedAt
+            Task { await controller.present(attributes: attributes, state: state, relevanceScore: 30) }
+        } else {
+            Task { await controller.update(attributes: attributes, state: state, relevanceScore: 30) }
+        }
+    }
+
+    /// Shows the check's result for a moment, then ends the activity.
+    func finishOTACheck(bridgeID: UUID, summary: OTABulkOperationQueue.CompletionSummary, found: Int) {
+        let attributes = makeAttributes(bridgeID: bridgeID, operation: .otaCheck, bridgeDisplayName: "")
+        let key = attributes.identifier
+        guard let tracked = tracked.removeValue(forKey: key) else { return }
+        let startedAt = otaCheckStarts.removeValue(forKey: key) ?? .now
+        let state = BridgeOperationActivityAttributes.ContentState(
+            phase: summary.wasCancelled ? .failed : .completed,
+            detail: "",
+            foundCount: found,
+            startedAt: startedAt,
+            endsAt: .now,
+            completedCount: summary.succeeded + summary.failed,
+            totalCount: summary.total,
+            failedCount: summary.failed
+        )
+        Task {
+            await controller.finish(
+                attributes: tracked,
+                state: state,
+                displayFor: DesignTokens.Duration.liveActivityMinimumVisible
+            )
+        }
     }
 
     func failAll(bridgeID: UUID?) {
