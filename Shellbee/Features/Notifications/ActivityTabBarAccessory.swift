@@ -69,7 +69,31 @@ struct ActivityTabBarAccessory: View {
     /// Keep the matched source on the actual mini-player surface. A Button
     /// adds a separate control transaction before the cover starts, which
     /// makes the opening zoom noticeably less continuous than the return.
+    /// A bridge that had data and is reconnecting. A bridge still loading
+    /// its first data is covered by the splash and loading screens.
+    private var updatingBridgeName: String? {
+        environment.registry.orderedSessions.first { session in
+            guard session.controller.hasBeenConnected || session.store.hasReceivedDevices else { return false }
+            switch session.connectionState {
+            case .connecting, .reconnecting: return true
+            case .connected: return !session.store.hasReceivedDevices
+            case .idle, .failed, .lost: return false
+            }
+        }?.displayName
+    }
+
+    @ViewBuilder
     private var accessorySurface: some View {
+        if let updatingBridgeName {
+            ActivityAccessoryUpdating(bridgeName: updatingBridgeName, isInline: isInline)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: openActivity)
+        } else {
+            summarySurface
+        }
+    }
+
+    private var summarySurface: some View {
         ActivityAccessorySummary(
             mode: displayMode,
             latestActivity: latestActivity,
@@ -141,10 +165,14 @@ struct ActivityAccessorySummary: View {
         case .latestActivity:
             item?.content.title ?? "Activity"
         case .summary:
-            recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
+            switch recentActivityCount {
+            case 0: "No recent activity"
+            case 1: "1 recent event"
+            default: "\(recentActivityCount) recent events"
+            }
         case .notificationsOnly:
             item?.content.title
-                ?? (recentAttentionCount == 0 ? "Notifications" : "\(recentAttentionCount) notifications")
+                ?? (recentAttentionCount == 0 ? "Notifications" : recentAttentionCount == 1 ? "1 notification" : "\(recentAttentionCount) notifications")
         }
     }
 

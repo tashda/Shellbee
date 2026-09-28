@@ -14,7 +14,9 @@ extension DeviceListContent {
             onPendingAlert: onPendingAlert
         )
         .overlay {
-            if environment.allDevices.isEmpty {
+            if environment.allDevices.isEmpty && environment.isLoading(.devices) {
+                LoadingStateView(title: "Loading devices")
+            } else if environment.allDevices.isEmpty {
                 ContentUnavailableView(
                     "No Devices",
                     systemImage: "cpu",

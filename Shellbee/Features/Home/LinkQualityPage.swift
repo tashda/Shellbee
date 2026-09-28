@@ -6,6 +6,7 @@ import SwiftUI
 struct LinkQualityPage: View {
     let readings: [HomeDeviceReading]
 
+    @Environment(AppEnvironment.self) private var environment
     @State private var range: String?
     @State private var searchText = ""
 
@@ -69,6 +70,8 @@ struct LinkQualityPage: View {
         .overlay {
             if !searchText.isEmpty && shown.isEmpty {
                 ContentUnavailableView.search(text: searchText)
+            } else if shown.isEmpty, environment.isLoading(.devices) {
+                LoadingStateView(title: "Loading devices")
             } else if shown.isEmpty {
                 ContentUnavailableView(
                     "No Signal Readings",

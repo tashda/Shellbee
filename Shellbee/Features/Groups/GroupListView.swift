@@ -119,7 +119,9 @@ struct GroupListView: View {
     @ViewBuilder
     private var listContent: some View {
         selectableList {
-            if isMergedMode {
+            if isLoadingGroups {
+                LoadingPlaceholderRows()
+            } else if isMergedMode {
                 let merged = mergedFilteredGroups()
                 ForEach(merged) { item in
                     // Bridge attribution lives on the row's leading-bar
@@ -177,13 +179,13 @@ struct GroupListView: View {
             }
         }
         .refreshable {
-            if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
-                await environment.refreshBridgeData(bridgeID: id)
-            }
+            await environment.refreshBridgeData(bridgeID: singleBridgeID)
         }
         .overlay {
             let totalGroups = environment.allGroups.count
-            if totalGroups == 0 {
+            if isLoadingGroups {
+                EmptyView()
+            } else if totalGroups == 0 {
                 ContentUnavailableView(
                     "No Groups",
                     systemImage: "rectangle.3.group.fill",
@@ -208,6 +210,11 @@ struct GroupListView: View {
             guard route != nil else { return }
             consumePendingGroupNavigation()
         }
+    }
+
+    /// No groups yet because a bridge is still sending them.
+    private var isLoadingGroups: Bool {
+        environment.allGroups.isEmpty && environment.isLoading(.groups)
     }
 
     /// Groups exist but search or filters hide them all.

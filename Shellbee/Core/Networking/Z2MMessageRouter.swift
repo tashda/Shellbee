@@ -1,20 +1,58 @@
 import Foundation
 
-struct Z2MMessageRouter: Sendable {
+/// Turns one WebSocket frame into a `Z2MEvent`. Runs off the main actor:
+/// the connect burst carries megabytes of JSON (`bridge/devices` with every
+/// definition), so decoding happens on the socket's decode task and only
+/// the finished events reach the store.
+nonisolated struct Z2MMessageRouter: Sendable {
+
+    private struct TopicProbe: Decodable {
+        let topic: String
+    }
+
+    /// A typed payload decoded straight from the frame, without building a
+    /// `JSONValue` tree and re-encoding it first.
+    private struct Envelope<Payload: Decodable>: Decodable {
+        let payload: Payload
+    }
 
     private struct RawMessage: Decodable {
         let topic: String
         let payload: JSONValue
 
+        /// For the small response payloads routed by topic below.
         func decode<T: Decodable>(_ type: T.Type) -> T? {
             guard let data = try? JSONEncoder().encode(payload) else { return nil }
             return try? JSONDecoder().decode(type, from: data)
         }
     }
 
+    /// Bridge topics the app reads. Other `bridge/…` topics (definitions,
+    /// extensions, converters, config) are large and unused, so they're
+    /// dropped after reading their topic.
+    private static let handledBridgeTopics: Set<String> = [
+        Z2MTopics.bridgeInfo, Z2MTopics.bridgeState, Z2MTopics.bridgeDevices, Z2MTopics.bridgeGroups,
+        Z2MTopics.bridgeLogging, Z2MTopics.bridgeEvent, Z2MTopics.bridgeHealth
+    ]
+
     func route(_ data: Data) -> Z2MEvent? {
-        guard let raw = try? JSONDecoder().decode(RawMessage.self, from: data) else { return nil }
-        return dispatch(raw)
+        let decoder = JSONDecoder()
+        guard let topic = try? decoder.decode(TopicProbe.self, from: data).topic else { return nil }
+        if topic.hasPrefix("bridge/"), !topic.hasPrefix("bridge/response/"),
+           !Self.handledBridgeTopics.contains(topic) {
+            return .unknown(topic: topic)
+        }
+        switch topic {
+        case Z2MTopics.bridgeInfo:
+            return (try? decoder.decode(Envelope<BridgeInfo>.self, from: data)).map { .bridgeInfo($0.payload) }
+        case Z2MTopics.bridgeDevices:
+            return (try? decoder.decode(Envelope<[Device]>.self, from: data)).map { .devices($0.payload) }
+        case Z2MTopics.bridgeGroups:
+            return (try? decoder.decode(Envelope<[Group]>.self, from: data)).map { .groups($0.payload) }
+        default:
+            guard let raw = try? decoder.decode(RawMessage.self, from: data) else { return nil }
+            return dispatch(raw)
+        }
     }
 
     static func decodeRaw(_ data: Data) -> (topic: String, payload: JSONValue)? {
@@ -24,22 +62,10 @@ struct Z2MMessageRouter: Sendable {
 
     private func dispatch(_ raw: RawMessage) -> Z2MEvent? {
         switch raw.topic {
-        case Z2MTopics.bridgeInfo:
-            guard let info = raw.decode(BridgeInfo.self) else { return nil }
-            return .bridgeInfo(info)
-
         case Z2MTopics.bridgeState:
             if let s = raw.payload.stringValue { return .bridgeState(s) }
             if let s = raw.payload.object?["state"]?.stringValue { return .bridgeState(s) }
             return nil
-
-        case Z2MTopics.bridgeDevices:
-            guard let devices = raw.decode([Device].self) else { return nil }
-            return .devices(devices)
-
-        case Z2MTopics.bridgeGroups:
-            guard let groups = raw.decode([Group].self) else { return nil }
-            return .groups(groups)
 
         case Z2MTopics.bridgeLogging:
             if let log = raw.decode(LogMessage.self) {

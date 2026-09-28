@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents the bridge-wide settings that can be modified via `bridge/request/options`.
 /// Many of these are also found in `BridgeInfo` but this struct is used for updating.
-struct BridgeSettings: Codable, Sendable, Equatable {
+nonisolated struct BridgeSettings: Codable, Sendable, Equatable {
     
     // MARK: - Main / Advanced
     var logLevel: LogLevel?
@@ -38,7 +38,7 @@ struct BridgeSettings: Codable, Sendable, Equatable {
     }
 }
 
-extension BridgeSettings {
+nonisolated extension BridgeSettings {
     enum LogLevel: String, Codable, Sendable, CaseIterable {
         case debug, info, warning, error
 
@@ -93,7 +93,7 @@ extension BridgeSettings {
     }
 }
 
-struct MQTTSettings: Codable, Sendable, Equatable {
+nonisolated struct MQTTSettings: Codable, Sendable, Equatable {
     var server: String?
     var baseTopic: String?
     var clientID: String?
@@ -122,7 +122,7 @@ struct MQTTSettings: Codable, Sendable, Equatable {
     }
 }
 
-struct FrontendSettings: Codable, Sendable, Equatable {
+nonisolated struct FrontendSettings: Codable, Sendable, Equatable {
     var enabled: Bool?
     var port: Int?
     var host: String?
@@ -144,7 +144,7 @@ struct FrontendSettings: Codable, Sendable, Equatable {
     }
 }
 
-struct AvailabilitySettings: Codable, Sendable, Equatable {
+nonisolated struct AvailabilitySettings: Codable, Sendable, Equatable {
     var enabled: Bool?
     var active: TimeoutConfig?
     var passive: TimeoutConfig?
@@ -164,7 +164,7 @@ struct AvailabilitySettings: Codable, Sendable, Equatable {
     }
 }
 
-struct HomeAssistantSettings: Codable, Sendable, Equatable {
+nonisolated struct HomeAssistantSettings: Codable, Sendable, Equatable {
     var enabled: Bool?
     var discoveryTopic: String?
     var statusTopic: String?
@@ -180,7 +180,7 @@ struct HomeAssistantSettings: Codable, Sendable, Equatable {
     }
 }
 
-struct SerialSettings: Codable, Sendable, Equatable {
+nonisolated struct SerialSettings: Codable, Sendable, Equatable {
     var port: String?
     var adapter: String?
     var baudrate: Int?

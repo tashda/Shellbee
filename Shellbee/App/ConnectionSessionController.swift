@@ -17,6 +17,9 @@ final class ConnectionSessionController {
     var connectionConfig: ConnectionConfig? = ConnectionConfig.load()
     var errorMessage: String?
     private(set) var hasBeenConnected = false
+    /// When the last batch of messages arrived. The splash waits for the
+    /// connect burst to go quiet before showing the app.
+    @ObservationIgnored private(set) var lastInboundAt: Date?
 
     /// Set when `connect(config:)` is invoked. Lets us defer `store.reset()`
     /// until the new handshake succeeds — a failed switch keeps the prior
@@ -56,6 +59,8 @@ final class ConnectionSessionController {
     static let maxReconnectAttemptsRange: ClosedRange<Int> = 1...20
     private static let baseReconnectDelay: Double = 1
     private static let maxReconnectDelay: Double = 30
+    /// The longest a pull to refresh keeps its spinner up.
+    private static let refreshTimeout: TimeInterval = 10
 
     static var configuredMaxReconnectAttempts: Int {
         let stored = UserDefaults.standard.integer(forKey: maxReconnectAttemptsKey)
@@ -132,6 +137,9 @@ final class ConnectionSessionController {
         store.isConnected = false
         connectionConfig = config
         errorMessage = nil
+        // Set before the session task runs, so anything checking right
+        // after (the launch splash, a second scene) sees the attempt.
+        connectionState = .connecting
         startSession(config: config)
     }
 
@@ -145,6 +153,33 @@ final class ConnectionSessionController {
         }
         errorMessage = nil
         startSession(config: config)
+    }
+
+    /// Pull to refresh. Zigbee2MQTT has no request for its device list or
+    /// states, but sends everything again on a new connection, so this
+    /// reconnects without clearing the store: what's on screen stays and
+    /// updates in place. Returns once the fresh data has landed and gone
+    /// quiet, so the refresh spinner covers the whole reload.
+    func refresh() async {
+        guard let config = connectionConfig, connectionState == .connected,
+              !store.networkMapIsRefreshing else { return }
+        store.hasReceivedDevices = false
+        store.hasReceivedGroups = false
+        startSession(config: config)
+
+        let started = Date()
+        while Date().timeIntervalSince(started) < Self.refreshTimeout {
+            try? await Task.sleep(for: .milliseconds(100))
+            switch connectionState {
+            case .connected:
+                if store.hasReceivedDevices, let last = lastInboundAt,
+                   Date().timeIntervalSince(last) >= LaunchReadiness.quietPeriod { return }
+            case .failed, .lost, .idle:
+                return
+            case .connecting, .reconnecting:
+                continue
+            }
+        }
     }
 
     func cancelConnection() async {
@@ -258,38 +293,42 @@ final class ConnectionSessionController {
     }
 
     private func requestInitialState() {
-        // Request full bridge info which includes config if possible
-        send(
-            topic: Z2MTopics.Request.info,
-            payload: .object(["include_device_information": .bool(true)])
-        )
-        // Pull a fresh health snapshot so the Home card has stats immediately
-        // after a (re)connect instead of waiting ~10 min for the periodic publish.
+        // bridge/info, bridge/devices and bridge/groups aren't requested:
+        // Zigbee2MQTT sends them (with every device's state) the moment
+        // the socket opens, and has no request for them. Only the health
+        // snapshot needs asking for, or the Home card waits ~10 min for
+        // the periodic publish.
         send(topic: Z2MTopics.Request.healthCheck, payload: .string(""))
-        send(topic: Z2MTopics.Request.devices, payload: .string(""))
-        send(topic: Z2MTopics.Request.groups, payload: .string(""))
     }
 
     private func monitorConnection(config: ConnectionConfig, events: AsyncStream<Z2MSocketEvent>) async {
-        for await socketEvent in events {
-            if Task.isCancelled { return }
+        guard let reason = await consume(events), !Task.isCancelled else { return }
+        store.isConnected = false
+        if let newEvents = await reconnect(config: config, reason: reason) {
+            await monitorConnection(config: config, events: newEvents)
+        }
+    }
 
-            switch socketEvent {
-            case .message(let data):
-                if let tap = rawInboundTap, let raw = Z2MMessageRouter.decodeRaw(data) {
-                    tap(raw.topic, raw.payload)
+    /// Applies decoded events a batch at a time (see `Z2MEventBatcher`).
+    /// Returns the disconnect reason, or `nil` when cancelled or the socket
+    /// ended without one.
+    private func consume(_ events: AsyncStream<Z2MSocketEvent>) async -> String? {
+        for await batch in Z2MEventBatcher.batches(from: events, router: router) {
+            if Task.isCancelled { return nil }
+            lastInboundAt = .now
+            for item in batch {
+                switch item {
+                case .message(let data, let event):
+                    if let tap = rawInboundTap, let raw = Z2MMessageRouter.decodeRaw(data) {
+                        tap(raw.topic, raw.payload)
+                    }
+                    if let event { store.apply(event) }
+                case .disconnected(let reason):
+                    return reason
                 }
-                if let event = router.route(data) {
-                    store.apply(event)
-                }
-            case .disconnected(let reason):
-                store.isConnected = false
-                if let newEvents = await reconnect(config: config, reason: reason) {
-                    await monitorConnection(config: config, events: newEvents)
-                }
-                return
             }
         }
+        return nil
     }
 
     private func reconnect(config: ConnectionConfig, reason: String) async -> AsyncStream<Z2MSocketEvent>? {

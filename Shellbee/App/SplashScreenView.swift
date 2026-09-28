@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct SplashScreenView: View {
+    /// Devices received so far; the status line switches to them once the
+    /// device list arrives.
+    var deviceCount = 0
+
     @Environment(\.colorScheme) private var colorScheme
     @State private var isVisible = false
 
@@ -38,7 +42,8 @@ struct SplashScreenView: View {
                     .controlSize(.regular)
                     .opacity(isVisible ? 1 : 0)
                 
-                Text("Connecting to Zigbee2MQTT")
+                Text(deviceCount > 0 ? "Loading \(deviceCount) devices" : "Connecting to Zigbee2MQTT")
+                    .contentTransition(.numericText())
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .opacity(isVisible ? 1 : 0)
@@ -46,7 +51,7 @@ struct SplashScreenView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: DesignTokens.Duration.pulseExpand)) {
+            withAnimation(.easeOut(duration: DesignTokens.Duration.splashFadeIn)) {
                 isVisible = true
             }
         }

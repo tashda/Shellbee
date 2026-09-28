@@ -155,9 +155,7 @@ struct DeviceListView: View {
             }
         }
         .refreshable {
-            if let id = toolbarBridgeID {
-                await environment.refreshBridgeData(bridgeID: id)
-            }
+            await environment.refreshBridgeData(bridgeID: toolbarBridgeID)
         }
         .onAppear {
             if let bridgeID = sceneNavigation.pendingDeviceBridgeID {
@@ -335,22 +333,29 @@ struct DeviceListContent: View {
             singleBridgeListBody(bridgeID: bridgeID, store: session.store, bridgeName: session.displayName)
         } else {
             selectableList {
-                EmptyView()
+                if environment.isLoading(.devices) {
+                    LoadingPlaceholderRows()
+                }
             }
             .overlay {
-                ContentUnavailableView(
-                    "No Devices",
-                    systemImage: "cpu",
-                    description: Text("Devices will appear once connected to Zigbee2MQTT.")
-                )
+                if !environment.isLoading(.devices) {
+                    ContentUnavailableView(
+                        "No Devices",
+                        systemImage: "cpu",
+                        description: Text("Devices will appear once connected to Zigbee2MQTT.")
+                    )
+                }
             }
         }
     }
 
     @ViewBuilder
     private func singleBridgeListBody(bridgeID: UUID, store: AppStore, bridgeName: String) -> some View {
+        let isLoading = store.devices.isEmpty && environment.isLoading(.devices, bridgeID: bridgeID)
         selectableList {
-            if isGrouped {
+            if isLoading {
+                LoadingPlaceholderRows()
+            } else if isGrouped {
                 if viewModel.showRecents {
                     let recents = viewModel.recentDevices(store: store)
                     if !recents.isEmpty {
@@ -381,7 +386,9 @@ struct DeviceListContent: View {
             }
         }
         .overlay {
-            if store.devices.isEmpty {
+            if isLoading {
+                EmptyView()
+            } else if store.devices.isEmpty {
                 ContentUnavailableView(
                     "No Devices",
                     systemImage: "cpu",
@@ -409,7 +416,11 @@ struct DeviceListContent: View {
     @ViewBuilder
     private var mergedList: some View {
         let allBound = filteredMergedDevices()
+        let isLoading = environment.allDevices.isEmpty && environment.isLoading(.devices)
         selectableList {
+            if isLoading {
+                LoadingPlaceholderRows()
+            }
             if viewModel.showRecents {
                 let recents = recentMergedDevices()
                 if !recents.isEmpty {
@@ -441,7 +452,9 @@ struct DeviceListContent: View {
             }
         }
         .overlay {
-            if environment.allDevices.isEmpty {
+            if isLoading {
+                EmptyView()
+            } else if environment.allDevices.isEmpty {
                 ContentUnavailableView(
                     "No Devices",
                     systemImage: "cpu",

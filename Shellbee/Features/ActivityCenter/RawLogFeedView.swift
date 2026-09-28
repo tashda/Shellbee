@@ -69,7 +69,10 @@ struct RawLogFeedView: View {
     @ViewBuilder
     private func emptyState(isEmpty: Bool) -> some View {
         if isEmpty {
-            if displayedSessions.allSatisfy({ $0.store.rawLogEntries.isEmpty }) {
+            if displayedSessions.allSatisfy({ $0.store.rawLogEntries.isEmpty }),
+               displayedSessions.contains(where: { $0.isLoading(.activity) }) {
+                LoadingStateView(title: "Loading log")
+            } else if displayedSessions.allSatisfy({ $0.store.rawLogEntries.isEmpty }) {
                 ContentUnavailableView(
                     "No Log Entries",
                     systemImage: "terminal",

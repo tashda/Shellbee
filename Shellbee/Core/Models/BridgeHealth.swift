@@ -1,6 +1,6 @@
 import Foundation
 
-struct BridgeHealth: Sendable {
+nonisolated struct BridgeHealth: Sendable {
     let healthy: Bool?
     let responseTime: Double?
     let process: ProcessStats?
@@ -62,7 +62,7 @@ struct BridgeHealth: Sendable {
 
 // MARK: - Codable
 
-extension BridgeHealth: Codable {
+nonisolated extension BridgeHealth: Codable {
     enum CodingKeys: String, CodingKey {
         case healthy
         case responseTime = "response_time"
@@ -70,7 +70,7 @@ extension BridgeHealth: Codable {
     }
 }
 
-extension BridgeHealth.ProcessStats: Codable {
+nonisolated extension BridgeHealth.ProcessStats: Codable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: AnyKey.self)
         // v2: uptime_sec  /  v1: uptime
@@ -95,7 +95,7 @@ extension BridgeHealth.ProcessStats: Codable {
     }
 }
 
-extension BridgeHealth.OSStats: Codable {
+nonisolated extension BridgeHealth.OSStats: Codable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: AnyKey.self)
         // v2: load_average  /  v1: loadavg
@@ -129,7 +129,7 @@ extension BridgeHealth.OSStats: Codable {
     }
 }
 
-private struct AnyKey: CodingKey {
+private nonisolated struct AnyKey: CodingKey {
     let stringValue: String
     let intValue: Int? = nil
     init(_ string: String) { stringValue = string }

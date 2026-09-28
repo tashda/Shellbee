@@ -1,4 +1,4 @@
-struct TouchlinkDevice: Codable, Identifiable, Sendable, Equatable {
+nonisolated struct TouchlinkDevice: Codable, Identifiable, Sendable, Equatable {
     let ieeeAddress: String
     let channel: Int
 

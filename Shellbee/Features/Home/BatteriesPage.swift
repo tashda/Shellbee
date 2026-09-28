@@ -6,6 +6,7 @@ import SwiftUI
 struct BatteriesPage: View {
     let readings: [HomeDeviceReading]
 
+    @Environment(AppEnvironment.self) private var environment
     @State private var filter: BatteryUrgency?
     @State private var searchText = ""
     @State private var selected: HomeDeviceReading?
@@ -62,8 +63,16 @@ struct BatteriesPage: View {
         .shellbeeThemedCanvas()
         .searchable(text: $searchText, prompt: "Search devices")
         .overlay {
-            if sections.isEmpty {
+            if !searchText.isEmpty, sections.isEmpty {
                 ContentUnavailableView.search(text: searchText)
+            } else if sections.isEmpty, environment.isLoading(.devices) {
+                LoadingStateView(title: "Loading devices")
+            } else if sections.isEmpty {
+                ContentUnavailableView(
+                    "No Batteries",
+                    systemImage: "battery.100percent",
+                    description: Text("Battery-powered devices appear here once they report a level.")
+                )
             }
         }
         .navigationTitle("Batteries")

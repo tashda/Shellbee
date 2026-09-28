@@ -1,4 +1,4 @@
-enum Z2MTopics {
+nonisolated enum Z2MTopics {
     static let bridgeInfo = "bridge/info"
     static let bridgeState = "bridge/state"
     static let bridgeDevices = "bridge/devices"
@@ -43,14 +43,11 @@ enum Z2MTopics {
         static let groupMembersAdd = "bridge/request/group/members/add"
         static let groupMembersRemove = "bridge/request/group/members/remove"
         static let permitJoin = "bridge/request/permit_join"
-        static let info = "bridge/request/info"
         static let restart = "bridge/request/restart"
         static let backup = "bridge/request/backup"
         static let options = "bridge/request/options"
         static let healthCheck = "bridge/request/health_check"
         static let installCode = "bridge/request/install_code/add"
-        static let devices = "bridge/request/devices"
-        static let groups = "bridge/request/groups"
         static let networkMap = "bridge/request/networkmap"
         static let touchlinkScan = "bridge/request/touchlink/scan"
         static let touchlinkIdentify = "bridge/request/touchlink/identify"

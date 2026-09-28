@@ -247,11 +247,15 @@ private struct ActivityLogContent: View {
             selectableList { EmptyView() }
             .listStyle(.plain)
             .overlay {
-                ContentUnavailableView(
-                    "No Logs",
-                    systemImage: "doc.text.magnifyingglass",
-                    description: Text("Log entries will appear as the bridge generates them in real time.")
-                )
+                if environment.isLoading(.activity) {
+                    LoadingStateView(title: "Loading activity")
+                } else {
+                    ContentUnavailableView(
+                        "No Logs",
+                        systemImage: "doc.text.magnifyingglass",
+                        description: Text("Log entries will appear as the bridge generates them in real time.")
+                    )
+                }
             }
         }
     }
@@ -271,7 +275,9 @@ private struct ActivityLogContent: View {
         }
         .listStyle(.plain)
         .overlay {
-            if store.logEntries.isEmpty {
+            if store.logEntries.isEmpty && environment.isLoading(.activity, bridgeID: bridgeID) {
+                LoadingStateView(title: "Loading activity")
+            } else if store.logEntries.isEmpty {
                 ContentUnavailableView(
                     "No Logs",
                     systemImage: "doc.text.magnifyingglass",
@@ -301,7 +307,9 @@ private struct ActivityLogContent: View {
         }
         .listStyle(.plain)
         .overlay {
-            if environment.allLogEntries.isEmpty {
+            if environment.allLogEntries.isEmpty && environment.isLoading(.activity) {
+                LoadingStateView(title: "Loading activity")
+            } else if environment.allLogEntries.isEmpty {
                 ContentUnavailableView(
                     "No Logs",
                     systemImage: "doc.text.magnifyingglass",

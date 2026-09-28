@@ -63,7 +63,9 @@ struct BridgeLogView: View {
                 }
                 .listStyle(.plain)
                 .overlay {
-                    if displayedSessions.isEmpty || !hasAnyRawEntries {
+                    if !hasAnyRawEntries, displayedSessions.contains(where: { $0.isLoading(.activity) }) {
+                        LoadingStateView(title: "Loading log")
+                    } else if displayedSessions.isEmpty || !hasAnyRawEntries {
                         ContentUnavailableView(
                             "No Log Entries",
                             systemImage: "terminal",

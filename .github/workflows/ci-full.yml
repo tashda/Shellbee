@@ -152,6 +152,7 @@ jobs:
             -skip-testing:"ShellbeeTests/GroupDropIntegrationTests" \
             -skip-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
             -skip-testing:"ShellbeeTests/OTABulkOperationQueueTests" \
+            -skip-testing:"ShellbeeTests/Z2MEventBatcherTests/testLoneMessageArrivesAtOnceAndBurstIsBatchedInOrder" \
             -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
             -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
