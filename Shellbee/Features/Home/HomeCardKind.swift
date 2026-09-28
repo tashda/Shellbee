@@ -1,17 +1,16 @@
 import SwiftUI
 
-/// The cards you can put on Home. None of them are on by default: Home
-/// answers "is anything wrong" on its own, and these answer the questions
-/// you only ask when you feel like looking.
+/// The cards you can put on Home. Bridge Health, Network, Link Quality and
+/// Batteries are on by default; Vendors and Activity are opt-in.
 ///
 /// They render under Needs attention, in the order set in Settings › Home
 /// Screen (this declaration order until the user drags them).
 enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
+    case bridgeHealth
     case network
     case linkQuality
     case batteries
     case vendors
-    case bridgeHealth
     case activity
 
     var id: String { rawValue }
@@ -19,10 +18,10 @@ enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .network:      "Network"
-        case .linkQuality:  "Link quality"
+        case .linkQuality:  "Link Quality"
         case .batteries:    "Batteries"
         case .vendors:      "Vendors"
-        case .bridgeHealth: "Bridge health"
+        case .bridgeHealth: "Bridge Health"
         case .activity:     "Activity"
         }
     }
@@ -51,6 +50,26 @@ enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
     }
 
     var storageKey: String { "homeCard.\(rawValue).enabled" }
+
+    var isOnByDefault: Bool {
+        switch self {
+        case .bridgeHealth, .network, .linkQuality, .batteries: true
+        case .vendors, .activity: false
+        }
+    }
+
+    private static let defaultsAppliedKey = "homeCards.defaultsApplied.v2"
+
+    /// Once, on the first launch of the version that introduced the default
+    /// cards, turns them on for people upgrading too, so everyone starts
+    /// from the same Home. Later changes in Settings are kept.
+    static func applyDefaultsOnce(_ defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: defaultsAppliedKey) else { return }
+        for kind in allCases where kind.isOnByDefault {
+            defaults.set(true, forKey: kind.storageKey)
+        }
+        defaults.set(true, forKey: defaultsAppliedKey)
+    }
 
     /// Comma-separated raw values in the user's order.
     static let orderKey = "homeCards.order"

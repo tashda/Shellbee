@@ -12,6 +12,7 @@ struct ShellbeeApp: App {
 
     init() {
         SentryService.shared.start()
+        HomeCardKind.applyDefaultsOnce()
     }
 
     var body: some Scene {

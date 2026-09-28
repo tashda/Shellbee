@@ -33,12 +33,12 @@ struct HomeView: View {
     // Optional cards, all off to begin with. Home answers "is anything
     // wrong" without any of them; these answer the questions you only ask
     // when you feel like looking. Switched on in Settings › Home.
-    @AppStorage(HomeCardKind.network.storageKey) private var showsNetworkCard = false
-    @AppStorage(HomeCardKind.linkQuality.storageKey) private var showsLinkQualityCard = false
-    @AppStorage(HomeCardKind.batteries.storageKey) private var showsBatteriesCard = false
-    @AppStorage(HomeCardKind.vendors.storageKey) private var showsVendorsCard = false
-    @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealthCard = false
-    @AppStorage(HomeCardKind.activity.storageKey) private var showsActivityCard = false
+    @AppStorage(HomeCardKind.network.storageKey) private var showsNetworkCard = HomeCardKind.network.isOnByDefault
+    @AppStorage(HomeCardKind.linkQuality.storageKey) private var showsLinkQualityCard = HomeCardKind.linkQuality.isOnByDefault
+    @AppStorage(HomeCardKind.batteries.storageKey) private var showsBatteriesCard = HomeCardKind.batteries.isOnByDefault
+    @AppStorage(HomeCardKind.vendors.storageKey) private var showsVendorsCard = HomeCardKind.vendors.isOnByDefault
+    @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealthCard = HomeCardKind.bridgeHealth.isOnByDefault
+    @AppStorage(HomeCardKind.activity.storageKey) private var showsActivityCard = HomeCardKind.activity.isOnByDefault
     @AppStorage(HomeCardKind.orderKey) private var cardOrder = ""
     @State private var showingAllLogs = false
     @State private var showingStatistics = false

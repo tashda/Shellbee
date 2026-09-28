@@ -8,12 +8,12 @@ import SwiftUI
 /// on to begin with.
 struct HomeSettingsView: View {
     @Environment(AppEnvironment.self) private var environment
-    @AppStorage(HomeCardKind.network.storageKey) private var showsNetwork = false
-    @AppStorage(HomeCardKind.linkQuality.storageKey) private var showsLinkQuality = false
-    @AppStorage(HomeCardKind.batteries.storageKey) private var showsBatteries = false
-    @AppStorage(HomeCardKind.vendors.storageKey) private var showsVendors = false
-    @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealth = false
-    @AppStorage(HomeCardKind.activity.storageKey) private var showsActivity = false
+    @AppStorage(HomeCardKind.network.storageKey) private var showsNetwork = HomeCardKind.network.isOnByDefault
+    @AppStorage(HomeCardKind.linkQuality.storageKey) private var showsLinkQuality = HomeCardKind.linkQuality.isOnByDefault
+    @AppStorage(HomeCardKind.batteries.storageKey) private var showsBatteries = HomeCardKind.batteries.isOnByDefault
+    @AppStorage(HomeCardKind.vendors.storageKey) private var showsVendors = HomeCardKind.vendors.isOnByDefault
+    @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealth = HomeCardKind.bridgeHealth.isOnByDefault
+    @AppStorage(HomeCardKind.activity.storageKey) private var showsActivity = HomeCardKind.activity.isOnByDefault
     @AppStorage(HomeCardKind.orderKey) private var cardOrder = ""
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount = HomeSettings.recentEventsCountDefault
 
