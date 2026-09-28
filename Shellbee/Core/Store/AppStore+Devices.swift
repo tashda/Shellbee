@@ -2,7 +2,11 @@ import Foundation
 
 extension AppStore {
     func device(named friendlyName: String) -> Device? {
-        devices.first { $0.friendlyName == friendlyName }
+        // Reading `devices` keeps the caller observing the list.
+        let devices = devices
+        guard let position = deviceIndexByName[friendlyName], position < devices.count,
+              devices[position].friendlyName == friendlyName else { return nil }
+        return devices[position]
     }
 
     /// Units by property from the device's Z2M exposes ("°C", "%", "W"),

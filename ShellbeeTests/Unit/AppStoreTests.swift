@@ -56,6 +56,20 @@ final class AppStoreTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(store.devices.count, all.count)
     }
 
+    @MainActor
+    func testDeviceLookupFollowsEveryChange() {
+        store.apply(.devices([DeviceFixture.light(name: "Lamp"), DeviceFixture.sensor(name: "Sensor")]))
+        XCTAssertEqual(store.device(named: "Sensor")?.friendlyName, "Sensor")
+
+        store.devices.removeAll { $0.friendlyName == "Lamp" }
+        XCTAssertEqual(store.device(named: "Sensor")?.friendlyName, "Sensor")
+        XCTAssertNil(store.device(named: "Lamp"))
+
+        store.devices[0].friendlyName = "Hall Sensor"
+        XCTAssertEqual(store.device(named: "Hall Sensor")?.friendlyName, "Hall Sensor")
+        XCTAssertNil(store.device(named: "Sensor"))
+    }
+
     // MARK: - groups
 
     @MainActor
