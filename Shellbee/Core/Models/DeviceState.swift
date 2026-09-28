@@ -44,15 +44,8 @@ extension Dictionary where Key == String, Value == JSONValue {
         )
     }
 
-    /// Parsers for z2m's `last_seen` strings, made once: creating an
-    /// ISO 8601 formatter is expensive, and Home reads every device's
-    /// last-seen on each redraw. `ISO8601DateFormatter` is thread-safe.
-    private nonisolated(unsafe) static let fractionalISOFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-
+    /// Fallback for `last_seen` strings the fast parser doesn't accept.
+    /// `ISO8601DateFormatter` is thread-safe.
     private nonisolated(unsafe) static let isoFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
@@ -60,6 +53,6 @@ extension Dictionary where Key == String, Value == JSONValue {
     }()
 
     private static func lastSeenDate(from value: String) -> Date? {
-        fractionalISOFormatter.date(from: value) ?? isoFormatter.date(from: value)
+        ISO8601Timestamp.date(from: value) ?? isoFormatter.date(from: value)
     }
 }
