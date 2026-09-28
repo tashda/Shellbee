@@ -44,16 +44,22 @@ extension Dictionary where Key == String, Value == JSONValue {
         )
     }
 
-    private static func lastSeenDate(from value: String) -> Date? {
-        let fractionalFormatter = ISO8601DateFormatter()
-        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    /// Parsers for z2m's `last_seen` strings, made once: creating an
+    /// ISO 8601 formatter is expensive, and Home reads every device's
+    /// last-seen on each redraw. `ISO8601DateFormatter` is thread-safe.
+    private nonisolated(unsafe) static let fractionalISOFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
 
-        if let date = fractionalFormatter.date(from: value) {
-            return date
-        }
-
+    private nonisolated(unsafe) static let isoFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: value)
+        return formatter
+    }()
+
+    private static func lastSeenDate(from value: String) -> Date? {
+        fractionalISOFormatter.date(from: value) ?? isoFormatter.date(from: value)
     }
 }
