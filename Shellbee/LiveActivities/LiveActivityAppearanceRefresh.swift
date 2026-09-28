@@ -14,7 +14,7 @@ extension LiveActivityAppearance {
         }
     }
 
-    private static func refresh<Attributes: ActivityAttributes>(
+    private static func refresh<Attributes: ActivityAttributes & Sendable>(
         _: Attributes.Type,
         restamp: (inout Attributes.ContentState) -> Void
     ) async {

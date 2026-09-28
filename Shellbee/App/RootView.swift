@@ -1,9 +1,13 @@
+import OSLog
 import SwiftUI
+
+private let launchLog = Logger(subsystem: "dev.echodb.shellbee", category: "Launch")
 
 struct RootView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.scenePhase) private var scenePhase
     @State private var isInitializing = true
+    @State private var splashDeviceCount = 0
     @State private var pendingCrash: PendingCrash?
     @AppStorage(OnboardingStep.completedKey) private var onboardingCompleted: Bool = false
     @State private var showOnboarding = false
@@ -49,7 +53,7 @@ struct RootView: View {
     var body: some View {
         ZStack {
             if isInitializing {
-                SplashScreenView()
+                SplashScreenView(deviceCount: splashDeviceCount)
                     .transition(.opacity.combined(with: .scale(scale: 1.1)))
             } else if environment.hasAnyBridgeBeenConnected {
                 mainInterface
@@ -85,12 +89,21 @@ struct RootView: View {
             await environment.start()
 
             if environment.hasSavedBridges {
-                let startTime = Date()
-                while Date().timeIntervalSince(startTime) < 5.0 {
-                    if environment.hasAnyBridgeBeenConnected { break }
-                    if case .failed = aggregateConnectionState { break }
-                    try? await Task.sleep(for: .milliseconds(100))
+                // Unpack the device thumbnails now, so rows have their
+                // pictures when Home appears instead of popping in.
+                Task.detached(priority: .utility) {
+                    _ = await BundledImageStore.shared.imageData(for: "")
                 }
+                // Hold the splash until the connect burst has landed, so
+                // Home opens complete rather than filling in under the user.
+                let startTime = Date()
+                while Date().timeIntervalSince(startTime) < LaunchReadiness.maximumWait {
+                    let sessions = environment.registry.orderedSessions
+                    if !sessions.isEmpty, LaunchReadiness.isReady(sessions) { break }
+                    splashDeviceCount = LaunchReadiness.loadedDeviceCount(sessions)
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
+                launchLog.info("Launch ready after \(Int(Date().timeIntervalSince(startTime) * 1000)) ms")
             }
 
             withAnimation {

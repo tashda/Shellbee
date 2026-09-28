@@ -1,6 +1,6 @@
 import Foundation
 
-enum Z2MEvent: Sendable {
+nonisolated enum Z2MEvent: Sendable {
     case bridgeInfo(BridgeInfo)
     case bridgeState(String)
     case devices([Device])
@@ -24,12 +24,12 @@ enum Z2MEvent: Sendable {
     case unknown(topic: String)
 }
 
-struct BridgeDeviceEvent: Codable, Sendable {
+nonisolated struct BridgeDeviceEvent: Codable, Sendable {
     let type: String
     let data: JSONValue
 }
 
-struct TouchlinkScanResponse: Codable, Sendable {
+nonisolated struct TouchlinkScanResponse: Codable, Sendable {
     struct ScanData: Codable, Sendable {
         let found: [TouchlinkDevice]
     }
@@ -37,7 +37,7 @@ struct TouchlinkScanResponse: Codable, Sendable {
     let data: ScanData?
 }
 
-struct DeviceOTAUpdateResponse: Codable, Sendable {
+nonisolated struct DeviceOTAUpdateResponse: Codable, Sendable {
     struct ResponseData: Codable, Sendable {
         let id: String?
     }

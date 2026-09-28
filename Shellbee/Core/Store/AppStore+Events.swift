@@ -68,6 +68,7 @@ extension AppStore {
                 }
             }
             devices = list.map(applyingConfiguredAvailability)
+            hasReceivedDevices = true
             networkMapRenderRevision &+= 1
         case .groups(let list):
             groups = list

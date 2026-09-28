@@ -167,7 +167,7 @@ actor Z2MWebSocketClient {
     }
 }
 
-enum Z2MSocketEvent: Sendable {
+nonisolated enum Z2MSocketEvent: Sendable {
     case message(Data)
     case disconnected(String)
 }

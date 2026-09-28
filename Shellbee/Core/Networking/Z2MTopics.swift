@@ -1,4 +1,4 @@
-enum Z2MTopics {
+nonisolated enum Z2MTopics {
     static let bridgeInfo = "bridge/info"
     static let bridgeState = "bridge/state"
     static let bridgeDevices = "bridge/devices"

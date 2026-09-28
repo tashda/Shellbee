@@ -1,6 +1,6 @@
 import Foundation
 
-struct BridgeInfo: Codable, Sendable, Equatable {
+nonisolated struct BridgeInfo: Codable, Sendable, Equatable {
     let version: String
     let commit: String?
     let coordinator: CoordinatorInfo
@@ -108,7 +108,7 @@ struct BridgeInfo: Codable, Sendable, Equatable {
     }
 }
 
-struct BridgeConfig: Codable, Sendable, Equatable {
+nonisolated struct BridgeConfig: Codable, Sendable, Equatable {
     let mqtt: MQTTSettings?
     let frontend: FrontendSettings?
     let advanced: AdvancedConfig?
@@ -220,7 +220,7 @@ struct BridgeConfig: Codable, Sendable, Equatable {
     }
 }
 
-struct OTASettings: Codable, Sendable, Equatable {
+nonisolated struct OTASettings: Codable, Sendable, Equatable {
     let updateCheckInterval: Int?
     let disableAutomaticUpdateCheck: Bool?
     let zigbeeOtaOverrideIndexLocation: String?
@@ -238,7 +238,7 @@ struct OTASettings: Codable, Sendable, Equatable {
     }
 }
 
-struct HealthSettings: Codable, Sendable, Equatable {
+nonisolated struct HealthSettings: Codable, Sendable, Equatable {
     let interval: Int?
     let resetOnCheck: Bool?
 
@@ -249,7 +249,7 @@ struct HealthSettings: Codable, Sendable, Equatable {
 }
 
 
-struct CoordinatorInfo: Codable, Sendable, Equatable {
+nonisolated struct CoordinatorInfo: Codable, Sendable, Equatable {
     let type: String?
     let ieeeAddress: String?
     let meta: [String: JSONValue]?
@@ -260,7 +260,7 @@ struct CoordinatorInfo: Codable, Sendable, Equatable {
     }
 }
 
-struct NetworkInfo: Codable, Sendable, Equatable {
+nonisolated struct NetworkInfo: Codable, Sendable, Equatable {
     let channel: Int
     let panID: Int
     let extendedPanID: JSONValue?

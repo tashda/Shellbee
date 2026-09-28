@@ -1,6 +1,6 @@
 import Foundation
 
-enum JSONValue: Codable, Sendable, Equatable {
+nonisolated enum JSONValue: Codable, Sendable, Equatable {
     case null
     case bool(Bool)
     case int(Int)
@@ -35,7 +35,7 @@ enum JSONValue: Codable, Sendable, Equatable {
     }
 }
 
-extension JSONValue {
+nonisolated extension JSONValue {
     var stringValue: String? { guard case .string(let s) = self else { return nil }; return s }
     var boolValue: Bool? { guard case .bool(let b) = self else { return nil }; return b }
     var intValue: Int? { guard case .int(let i) = self else { return nil }; return i }

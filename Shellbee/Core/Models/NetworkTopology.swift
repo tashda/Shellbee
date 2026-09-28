@@ -1,11 +1,11 @@
 import Foundation
 
-struct NetworkTopology: Codable, Sendable, Equatable {
+nonisolated struct NetworkTopology: Codable, Sendable, Equatable {
     let nodes: [NetworkTopologyNode]
     let links: [NetworkTopologyLink]
 }
 
-struct NetworkTopologyNode: Codable, Sendable, Equatable, Identifiable {
+nonisolated struct NetworkTopologyNode: Codable, Sendable, Equatable, Identifiable {
     enum Role: String, Codable, Sendable {
         case coordinator = "Coordinator"
         case router = "Router"
@@ -43,7 +43,7 @@ struct NetworkTopologyNode: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-struct NetworkTopologyLink: Codable, Sendable, Equatable, Identifiable {
+nonisolated struct NetworkTopologyLink: Codable, Sendable, Equatable, Identifiable {
     let sourceIEEEAddress: String
     let targetIEEEAddress: String
     let linkQuality: Int?
@@ -99,7 +99,7 @@ struct NetworkTopologyLink: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-struct NetworkMapResponse: Codable, Sendable {
+nonisolated struct NetworkMapResponse: Codable, Sendable {
     struct DataValue: Codable, Sendable {
         let routes: Bool?
         let type: String

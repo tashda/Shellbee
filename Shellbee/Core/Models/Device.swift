@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
+nonisolated struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
     let ieeeAddress: String
     let type: DeviceType
     let networkAddress: Int
@@ -73,14 +73,14 @@ struct Device: Codable, Identifiable, Sendable, Equatable, Hashable {
     }
 }
 
-enum InterviewState: String, Codable, Sendable, Equatable, Hashable {
+nonisolated enum InterviewState: String, Codable, Sendable, Equatable, Hashable {
     case pending = "PENDING"
     case inProgress = "IN_PROGRESS"
     case successful = "SUCCESSFUL"
     case failed = "FAILED"
 }
 
-enum DeviceType: String, Codable, Sendable, Equatable, ChipRepresentable {
+nonisolated enum DeviceType: String, Codable, Sendable, Equatable, ChipRepresentable {
     case router = "Router"
     case endDevice = "EndDevice"
     case coordinator = "Coordinator"
@@ -119,7 +119,7 @@ enum DeviceType: String, Codable, Sendable, Equatable, ChipRepresentable {
     }
 }
 
-struct DeviceDefinition: Codable, Sendable, Equatable {
+nonisolated struct DeviceDefinition: Codable, Sendable, Equatable {
     let model: String
     let vendor: String
     let description: String
@@ -134,7 +134,7 @@ struct DeviceDefinition: Codable, Sendable, Equatable {
     }
 }
 
-struct Expose: Codable, Sendable, Equatable {
+nonisolated struct Expose: Codable, Sendable, Equatable {
     let type: String
     let name: String?
     let label: String?
@@ -252,19 +252,19 @@ struct Expose: Codable, Sendable, Equatable {
     }
 }
 
-struct ExposePreset: Codable, Sendable, Equatable {
+nonisolated struct ExposePreset: Codable, Sendable, Equatable {
     let name: String
     let value: JSONValue
 }
 
-extension Expose {
+nonisolated extension Expose {
     // All exposes in the tree — each node plus its descendants.
     nonisolated var flattened: [Expose] {
         [self] + (features ?? []).flatMap(\.flattened)
     }
 }
 
-extension [Expose] {
+nonisolated extension [Expose] {
     // All nodes in the tree (parents + children).
     nonisolated var flattened: [Expose] {
         flatMap(\.flattened)

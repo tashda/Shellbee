@@ -17,6 +17,9 @@ final class ConnectionSessionController {
     var connectionConfig: ConnectionConfig? = ConnectionConfig.load()
     var errorMessage: String?
     private(set) var hasBeenConnected = false
+    /// When the last batch of messages arrived. The splash waits for the
+    /// connect burst to go quiet before showing the app.
+    @ObservationIgnored private(set) var lastInboundAt: Date?
 
     /// Set when `connect(config:)` is invoked. Lets us defer `store.reset()`
     /// until the new handshake succeeds — a failed switch keeps the prior
@@ -271,25 +274,33 @@ final class ConnectionSessionController {
     }
 
     private func monitorConnection(config: ConnectionConfig, events: AsyncStream<Z2MSocketEvent>) async {
-        for await socketEvent in events {
-            if Task.isCancelled { return }
+        guard let reason = await consume(events), !Task.isCancelled else { return }
+        store.isConnected = false
+        if let newEvents = await reconnect(config: config, reason: reason) {
+            await monitorConnection(config: config, events: newEvents)
+        }
+    }
 
-            switch socketEvent {
-            case .message(let data):
-                if let tap = rawInboundTap, let raw = Z2MMessageRouter.decodeRaw(data) {
-                    tap(raw.topic, raw.payload)
+    /// Applies decoded events a batch at a time (see `Z2MEventBatcher`).
+    /// Returns the disconnect reason, or `nil` when cancelled or the socket
+    /// ended without one.
+    private func consume(_ events: AsyncStream<Z2MSocketEvent>) async -> String? {
+        for await batch in Z2MEventBatcher.batches(from: events, router: router) {
+            if Task.isCancelled { return nil }
+            lastInboundAt = .now
+            for item in batch {
+                switch item {
+                case .message(let data, let event):
+                    if let tap = rawInboundTap, let raw = Z2MMessageRouter.decodeRaw(data) {
+                        tap(raw.topic, raw.payload)
+                    }
+                    if let event { store.apply(event) }
+                case .disconnected(let reason):
+                    return reason
                 }
-                if let event = router.route(data) {
-                    store.apply(event)
-                }
-            case .disconnected(let reason):
-                store.isConnected = false
-                if let newEvents = await reconnect(config: config, reason: reason) {
-                    await monitorConnection(config: config, events: newEvents)
-                }
-                return
             }
         }
+        return nil
     }
 
     private func reconnect(config: ConnectionConfig, reason: String) async -> AsyncStream<Z2MSocketEvent>? {

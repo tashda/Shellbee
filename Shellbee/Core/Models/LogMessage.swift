@@ -1,6 +1,6 @@
 import Foundation
 
-struct LogMessage: Decodable, Identifiable, Sendable {
+nonisolated struct LogMessage: Decodable, Identifiable, Sendable {
     let id: UUID
     let level: String
     let message: String
@@ -19,7 +19,7 @@ struct LogMessage: Decodable, Identifiable, Sendable {
     }
 }
 
-extension LogMessage {
+nonisolated extension LogMessage {
     var levelColor: String {
         switch level {
         case "error": return "red"

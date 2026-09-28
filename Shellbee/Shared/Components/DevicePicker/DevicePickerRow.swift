@@ -43,7 +43,7 @@ struct DevicePickerRow: View {
             .accessibilityAddTraits(isSelected ? .isSelected : [])
 
             if isSelected && showsEndpoints && endpoints.count > 1 {
-                Picker("Endpoint", selection: Binding(get: { endpoint }, set: onEndpointChange)) {
+                Picker("Endpoint", selection: Binding(get: { endpoint }, set: { onEndpointChange($0) })) {
                     ForEach(endpoints, id: \.self) { Text("Endpoint \($0)").tag($0) }
                 }
                 .pickerStyle(.segmented)

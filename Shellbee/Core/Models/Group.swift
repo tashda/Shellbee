@@ -1,6 +1,6 @@
 import Foundation
 
-struct Group: Codable, Identifiable, Sendable, Equatable, Hashable {
+nonisolated struct Group: Codable, Identifiable, Sendable, Equatable, Hashable {
     let id: Int
     var friendlyName: String
     var description: String?
@@ -35,7 +35,7 @@ struct Group: Codable, Identifiable, Sendable, Equatable, Hashable {
     )
 }
 
-struct GroupMember: Codable, Sendable, Equatable {
+nonisolated struct GroupMember: Codable, Sendable, Equatable {
     let ieeeAddress: String
     let endpoint: Int
 
@@ -45,7 +45,7 @@ struct GroupMember: Codable, Sendable, Equatable {
     }
 }
 
-struct Z2MScene: Codable, Sendable, Equatable, Identifiable {
+nonisolated struct Z2MScene: Codable, Sendable, Equatable, Identifiable {
     let id: Int
     let name: String
 }

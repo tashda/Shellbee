@@ -4,6 +4,9 @@ import UIKit
 @Observable
 final class AppStore {
     var devices: [Device] = []
+    /// Set once `bridge/devices` has arrived for this connection, so the
+    /// splash can tell an empty network from one still loading.
+    var hasReceivedDevices = false
     var groups: [Group] = []
     var bridgeInfo: BridgeInfo?
     var bridgeHealth: BridgeHealth?
@@ -118,6 +121,7 @@ final class AppStore {
     /// runs.
     func reset() {
         devices = []
+        hasReceivedDevices = false
         groups = []
         bridgeInfo = nil
         bridgeHealth = nil
