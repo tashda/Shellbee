@@ -24,11 +24,12 @@ struct LogFilterMenu: View {
             deviceButton
             Divider()
             // LQI drift is hidden by default — see LogsViewModel.
-            // showLinkQualityChanges. The toggle exposes it for diagnostic
-            // sessions without polluting the default view.
+            // showLinkQualityChanges. The toggle keeps the menu open so its
+            // checkmark is seen to change.
             Toggle(isOn: $viewModel.showLinkQualityChanges) {
-                Label("Show Signal Changes", systemImage: "dot.radiowaves.left.and.right")
+                Label("Signal Changes", systemImage: "dot.radiowaves.left.and.right")
             }
+            .menuActionDismissBehavior(.disabled)
             ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
                 viewModel.clearAllFilters()
             }

@@ -10,7 +10,7 @@ struct ActivityTabBarAccessory: View {
     @AppStorage(ActivityAccessoryDisplayMode.storageKey) private var displayModeRaw = ActivityAccessoryDisplayMode.latestActivity.rawValue
     @AppStorage(ActivityAttentionClearance.storageKey) private var clearanceRaw = ""
     let transitionNamespace: Namespace.ID?
-    /// Mirrors the Activity filter's Show Signal Changes, so the accessory
+    /// Mirrors the Activity filter's Signal Changes, so the accessory
     /// never surfaces events the Activity Center itself hides.
     let showsSignalChanges: Bool
 
