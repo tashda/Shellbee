@@ -51,7 +51,7 @@ struct SplashScreenView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: DesignTokens.Duration.pulseExpand)) {
+            withAnimation(.easeOut(duration: DesignTokens.Duration.splashFadeIn)) {
                 isVisible = true
             }
         }

@@ -9,6 +9,9 @@ enum LaunchReadiness {
     /// The connect burst counts as done once no message has arrived for
     /// this long.
     static let quietPeriod: TimeInterval = 0.3
+    /// Shortest time the splash stays up once shown, so a fast launch
+    /// finishes the icon's fade-in instead of flickering past it.
+    static let minimumSplash: TimeInterval = 0.6
 
     /// Ready once every bridge still trying to connect has sent its info
     /// and device list and gone quiet. Bridges that failed or aren't

@@ -103,7 +103,11 @@ struct RootView: View {
                     splashDeviceCount = LaunchReadiness.loadedDeviceCount(sessions)
                     try? await Task.sleep(for: .milliseconds(50))
                 }
-                launchLog.info("Launch ready after \(Int(Date().timeIntervalSince(startTime) * 1000)) ms")
+                let elapsed = Date().timeIntervalSince(startTime)
+                launchLog.info("Launch ready after \(Int(elapsed * 1000)) ms")
+                if elapsed < LaunchReadiness.minimumSplash {
+                    try? await Task.sleep(for: .seconds(LaunchReadiness.minimumSplash - elapsed))
+                }
             }
 
             withAnimation {

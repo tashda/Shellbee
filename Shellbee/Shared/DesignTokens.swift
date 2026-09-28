@@ -488,6 +488,8 @@ nonisolated enum DesignTokens {
         static let mediumAnimation: Double = 0.25
         static let slowAnimation: Double = 0.6
         static let pulseExpand: Double = 0.8
+        /// The splash icon's fade-in; short, since launches are fast.
+        static let splashFadeIn: Double = 0.3
         static let pulseFull: Double = 1.0
         static let checkResultDisplay: Double = 3
         static let pendingDeleteTimeout: Double = 15
