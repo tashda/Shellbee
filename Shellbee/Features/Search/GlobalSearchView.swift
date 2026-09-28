@@ -58,10 +58,13 @@ struct GlobalSearchView: View {
                             mixedSection(for: category)
                         }
                     } else {
-                        Section {
-                            GlobalSearchResultRows(scope: scope, results: results)
-                        } header: {
-                            sectionHeader(for: scope)
+                        if scope == .docs { manufacturersSection }
+                        if !results.docs.isEmpty || scope != .docs {
+                            Section {
+                                GlobalSearchResultRows(scope: scope, results: results)
+                            } header: {
+                                sectionHeader(for: scope)
+                            }
                         }
                     }
                 }
@@ -73,11 +76,36 @@ struct GlobalSearchView: View {
         .overlay { emptyState }
     }
 
+    /// Manufacturers matching the query, in their own section above the
+    /// Device Library's models.
+    @ViewBuilder
+    private var manufacturersSection: some View {
+        if !results.manufacturers.isEmpty {
+            Section {
+                ForEach(results.manufacturers) { manufacturer in
+                    NavigationLink(value: DocLibraryScope.vendor(manufacturer.name)) {
+                        GlobalSearchManufacturerRow(manufacturer: manufacturer)
+                    }
+                }
+            } header: {
+                Label("Manufacturers", systemImage: "building.2")
+            }
+        }
+    }
+
+    @ViewBuilder
     private func mixedSection(for category: GlobalSearchScope) -> some View {
+        if category == .docs { manufacturersSection }
+        if category != .docs || !results.docs.isEmpty {
+            mixedRows(for: category)
+        }
+    }
+
+    private func mixedRows(for category: GlobalSearchScope) -> some View {
         Section {
             GlobalSearchResultRows(scope: category, results: results, limit: Self.previewLimit)
-            if results.count(for: category) > Self.previewLimit {
-                Button("Show All \(results.count(for: category))") {
+            if itemCount(for: category) > Self.previewLimit {
+                Button("Show All \(itemCount(for: category))") {
                     withAnimation(.snappy) { scope = category }
                 }
                 .font(.subheadline.weight(.semibold))
@@ -85,6 +113,11 @@ struct GlobalSearchView: View {
         } header: {
             sectionHeader(for: category)
         }
+    }
+
+    /// Rows in a category's own section; manufacturers have theirs.
+    private func itemCount(for category: GlobalSearchScope) -> Int {
+        category == .docs ? results.docs.count : results.count(for: category)
     }
 
     private func sectionHeader(for category: GlobalSearchScope) -> some View {

@@ -50,13 +50,7 @@ struct GlobalSearchResultRows: View {
                 }
             }
         case .docs:
-            let manufacturers = capped(results.manufacturers)
-            ForEach(manufacturers) { manufacturer in
-                NavigationLink(value: DocLibraryScope.vendor(manufacturer.name)) {
-                    GlobalSearchManufacturerRow(manufacturer: manufacturer)
-                }
-            }
-            ForEach(results.docs.prefix(limit.map { max($0 - manufacturers.count, 0) } ?? results.docs.count)) { entry in
+            ForEach(capped(results.docs)) { entry in
                 NavigationLink(value: entry) {
                     DocEntryRow(entry: entry, showVendor: true)
                 }
@@ -116,7 +110,7 @@ private struct GlobalSearchBridgeRow: View {
 }
 
 /// A manufacturer result: every model it makes in the Device Library.
-private struct GlobalSearchManufacturerRow: View {
+struct GlobalSearchManufacturerRow: View {
     let manufacturer: GlobalSearchManufacturer
 
     var body: some View {
