@@ -135,6 +135,9 @@ final class ConnectionSessionController {
         store.isConnected = false
         connectionConfig = config
         errorMessage = nil
+        // Set before the session task runs, so anything checking right
+        // after (the launch splash, a second scene) sees the attempt.
+        connectionState = .connecting
         startSession(config: config)
     }
 
