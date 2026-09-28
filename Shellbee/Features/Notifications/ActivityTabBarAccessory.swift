@@ -165,10 +165,14 @@ struct ActivityAccessorySummary: View {
         case .latestActivity:
             item?.content.title ?? "Activity"
         case .summary:
-            recentActivityCount == 0 ? "No recent activity" : "\(recentActivityCount) recent events"
+            switch recentActivityCount {
+            case 0: "No recent activity"
+            case 1: "1 recent event"
+            default: "\(recentActivityCount) recent events"
+            }
         case .notificationsOnly:
             item?.content.title
-                ?? (recentAttentionCount == 0 ? "Notifications" : "\(recentAttentionCount) notifications")
+                ?? (recentAttentionCount == 0 ? "Notifications" : recentAttentionCount == 1 ? "1 notification" : "\(recentAttentionCount) notifications")
         }
     }
 
