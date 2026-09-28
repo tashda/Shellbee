@@ -231,6 +231,7 @@
 				Features/Groups/GroupsWorkspaceState.swift,
 				Features/Groups/RemoveGroupSheet.swift,
 				Features/Groups/RenameGroupSheet.swift,
+				"Features/Home/AppEnvironment+Home.swift",
 				Features/Home/BatteriesPage.swift,
 				Features/Home/BatteryQuickSheet.swift,
 				Features/Home/BatteryReplacementLog.swift,
