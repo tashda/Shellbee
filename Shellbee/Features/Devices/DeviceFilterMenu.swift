@@ -98,8 +98,9 @@ struct DeviceFilterMenu: View {
         } label: {
             FilterMenuLabel(isActive: viewModel.hasActiveFilter)
         }
-        .simultaneousGesture(TapGesture().onEnded { snapshot = .make(viewModel: viewModel, store: store) })
-        .onAppear { snapshot = .make(viewModel: viewModel, store: store) }
+        // The menu's options come from the devices, which may still be
+        // loading when the screen appears; rebuild them as they arrive.
+        .task(id: store.devices.count) { refreshSnapshot() }
     }
 
     private var statusSelection: Binding<DeviceStatusFilter> {
