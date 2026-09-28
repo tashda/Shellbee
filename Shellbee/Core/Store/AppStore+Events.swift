@@ -72,6 +72,7 @@ extension AppStore {
             networkMapRenderRevision &+= 1
         case .groups(let list):
             groups = list
+            hasReceivedGroups = true
         case .logMessage(let msg):
             var isOwnScanProgress = false
             if networkMapIsRefreshing, var scan = networkMapScan,

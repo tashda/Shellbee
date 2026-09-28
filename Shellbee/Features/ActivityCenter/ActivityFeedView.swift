@@ -196,7 +196,9 @@ struct ActivityFeedView: View {
     @ViewBuilder
     private func emptyState(isEmpty: Bool) -> some View {
         if isEmpty {
-            if environment.allLogEntries.isEmpty {
+            if environment.allLogEntries.isEmpty && environment.isLoading(.activity) {
+                LoadingStateView(title: "Loading activity")
+            } else if environment.allLogEntries.isEmpty {
                 ContentUnavailableView(
                     "No Activity",
                     systemImage: "tray",

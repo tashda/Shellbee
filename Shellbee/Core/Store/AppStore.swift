@@ -8,6 +8,8 @@ final class AppStore {
     /// splash can tell an empty network from one still loading.
     var hasReceivedDevices = false
     var groups: [Group] = []
+    /// Set once `bridge/groups` has arrived for this connection.
+    var hasReceivedGroups = false
     var bridgeInfo: BridgeInfo?
     var bridgeHealth: BridgeHealth?
     var networkTopology: NetworkTopology?
@@ -122,6 +124,7 @@ final class AppStore {
     func reset() {
         devices = []
         hasReceivedDevices = false
+        hasReceivedGroups = false
         groups = []
         bridgeInfo = nil
         bridgeHealth = nil
