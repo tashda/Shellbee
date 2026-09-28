@@ -31,6 +31,9 @@ nonisolated enum DesignTokens {
         static let statusDotHero: CGFloat = 8
         /// Bridge monogram beside row metadata and in chips.
         static let bridgeMonogram: CGFloat = 14
+        /// Home's grouped rows (bridges, Needs attention, recent events): the
+        /// height of a standard iOS row with an icon.
+        static let homeRowMinHeight: CGFloat = 52
         /// A sheet's full-width main button.
         static let sheetActionButtonHeight: CGFloat = 50
         /// Bridge monogram beside a small caps caption, like a vendor.

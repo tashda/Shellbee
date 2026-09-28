@@ -443,7 +443,7 @@ struct HomeView: View {
         content
             .padding(.horizontal, DesignTokens.Spacing.lg)
             .padding(.vertical, DesignTokens.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: DesignTokens.Size.homeRowMinHeight, alignment: .leading)
     }
 
 
