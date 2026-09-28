@@ -382,6 +382,8 @@ private struct ActivityFeedSearch: ViewModifier {
 private struct BridgeLevelFilterMenu: View {
     @Bindable var viewModel: BridgeLogViewModel
     @Environment(AppEnvironment.self) private var environment
+    @State private var namespaces: [String] = []
+
 
     private var connectedSessions: [BridgeSession] {
         environment.registry.orderedSessions.filter(\.isConnected)
@@ -393,11 +395,37 @@ private struct BridgeLevelFilterMenu: View {
                 BridgeFilterMenu(selection: $viewModel.bridgeFilter, sessions: connectedSessions)
             }
             levelMenu
+            if !namespaces.isEmpty || viewModel.selectedNamespace != nil { namespaceMenu }
             ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
                 viewModel.clearAllFilters()
             }
         } label: {
             FilterMenuLabel(isActive: viewModel.hasActiveFilter)
+        }
+        .task(id: LogNamespaceRefresh.key(for: rawLogCount)) {
+            namespaces = Set(scopedSessions.flatMap { $0.store.rawLogEntries.compactMap(\.namespace) }).sorted()
+        }
+    }
+
+    private var scopedSessions: [BridgeSession] {
+        connectedSessions.filter { session in viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true }
+    }
+
+    private var rawLogCount: Int {
+        scopedSessions.reduce(0) { $0 + $1.store.rawLogEntries.count }
+    }
+
+    private var namespaceMenu: some View {
+        Menu {
+            Picker("Namespace", selection: $viewModel.selectedNamespace) {
+                Label("All Namespaces", systemImage: FilterMenuSymbol.all).tag(String?.none)
+                ForEach(namespaces, id: \.self) { ns in
+                    Text(ns).tag(String?.some(ns))
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            FilterSubmenuLabel(name: "Namespace", systemImage: "text.magnifyingglass", value: viewModel.selectedNamespace)
         }
     }
 

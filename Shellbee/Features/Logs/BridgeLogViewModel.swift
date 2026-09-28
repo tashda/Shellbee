@@ -7,12 +7,14 @@ final class BridgeLogViewModel {
     /// Multi-bridge: when set, the raw log tab reads entries from this bridge.
     /// Ignored in single-bridge mode.
     var bridgeFilter: UUID? = nil
+    /// z2m's logger namespace, such as `z2m:mqtt`.
+    var selectedNamespace: String? = nil
 
-    var hasActiveFilter: Bool { selectedLevel != nil || bridgeFilter != nil }
+    var hasActiveFilter: Bool { selectedLevel != nil || bridgeFilter != nil || selectedNamespace != nil }
 
     /// Changes whenever a filter or the search changes, so a feed frozen
     /// for reading can go back to live and show the new results.
-    var filterSignature: [AnyHashable] { [searchText, selectedLevel, bridgeFilter] }
+    var filterSignature: [AnyHashable] { [searchText, selectedLevel, bridgeFilter, selectedNamespace] }
 
     func filteredEntries(store: AppStore) -> [LogEntry] {
         var entries = store.rawLogEntries
@@ -25,12 +27,16 @@ final class BridgeLogViewModel {
         if let level = selectedLevel {
             entries = entries.filter { $0.level == level }
         }
+        if let namespace = selectedNamespace {
+            entries = entries.filter { $0.namespace == namespace }
+        }
         return entries
     }
 
     func clearAllFilters() {
         selectedLevel = nil
         bridgeFilter = nil
+        selectedNamespace = nil
         searchText = ""
     }
 }

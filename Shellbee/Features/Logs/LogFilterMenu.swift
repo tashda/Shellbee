@@ -9,6 +9,10 @@ struct LogFilterMenu: View {
     let onSelectDevices: () -> Void
     @State private var namespaceSnapshot: [String] = []
 
+    private var logEntryCount: Int {
+        filteredSessions.reduce(0) { $0 + $1.store.logEntries.count }
+    }
+
     private var connectedSessions: [BridgeSession] {
         environment.registry.orderedSessions.filter(\.isConnected)
     }
@@ -29,10 +33,9 @@ struct LogFilterMenu: View {
         } label: {
             FilterMenuLabel(isActive: viewModel.hasActiveFilter)
         }
-        .simultaneousGesture(TapGesture().onEnded {
-            namespaceSnapshot = availableNamespaces()
-        })
-        .onAppear {
+        // Menus on iOS 26 don't report the tap that opens them, so refresh
+        // the namespaces as entries arrive, a few dozen at a time.
+        .task(id: LogNamespaceRefresh.key(for: logEntryCount)) {
             namespaceSnapshot = availableNamespaces()
         }
     }
@@ -131,4 +134,15 @@ struct LogFilterMenu: View {
     }
     .configuredTopScrollEdgeEffect()
     .environment(AppEnvironment())
+}
+
+/// When a filter menu recounts log namespaces: on each of the first few
+/// dozen lines, then once per few dozen, so a busy log doesn't rescan on
+/// every line.
+enum LogNamespaceRefresh {
+    private static let batch = 50
+
+    static func key(for count: Int) -> Int {
+        count < batch ? count : batch + count / batch
+    }
 }
