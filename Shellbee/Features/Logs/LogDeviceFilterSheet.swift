@@ -107,12 +107,7 @@ struct LogDeviceFilterSheet: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Toggle(isOn: $showAll) {
-                Label("Show All Devices", systemImage: "eye")
-            }
-            .toggleStyle(.button)
-            .shellbeeAccentTint(active: showAll)
-            .accessibilityHint("Includes devices without matching activity")
+            showAllButton
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
@@ -128,6 +123,27 @@ struct LogDeviceFilterSheet: View {
                 selectedDevices = draft
                 dismiss()
             }
+        }
+    }
+
+    /// A plain button rather than a button-style toggle: on, it fills the
+    /// whole glass circle like the Apply checkmark instead of drawing a
+    /// small highlight inside it.
+    @ViewBuilder
+    private var showAllButton: some View {
+        let button = Button {
+            showAll.toggle()
+        } label: {
+            Label("Show All Devices", systemImage: "eye")
+        }
+        .accessibilityValue(showAll ? "On" : "Off")
+        .accessibilityHint("Includes devices without matching activity")
+        if showAll {
+            button
+                .glassProminentButtonStyleIfAvailable()
+                .shellbeeAccentTint()
+        } else {
+            button
         }
     }
 
