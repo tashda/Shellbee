@@ -14,76 +14,19 @@ struct GlobalSearchScopeBar: View {
     }
 
     var body: some View {
-        ScrollView(.horizontal) {
-            bubbles
-                .padding(.vertical, DesignTokens.Spacing.sm)
-        }
-        .scrollIndicators(.hidden)
-        .animation(.snappy, value: visibleScopes)
-    }
-
-    /// Shares one glass layer across bubbles on iOS 26 so they render and
-    /// morph together as the visible set changes.
-    @ViewBuilder
-    private var bubbles: some View {
-        let row = HStack(spacing: DesignTokens.Spacing.sm) {
+        GlassChipRow {
             ForEach(visibleScopes) { scope in
-                bubble(for: scope)
+                SelectableFilterChip(
+                    title: scope.title,
+                    isSelected: selection == scope,
+                    systemImage: scope.symbol,
+                    count: results.count(for: scope)
+                ) {
+                    selection = scope
+                }
+                .accessibilityLabel("\(scope.title), \(results.count(for: scope)) results")
             }
         }
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: DesignTokens.Spacing.sm) { row }
-        } else {
-            row
-        }
-    }
-
-    private func bubble(for scope: GlobalSearchScope) -> some View {
-        let isSelected = selection == scope
-        let count = results.count(for: scope)
-        return Button {
-            selection = scope
-        } label: {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                scope.symbol.image
-                    .imageScale(.small)
-                Text(scope.title)
-                Text(count, format: .number)
-                    .monospacedDigit()
-                    .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(DesignTokens.Opacity.secondaryText)) : AnyShapeStyle(.secondary))
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.sm)
-            .modifier(GlobalSearchBubbleBackground(isSelected: isSelected))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(scope.title), \(count) results")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
-/// Liquid Glass capsule for a filter bubble; the selected bubble takes the
-/// accent tint. Falls back to material and a filled accent capsule before
-/// iOS 26.
-private struct GlobalSearchBubbleBackground: ViewModifier {
-    let isSelected: Bool
-
-    @Environment(\.shellbeeTheme) private var theme
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(
-                isSelected ? .regular.tint(theme.accent).interactive() : .regular.interactive(),
-                in: Capsule()
-            )
-        } else if isSelected {
-            content.background(Capsule().fill(.tint))
-        } else {
-            content.background(.ultraThinMaterial, in: Capsule())
-        }
+        .animation(.snappy, value: visibleScopes)
     }
 }

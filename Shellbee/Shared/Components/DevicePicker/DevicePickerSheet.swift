@@ -132,16 +132,13 @@ struct DevicePickerSheet: View {
     }
 
     private var categoryChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                SelectableFilterChip(title: "All", isSelected: category == nil) { category = nil }
-                ForEach(categories, id: \.self) { item in
-                    SelectableFilterChip(title: item.label, isSelected: category == item) {
-                        category = category == item ? nil : item
-                    }
+        GlassChipRow {
+            SelectableFilterChip(title: "All", isSelected: category == nil) { category = nil }
+            ForEach(categories, id: \.self) { item in
+                SelectableFilterChip(title: item.label, isSelected: category == item) {
+                    category = category == item ? nil : item
                 }
             }
-            .padding(.horizontal, DesignTokens.Spacing.lg)
         }
     }
 

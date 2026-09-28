@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// An active filter shown above a list, removed with one tap. Pairs with a
-/// filter menu so what's narrowing the list stays visible.
+/// An active filter shown above a list in a `GlassChipRow`, removed with
+/// one tap. Pairs with a filter menu so what's narrowing the list stays
+/// visible.
 struct RemovableFilterChip: View {
     let title: String
     let onRemove: () -> Void
@@ -14,11 +15,7 @@ struct RemovableFilterChip: View {
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.secondary)
             }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.xs + DesignTokens.Spacing.xxs)
-            .background(.shellbeeSurface, in: Capsule())
+            .glassChipLabel()
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

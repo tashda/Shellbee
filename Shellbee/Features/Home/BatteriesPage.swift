@@ -60,7 +60,7 @@ struct BatteriesPage: View {
             .shellbeeThemedRows()
         }
         .shellbeeThemedCanvas()
-        .searchable(text: $searchText, prompt: "Search batteries")
+        .searchable(text: $searchText, prompt: "Search devices")
         .overlay {
             if sections.isEmpty {
                 ContentUnavailableView.search(text: searchText)
@@ -77,16 +77,13 @@ struct BatteriesPage: View {
     }
 
     private var filterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                SelectableFilterChip(title: "All", isSelected: filter == nil) { filter = nil }
-                ForEach(BatteryUrgency.allCases) { urgency in
-                    SelectableFilterChip(title: urgency.title, isSelected: filter == urgency) {
-                        filter = filter == urgency ? nil : urgency
-                    }
+        GlassChipRow {
+            SelectableFilterChip(title: "All", isSelected: filter == nil) { filter = nil }
+            ForEach(BatteryUrgency.allCases) { urgency in
+                SelectableFilterChip(title: urgency.title, isSelected: filter == urgency) {
+                    filter = filter == urgency ? nil : urgency
                 }
             }
-            .padding(.horizontal, DesignTokens.Spacing.lg)
         }
     }
 

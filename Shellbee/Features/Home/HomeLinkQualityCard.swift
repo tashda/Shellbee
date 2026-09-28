@@ -76,13 +76,13 @@ struct HomeLinkQualityCard: View {
                     }
                 }
             } else if weakCount > 0 {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    Button(action: onTapWeak) { chipLabel("\(weakCount) weak") }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Shows devices with a weak signal")
-                    if weakRouterCount > 0 {
-                        chipLabel("\(weakRouterCount) weak router\(weakRouterCount == 1 ? "" : "s")")
+                HStack {
+                    Button(action: onTapWeak) {
+                        Text(weakText).glassChipLabel()
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Shows devices with a weak signal")
+                    Spacer(minLength: 0)
                 }
             }
 
@@ -118,12 +118,11 @@ struct HomeLinkQualityCard: View {
         return "\(devices) between \(band.lowerBound) and \(upper)"
     }
 
-    private func chipLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Spacing.xs)
-            .background(.fill.tertiary, in: Capsule())
+    /// "4 weak", or "4 weak · 1 router" when routers are among them,
+    /// since a weak router drags down everything behind it.
+    private var weakText: String {
+        guard weakRouterCount > 0 else { return "\(weakCount) weak" }
+        return "\(weakCount) weak · \(weakRouterCount) router\(weakRouterCount == 1 ? "" : "s")"
     }
 
     private func bar(for band: HomeSnapshot.LinkQualityBand) -> some View {

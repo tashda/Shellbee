@@ -125,19 +125,16 @@ struct DocLibraryListView: View {
     // MARK: - Filter
 
     private var activeChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                if let power = filters.powerTitle {
-                    RemovableFilterChip(title: power) { filters.power = .any }
-                }
-                if filters.inNetworkOnly {
-                    RemovableFilterChip(title: DocLibraryScope.owned.title) { filters.inNetworkOnly = false }
-                }
-                ForEach(features.filter(filters.features.contains)) { feature in
-                    RemovableFilterChip(title: feature.title) { filters.features.remove(feature) }
-                }
+        GlassChipRow {
+            if let power = filters.powerTitle {
+                RemovableFilterChip(title: power) { filters.power = .any }
             }
-            .padding(.horizontal, DesignTokens.Spacing.lg)
+            if filters.inNetworkOnly {
+                RemovableFilterChip(title: DocLibraryScope.owned.title) { filters.inNetworkOnly = false }
+            }
+            ForEach(features.filter(filters.features.contains)) { feature in
+                RemovableFilterChip(title: feature.title) { filters.features.remove(feature) }
+            }
         }
     }
 
