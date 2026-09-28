@@ -52,13 +52,18 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
+            // The app builds under the splash as soon as a bridge connects,
+            // so its first layout (and Swift's one-off type setup for each
+            // screen) happens while the splash is up, not as it lifts.
+            if environment.hasAnyBridgeBeenConnected {
+                mainInterface
+                    .accessibilityHidden(isInitializing)
+            } else if !isInitializing {
+                setupInterface
+            }
             if isInitializing {
                 SplashScreenView(deviceCount: splashDeviceCount)
                     .transition(.opacity.combined(with: .scale(scale: 1.1)))
-            } else if environment.hasAnyBridgeBeenConnected {
-                mainInterface
-            } else {
-                setupInterface
             }
         }
         .animation(.spring(duration: DesignTokens.Duration.slowAnimation), value: isInitializing)
