@@ -60,6 +60,9 @@ struct IdentityHero<Artwork: View>: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, DesignTokens.Spacing.xs)
+        // The list clips this row to its section's rounded corners, which
+        // are wider than a tile's; keep the outer tiles clear of the curve.
+        .padding(.bottom, DesignTokens.Spacing.lg)
     }
 
     @ViewBuilder

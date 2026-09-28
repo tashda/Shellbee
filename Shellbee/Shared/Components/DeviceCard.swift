@@ -135,7 +135,9 @@ struct DeviceCard: View {
                                 systemImage: low ? "battery.25percent" : "battery.100percent",
                                 color: low ? .red : nil)
         }
-        return IdentityTile(value: normalizedPowerSource, caption: "Power", systemImage: "powerplug")
+        let source = normalizedPowerSource
+        return IdentityTile(value: source, caption: "Power",
+                            systemImage: source == "Battery" ? "battery.100percent" : "powerplug")
     }
 
     private var roleSymbol: String {
