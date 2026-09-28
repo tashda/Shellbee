@@ -59,12 +59,12 @@ struct DeviceCard: View {
                 subtitle: device.cardSubtitle,
                 bridgeID: bridgeID,
                 bridgeName: bridgeName,
-                chips: chips,
+                tiles: tiles,
                 renameAccessibilityLabel: "Rename device",
                 onRenameTapped: onRenameTapped,
                 onNameHiddenChange: onNameHiddenChange
             ) {
-                image(size: DesignTokens.Size.deviceHeroImage)
+                image(size: DesignTokens.Size.identityHeroImage)
             }
 
             if let otaStatus, otaStatus.isActive {
@@ -98,32 +98,52 @@ struct DeviceCard: View {
         )
     }
 
-    // MARK: - Chips
+    // MARK: - Tiles
 
-    private var chips: [IdentityChip] {
-        var chips = [
-            IdentityChip(title: statusTitle, dotColor: status.color),
-            IdentityChip(title: device.type.chipLabel),
-        ]
+    private var tiles: [IdentityTile] {
+        var tiles = [statusTile]
         if let lqi = state.linkQuality {
-            chips.append(IdentityChip(
-                title: "\(lqi)",
+            let weak = lqi < DesignTokens.Threshold.weakSignal
+            tiles.append(IdentityTile(
+                value: "\(lqi)",
+                caption: "Signal",
                 systemImage: "cellularbars",
-                symbolVariableValue: Double(lqi) / DesignTokens.Threshold.maxLinkQuality
+                symbolVariableValue: Double(lqi) / DesignTokens.Threshold.maxLinkQuality,
+                color: weak ? .orange : nil
             ))
         }
-        chips.append(powerChip)
-        return chips
+        tiles.append(powerTile)
+        tiles.append(IdentityTile(value: device.type.chipLabel, caption: "Role", systemImage: roleSymbol))
+        return tiles
     }
 
-    private var powerChip: IdentityChip {
-        if device.type == .endDevice, let battery = state.battery {
+    /// Online or offline, with how long ago the device last reported.
+    private var statusTile: IdentityTile {
+        let since = lastSeenEnabled ? DeviceStatus.lastSeenText(state.lastSeen) : nil
+        return IdentityTile(
+            value: status.title,
+            caption: since.map { "Seen \($0.lowercased())" } ?? "Status",
+            dotColor: status.color,
+            color: status.needsAttention ? status.color : nil
+        )
+    }
+
+    private var powerTile: IdentityTile {
+        if let battery = state.battery {
             let low = DesignTokens.Threshold.isLowBattery(battery)
-            return IdentityChip(title: "\(battery) %",
+            return IdentityTile(value: "\(battery) %", caption: "Battery",
                                 systemImage: low ? "battery.25percent" : "battery.100percent",
                                 color: low ? .red : nil)
         }
-        return IdentityChip(title: normalizedPowerSource)
+        return IdentityTile(value: normalizedPowerSource, caption: "Power", systemImage: "powerplug")
+    }
+
+    private var roleSymbol: String {
+        switch device.type {
+        case .router: "point.3.connected.trianglepath.dotted"
+        case .coordinator: "antenna.radiowaves.left.and.right"
+        default: "dot.radiowaves.right"
+        }
     }
 
     private var normalizedPowerSource: String {
@@ -134,14 +154,6 @@ struct DeviceCard: View {
         if normalized.contains("battery") { return "Battery" }
         if normalized.contains("mains") || normalized.contains("ac") || normalized.contains("dc") { return "Mains" }
         return trimmed.capitalized
-    }
-
-    /// A healthy device doesn't need its last-seen time; an offline one
-    /// says how long it has been gone ("Offline · 3 h ago").
-    private var statusTitle: String {
-        guard status.needsAttention, !isAvailable, lastSeenEnabled,
-              let since = DeviceStatus.lastSeenText(state.lastSeen) else { return status.title }
-        return "\(status.title) · \(since)"
     }
 
     // MARK: - OTA

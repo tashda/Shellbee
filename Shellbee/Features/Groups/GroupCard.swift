@@ -41,7 +41,7 @@ struct GroupCard: View {
             subtitle: subtitle,
             bridgeID: bridgeID,
             bridgeName: bridgeName,
-            chips: chips,
+            tiles: tiles,
             renameAccessibilityLabel: "Rename group",
             onRenameTapped: onRenameTapped,
             onNameHiddenChange: onNameHiddenChange
@@ -53,7 +53,7 @@ struct GroupCard: View {
                     : stored
                 showAvatarPicker = true
             } label: {
-                GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.deviceHeroImage)
+                GroupIconView(memberDevices: avatarDevices, size: DesignTokens.Size.identityHeroImage)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Choose group avatar")
@@ -94,16 +94,29 @@ struct GroupCard: View {
         group.members.count == 1 ? "1 member" : "\(group.members.count) members"
     }
 
-    private var chips: [IdentityChip] {
-        var chips: [IdentityChip] = []
-        if let stateText {
-            chips.append(IdentityChip(title: stateText, dotColor: anyOn ? .green : Color(.tertiaryLabel)))
+    private var tiles: [IdentityTile] {
+        var tiles: [IdentityTile] = []
+        if let stateTile {
+            tiles.append(stateTile)
         }
-        chips.append(IdentityChip(title: membersText))
-        if !group.scenes.isEmpty {
-            chips.append(IdentityChip(title: group.scenes.count == 1 ? "1 scene" : "\(group.scenes.count) scenes"))
+        tiles.append(IdentityTile(value: "\(group.members.count)",
+                                  caption: group.members.count == 1 ? "Member" : "Members",
+                                  systemImage: "square.stack.3d.up"))
+        tiles.append(IdentityTile(value: "\(group.scenes.count)",
+                                  caption: group.scenes.count == 1 ? "Scene" : "Scenes",
+                                  systemImage: "sparkles"))
+        return tiles
+    }
+
+    /// "2 of 3" members on when their states are known, otherwise the
+    /// group's own On or Off.
+    private var stateTile: IdentityTile? {
+        let dot = anyOn ? Color.green : Color(.tertiaryLabel)
+        if let membersOnCount, !group.members.isEmpty {
+            return IdentityTile(value: "\(membersOnCount) of \(group.members.count)", caption: "On", dotColor: dot)
         }
-        return chips
+        guard state["state"]?.stringValue != nil else { return nil }
+        return IdentityTile(value: isOn ? "On" : "Off", caption: "State", dotColor: dot)
     }
 
     private var anyOn: Bool {
@@ -112,15 +125,6 @@ struct GroupCard: View {
 
     private var isOn: Bool {
         state["state"]?.stringValue?.uppercased() == "ON"
-    }
-
-    /// "2 of 3 on" when member states are known, otherwise the group state.
-    private var stateText: String? {
-        if let membersOnCount, !group.members.isEmpty {
-            return "\(membersOnCount) of \(group.members.count) on"
-        }
-        guard state["state"]?.stringValue != nil else { return nil }
-        return isOn ? "On" : "Off"
     }
 }
 

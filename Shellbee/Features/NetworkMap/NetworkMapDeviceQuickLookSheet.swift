@@ -84,13 +84,13 @@ struct NetworkMapDeviceQuickLookSheet: View {
         }
     }
 
-    private var chips: [IdentityChip] {
+    private var chips: [QuickLookChip] {
         var chips = [
-            IdentityChip(title: isOnline ? "Online" : "Offline", dotColor: isOnline ? .green : .red),
-            IdentityChip(title: roleTitle),
+            QuickLookChip(title: isOnline ? "Online" : "Offline", dotColor: isOnline ? .green : .red),
+            QuickLookChip(title: roleTitle),
         ]
         if let quality = connection?.linkQuality {
-            chips.append(IdentityChip(title: "\(quality)", color: hasWeakLink ? .red : nil))
+            chips.append(QuickLookChip(title: "\(quality)", color: hasWeakLink ? .red : nil))
         }
         return chips
     }
@@ -103,6 +103,15 @@ struct NetworkMapDeviceQuickLookSheet: View {
         case .unknown: return "Unknown"
         }
     }
+}
+
+/// One status capsule under the quick look's identity.
+private struct QuickLookChip: Identifiable {
+    let title: String
+    var dotColor: Color? = nil
+    var color: Color? = nil
+
+    var id: String { title }
 }
 
 private extension View {

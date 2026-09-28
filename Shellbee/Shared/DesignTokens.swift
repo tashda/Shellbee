@@ -135,6 +135,10 @@ nonisolated enum DesignTokens {
         static let dragHandleHeight: CGFloat = 5
         static let deviceCardImage: CGFloat = 64
         static let deviceHeroImage: CGFloat = 64
+        /// The centred image at the top of Device and Group detail.
+        static let identityHeroImage: CGFloat = 88
+        /// Symbol row height in the identity hero's tiles, so values align.
+        static let identityTileSymbol: CGFloat = 18
         static let deviceRowImage: CGFloat = 44
         static let cardAccessoryButton: CGFloat = 22
         static let valueCapsuleHeight: CGFloat = 56
