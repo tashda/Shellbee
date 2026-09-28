@@ -12,6 +12,10 @@ extension DesignTokens {
         static let surfaceReachDark: Double = 0.2
         /// Fill luminance above which a button's label turns black.
         static let darkLabelLuminance: Float = 0.35
+        /// The card swatches at the ends of the Card Tint slider.
+        static let tintSwatchWidth: CGFloat = 22
+        static let tintSwatchHeight: CGFloat = 16
+        static let tintSwatchCornerRadius: CGFloat = 5
         static let previewHeight: CGFloat = 124
         static let previewRowHeight: CGFloat = 38
         static let previewSymbolWidth: CGFloat = 20

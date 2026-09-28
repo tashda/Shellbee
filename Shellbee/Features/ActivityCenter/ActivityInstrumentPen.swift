@@ -9,7 +9,7 @@ struct ActivityInstrumentPen {
     static let markWidth = DesignTokens.ActivityInstrument.markWidth
     static let trackOpacity = DesignTokens.ActivityInstrument.trackOpacity
 
-    /// Status colours follow Themed Status Colors; gradients passed as
+    /// Status colours follow Themed Indicators; gradients passed as
     /// shading (a colour wheel, the air quality scale) keep their real hues.
     private func themed(_ color: Color) -> Color {
         context.environment.themedStatusColor(color)

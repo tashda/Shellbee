@@ -7,7 +7,7 @@ struct DeviceUpgradeBadgeView: View {
 
     @Environment(\.self) private var environment
 
-    /// Update blue, or the theme's info tone with Themed Status Colors on.
+    /// Update blue, or the theme's info tone with Themed Indicators on.
     private var ink: Color { environment.themedStatusColor(.blue) }
 
     private func gradient(_ system: [Color]) -> [Color] {

@@ -83,7 +83,7 @@ nonisolated extension ShellbeeTheme {
 
 extension EnvironmentValues {
     /// The colour to draw for a system status colour in this environment:
-    /// the theme's tone when Themed Status Colors is on, otherwise unchanged.
+    /// the theme's tone when Themed Indicators is on, otherwise unchanged.
     /// Blues stand for the accent (an update, info), so they take the
     /// theme accent whenever a theme is chosen, setting or not.
     nonisolated func themedStatusColor(_ color: Color) -> Color {
@@ -94,7 +94,7 @@ extension EnvironmentValues {
     }
 }
 
-/// A system status colour that follows Themed Status Colors. Shared
+/// A system status colour that follows Themed Indicators. Shared
 /// components draw their status colours through this, so call sites keep
 /// passing `.red`, `.orange` or `.green`.
 nonisolated struct ThemedStatusStyle: ShapeStyle {
@@ -109,7 +109,7 @@ extension ShapeStyle where Self == ThemedStatusStyle {
     static func themedStatus(_ color: Color) -> ThemedStatusStyle { ThemedStatusStyle(color: color) }
 }
 
-/// Resolves a tone against the current theme and the Themed Status Colors
+/// Resolves a tone against the current theme and the Themed Indicators
 /// setting. Use it as a `ShapeStyle` (`.foregroundStyle(.status(.fair))`),
 /// or `.style(...)` in a `Canvas`.
 nonisolated struct StatusToneStyle: ShapeStyle {

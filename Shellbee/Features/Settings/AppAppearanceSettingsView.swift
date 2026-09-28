@@ -42,16 +42,14 @@ struct AppAppearanceSettingsView: View {
                             Slider(value: $surfaceTint, in: 0...1) {
                                 Text("Card Tint")
                             } minimumValueLabel: {
-                                Image(systemName: "square")
-                                    .foregroundStyle(.secondary)
+                                CardTintSwatch(amount: 0)
                             } maximumValueLabel: {
-                                Image(systemName: "square.fill")
-                                    .foregroundStyle(.secondary)
+                                CardTintSwatch(amount: 1)
                             }
                         }
-                        Toggle("Themed Status Colors", isOn: $themesStatusColors)
+                        Toggle("Themed Indicators", isOn: $themesStatusColors)
                     } footer: {
-                        Text("Card Tint sets how strongly rows and cards take on the theme. Themed Status Colors recolors link quality, battery, offline and warning states to match it.")
+                        Text("Card Tint sets how strongly rows and cards take on the theme. Themed Indicators recolors status, event icons, charts and swipe actions to match it.")
                     }
                 }
 
