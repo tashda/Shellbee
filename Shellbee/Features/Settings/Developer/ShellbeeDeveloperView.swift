@@ -47,13 +47,8 @@ struct ShellbeeDeveloperView: View {
                     NavigationLink("Activity Instruments") {
                         ActivityInstrumentGalleryView()
                     }
-                    NavigationLink("Activity Icons (Deprecated)") {
-                        ActivityIconGalleryView()
-                    }
                 } header: {
                     Text("Activity Center")
-                } footer: {
-                    Text("Activity Icons is deprecated in favor of Activity Instruments, which supersedes it for real feed, Home, and tab bar surfaces.")
                 }
 
                 if #available(iOS 27.0, *) {
