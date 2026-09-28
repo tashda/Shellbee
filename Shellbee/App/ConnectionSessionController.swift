@@ -59,6 +59,8 @@ final class ConnectionSessionController {
     static let maxReconnectAttemptsRange: ClosedRange<Int> = 1...20
     private static let baseReconnectDelay: Double = 1
     private static let maxReconnectDelay: Double = 30
+    /// The longest a pull to refresh keeps its spinner up.
+    private static let refreshTimeout: TimeInterval = 10
 
     static var configuredMaxReconnectAttempts: Int {
         let stored = UserDefaults.standard.integer(forKey: maxReconnectAttemptsKey)
@@ -151,6 +153,33 @@ final class ConnectionSessionController {
         }
         errorMessage = nil
         startSession(config: config)
+    }
+
+    /// Pull to refresh. Zigbee2MQTT has no request for its device list or
+    /// states, but sends everything again on a new connection, so this
+    /// reconnects without clearing the store: what's on screen stays and
+    /// updates in place. Returns once the fresh data has landed and gone
+    /// quiet, so the refresh spinner covers the whole reload.
+    func refresh() async {
+        guard let config = connectionConfig, connectionState == .connected,
+              !store.networkMapIsRefreshing else { return }
+        store.hasReceivedDevices = false
+        store.hasReceivedGroups = false
+        startSession(config: config)
+
+        let started = Date()
+        while Date().timeIntervalSince(started) < Self.refreshTimeout {
+            try? await Task.sleep(for: .milliseconds(100))
+            switch connectionState {
+            case .connected:
+                if store.hasReceivedDevices, let last = lastInboundAt,
+                   Date().timeIntervalSince(last) >= LaunchReadiness.quietPeriod { return }
+            case .failed, .lost, .idle:
+                return
+            case .connecting, .reconnecting:
+                continue
+            }
+        }
     }
 
     func cancelConnection() async {

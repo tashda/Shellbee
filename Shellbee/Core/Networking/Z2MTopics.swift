@@ -48,8 +48,6 @@ nonisolated enum Z2MTopics {
         static let options = "bridge/request/options"
         static let healthCheck = "bridge/request/health_check"
         static let installCode = "bridge/request/install_code/add"
-        static let devices = "bridge/request/devices"
-        static let groups = "bridge/request/groups"
         static let networkMap = "bridge/request/networkmap"
         static let touchlinkScan = "bridge/request/touchlink/scan"
         static let touchlinkIdentify = "bridge/request/touchlink/identify"

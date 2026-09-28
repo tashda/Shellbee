@@ -211,11 +211,16 @@ final class AppEnvironment {
         send(bridge: bridgeID, topic: Z2MTopics.Request.restart, payload: .string(""))
     }
 
-    /// Refresh devices + groups for a specific bridge.
-    func refreshBridgeData(bridgeID: UUID) async {
-        send(bridge: bridgeID, topic: Z2MTopics.Request.devices, payload: .string(""))
-        send(bridge: bridgeID, topic: Z2MTopics.Request.groups, payload: .string(""))
-        try? await Task.sleep(for: .milliseconds(600))
+    /// Pull to refresh: reconnects `bridgeID`, or every connected bridge
+    /// when `nil`, and returns once their data has reloaded. See
+    /// `ConnectionSessionController.refresh()`.
+    func refreshBridgeData(bridgeID: UUID?) async {
+        let controllers = registry.orderedSessions
+            .filter { bridgeID == nil ? $0.isConnected : $0.bridgeID == bridgeID }
+            .map(\.controller)
+        // All bridges reload side by side; the spinner waits for the last.
+        let reloads = controllers.map { controller in Task { await controller.refresh() } }
+        for reload in reloads { await reload.value }
     }
 
     // MARK: - Per-bridge sends

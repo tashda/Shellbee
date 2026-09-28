@@ -87,6 +87,7 @@ struct HomeView: View {
                 .frame(maxWidth: DesignTokens.Size.readableContentMaxWidth)
                 .frame(maxWidth: .infinity)
             }
+            .refreshable { await environment.refreshBridgeData(bridgeID: nil) }
             .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
             .navigationDestination(isPresented: $showingStatistics) {
                 if let bridgeID = selectedBridgeID {

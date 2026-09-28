@@ -155,9 +155,7 @@ struct DeviceListView: View {
             }
         }
         .refreshable {
-            if let id = toolbarBridgeID {
-                await environment.refreshBridgeData(bridgeID: id)
-            }
+            await environment.refreshBridgeData(bridgeID: toolbarBridgeID)
         }
         .onAppear {
             if let bridgeID = sceneNavigation.pendingDeviceBridgeID {

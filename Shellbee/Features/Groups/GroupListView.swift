@@ -179,9 +179,7 @@ struct GroupListView: View {
             }
         }
         .refreshable {
-            if let id = singleBridgeID ?? environment.registry.primaryBridgeID {
-                await environment.refreshBridgeData(bridgeID: id)
-            }
+            await environment.refreshBridgeData(bridgeID: singleBridgeID)
         }
         .overlay {
             let totalGroups = environment.allGroups.count
