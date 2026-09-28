@@ -30,9 +30,13 @@ struct HomeLinkQualityCard: View {
     private var focusedBand: HomeSnapshot.LinkQualityBand? {
         bands.first { $0.id == (hoveredBand ?? selectedBand) }
     }
-    private var weakCount: Int { measured.filter { ($0.linkQuality ?? 0) < DesignTokens.Threshold.weakSignal }.count }
+    /// The same count as Needs attention's Weak signal row.
+    private var weakCount: Int { snapshot.weakSignalDevices }
     private var weakRouterCount: Int {
-        measured.filter { $0.device.type == .router && ($0.linkQuality ?? 0) < DesignTokens.Threshold.weakSignal }.count
+        readings.filter { reading in
+            guard reading.device.type == .router, let quality = reading.linkQuality else { return false }
+            return quality < DesignTokens.Threshold.weakSignal
+        }.count
     }
     private var listed: [HomeDeviceReading] {
         guard let band = bands.first(where: { $0.id == selectedBand }) else { return Array(measured.prefix(Self.listedCount)) }
