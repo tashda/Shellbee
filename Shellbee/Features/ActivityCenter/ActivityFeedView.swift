@@ -12,6 +12,8 @@ struct ActivityFeedView: View {
     @State private var isClearAttentionArmed = false
     @State private var liveFeed = LiveFeedState<ActivityFeedSection>()
     @AppStorage(ActivityAttentionClearance.storageKey) private var clearanceRaw = ""
+    @AppStorage(ActivityStackBuilder.groupsBySubjectKey) private var groupsBySubject = true
+    @AppStorage(ActivityStackBuilder.pinsAttentionKey) private var pinsAttention = true
 
     init(viewModel: LogsViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
         self.viewModel = viewModel
@@ -227,6 +229,8 @@ struct ActivityFeedView: View {
         return ActivityStackBuilder.sections(
             from: entries,
             clearance: ActivityAttentionClearance(rawValue: clearanceRaw),
+            groupsBySubject: groupsBySubject,
+            pinsAttention: pinsAttention,
             subject: environment.activitySubject(for:)
         )
     }

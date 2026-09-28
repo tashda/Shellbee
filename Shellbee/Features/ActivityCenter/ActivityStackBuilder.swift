@@ -4,25 +4,37 @@ import Foundation
 ///
 /// Errors and warnings from the last day are pinned under Needs Attention,
 /// until the user clears them. Everything else is Recent. Within a section, events stack by subject on
-/// their bridge, and stacks are ordered by their newest event.
+/// their bridge, and stacks are ordered by their newest event. Both are
+/// the user's choice: with grouping off every event is its own card, and
+/// with pinning off warnings stay in time order with everything else.
 enum ActivityStackBuilder {
     static let attentionWindow: TimeInterval = 24 * 60 * 60
+
+    /// Stored display choices, shared by the filter menus and the feed.
+    static let groupsBySubjectKey = "activity.groupsBySubject"
+    static let pinsAttentionKey = "activity.pinsAttention"
 
     /// - Parameters:
     ///   - entries: Bridge-attributed entries, newest first.
     ///   - clearance: What the user has already cleared from Needs Attention.
     ///   - subject: Resolves who an entry is about. Injected so the builder
     ///     stays independent of the store.
+    ///   - groupsBySubject: Stack events by subject; off gives one card per event.
+    ///   - pinsAttention: Pin recent warnings and errors under Needs Attention.
     static func sections(
         from entries: [BridgeBoundLogEntry],
         now: Date = .now,
         clearance: ActivityAttentionClearance = .init(rawValue: ""),
+        groupsBySubject: Bool = true,
+        pinsAttention: Bool = true,
         subject: (BridgeBoundLogEntry) -> ActivityStack.Subject
     ) -> [ActivityFeedSection] {
         struct Key: Hashable {
             let section: ActivityFeedSection.Kind
             let bridgeID: UUID
             let subject: ActivityStack.Subject
+            /// Set only when grouping is off, so each event keys alone.
+            let entryID: UUID?
         }
 
         var order: [Key] = []
@@ -31,10 +43,16 @@ enum ActivityStackBuilder {
 
         for item in entries {
             let itemSubject = subject(item)
-            let pinned = needsAttention(item.entry)
+            let pinned = pinsAttention
+                && needsAttention(item.entry)
                 && item.entry.timestamp >= attentionCutoff
                 && !clearance.isCleared(item.entry, bridgeID: item.bridgeID, subject: itemSubject)
-            let key = Key(section: pinned ? .needsAttention : .recent, bridgeID: item.bridgeID, subject: itemSubject)
+            let key = Key(
+                section: pinned ? .needsAttention : .recent,
+                bridgeID: item.bridgeID,
+                subject: itemSubject,
+                entryID: groupsBySubject ? nil : item.entry.id
+            )
             if grouped[key] == nil {
                 order.append(key)
                 grouped[key] = []
@@ -47,7 +65,8 @@ enum ActivityStackBuilder {
                 section: key.section,
                 bridgeID: key.bridgeID,
                 subject: key.subject,
-                entries: grouped[key] ?? []
+                entries: grouped[key] ?? [],
+                isSingleEvent: key.entryID != nil
             )
         }
 

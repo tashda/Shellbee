@@ -109,11 +109,42 @@ final class ActivityStackBuilderTests: XCTestCase {
         XCTAssertEqual(ActivityAttentionClearance(rawValue: clearance.rawValue), clearance)
     }
 
+    func testUngroupedFeedGivesEachEventItsOwnCardInTimeOrder() {
+        let entries = [
+            bound(bridgeA, "Office Sensor", secondsAgo: 10),
+            bound(bridgeA, "Kitchen Plug", secondsAgo: 20),
+            bound(bridgeA, "Office Sensor", secondsAgo: 30)
+        ]
+
+        let stacks = build(entries, groupsBySubject: false)[0].stacks
+
+        XCTAssertEqual(stacks.map(\.latest.id), entries.map(\.entry.id))
+        XCTAssertTrue(stacks.allSatisfy { !$0.isStacked })
+        XCTAssertEqual(Set(stacks.map(\.id)).count, 3)
+    }
+
+    func testUnpinnedFeedKeepsWarningsInTimeOrder() {
+        let entries = [
+            bound(bridgeA, "Office Sensor", secondsAgo: 10),
+            bound(bridgeA, "Front Door Lock", secondsAgo: 20, level: .error)
+        ]
+
+        let sections = build(entries, pinsAttention: false)
+
+        XCTAssertEqual(sections.map(\.kind), [.recent])
+        XCTAssertEqual(sections[0].stacks.map(\.subject), [.named("Office Sensor"), .named("Front Door Lock")])
+    }
+
     private func build(
         _ entries: [BridgeBoundLogEntry],
-        clearance: ActivityAttentionClearance = .init(rawValue: "")
+        clearance: ActivityAttentionClearance = .init(rawValue: ""),
+        groupsBySubject: Bool = true,
+        pinsAttention: Bool = true
     ) -> [ActivityFeedSection] {
-        ActivityStackBuilder.sections(from: entries, now: now, clearance: clearance) { item in
+        ActivityStackBuilder.sections(
+            from: entries, now: now, clearance: clearance,
+            groupsBySubject: groupsBySubject, pinsAttention: pinsAttention
+        ) { item in
             item.entry.deviceName.map(ActivityStack.Subject.named) ?? .bridge
         }
     }

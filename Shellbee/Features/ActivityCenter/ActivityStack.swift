@@ -16,6 +16,9 @@ struct ActivityStack: Identifiable, Hashable {
     let subject: Subject
     /// Newest first. Never empty.
     let entries: [LogEntry]
+    /// True when the feed shows one card per event, so several stacks can
+    /// share a subject and each needs its event in its identity.
+    var isSingleEvent = false
 
     /// Stable across refreshes so a new event slides into its existing stack
     /// instead of replacing it.
@@ -25,7 +28,8 @@ struct ActivityStack: Identifiable, Hashable {
         case .named(let name): subjectKey = "named:\(name)"
         case .bridge: subjectKey = "bridge"
         }
-        return "\(section.rawValue):\(bridgeID.uuidString):\(subjectKey)"
+        let base = "\(section.rawValue):\(bridgeID.uuidString):\(subjectKey)"
+        return isSingleEvent ? "\(base):\(entries[0].id.uuidString)" : base
     }
 
     var latest: LogEntry { entries[0] }

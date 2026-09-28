@@ -45,11 +45,7 @@ struct ActivityWorkspaceFilters: View {
             categorySection
             namespaceSection
             deviceSection
-            Section("Display") {
-                Toggle("Signal Changes", isOn: $workspace.activity.showLinkQualityChanges)
-            }
-            // Toggles keep the menu open so the checkmark is seen to change.
-            .menuActionDismissBehavior(.disabled)
+            ActivityDisplayToggles(showsSignalChanges: $workspace.activity.showLinkQualityChanges)
         }
 
     }

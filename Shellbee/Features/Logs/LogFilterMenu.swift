@@ -22,14 +22,7 @@ struct LogFilterMenu: View {
             categoryMenu
             if !namespaceSnapshot.isEmpty { namespaceMenu }
             deviceButton
-            Divider()
-            // LQI drift is hidden by default — see LogsViewModel.
-            // showLinkQualityChanges. The toggle keeps the menu open so its
-            // checkmark is seen to change.
-            Toggle(isOn: $viewModel.showLinkQualityChanges) {
-                Label("Signal Changes", systemImage: "dot.radiowaves.left.and.right")
-            }
-            .menuActionDismissBehavior(.disabled)
+            ActivityDisplayToggles(showsSignalChanges: $viewModel.showLinkQualityChanges)
             ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
                 viewModel.clearAllFilters()
             }
