@@ -356,6 +356,7 @@
 				Features/Settings/FrontendSettingsView.swift,
 				Features/Settings/HealthSettingsView.swift,
 				Features/Settings/HomeAssistantSettingsView.swift,
+				Features/Settings/HomeCardPreview.swift,
 				Features/Settings/HomeSettingsView.swift,
 				Features/Settings/LogOutputView.swift,
 				Features/Settings/MainSettingsView.swift,

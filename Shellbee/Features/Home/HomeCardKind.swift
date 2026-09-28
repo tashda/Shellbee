@@ -4,7 +4,8 @@ import SwiftUI
 /// answers "is anything wrong" on its own, and these answer the questions
 /// you only ask when you feel like looking.
 ///
-/// They render in this order, under Needs attention.
+/// They render under Needs attention, in the order set in Settings › Home
+/// Screen (this declaration order until the user drags them).
 enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
     case network
     case linkQuality
@@ -50,4 +51,20 @@ enum HomeCardKind: String, CaseIterable, Identifiable, Sendable {
     }
 
     var storageKey: String { "homeCard.\(rawValue).enabled" }
+
+    /// Comma-separated raw values in the user's order.
+    static let orderKey = "homeCards.order"
+
+    /// Every card in the stored order; cards missing from it (new ones, or
+    /// none stored yet) follow in declaration order.
+    static func ordered(_ stored: String) -> [HomeCardKind] {
+        let listed = stored.split(separator: ",").compactMap { HomeCardKind(rawValue: String($0)) }
+        var seen = Set<HomeCardKind>()
+        let unique = listed.filter { seen.insert($0).inserted }
+        return unique + allCases.filter { !seen.contains($0) }
+    }
+
+    static func encode(_ order: [HomeCardKind]) -> String {
+        order.map(\.rawValue).joined(separator: ",")
+    }
 }

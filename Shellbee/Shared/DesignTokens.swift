@@ -421,6 +421,8 @@ nonisolated enum DesignTokens {
     nonisolated enum Ratio {
         static let bridgeMonogramCorner: CGFloat = 0.28
         static let bridgeMonogramGlyph: CGFloat = 0.62
+        /// Home card previews in Settings › Home Screen, drawn at this scale.
+        static let homeCardPreview: CGFloat = 0.72
         // Log row icon (device thumbnail badge inside the log level circle)
         static let logRowBadgeSize: CGFloat = 0.47
         static let logRowBadgeBorder: CGFloat = 0.1

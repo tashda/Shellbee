@@ -39,6 +39,7 @@ struct HomeView: View {
     @AppStorage(HomeCardKind.vendors.storageKey) private var showsVendorsCard = false
     @AppStorage(HomeCardKind.bridgeHealth.storageKey) private var showsBridgeHealthCard = false
     @AppStorage(HomeCardKind.activity.storageKey) private var showsActivityCard = false
+    @AppStorage(HomeCardKind.orderKey) private var cardOrder = ""
     @State private var showingAllLogs = false
     @State private var showingStatistics = false
     @State private var showingLinkQuality = false
@@ -65,8 +66,7 @@ struct HomeView: View {
                 bridgeSection
                 nowSection
                 attentionSection
-                optionalCards
-                activitySection
+                ForEach(shownCards) { card($0) }
                 }
                 .padding(DesignTokens.Spacing.lg)
                 .frame(maxWidth: DesignTokens.Size.readableContentMaxWidth)
@@ -289,73 +289,78 @@ struct HomeView: View {
 
     // MARK: - Optional cards
 
-    @ViewBuilder
-    private var optionalCards: some View {
-        if showsNetworkCard || showsLinkQualityCard || showsBatteriesCard
-            || showsVendorsCard || (showsBridgeHealthCard && !bridgeCardEntries.isEmpty) {
-            VStack(spacing: DesignTokens.Spacing.xxl) {
-                if showsNetworkCard {
-                    HomeNetworkCard(snapshot: snapshot) {
-                        sceneNavigation.selectedTab = .networkMap
-                    } onOpenStatistics: {
-                        showingStatistics = true
-                    }
-                }
-                if showsLinkQualityCard {
-                    HomeLinkQualityCard(
-                        snapshot: snapshot,
-                        readings: deviceReadings,
-                        onTapWeak: { showDevices(filter: .weakSignal) },
-                        onOpenPage: { showingLinkQuality = true }
-                    )
-                }
-                if showsBatteriesCard {
-                    HomeBatteriesCard(
-                        snapshot: snapshot,
-                        readings: deviceReadings,
-                        onSelect: { batterySheet = $0 },
-                        onOpenPage: { showingBatteries = true }
-                    )
-                }
-                if showsVendorsCard {
-                    HomeVendorsCard(devices: environment.allDevices.map(\.device))
-                }
-                if showsBridgeHealthCard {
-                    if bridgeCardEntries.count >= 2 {
-                        HomeBridgeHealthGroupCard(entries: bridgeCardEntries) { bridgeID in
-                            presentedSheet = .bridge(bridgeID)
-                        }
-                    } else if let entry = bridgeCardEntries.first {
-                        HomeBridgeHealthCard(entry: entry) {
-                            presentedSheet = .bridge(entry.id)
-                        }
-                    }
-                }
+    private var shownCards: [HomeCardKind] {
+        HomeCardKind.ordered(cardOrder).filter { kind in
+            switch kind {
+            case .network: showsNetworkCard
+            case .linkQuality: showsLinkQualityCard
+            case .batteries: showsBatteriesCard
+            case .vendors: showsVendorsCard
+            case .bridgeHealth: showsBridgeHealthCard && !bridgeCardEntries.isEmpty
+            case .activity: showsActivityCard
             }
         }
     }
 
     @ViewBuilder
-    private var activitySection: some View {
-        if showsActivityCard {
-            let items = recentEventItems(for: nil)
-            groupedRows(title: "Activity") {
-                if items.isEmpty {
-                    groupedRow(Text("No recent events")
-                        .foregroundStyle(.secondary)
-                    )
-                } else {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        groupedRow(Button {
-                            sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [item.id])
-                        } label: {
-                            HomeActivityRow(item: item)
-                        }.buttonStyle(.plain))
-                        if index < items.count - 1 { Divider().padding(.leading, DesignTokens.Spacing.lg) }
-                    }
-                    Divider().padding(.leading, DesignTokens.Spacing.lg)
-                    groupedRow(Button("See all", action: openAllLogs))
+    private func card(_ kind: HomeCardKind) -> some View {
+        switch kind {
+        case .network:
+            HomeNetworkCard(snapshot: snapshot) {
+                sceneNavigation.selectedTab = .networkMap
+            } onOpenStatistics: {
+                showingStatistics = true
+            }
+        case .linkQuality:
+            HomeLinkQualityCard(
+                snapshot: snapshot,
+                readings: deviceReadings,
+                onTapWeak: { showDevices(filter: .weakSignal) },
+                onOpenPage: { showingLinkQuality = true }
+            )
+        case .batteries:
+            HomeBatteriesCard(
+                snapshot: snapshot,
+                readings: deviceReadings,
+                onSelect: { batterySheet = $0 },
+                onOpenPage: { showingBatteries = true }
+            )
+        case .vendors:
+            HomeVendorsCard(devices: environment.allDevices.map(\.device))
+        case .bridgeHealth:
+            if bridgeCardEntries.count >= 2 {
+                HomeBridgeHealthGroupCard(entries: bridgeCardEntries) { bridgeID in
+                    presentedSheet = .bridge(bridgeID)
                 }
+            } else if let entry = bridgeCardEntries.first {
+                HomeBridgeHealthCard(entry: entry) {
+                    presentedSheet = .bridge(entry.id)
+                }
+            }
+        case .activity:
+            activitySection
+        }
+    }
+
+    @ViewBuilder
+    private var activitySection: some View {
+        let items = recentEventItems(for: nil)
+        groupedRows(title: "Activity") {
+            if items.isEmpty {
+                groupedRow(Text("No recent events")
+                    .foregroundStyle(.secondary)
+                )
+            } else {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    groupedRow(Button {
+                        sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [item.id])
+                    } label: {
+                        HomeActivityRow(item: item)
+                    }.buttonStyle(.plain))
+                    if index < items.count - 1 { Divider().padding(.leading, DesignTokens.Spacing.lg) }
+                }
+                Divider().padding(.leading, DesignTokens.Spacing.lg)
+                groupedRow(Button("See all", action: openAllLogs))
             }
         }
     }
