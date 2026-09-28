@@ -6,8 +6,10 @@ import os
 /// on connect) is applied to the store in a few main-actor turns instead of
 /// one turn, and one SwiftUI update, per message.
 ///
-/// Order is kept: one task decodes frames in arrival order into a buffer,
-/// and each flush yields the buffer as it stands.
+/// A message after a quiet spell (a device answering a tap) is handed over
+/// at once; only messages arriving within `window` of the last hand-over
+/// wait to be batched. Order is kept: one task decodes frames in arrival
+/// order, and each hand-over yields everything received so far.
 nonisolated enum Z2MEventBatcher {
     enum Item: Sendable {
         /// `data` is kept for the MQTT inspector's raw tap.
@@ -47,6 +49,7 @@ nonisolated enum Z2MEventBatcher {
             var items: [Item] = []
             var flushScheduled = false
             var finished = false
+            var lastYield: ContinuousClock.Instant?
         }
 
         private let state = OSAllocatedUnfairLock(initialState: State())
@@ -58,6 +61,14 @@ nonisolated enum Z2MEventBatcher {
 
         func append(_ item: Item) {
             let needsFlush = state.withLock { state -> Bool in
+                guard !state.finished else { return false }
+                let now = ContinuousClock.now
+                let quiet = state.lastYield.map { now - $0 >= Z2MEventBatcher.window } ?? true
+                if quiet, !state.flushScheduled, state.items.isEmpty {
+                    continuation.yield([item])
+                    state.lastYield = now
+                    return false
+                }
                 state.items.append(item)
                 guard !state.flushScheduled else { return false }
                 state.flushScheduled = true
@@ -77,6 +88,7 @@ nonisolated enum Z2MEventBatcher {
                 guard !state.finished, !state.items.isEmpty else { return }
                 continuation.yield(state.items)
                 state.items.removeAll(keepingCapacity: true)
+                state.lastYield = ContinuousClock.now
             }
         }
 
