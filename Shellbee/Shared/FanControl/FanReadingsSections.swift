@@ -95,7 +95,7 @@ struct FanReadingsSections: View {
                 if let airQuality = readings.airQuality {
                     LabeledContent("Air Quality") {
                         Text(FanAirReadings.prettify(airQuality))
-                            .foregroundStyle(readings.airQualityNeedsAttention ? readings.airQualityTint : .secondary)
+                            .foregroundStyle(readings.airQualityNeedsAttention ? AnyShapeStyle(.themedStatus(readings.airQualityTint)) : AnyShapeStyle(.secondary))
                     }
                 }
             }

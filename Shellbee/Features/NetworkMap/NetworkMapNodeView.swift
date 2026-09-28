@@ -19,6 +19,7 @@ struct NetworkMapNodeView: View {
     let isDimmed: Bool
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.self) private var environment
 
     private var size: CGFloat { NetworkMapLayoutEngine.nodeSize(for: node.topology.role) }
 
@@ -39,7 +40,7 @@ struct NetworkMapNodeView: View {
     }
 
     private var bubble: some View {
-        let tint = status.tint
+        let tint = environment.themedStatusColor(status.tint)
         return ZStack {
             // Soft contact shadow, drawn as a gradient so it stays free.
             Circle()

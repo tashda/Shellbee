@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FanControlCard: View {
+    @Environment(\.self) private var environment
     let context: FanControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
@@ -63,7 +64,7 @@ struct FanControlCard: View {
     /// and any state-text inside the hero. Air-quality devices use an AQI
     /// scale; plain fans use teal when on, neutral when off.
     private var heroTint: Color {
-        if hasAirSensors { return air.airQualityTint }
+        if hasAirSensors { return environment.themedStatusColor(air.airQualityTint) }
         return context.isOn ? .teal : Color(.tertiaryLabel)
     }
 

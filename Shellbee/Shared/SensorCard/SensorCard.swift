@@ -62,7 +62,7 @@ private struct SensorReadingRow: View {
         LabeledContent {
             Text(reading.displayValue)
                 .monospacedDigit()
-                .foregroundStyle(reading.valueColor == .primary ? .secondary : reading.valueColor)
+                .foregroundStyle(reading.valueColor == .primary ? AnyShapeStyle(.secondary) : AnyShapeStyle(.themedStatus(reading.valueColor)))
         } label: {
             Text(reading.label)
         }
