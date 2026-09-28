@@ -82,7 +82,7 @@ struct PermitJoinSheet: View {
                     }
                     .padding(.horizontal, DesignTokens.Spacing.lg)
                     .padding(.vertical, DesignTokens.Spacing.md)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
+                    .background(.shellbeeSurface, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
                     Text("Permit Join opens this bridge's network only. Other bridges remain closed.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -129,7 +129,7 @@ struct PermitJoinSheet: View {
                     .padding(.vertical, DesignTokens.Spacing.md)
                 }
                 .padding(.horizontal, DesignTokens.Spacing.lg)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
+                .background(.shellbeeSurface, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card))
             }
 
             actionBar

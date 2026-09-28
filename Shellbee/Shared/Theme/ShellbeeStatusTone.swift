@@ -84,9 +84,11 @@ nonisolated extension ShellbeeTheme {
 extension EnvironmentValues {
     /// The colour to draw for a system status colour in this environment:
     /// the theme's tone when Themed Status Colors is on, otherwise unchanged.
+    /// Blues stand for the accent (an update, info), so they take the
+    /// theme accent whenever a theme is chosen, setting or not.
     nonisolated func themedStatusColor(_ color: Color) -> Color {
-        guard shellbeeThemesStatusColors,
-              let tone = StatusTone(systemColor: color),
+        guard let tone = StatusTone(systemColor: color),
+              tone == .info || shellbeeThemesStatusColors,
               let themed = shellbeeTheme.statusColor(tone) else { return color }
         return themed
     }

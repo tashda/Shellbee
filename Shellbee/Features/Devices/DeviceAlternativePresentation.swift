@@ -181,7 +181,7 @@ private struct DeviceGridItem: View {
             }
             .padding(DesignTokens.Spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
+            .background(.shellbeeSurface, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md))
             .overlay {
                 RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.md)
                     .strokeBorder(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.secondary.opacity(DesignTokens.Opacity.hairline)))
