@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LogDetailView: View {
+    @Environment(\.shellbeeTheme) private var theme
     @Environment(AppEnvironment.self) private var environment
     @State private var viewMode: ViewMode = .parsed
     /// Phase 1 multi-bridge: source bridge for this log entry. Threaded
@@ -94,7 +95,7 @@ struct LogDetailView: View {
         } label: {
             Image(systemName: "curlybraces")
         }
-        .tint(viewMode == .json ? .accentColor : .secondary)
+        .tint(viewMode == .json ? theme.accent : .secondary)
         .accessibilityLabel(viewMode == .json ? "Show formatted activity" : "Show raw message")
     }
 

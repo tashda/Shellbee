@@ -112,7 +112,25 @@ private struct ShellbeeThemedBar: ViewModifier {
     }
 }
 
+/// The theme accent as the tint, for controls outside a themed canvas:
+/// toolbar toggles and confirm buttons, and screens that draw their own
+/// background. Standard leaves the system tint.
+private struct ShellbeeAccentTint: ViewModifier {
+    @Environment(\.shellbeeTheme) private var theme
+
+    func body(content: Content) -> some View {
+        content.tint(theme.palette?.accent)
+    }
+}
+
 extension View {
+    /// Toolbar buttons stay system black and white; apply this only to a
+    /// toolbar control with an active state (a toggle, a confirm button) so
+    /// that state shows in the theme accent.
+    func shellbeeAccentTint() -> some View {
+        modifier(ShellbeeAccentTint())
+    }
+
     /// Apply to the content of a bottom `safeAreaInset` bar.
     func shellbeeThemedBar() -> some View {
         modifier(ShellbeeThemedBar())

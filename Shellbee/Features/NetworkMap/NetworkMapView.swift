@@ -171,6 +171,7 @@ struct NetworkMapView: View {
                 }
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Network Map")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: $autoOpenedDeviceRoute) { route in

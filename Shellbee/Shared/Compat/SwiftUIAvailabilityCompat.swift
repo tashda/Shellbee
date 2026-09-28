@@ -86,6 +86,7 @@ struct ConfirmToolbarButton: View {
     var body: some View {
         if #available(iOS 26.0, *) {
             Button(title, systemImage: "checkmark", role: .confirm, action: action)
+                .shellbeeAccentTint()
         } else {
             Button(title, action: action)
                 .fontWeight(.semibold)

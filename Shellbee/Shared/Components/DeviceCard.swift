@@ -165,7 +165,7 @@ struct DeviceCard: View {
                 ProgressView().progressViewStyle(.linear)
             }
         }
-        .tint(.blue)
+        .tint(.accentColor)
         .cardSurface(padding: DesignTokens.Spacing.md)
         .transition(.opacity)
     }

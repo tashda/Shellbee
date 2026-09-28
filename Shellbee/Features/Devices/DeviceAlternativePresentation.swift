@@ -308,7 +308,7 @@ private struct DeviceTableItem: View {
         Image(systemName: actions.otaStatus?.isActive == true
               ? "arrow.triangle.2.circlepath"
               : actions.state.hasUpdateAvailable ? "arrow.up.circle.fill" : "checkmark.circle")
-            .foregroundStyle(actions.state.hasUpdateAvailable ? .blue : .secondary)
+            .foregroundStyle(.themedStatus(actions.state.hasUpdateAvailable ? .blue : .secondary))
             .frame(width: DesignTokens.Size.deviceTableOTAWidth)
             .accessibilityLabel(actions.state.hasUpdateAvailable ? "OTA update available" : "OTA current")
     }

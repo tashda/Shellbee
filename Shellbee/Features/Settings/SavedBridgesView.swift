@@ -207,7 +207,7 @@ private struct BridgeRow: View {
             Button(action: onRename) {
                 Label("Rename", systemImage: "pencil")
             }
-            .tint(.blue)
+            .tint(.accentColor)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
@@ -215,7 +215,7 @@ private struct BridgeRow: View {
             } label: {
                 Label(isMuted ? "Unmute" : "Mute", systemImage: isMuted ? "bell" : "bell.slash")
             }
-            .tint(isMuted ? .blue : .gray)
+            .tint(isMuted ? .accentColor : .gray)
         }
     }
 

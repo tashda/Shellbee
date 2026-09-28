@@ -127,7 +127,7 @@ struct DeviceListRow: View {
                 Button(action: onCheckUpdate) {
                     Label("Check", systemImage: "arrow.triangle.2.circlepath")
                 }
-                .tint(.blue)
+                .tint(.accentColor)
                 if isBatteryPowered {
                     if let onSchedule {
                         Button(action: onSchedule) {

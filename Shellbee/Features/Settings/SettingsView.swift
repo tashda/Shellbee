@@ -587,7 +587,7 @@ private struct BridgeSettingsRow: View {
             Button(action: onEdit) {
                 Label("Edit", systemImage: "pencil")
             }
-            .tint(.blue)
+            .tint(.accentColor)
         }
     }
 

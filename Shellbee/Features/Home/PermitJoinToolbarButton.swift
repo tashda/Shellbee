@@ -4,11 +4,13 @@ struct PermitJoinToolbarButton: View {
     let isActive: Bool
     let onTap: () -> Void
 
+    @Environment(\.shellbeeTheme) private var theme
+
     var body: some View {
         Button(action: onTap) {
             ShellbeeSymbol.permitJoin.image
                 .imageScale(.large)
-                .foregroundStyle(isActive ? Color.green : Color.primary)
+                .foregroundStyle(isActive ? theme.palette?.accent ?? Color.green : Color.primary)
                 .symbolEffect(.pulse, isActive: isActive)
                 .contentTransition(.symbolEffect(.replace))
         }

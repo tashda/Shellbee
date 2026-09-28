@@ -5,6 +5,15 @@ struct DeviceUpgradeBadgeView: View {
     let hasUpdate: Bool
     let size: CGFloat
 
+    @Environment(\.self) private var environment
+
+    /// Update blue, or the theme's info tone with Themed Status Colors on.
+    private var ink: Color { environment.themedStatusColor(.blue) }
+
+    private func gradient(_ system: [Color]) -> [Color] {
+        ink == .blue ? system : [ink, ink.opacity(DesignTokens.Opacity.secondaryFull)]
+    }
+
     var body: some View {
         if let status, status.isActive {
             activeProgressBadge(for: status)
@@ -17,7 +26,7 @@ struct DeviceUpgradeBadgeView: View {
         ZStack {
             Circle()
                 .fill(LinearGradient(
-                    colors: DesignTokens.Gradient.updateAvailable,
+                    colors: gradient(DesignTokens.Gradient.updateAvailable),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ))
@@ -52,7 +61,7 @@ struct DeviceUpgradeBadgeView: View {
             
             // Progress Track
             Circle()
-                .stroke(.blue.opacity(DesignTokens.Opacity.subtleFill), lineWidth: DesignTokens.Size.badgeStroke * 3)
+                .stroke(ink.opacity(DesignTokens.Opacity.subtleFill), lineWidth: DesignTokens.Size.badgeStroke * 3)
                 .padding(DesignTokens.Size.badgeStroke * 2)
 
             if let progress = status.progress, status.phase == .updating {
@@ -61,7 +70,7 @@ struct DeviceUpgradeBadgeView: View {
                     .trim(from: 0, to: CGFloat(progress / 100.0))
                     .stroke(
                         AngularGradient(
-                            colors: DesignTokens.Gradient.progress,
+                            colors: gradient(DesignTokens.Gradient.progress),
                             center: .center,
                             startAngle: .degrees(-90),
                             endAngle: .degrees(270)
@@ -76,7 +85,7 @@ struct DeviceUpgradeBadgeView: View {
                 // to wake. No animation conveys "queued, idle".
                 Circle()
                     .stroke(
-                        Color.blue.opacity(DesignTokens.Opacity.subtleFill * 2),
+                        ink.opacity(DesignTokens.Opacity.subtleFill * 2),
                         style: StrokeStyle(lineWidth: DesignTokens.Size.badgeStroke * 3, lineCap: .round)
                     )
                     .padding(DesignTokens.Size.badgeStroke * 2)
@@ -85,7 +94,7 @@ struct DeviceUpgradeBadgeView: View {
                 Circle()
                     .trim(from: 0, to: 0.25)
                     .stroke(
-                        Color.blue,
+                        ink,
                         style: StrokeStyle(lineWidth: DesignTokens.Size.badgeStroke * 3, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))

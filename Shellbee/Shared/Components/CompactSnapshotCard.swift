@@ -43,7 +43,7 @@ struct CompactControlSnapshotRow<Trailing: View>: View {
             Image(systemName: systemImage)
                 .font(.title2)
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(tint)
+                .foregroundStyle(.themedStatus(tint))
                 .frame(width: DesignTokens.Size.compactSnapshotSymbol)
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.compactSnapshotTextSpacing) {

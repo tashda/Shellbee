@@ -30,7 +30,7 @@ struct StatusChip: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Size.chipVerticalPadding)
-        .foregroundStyle(tint)
+        .foregroundStyle(.themedStatus(tint))
         .background(tint.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
     }
 }

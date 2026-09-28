@@ -141,7 +141,7 @@ struct BridgeLogRowView: View {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: entry.level.systemImage)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(entry.level.color)
+                    .foregroundStyle(.themedStatus(entry.level.color))
                     .frame(width: DesignTokens.Size.logLevelIconWidth, alignment: .center)
                 if let topic = mqttTopic {
                     Text(topic)
@@ -177,6 +177,7 @@ struct BridgeLogRowView: View {
 
 struct BridgeLogDetailView: View {
     let entry: LogEntry
+    @Environment(\.shellbeeTheme) private var theme
     @State private var prettyPrint = true
     @AppStorage("bridgeLogDetailFontSize") private var fontSize: Double = Double(DesignTokens.Size.bridgeLogDetailFontDefault)
 
@@ -248,10 +249,10 @@ struct BridgeLogDetailView: View {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: entry.level.systemImage)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(entry.level.color)
+                        .foregroundStyle(.themedStatus(entry.level.color))
                     Text(entry.level.label)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(entry.level.color)
+                        .foregroundStyle(.themedStatus(entry.level.color))
                     Spacer()
                     Text(entry.timestamp, format: .dateTime.hour().minute().second())
                         .font(.subheadline.monospacedDigit())
@@ -306,7 +307,7 @@ struct BridgeLogDetailView: View {
                     } label: {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                     }
-                    .tint(prettyPrint ? .accentColor : .secondary)
+                    .tint(prettyPrint ? theme.accent : .secondary)
                 }
             }
 
