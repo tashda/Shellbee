@@ -75,10 +75,9 @@ extension LiveActivityLayout {
                 tint: LiveActivityPalette.update,
                 eyebrow: attributes.bridgeDisplayName,
                 title: "Checking for updates",
-                subtitle: otaCheckSummary(state, includesProgress: true),
+                subtitle: otaCheckSummary(state, isFinished: false),
                 value: .text(counts),
                 gauge: .progress(fraction),
-                compactValue: .text("\(counts) · \(state.foundCount) found"),
                 isBusy: true,
                 metric: found,
                 style: .otaCheckDefault
@@ -89,7 +88,7 @@ extension LiveActivityLayout {
                 tint: LiveActivityPalette.success,
                 eyebrow: attributes.bridgeDisplayName,
                 title: state.phase == .failed ? "Check stopped" : "Check finished",
-                subtitle: otaCheckSummary(state, includesProgress: false),
+                subtitle: otaCheckSummary(state, isFinished: true),
                 value: .symbol(state.phase == .failed ? "stop.circle.fill" : "checkmark.circle.fill"),
                 metric: found,
                 style: .otaCheckDefault
@@ -97,18 +96,14 @@ extension LiveActivityLayout {
         }
     }
 
-    /// "37 of 142 · 3 updates · 1 no reply", or when finished
+    /// "3 updates · 1 no reply" beside the running count, or when finished
     /// "3 updates · 138 up to date · 1 no reply".
     private static func otaCheckSummary(
         _ state: BridgeOperationActivityAttributes.ContentState,
-        includesProgress: Bool
+        isFinished: Bool
     ) -> String {
-        var parts: [String] = []
-        if includesProgress {
-            parts.append("\(state.completedCount) of \(state.totalCount)")
-        }
-        parts.append(state.foundCount == 1 ? "1 update" : "\(state.foundCount) updates")
-        if !includesProgress {
+        var parts = [state.foundCount == 1 ? "1 update" : "\(state.foundCount) updates"]
+        if isFinished {
             let upToDate = max(state.completedCount - state.failedCount - state.foundCount, 0)
             parts.append("\(upToDate) up to date")
         }
