@@ -41,7 +41,10 @@ struct DocLibraryListView: View {
             }
             .navigationTitle(scope.title)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if filters.isActive {
+                        ClearFiltersToolbarButton { filters = DocLibraryFilters() }
+                    }
                     filterMenu
                 }
             }
