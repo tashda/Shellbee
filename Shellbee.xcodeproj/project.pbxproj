@@ -295,6 +295,7 @@
 				Features/NetworkMap/NetworkMapZoomController.swift,
 				Features/Notifications/ActivityAccessoryContent.swift,
 				Features/Notifications/ActivityAccessoryTrailing.swift,
+				Features/Notifications/ActivityAccessoryUpdating.swift,
 				Features/Notifications/ActivityCenterSheet.swift,
 				Features/Notifications/ActivityTabBarAccessory.swift,
 				Features/Onboarding/OnboardingBackgroundGradient.swift,
