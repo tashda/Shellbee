@@ -1,5 +1,18 @@
 import SwiftUI
-import UIKit // Added import for UIKit
+
+enum GroupStateFilter: String, CaseIterable {
+    case on = "On"
+    case off = "Off"
+
+    var systemImage: String { self == .on ? "lightbulb.fill" : "lightbulb.slash" }
+}
+
+enum GroupSceneFilter: String, CaseIterable {
+    case withScenes = "With Scenes"
+    case withoutScenes = "Without Scenes"
+
+    var systemImage: String { self == .withScenes ? "sparkles" : "circle.slash" }
+}
 
 enum GroupSortOrder: String, CaseIterable {
     case name = "Name"
@@ -15,24 +28,68 @@ final class GroupListViewModel {
     /// Multi-bridge: when set, the merged group list filters to a single
     /// bridge. Ignored in single-bridge mode.
     var bridgeFilter: UUID? = nil
+    var stateFilter: GroupStateFilter?
+    /// Groups with at least one member of this type.
+    var memberCategory: Device.Category?
+    var sceneFilter: GroupSceneFilter?
+    /// Only groups without members, for tidying up.
+    var emptyOnly = false
 
     var hasActiveFilter: Bool {
-        bridgeFilter != nil
+        bridgeFilter != nil || stateFilter != nil || memberCategory != nil || sceneFilter != nil || emptyOnly
+    }
+
+    func clearFilters() {
+        bridgeFilter = nil
+        stateFilter = nil
+        memberCategory = nil
+        sceneFilter = nil
+        emptyOnly = false
     }
 
     func filteredGroups(store: AppStore) -> [Group] {
-        var groups = store.groups
+        sorted(store.groups.filter { matches($0, store: store) })
+    }
 
+    /// Search plus every filter except the bridge, which the caller applies
+    /// by choosing stores.
+    func matches(_ group: Group, store: AppStore) -> Bool {
         if !searchText.isEmpty {
             let q = searchText.lowercased()
-            groups = groups.filter {
-                $0.friendlyName.lowercased().contains(q)
-                || $0.description?.lowercased().contains(q) == true
-                || "\($0.id)".contains(q)
-            }
+            let hit = group.friendlyName.lowercased().contains(q)
+                || group.description?.lowercased().contains(q) == true
+                || "\(group.id)".contains(q)
+            guard hit else { return false }
         }
+        return matchesFilters(group, store: store)
+    }
 
-        return sorted(groups)
+    func matchesFilters(_ group: Group, store: AppStore,
+                        ignoring ignored: PartialKeyPath<GroupListViewModel>? = nil) -> Bool {
+        if ignored != \GroupListViewModel.stateFilter, let stateFilter {
+            guard Self.state(of: group, store: store) == stateFilter else { return false }
+        }
+        if ignored != \GroupListViewModel.memberCategory, let memberCategory {
+            guard Self.memberCategories(of: group, store: store).contains(memberCategory) else { return false }
+        }
+        if ignored != \GroupListViewModel.sceneFilter, let sceneFilter {
+            guard (sceneFilter == .withScenes) == !group.scenes.isEmpty else { return false }
+        }
+        if ignored != \GroupListViewModel.emptyOnly, emptyOnly, !group.members.isEmpty { return false }
+        return true
+    }
+
+    static func state(of group: Group, store: AppStore) -> GroupStateFilter? {
+        switch store.state(for: group.friendlyName)["state"]?.stringValue?.uppercased() {
+        case "ON": .on
+        case "OFF": .off
+        default: nil
+        }
+    }
+
+    static func memberCategories(of group: Group, store: AppStore) -> Set<Device.Category> {
+        let ieees = Set(group.members.map(\.ieeeAddress))
+        return Set(store.devices.filter { ieees.contains($0.ieeeAddress) }.map(\.category))
     }
 
     func addGroup(name: String, id: Int?, environment: AppEnvironment, bridgeID: UUID?) {

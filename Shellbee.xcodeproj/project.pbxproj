@@ -219,6 +219,7 @@
 				Features/Groups/GroupDetailView.swift,
 				Features/Groups/GroupDetailViewModel.swift,
 				Features/Groups/GroupDeviceDropPolicy.swift,
+				Features/Groups/GroupFilterMenu.swift,
 				Features/Groups/GroupIconView.swift,
 				Features/Groups/GroupListRow.swift,
 				Features/Groups/GroupListView.swift,

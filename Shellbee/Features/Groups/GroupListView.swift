@@ -160,12 +160,10 @@ struct GroupListView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if isMergedMode, viewModel.bridgeFilter != nil {
-                    ClearFiltersToolbarButton { viewModel.bridgeFilter = nil }
+                if viewModel.hasActiveFilter {
+                    ClearFiltersToolbarButton { viewModel.clearFilters() }
                 }
-                if isMergedMode {
-                    bridgeFilterMenu
-                }
+                GroupFilterMenu(viewModel: viewModel)
                 sortMenu
             }
             TrailingToolbarGroupSpacer()
@@ -191,8 +189,18 @@ struct GroupListView: View {
                     systemImage: "rectangle.3.group.fill",
                     description: Text("Create a group to control multiple devices together.")
                 )
-            } else if !viewModel.searchText.isEmpty && (isMergedMode ? mergedFilteredGroups().isEmpty : (singleBridgeID.flatMap { environment.registry.session(for: $0) }.map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true)) {
-                ContentUnavailableView.search(text: viewModel.searchText)
+            } else if isShowingNoGroups {
+                if !viewModel.searchText.isEmpty {
+                    ContentUnavailableView.search(text: viewModel.searchText)
+                } else {
+                    ContentUnavailableView {
+                        Label("No Matching Groups", systemImage: "line.3.horizontal.decrease.circle")
+                    } description: {
+                        Text("No group matches the active filters.")
+                    } actions: {
+                        Button("Clear Filters") { viewModel.clearFilters() }
+                    }
+                }
             }
         }
         .onAppear { consumePendingGroupNavigation() }
@@ -202,18 +210,12 @@ struct GroupListView: View {
         }
     }
 
-    private var bridgeFilterMenu: some View {
-        Menu {
-            BridgeFilterMenu(
-                selection: $viewModel.bridgeFilter,
-                sessions: environment.registry.orderedSessions.filter(\.isConnected)
-            )
-            ClearFiltersMenuItem(isActive: viewModel.bridgeFilter != nil) {
-                viewModel.bridgeFilter = nil
-            }
-        } label: {
-            FilterMenuLabel(isActive: viewModel.bridgeFilter != nil)
-        }
+    /// Groups exist but search or filters hide them all.
+    private var isShowingNoGroups: Bool {
+        guard !viewModel.searchText.isEmpty || viewModel.hasActiveFilter else { return false }
+        if isMergedMode { return mergedFilteredGroups().isEmpty }
+        return singleBridgeID.flatMap { environment.registry.session(for: $0) }
+            .map { viewModel.filteredGroups(store: $0.store).isEmpty } ?? true
     }
 
     private var sortMenu: some View {
@@ -252,15 +254,12 @@ struct GroupListView: View {
     }
 
     private func mergedFilteredGroups() -> [BridgeBoundGroup] {
-        let q = viewModel.searchText.lowercased()
         let sessions = environment.registry.orderedSessions.filter { session in
             viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true
         }
         return sessions
             .flatMap { session -> [BridgeBoundGroup] in
-                let groups = q.isEmpty
-                    ? session.store.groups
-                    : session.store.groups.filter { $0.friendlyName.lowercased().contains(q) }
+                let groups = session.store.groups.filter { viewModel.matches($0, store: session.store) }
                 return groups.map { BridgeBoundGroup(bridgeID: session.bridgeID, bridgeName: session.displayName, group: $0) }
             }
             .sorted { $0.group.friendlyName.localizedCompare($1.group.friendlyName) == .orderedAscending }
