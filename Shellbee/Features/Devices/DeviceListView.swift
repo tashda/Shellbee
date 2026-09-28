@@ -616,6 +616,16 @@ struct DeviceListContent: View {
     }
 }
 
+/// SwiftUI can't compare the optional `selection` binding, so without this
+/// it treats every redraw of the tab bar as a change and rebuilds the list.
+/// Without a selection (iPhone) there's nothing else to compare.
+extension DeviceListView: Equatable {
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.embedInNavigationStack == rhs.embedInNavigationStack
+            && lhs.selection == nil && rhs.selection == nil
+    }
+}
+
 #Preview {
     DeviceListView()
         .environment(AppEnvironment())

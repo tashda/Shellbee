@@ -379,30 +379,12 @@ struct HomeView: View {
                 }
             }
         case .activity:
-            activitySection
-        }
-    }
-
-    @ViewBuilder
-    private var activitySection: some View {
-        let items = recentEventItems(for: nil)
-        groupedRows(title: "Activity") {
-            if items.isEmpty {
-                groupedRow(Text("No recent events")
-                    .foregroundStyle(.secondary)
-                )
-            } else {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    groupedRow(Button {
-                        sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [item.id])
-                    } label: {
-                        HomeActivityRow(item: item)
-                    }.buttonStyle(.plain))
-                    if index < items.count - 1 { Divider().padding(.leading, DesignTokens.Spacing.lg) }
-                }
-                Divider().padding(.leading, DesignTokens.Spacing.lg)
-                groupedRow(Button("See all", action: openAllLogs))
-            }
+            HomeActivityCard(
+                limit: usesWideLayout
+                    ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
+                    : recentEventsCount,
+                onOpenAll: openAllLogs
+            )
         }
     }
 
@@ -410,48 +392,11 @@ struct HomeView: View {
         title: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            if let title {
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, DesignTokens.Spacing.lg)
-            }
-            VStack(spacing: 0, content: content)
-                .background(
-                    .shellbeeSurface,
-                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card, style: .continuous)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card, style: .continuous))
-        }
+        HomeGroupedRows(title: title, content: content)
     }
 
     private func groupedRow<Content: View>(_ content: Content) -> some View {
-        content
-            .padding(.horizontal, DesignTokens.Spacing.lg)
-            .padding(.vertical, DesignTokens.Spacing.sm)
-            .frame(maxWidth: .infinity, minHeight: DesignTokens.Size.homeRowMinHeight, alignment: .leading)
-    }
-
-
-    private func recentEventItems(for bridgeID: UUID?) -> [ActivityEventItem] {
-        let limit = usesWideLayout
-            ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
-            : recentEventsCount
-        let entries: [BridgeBoundLogEntry]
-        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
-            entries = Array(session.store.logEntries
-                .lazy
-                .filter { !LogRowIconography.isLinkQualityOnly($0) }
-                .prefix(limit)
-                .map { BridgeBoundLogEntry(bridgeID: bridgeID, bridgeName: session.displayName, entry: $0) })
-        } else {
-            entries = Array(environment.allLogEntries
-                .lazy
-                .filter { !LogRowIconography.isLinkQualityOnly($0.entry) }
-                .prefix(limit))
-        }
-        return entries.map(environment.activityEventItem(for:))
+        content.homeGroupedRow()
     }
 
     private func showDevices(filter: DeviceQuickFilter, bridgeID: UUID? = nil) {
@@ -512,6 +457,15 @@ private enum HomeSheet: Identifiable {
         switch self {
         case .bridge(let bridgeID): "bridge-\(bridgeID.uuidString)"
         }
+    }
+}
+
+/// A tab root: SwiftUI can't compare some of its property wrappers, so
+/// without this every redraw of the tab bar (three per tab switch) rebuilds
+/// it. Its state and environment still redraw it as usual.
+extension HomeView: Equatable {
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.usesWideLayout == rhs.usesWideLayout
     }
 }
 

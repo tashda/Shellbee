@@ -57,18 +57,20 @@ extension AppStore {
 
         let previous = otaUpdates[deviceName]
 
+        // Most reports repeat an unchanged idle or available state. Writing
+        // `otaUpdates` for those, even removing a missing key, would redraw
+        // every view that reads it, so only touch it on a real change.
         switch update.phase {
         case .available:
-            if previous?.isActive == true {
-                otaUpdates.removeValue(forKey: deviceName)
-            }
+            guard previous?.isActive == true else { return }
+            otaUpdates.removeValue(forKey: deviceName)
         case .checking:
-            break // Handled by manual check trigger
-        case .requested:
-            otaUpdates[deviceName] = update
-        case .scheduled, .updating:
+            return // Handled by manual check trigger
+        case .requested, .scheduled, .updating:
+            guard previous != update else { return }
             otaUpdates[deviceName] = update
         case .idle:
+            guard previous != nil else { return }
             otaUpdates.removeValue(forKey: deviceName)
             if previous?.isActive == true, activeOTAUpdates.isEmpty {
                 OTAUpdateLiveActivityCoordinator.shared.finish(for: deviceName, success: true, bridgeID: activeBridgeID)

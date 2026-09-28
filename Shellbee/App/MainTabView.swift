@@ -8,6 +8,11 @@ struct MainTabView: View {
     @State private var tabSelection: AppTab = .home
     @State private var isCommandPalettePresented = false
     @State private var activityWorkspace = LogsWorkspaceState()
+    /// Owned here, not by the tabs: a tab that makes its own model in `init`
+    /// gets a new one on each redraw of this view, which SwiftUI treats as a
+    /// change and rebuilds the whole list for.
+    @State private var deviceListViewModel = DeviceListViewModel()
+    @State private var groupListViewModel = GroupListViewModel()
     @Namespace private var activityCenterTransition
 
     /// Phase 2 multi-bridge: the Settings tab badge surfaces when any
@@ -82,17 +87,17 @@ struct MainTabView: View {
         if #available(iOS 18.0, *) {
             TabView(selection: $tabSelection) {
                 Tab(value: AppTab.home) {
-                    HomeView().tint(nil)
+                    HomeView().equatable().tint(nil)
                 } label: {
                     Label(AppTab.home.title, symbol: AppTab.home.symbol)
                 }
                 Tab(value: AppTab.devices) {
-                    DeviceListView().tint(nil)
+                    DeviceListView(viewModel: deviceListViewModel).equatable().tint(nil)
                 } label: {
                     Label(AppTab.devices.title, symbol: AppTab.devices.symbol)
                 }
                 Tab(value: AppTab.groups) {
-                    GroupListView().tint(nil)
+                    GroupListView(viewModel: groupListViewModel).equatable().tint(nil)
                 } label: {
                     Label(AppTab.groups.title, symbol: AppTab.groups.symbol)
                 }
@@ -113,13 +118,13 @@ struct MainTabView: View {
                     }
                 }
                 Tab(value: AppTab.settings) {
-                    SettingsView().tint(nil)
+                    SettingsView().equatable().tint(nil)
                 } label: {
                     Label(AppTab.settings.title, symbol: AppTab.settings.symbol)
                 }
                 .badge(anyBridgeNeedsRestart ? Text("!") : nil)
                 Tab(value: AppTab.search, role: .search) {
-                    GlobalSearchView().tint(nil)
+                    GlobalSearchView().equatable().tint(nil)
                 } label: {
                     Label(AppTab.search.title, symbol: AppTab.search.symbol)
                 }
@@ -131,13 +136,13 @@ struct MainTabView: View {
             .modifier(SearchTabActivation())
         } else {
             TabView(selection: $tabSelection) {
-                HomeView()
+                HomeView().equatable()
                     .tabItem { Label(AppTab.home.title, symbol: AppTab.home.symbol) }
                     .tag(AppTab.home)
-                DeviceListView()
+                DeviceListView(viewModel: deviceListViewModel).equatable()
                     .tabItem { Label(AppTab.devices.title, symbol: AppTab.devices.symbol) }
                     .tag(AppTab.devices)
-                GroupListView()
+                GroupListView(viewModel: groupListViewModel).equatable()
                     .tabItem { Label(AppTab.groups.title, symbol: AppTab.groups.symbol) }
                     .tag(AppTab.groups)
                 if AdaptiveLayout.isPad {
@@ -151,11 +156,11 @@ struct MainTabView: View {
                         .tabItem { Label(AppTab.networkMap.title, symbol: AppTab.networkMap.symbol) }
                         .tag(AppTab.networkMap)
                 }
-                SettingsView()
+                SettingsView().equatable()
                     .tabItem { Label(AppTab.settings.title, symbol: AppTab.settings.symbol) }
                     .tag(AppTab.settings)
                     .badge(anyBridgeNeedsRestart ? Text("!") : nil)
-                GlobalSearchView()
+                GlobalSearchView().equatable()
                     .tabItem { Label(AppTab.search.title, symbol: AppTab.search.symbol) }
                     .tag(AppTab.search)
             }
