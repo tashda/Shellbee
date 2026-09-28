@@ -25,6 +25,10 @@ struct ShellbeeApp: App {
                 .environment(\.shellbeeThemesStatusColors, themesStatusColors)
                 .environment(\.shellbeeSurfaceTint, surfaceTint)
                 .shellbeeWindowTint(theme)
+                .onChange(of: LiveActivityAppearance(theme: theme, surfaceTint: surfaceTint,
+                                                     themesIndicators: themesStatusColors)) { _, _ in
+                    LiveActivityAppearance.refreshRunningActivities()
+                }
         } defaultValue: {
             .home
         }

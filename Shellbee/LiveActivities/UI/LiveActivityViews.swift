@@ -12,27 +12,22 @@ struct LiveActivityLockScreen: View {
         .padding(.vertical, DesignTokens.Spacing.lg)
         .foregroundStyle(.white)
         .environment(\.colorScheme, .dark)
-        .background(LiveActivityGlassGradient())
+        .background(LiveActivityGlassGradient(appearance: layout.appearance))
         .activityBackgroundTint(LiveActivityPalette.cardNight)
         .activitySystemActionForegroundColor(.white)
     }
 }
 
 /// A near-opaque dark card: graphite at the top-left, deep indigo through the
-/// middle, near-black at the bottom-right. Opaque enough that the wallpaper
-/// never changes how the card reads. The system draws the card's shape and
-/// edge itself, so none is added here.
+/// middle (or the theme's accent, by the Card Tint), near-black at the
+/// bottom-right. Opaque enough that the wallpaper never changes how the card
+/// reads. The system draws the card's shape and edge itself, so none is
+/// added here.
 private struct LiveActivityGlassGradient: View {
+    let appearance: LiveActivityAppearance
+
     var body: some View {
-        LinearGradient(
-            stops: [
-                .init(color: LiveActivityPalette.cardGraphite, location: 0),
-                .init(color: LiveActivityPalette.cardIndigo, location: 0.55),
-                .init(color: LiveActivityPalette.cardNight, location: 1)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        LinearGradient(stops: appearance.cardStops, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }
 

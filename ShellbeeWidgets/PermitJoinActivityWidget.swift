@@ -15,6 +15,7 @@ struct PermitJoinActivityWidget: Widget {
 private extension LiveActivityLayout {
     static func permitJoin(_ context: ActivityViewContext<PermitJoinActivityAttributes>) -> Self {
         .permitJoin(attributes: context.attributes, state: context.state, isStale: context.isStale)
+            .themed(context.state.appearance)
     }
 }
 

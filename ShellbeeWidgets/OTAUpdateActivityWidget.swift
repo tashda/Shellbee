@@ -15,5 +15,6 @@ struct OTAUpdateActivityWidget: Widget {
 private extension LiveActivityLayout {
     static func otaUpdate(_ context: ActivityViewContext<OTAUpdateActivityAttributes>) -> Self {
         .otaUpdate(attributes: context.attributes, state: context.state, isStale: context.isStale)
+            .themed(context.state.appearance)
     }
 }

@@ -70,6 +70,12 @@ struct LiveActivityGallerySample: Identifiable {
     let name: String
     let layout: LiveActivityLayout
     var id: String { name }
+
+    /// Drawn in the app's current theme, as the widget would draw it.
+    init(name: String, layout: LiveActivityLayout) {
+        self.name = name
+        self.layout = layout.themed(.current)
+    }
 }
 
 private enum PermitJoinGallerySamples {

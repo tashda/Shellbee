@@ -43,7 +43,7 @@ struct LiveActivityRow: Identifiable {
     var id: String { name }
 }
 
-enum LiveActivityPalette {
+nonisolated enum LiveActivityPalette {
     static let pairing = Color(red: 0.35, green: 0.91, blue: 0.70)
     static let update = Color(red: 0.40, green: 0.70, blue: 1.00)
     static let scan = Color(red: 0.62, green: 0.56, blue: 1.00)
@@ -65,7 +65,7 @@ struct LiveActivityLayout {
     /// island. It never changes with state: status belongs to `value`, on the
     /// right, so the two sides can never show the same icon.
     let symbol: String
-    let tint: Color
+    var tint: Color
     /// Optional context above the title, such as which bridge this is about.
     var eyebrow: String? = nil
     let title: String
@@ -85,6 +85,8 @@ struct LiveActivityLayout {
     /// Items the Queue style lists, most relevant first.
     var rows: [LiveActivityRow] = []
     var style: LiveActivityStyle = .classic
+    /// Theme, Card Tint and Themed Indicators; set by `themed(_:)`.
+    var appearance: LiveActivityAppearance = .standard
 
     /// When the activity's countdown ends, if it has one.
     var endsAt: Date? {

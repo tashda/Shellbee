@@ -18,6 +18,9 @@ nonisolated struct PermitJoinActivityAttributes: ActivityAttributes, Sendable {
         var interviewFailure: String? = nil
         /// A device that finished pairing moments ago, shown briefly.
         var recentlyPaired: String? = nil
+        /// The app's theme when this content was sent; see
+        /// `LiveActivityAppearance`. Optional so older content still decodes.
+        var appearance: LiveActivityAppearance? = .current
     }
 
     let identifier: String

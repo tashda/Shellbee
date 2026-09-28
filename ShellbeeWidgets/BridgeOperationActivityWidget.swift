@@ -15,5 +15,6 @@ struct BridgeOperationActivityWidget: Widget {
 private extension LiveActivityLayout {
     static func bridgeOperation(_ context: ActivityViewContext<BridgeOperationActivityAttributes>) -> Self {
         .bridgeOperation(attributes: context.attributes, state: context.state, isStale: context.isStale)
+            .themed(context.state.appearance)
     }
 }

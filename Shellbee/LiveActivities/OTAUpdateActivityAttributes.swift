@@ -30,6 +30,9 @@ nonisolated struct OTAUpdateActivityAttributes: ActivityAttributes, Sendable {
         /// When the running update would have started at its current pace;
         /// places the filling bar at the reported progress.
         var progressStart: Date? = nil
+        /// The app's theme when this content was sent; see
+        /// `LiveActivityAppearance`. Optional so older content still decodes.
+        var appearance: LiveActivityAppearance? = .current
     }
 
     /// Stable per-bridge identifier (e.g. `"ota-updates-<UUID>"`). Multi-bridge:

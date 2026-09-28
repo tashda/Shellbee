@@ -25,6 +25,9 @@ nonisolated struct BridgeOperationActivityAttributes: ActivityAttributes, Sendab
         var completedCount = 0
         var totalCount = 0
         var failedCount = 0
+        /// The app's theme when this content was sent; see
+        /// `LiveActivityAppearance`. Optional so older content still decodes.
+        var appearance: LiveActivityAppearance? = .current
     }
 
     let identifier: String
