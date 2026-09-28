@@ -39,10 +39,7 @@ nonisolated struct Device: Codable, Identifiable, Sendable, Equatable, Hashable 
     /// property. Z2M renders this as `{ "name": "identify", "type": "enum",
     /// "property": "identify", "access": 2, "values": ["identify"] }`.
     var supportsIdentify: Bool {
-        guard let exposes = definition?.exposes else { return false }
-        return exposes.flattened.contains { expose in
-            expose.property == "identify" && expose.isWritable
-        }
+        definition?.supportsIdentify ?? false
     }
 
     /// Single source of truth for interview progress across the app. Prefers the
@@ -127,10 +124,42 @@ nonisolated struct DeviceDefinition: Codable, Sendable, Equatable {
     let exposes: [Expose]
     let options: [Expose]?
     let icon: String?
+    /// A writable `identify` property anywhere in the exposes. Worked out
+    /// once here because device rows ask on every redraw.
+    let supportsIdentify: Bool
 
     enum CodingKeys: String, CodingKey {
         case model, vendor, description, exposes, options, icon
         case supportsOTA = "supports_ota"
+    }
+
+    init(model: String, vendor: String, description: String, supportsOTA: Bool?,
+         exposes: [Expose], options: [Expose]?, icon: String?) {
+        self.model = model
+        self.vendor = vendor
+        self.description = description
+        self.supportsOTA = supportsOTA
+        self.exposes = exposes
+        self.options = options
+        self.icon = icon
+        self.supportsIdentify = Self.hasWritableIdentify(exposes)
+    }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            model: try c.decode(String.self, forKey: .model),
+            vendor: try c.decode(String.self, forKey: .vendor),
+            description: try c.decode(String.self, forKey: .description),
+            supportsOTA: try c.decodeIfPresent(Bool.self, forKey: .supportsOTA),
+            exposes: try c.decode([Expose].self, forKey: .exposes),
+            options: try c.decodeIfPresent([Expose].self, forKey: .options),
+            icon: try c.decodeIfPresent(String.self, forKey: .icon)
+        )
+    }
+
+    private static func hasWritableIdentify(_ exposes: [Expose]) -> Bool {
+        exposes.flattened.contains { $0.property == "identify" && $0.isWritable }
     }
 }
 
