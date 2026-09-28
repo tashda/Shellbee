@@ -26,7 +26,7 @@ struct GlobalSearchView: View {
                 )
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
-                .modifier(GlobalSearchDestinations())
+                .modifier(GlobalSearchDestinations(docs: docs))
         }
         .configuredTopScrollEdgeEffect()
         .task { docs = await DocBrowserIndex.shared.allEntries() }
@@ -135,6 +135,8 @@ struct GlobalSearchView: View {
 /// Destinations for every result type, so results push the same detail
 /// views their own lists do.
 private struct GlobalSearchDestinations: ViewModifier {
+    let docs: [DocBrowserEntry]
+
     func body(content: Content) -> some View {
         content
             .navigationDestination(for: DeviceRoute.self) { route in
@@ -151,6 +153,9 @@ private struct GlobalSearchDestinations: ViewModifier {
             }
             .navigationDestination(for: DocBrowserEntry.self) { entry in
                 DocBrowserDetailView(entry: entry)
+            }
+            .navigationDestination(for: DocLibraryScope.self) { scope in
+                DocLibraryListView(scope: scope, allEntries: docs)
             }
     }
 }

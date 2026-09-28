@@ -8,6 +8,14 @@ struct GlobalSearchBridge: Hashable, Identifiable {
     let isConnected: Bool
 }
 
+/// A Device Library manufacturer whose name matches the query, shown
+/// ahead of its models so "IKEA" opens IKEA's whole range.
+struct GlobalSearchManufacturer: Hashable, Identifiable {
+    let name: String
+    let modelCount: Int
+    var id: String { name }
+}
+
 /// Matches of a query against every searchable source, ranked per category.
 struct GlobalSearchResults {
     var devices: [BridgeBoundDevice] = []
@@ -16,6 +24,7 @@ struct GlobalSearchResults {
     var activity: [BridgeBoundLogEntry] = []
     var logs: [BridgeBoundLogEntry] = []
     var docs: [DocBrowserEntry] = []
+    var manufacturers: [GlobalSearchManufacturer] = []
 
     /// Log volumes can be large; keep result lists scannable.
     static let logLimit = 200
@@ -58,6 +67,9 @@ struct GlobalSearchResults {
         self.docs = Self.ranked(docs, tokens: tokens) { entry in
             (entry.model, [entry.vendor, entry.description])
         }
+        let vendorCounts = Dictionary(grouping: docs, by: \.vendor).mapValues(\.count)
+        self.manufacturers = Self.ranked(Array(vendorCounts.keys), tokens: tokens) { ($0, []) }
+            .map { GlobalSearchManufacturer(name: $0, modelCount: vendorCounts[$0] ?? 0) }
     }
 
     var isEmpty: Bool { totalCount == 0 }
@@ -74,7 +86,7 @@ struct GlobalSearchResults {
         case .bridges: bridges.count
         case .activity: activity.count
         case .logs: logs.count
-        case .docs: docs.count
+        case .docs: manufacturers.count + docs.count
         }
     }
 

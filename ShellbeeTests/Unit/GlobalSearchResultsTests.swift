@@ -58,6 +58,13 @@ final class GlobalSearchResultsTests: XCTestCase {
         XCTAssertEqual(results.docs.map(\.model), ["TRADFRI bulb"])
     }
 
+    func testManufacturerMatchesOnlyItsOwnName() {
+        XCTAssertEqual(makeResults(query: "ikea").manufacturers,
+                       [GlobalSearchManufacturer(name: "IKEA", modelCount: 1)])
+        XCTAssertTrue(makeResults(query: "ikea tradfri").manufacturers.isEmpty)
+        XCTAssertEqual(makeResults(query: "ikea").count(for: .docs), 2)
+    }
+
     // MARK: - Fixtures
 
     private func makeResults(query: String) -> GlobalSearchResults {

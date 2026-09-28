@@ -50,7 +50,13 @@ struct GlobalSearchResultRows: View {
                 }
             }
         case .docs:
-            ForEach(capped(results.docs)) { entry in
+            let manufacturers = capped(results.manufacturers)
+            ForEach(manufacturers) { manufacturer in
+                NavigationLink(value: DocLibraryScope.vendor(manufacturer.name)) {
+                    GlobalSearchManufacturerRow(manufacturer: manufacturer)
+                }
+            }
+            ForEach(results.docs.prefix(limit.map { max($0 - manufacturers.count, 0) } ?? results.docs.count)) { entry in
                 NavigationLink(value: entry) {
                     DocEntryRow(entry: entry, showVendor: true)
                 }
@@ -106,5 +112,24 @@ private struct GlobalSearchBridgeRow: View {
         let status = bridge.isConnected ? "Connected" : "Disconnected"
         guard let version = bridge.version else { return status }
         return "\(status) · v\(version)"
+    }
+}
+
+/// A manufacturer result: every model it makes in the Device Library.
+private struct GlobalSearchManufacturerRow: View {
+    let manufacturer: GlobalSearchManufacturer
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                Text(manufacturer.name)
+                Text("Manufacturer · \(manufacturer.modelCount) models")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: DocLibraryScope.vendor(manufacturer.name).systemImage)
+                .foregroundStyle(.secondary)
+        }
     }
 }
