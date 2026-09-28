@@ -168,6 +168,13 @@ def _emit_event(client, type_: str, data: dict) -> None:
 
 
 def _emit_log(client, level: str, message: str) -> None:
+    # Like real z2m, debug lines only reach bridge/logging when the bridge
+    # logs at debug. (Network-scan lines apply their own, stricter rule.)
+    if level == "debug":
+        with _lock:
+            bridge_level = _bridge_info.get("log_level", "info")
+        if bridge_level != "debug":
+            return
     _pub(
         client,
         f"{Z2M_TOPIC}/bridge/logging",
