@@ -111,7 +111,7 @@ struct LogDeviceFilterSheet: View {
                 Label("Show All Devices", systemImage: "eye")
             }
             .toggleStyle(.button)
-            .shellbeeAccentTint()
+            .shellbeeAccentTint(active: showAll)
             .accessibilityHint("Includes devices without matching activity")
         }
         ToolbarItem(placement: .topBarTrailing) {

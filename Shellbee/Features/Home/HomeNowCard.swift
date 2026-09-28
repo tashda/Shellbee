@@ -113,7 +113,7 @@ struct HomeNowCard: View {
 
                 if let updateProgress {
                     ProgressView(value: updateProgress)
-                        .tint(.green)
+                        .shellbeeActiveTint(standard: .green)
                 }
             }
             .contentShape(Rectangle())

@@ -75,7 +75,7 @@ struct SwitchControlCard: View {
                 set: { _ in if let p = context.togglePayload() { onSend(p) } }
             ))
             .labelsHidden()
-            .tint(.green)
+            .shellbeeActiveTint(standard: .green)
         }
     }
 

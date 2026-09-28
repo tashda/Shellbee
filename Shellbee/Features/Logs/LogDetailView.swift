@@ -95,7 +95,7 @@ struct LogDetailView: View {
         } label: {
             Image(systemName: "curlybraces")
         }
-        .tint(viewMode == .json ? theme.accent : .secondary)
+        .tint(viewMode == .json ? theme.accent : .primary)
         .accessibilityLabel(viewMode == .json ? "Show formatted activity" : "Show raw message")
     }
 

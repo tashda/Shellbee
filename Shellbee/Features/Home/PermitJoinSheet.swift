@@ -194,7 +194,7 @@ struct PermitJoinSheet: View {
                        let total = selectedBridgeInfo?.permitJoinTimeout,
                        total > 0 {
                         ProgressView(value: Double(min(remaining, total)), total: Double(total))
-                            .tint(.green)
+                            .shellbeeActiveTint(standard: .green)
                             .animation(.linear(duration: DesignTokens.Duration.pulseFull), value: remaining)
                             .padding(.top, DesignTokens.Spacing.md)
                             .accessibilityHidden(true)

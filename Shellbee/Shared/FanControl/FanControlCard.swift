@@ -102,7 +102,7 @@ struct FanControlCard: View {
                 set: { _ in if let p = context.togglePayload() { onSend(p) } }
             ))
             .labelsHidden()
-            .tint(.teal)
+            .shellbeeActiveTint(standard: .teal)
         }
     }
 
@@ -176,7 +176,7 @@ struct FanControlCard: View {
                     guard !editing else { return }
                     if let p = context.speedPayload(speedDraft) { onSend(p) }
                 }
-                .tint(.teal)
+                .shellbeeActiveTint(standard: .teal)
                 .accessibilityLabel("Speed")
             }
         }

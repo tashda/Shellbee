@@ -307,7 +307,7 @@ struct BridgeLogDetailView: View {
                     } label: {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                     }
-                    .tint(prettyPrint ? theme.accent : .secondary)
+                    .tint(prettyPrint ? theme.accent : .primary)
                 }
             }
 
