@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// A sensor's readings as native List sections: Readings, with when it
-/// last reported as the footer, then Diagnostics for the values z2m marks
-/// as diagnostic (device temperature, voltage, power outage count).
-/// Place inside an inset-grouped `List`.
+/// A sensor's readings as a native List section, with when it last
+/// reported as the footer. Diagnostic values (device temperature, voltage,
+/// power outage count) are left to the settings sections' single
+/// Diagnostics section. Place inside an inset-grouped `List`.
 struct SensorSections: View {
     let device: Device
     let state: [String: JSONValue]
@@ -11,9 +11,7 @@ struct SensorSections: View {
     private static let skipKeys: Set<String> = ["linkquality", "last_seen", "update", "update_available", "battery", "battery_low"]
 
     var body: some View {
-        let readings = Self.readings(device: device, state: state)
-        let primary = readings.filter { !isDiagnostic($0) }
-        let diagnostics = readings.filter(isDiagnostic)
+        let primary = Self.primaryReadings(device: device, state: state)
 
         if !primary.isEmpty {
             Section {
@@ -26,25 +24,24 @@ struct SensorSections: View {
                 }
             }
         }
-        if !diagnostics.isEmpty {
-            Section("Diagnostics") {
-                ForEach(diagnostics, id: \.property) { SensorReadingRow(reading: $0) }
-            }
-        }
     }
 
-    private func isDiagnostic(_ reading: SensorReading) -> Bool {
+    private static func isDiagnostic(_ reading: SensorReading) -> Bool {
         // A battery sensor's voltage is diagnostic even when z2m doesn't say so.
         reading.expose.isDiagnostic || (reading.expose.category == nil && reading.property == "voltage")
     }
 
-    static func hasReadings(device: Device, state: [String: JSONValue]) -> Bool {
-        !readings(device: device, state: state).isEmpty
+    private static func primaryReadings(device: Device, state: [String: JSONValue]) -> [SensorReading] {
+        readings(device: device, state: state).filter { !isDiagnostic($0) }
     }
 
-    /// Properties these sections show, so the settings below skip them.
+    static func hasReadings(device: Device, state: [String: JSONValue]) -> Bool {
+        !primaryReadings(device: device, state: state).isEmpty
+    }
+
+    /// Properties this section shows, so the settings below skip them.
     static func readingProperties(device: Device, state: [String: JSONValue]) -> Set<String> {
-        Set(readings(device: device, state: state).map(\.property))
+        Set(primaryReadings(device: device, state: state).map(\.property))
     }
 
     private static func readings(device: Device, state: [String: JSONValue]) -> [SensorReading] {
