@@ -48,9 +48,14 @@ struct ConnectionEditorView: View {
             SwiftUI.Group {
                 if let testStatusText {
                     Section {
-                        Label(testStatusText, systemImage: testStatusIcon)
-                            .foregroundStyle(testStatusColor)
-                            .font(.subheadline)
+                        Label {
+                            Text(testStatusText)
+                                .foregroundStyle(testState == .testing ? .secondary : .primary)
+                        } icon: {
+                            Image(systemName: testStatusIcon)
+                                .foregroundStyle(.themedStatus(testStatusColor))
+                        }
+                        .font(.subheadline)
                     }
                 }
                 ConnectionServerSection(draft: $draft, focusedField: $focusedField)
