@@ -9,8 +9,9 @@ enum BatteryUrgency: String, CaseIterable, Identifiable {
     case soon
     case fine
 
-    /// Batteries below this, but not yet low, are next in line.
-    static let soonBelow = 40
+    /// Batteries below this, but not yet low, are next in line. Shared with
+    /// the battery colours so a Soon battery is always drawn in the fair colour.
+    static let soonBelow = DesignTokens.Threshold.fairBattery
 
     var id: String { rawValue }
 

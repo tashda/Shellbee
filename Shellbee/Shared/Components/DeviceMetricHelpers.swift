@@ -13,7 +13,7 @@ extension Int {
 
     var batteryTone: StatusTone {
         if DesignTokens.Threshold.isLowBattery(self) { return .poor }
-        if self < 50 { return .fair }
+        if self < DesignTokens.Threshold.fairBattery { return .fair }
         return .excellent
     }
 

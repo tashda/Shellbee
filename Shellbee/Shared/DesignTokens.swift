@@ -407,6 +407,9 @@ nonisolated enum DesignTokens {
 
     nonisolated enum Threshold {
         static let lowBattery = 20
+        /// Below this a battery is next in line: drawn in the fair colour and
+        /// listed under Soon on the Batteries page.
+        static let fairBattery = 50
         static let weakSignal = 40
         /// Z2M's own process memory share, above which the bridge is worth
         /// a second look.
