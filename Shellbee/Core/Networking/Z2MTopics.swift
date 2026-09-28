@@ -43,7 +43,6 @@ nonisolated enum Z2MTopics {
         static let groupMembersAdd = "bridge/request/group/members/add"
         static let groupMembersRemove = "bridge/request/group/members/remove"
         static let permitJoin = "bridge/request/permit_join"
-        static let info = "bridge/request/info"
         static let restart = "bridge/request/restart"
         static let backup = "bridge/request/backup"
         static let options = "bridge/request/options"

@@ -264,16 +264,12 @@ final class ConnectionSessionController {
     }
 
     private func requestInitialState() {
-        // Request full bridge info which includes config if possible
-        send(
-            topic: Z2MTopics.Request.info,
-            payload: .object(["include_device_information": .bool(true)])
-        )
-        // Pull a fresh health snapshot so the Home card has stats immediately
-        // after a (re)connect instead of waiting ~10 min for the periodic publish.
+        // bridge/info, bridge/devices and bridge/groups aren't requested:
+        // Zigbee2MQTT sends them (with every device's state) the moment
+        // the socket opens, and has no request for them. Only the health
+        // snapshot needs asking for, or the Home card waits ~10 min for
+        // the periodic publish.
         send(topic: Z2MTopics.Request.healthCheck, payload: .string(""))
-        send(topic: Z2MTopics.Request.devices, payload: .string(""))
-        send(topic: Z2MTopics.Request.groups, payload: .string(""))
     }
 
     private func monitorConnection(config: ConnectionConfig, events: AsyncStream<Z2MSocketEvent>) async {
