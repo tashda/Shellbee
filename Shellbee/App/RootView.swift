@@ -92,7 +92,7 @@ struct RootView: View {
                 // Unpack the device thumbnails now, so rows have their
                 // pictures when Home appears instead of popping in.
                 Task.detached(priority: .utility) {
-                    _ = await BundledImageStore.shared.imageData(for: "")
+                    await BundledImageStore.shared.preload()
                 }
                 // Hold the splash until the connect burst has landed, so
                 // Home opens complete rather than filling in under the user.
