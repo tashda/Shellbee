@@ -20,14 +20,6 @@ struct HomeSnapshot: Sendable {
         var needsAttention: Bool { lowerBound < DesignTokens.Threshold.weakSignal }
     }
 
-    struct BatteryReading: Identifiable, Sendable {
-        let name: String
-        let percent: Int
-
-        var id: String { name }
-        var isLow: Bool { DesignTokens.Threshold.isLowBattery(percent) }
-    }
-
     let isConnected: Bool
     let isBridgeOnline: Bool
     let totalDevices: Int
@@ -50,9 +42,6 @@ struct HomeSnapshot: Sendable {
     /// The Link quality card draws these; the average alone hides whether
     /// a mesh is evenly good or bimodal with a corner barely hanging on.
     let linkQualityBands: [LinkQualityBand]
-    /// Battery-powered devices, emptiest first. The attention row says how
-    /// many are low; this says which, and what is next in line.
-    let batteryReadings: [BatteryReading]
     let bridgeVersion: String?
     let bridgeCommit: String?
     let coordinatorType: String?
@@ -139,12 +128,6 @@ struct HomeSnapshot: Sendable {
         let lqiValues = nonCoordinatorDevices.compactMap { states[$0.friendlyName]?.linkQuality }
         averageLinkQuality = lqiValues.isEmpty ? nil : lqiValues.reduce(0, +) / lqiValues.count
         linkQualityBands = Self.bands(for: lqiValues)
-        batteryReadings = nonCoordinatorDevices
-            .compactMap { device in
-                guard let percent = (states[device.friendlyName] ?? [:]).battery else { return nil }
-                return BatteryReading(name: device.friendlyName, percent: percent)
-            }
-            .sorted { ($0.percent, $0.name) < ($1.percent, $1.name) }
 
         self.isConnected = isConnected
         self.isBridgeOnline = isBridgeOnline

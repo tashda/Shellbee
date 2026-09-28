@@ -42,6 +42,9 @@ struct HomeView: View {
     @State private var showingAllLogs = false
     @State private var showingStatistics = false
     @State private var showingLinkQuality = false
+    @State private var showingBatteries = false
+    @State private var batterySheet: HomeDeviceReading?
+    @State private var openedDevice: DeviceRoute?
 
     /// One entry per saved bridge, including sessions that are reconnecting
     /// or offline, so Home can show their state. Each becomes a row.
@@ -169,7 +172,13 @@ struct HomeView: View {
             .navigationDestination(isPresented: $showingLinkQuality) {
                 LinkQualityPage(readings: deviceReadings)
             }
+            .navigationDestination(isPresented: $showingBatteries) {
+                BatteriesPage(readings: deviceReadings)
+            }
             .navigationDestination(for: DeviceRoute.self) { route in
+                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
+            }
+            .navigationDestination(item: $openedDevice) { route in
                 DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
             }
             .navigationDestination(isPresented: $showingAllLogs) {
@@ -203,6 +212,9 @@ struct HomeView: View {
                     onStop: stopPermitJoin
                 )
                 .environment(environment)
+            }
+            .sheet(item: $batterySheet) { reading in
+                BatteryQuickSheet(reading: reading) { openedDevice = $0 }
             }
             .sheet(item: $presentedSheet) { sheet in
                 switch sheet {
@@ -388,7 +400,12 @@ struct HomeView: View {
                     )
                 }
                 if showsBatteriesCard {
-                    HomeBatteriesCard(snapshot: snapshot)
+                    HomeBatteriesCard(
+                        snapshot: snapshot,
+                        readings: deviceReadings,
+                        onSelect: { batterySheet = $0 },
+                        onOpenPage: { showingBatteries = true }
+                    )
                 }
                 if showsVendorsCard {
                     HomeVendorsCard(devices: environment.allDevices.map(\.device))

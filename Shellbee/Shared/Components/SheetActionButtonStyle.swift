@@ -6,6 +6,10 @@ import SwiftUI
 /// secondary text rather than going black, so it still belongs to the
 /// sheet in every theme.
 struct SheetActionButtonStyle: ButtonStyle {
+    /// Off for a sheet's second button: the card surface with a label in
+    /// the primary colour, beside a filled main button.
+    var isProminent = true
+
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.self) private var environment
 
@@ -22,7 +26,7 @@ struct SheetActionButtonStyle: ButtonStyle {
 
     /// `nil` while disabled, when the button sits on the card surface.
     private func fillColor(for role: ButtonRole?) -> Color? {
-        guard isEnabled else { return nil }
+        guard isEnabled, isProminent else { return nil }
         if role == .destructive { return environment.themedStatusColor(.red) }
         return environment.shellbeeTheme.palette?.accent ?? Color(.systemBlue)
     }
@@ -30,7 +34,7 @@ struct SheetActionButtonStyle: ButtonStyle {
     /// White on deep fills, black on light ones (a theme's dark-mode accent
     /// is often a pale amber or mint that white text disappears on).
     private func labelStyle(on fill: Color?) -> AnyShapeStyle {
-        guard let fill else { return AnyShapeStyle(.secondary) }
+        guard let fill else { return isEnabled && !isProminent ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary) }
         let resolved = fill.resolve(in: environment)
         let luminance = 0.2126 * resolved.linearRed + 0.7152 * resolved.linearGreen + 0.0722 * resolved.linearBlue
         return AnyShapeStyle(luminance > DesignTokens.Theme.darkLabelLuminance ? Color.black : Color.white)
@@ -39,4 +43,5 @@ struct SheetActionButtonStyle: ButtonStyle {
 
 extension ButtonStyle where Self == SheetActionButtonStyle {
     static var sheetAction: SheetActionButtonStyle { SheetActionButtonStyle() }
+    static var sheetSecondaryAction: SheetActionButtonStyle { SheetActionButtonStyle(isProminent: false) }
 }
