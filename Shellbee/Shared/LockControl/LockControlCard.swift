@@ -50,7 +50,7 @@ struct LockControlCard: View {
     }
 
     private var statePill: some View {
-        Text(context.isLocked ? "LOCKED" : "UNLOCKED")
+        Text(context.isLocked ? "Locked" : "Unlocked")
             .font(.caption.weight(.bold))
             .foregroundStyle(heroTint)
             .padding(.horizontal, DesignTokens.Spacing.sm)
