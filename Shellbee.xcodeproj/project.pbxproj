@@ -349,6 +349,7 @@
 				Features/Settings/DocBrowserDetailView.swift,
 				Features/Settings/DocBrowserView.swift,
 				Features/Settings/DocEntryRow.swift,
+				Features/Settings/DocLibraryFilterMenu.swift,
 				Features/Settings/DocLibraryFilters.swift,
 				Features/Settings/DocLibraryListView.swift,
 				Features/Settings/DocLibraryScope.swift,

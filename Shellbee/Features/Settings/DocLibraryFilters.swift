@@ -93,18 +93,50 @@ enum DocLibraryFeature: String, CaseIterable, Identifiable {
     }
 }
 
-/// The Device Library's filters: power source, features (all must match)
-/// and whether to show only models already in the network.
+/// One device type to filter by, including the library's untyped "Other".
+enum DocLibraryTypeFilter: Hashable, Identifiable {
+    case type(DocDeviceType)
+    case other
+
+    static let all: [Self] = DocDeviceType.allCases.map(Self.type) + [.other]
+
+    var id: String { title }
+    var title: String { scope.title }
+    var systemImage: String { scope.systemImage }
+    var deviceType: DocDeviceType? {
+        if case .type(let type) = self { return type }
+        return nil
+    }
+
+    private var scope: DocLibraryScope {
+        switch self {
+        case .type(let type): .type(type)
+        case .other: .other
+        }
+    }
+
+    func matches(_ entry: DocBrowserEntry) -> Bool { entry.deviceType == deviceType }
+}
+
+/// The Device Library's filters: type, manufacturer, power source,
+/// features (all must match) and whether to show only models already in the
+/// network.
 struct DocLibraryFilters: Equatable {
     enum Power: Hashable { case any, battery, mains }
 
+    var type: DocLibraryTypeFilter?
+    var vendor: String?
     var power: Power = .any
     var features: Set<DocLibraryFeature> = []
     var inNetworkOnly = false
 
-    var isActive: Bool { power != .any || !features.isEmpty || inNetworkOnly }
+    var isActive: Bool {
+        type != nil || vendor != nil || power != .any || !features.isEmpty || inNetworkOnly
+    }
 
     func matches(_ entry: DocBrowserEntry, owned: [String: Int]) -> Bool {
+        if let type, !type.matches(entry) { return false }
+        if let vendor, entry.vendor != vendor { return false }
         switch power {
         case .any: break
         case .battery: guard entry.isBatteryPowered else { return false }

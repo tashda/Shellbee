@@ -24,6 +24,24 @@ final class DocLibraryFiltersTests: XCTestCase {
         XCTAssertEqual([colorBulb, whiteBulb].filter { filters.matches($0, owned: [whiteBulb.ownershipKey: 1]) }.map { $0.docKey }, ["white"])
     }
 
+    func testTypeAndManufacturerNarrow() {
+        let plug = DocBrowserEntry(docKey: "plug", imageKey: nil, model: "plug", vendor: "IKEA", description: "plug", exposes: ["switch", "power"])
+        let bulb = DocBrowserEntry(docKey: "bulb", imageKey: nil, model: "bulb", vendor: "IKEA", description: "bulb", exposes: ["light"])
+        let hue = DocBrowserEntry(docKey: "hue", imageKey: nil, model: "hue", vendor: "Philips", description: "hue", exposes: ["light"])
+        let all = [plug, bulb, hue]
+
+        var filters = DocLibraryFilters(type: .type(.light))
+        XCTAssertEqual(all.filter { filters.matches($0, owned: [:]) }.map { $0.docKey }, ["bulb", "hue"])
+
+        filters.vendor = "IKEA"
+        XCTAssertEqual(all.filter { filters.matches($0, owned: [:]) }.map { $0.docKey }, ["bulb"])
+        XCTAssertTrue(filters.isActive)
+
+        let other = DocBrowserEntry(docKey: "x", imageKey: nil, model: "x", vendor: "IKEA", description: "x", exposes: [])
+        XCTAssertTrue(DocLibraryFilters(type: .other).matches(other, owned: [:]))
+        XCTAssertFalse(DocLibraryFilters(type: .other).matches(plug, owned: [:]))
+    }
+
     private func matching(_ feature: DocLibraryFeature) -> [String] {
         [colorBulb, whiteBulb, dimmable].filter { feature.matches($0) }.map { $0.docKey }
     }

@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// One slice of the Device Library as rows, grouped by manufacturer (or by
-/// type on a manufacturer's page), with power, feature and In your
-/// network filters shown as removable chips. With a
+/// type on a manufacturer's page), with type, manufacturer, power, feature
+/// and In your network filters shown as removable chips. With a
 /// `selection` it's the content column of the iPad library; otherwise rows
 /// push the Documentation page.
 struct DocLibraryListView: View {
@@ -15,14 +15,19 @@ struct DocLibraryListView: View {
 
     private var owned: [String: Int] { environment.ownedLibraryModels }
 
-    private var entries: [DocBrowserEntry] {
-        scope.entries(from: allEntries, owned: owned).filter { filters.matches($0, owned: owned) }
+    private var scopeEntries: [DocBrowserEntry] {
+        scope.entries(from: allEntries, owned: owned)
     }
 
+    private var entries: [DocBrowserEntry] {
+        scopeEntries.filter { filters.matches($0, owned: owned) }
+    }
+
+    /// The page's type, or the one chosen in the filter.
     private var features: [DocLibraryFeature] {
         switch scope {
         case .type(let type): DocLibraryFeature.features(for: type)
-        case .owned, .all, .other, .vendor: []
+        case .owned, .all, .other, .vendor: DocLibraryFeature.features(for: filters.type?.deviceType)
         }
     }
 
@@ -45,7 +50,8 @@ struct DocLibraryListView: View {
                     if filters.isActive {
                         ClearFiltersToolbarButton { filters = DocLibraryFilters() }
                     }
-                    filterMenu
+                    DocLibraryFilterMenu(filters: $filters, scope: scope,
+                                         scopeEntries: scopeEntries, features: features)
                 }
             }
     }
@@ -126,6 +132,17 @@ struct DocLibraryListView: View {
 
     private var activeChips: some View {
         GlassChipRow {
+            if let type = filters.type {
+                // A type chip only appears on pages without their own type,
+                // so its features go with it.
+                RemovableFilterChip(title: type.title) {
+                    filters.type = nil
+                    filters.features.removeAll()
+                }
+            }
+            if let vendor = filters.vendor {
+                RemovableFilterChip(title: vendor) { filters.vendor = nil }
+            }
             if let power = filters.powerTitle {
                 RemovableFilterChip(title: power) { filters.power = .any }
             }
@@ -136,47 +153,5 @@ struct DocLibraryListView: View {
                 RemovableFilterChip(title: feature.title) { filters.features.remove(feature) }
             }
         }
-    }
-
-    private var filterMenu: some View {
-        Menu {
-            if !features.isEmpty {
-                Section("Features") {
-                    ForEach(features) { feature in
-                        Toggle(isOn: featureBinding(feature)) {
-                            Label(feature.title, systemImage: feature.systemImage)
-                        }
-                    }
-                }
-            }
-            Menu {
-                Picker("Power Source", selection: $filters.power) {
-                    Label("All Power Sources", systemImage: FilterMenuSymbol.all).tag(DocLibraryFilters.Power.any)
-                    Label("Battery", systemImage: "battery.100").tag(DocLibraryFilters.Power.battery)
-                    Label("Mains / USB", systemImage: "powerplug.fill").tag(DocLibraryFilters.Power.mains)
-                }
-                .pickerStyle(.inline)
-            } label: {
-                FilterSubmenuLabel(name: "Power Source", systemImage: "bolt.circle", value: filters.powerTitle)
-            }
-            if scope != .owned {
-                Toggle(isOn: $filters.inNetworkOnly) {
-                    Label(DocLibraryScope.owned.title, systemImage: DocLibraryScope.owned.systemImage)
-                }
-            }
-            ClearFiltersMenuItem(isActive: filters.isActive) { filters = DocLibraryFilters() }
-        } label: {
-            FilterMenuLabel(isActive: filters.isActive)
-        }
-        .menuActionDismissBehavior(.disabled)
-    }
-
-    private func featureBinding(_ feature: DocLibraryFeature) -> Binding<Bool> {
-        Binding(
-            get: { filters.features.contains(feature) },
-            set: { isOn in
-                if isOn { filters.features.insert(feature) } else { filters.features.remove(feature) }
-            }
-        )
     }
 }
