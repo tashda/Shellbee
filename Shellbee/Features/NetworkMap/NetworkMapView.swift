@@ -157,6 +157,8 @@ struct NetworkMapView: View {
             } else if let session = selectedSession,
                       session.store.networkMapRefreshPhase != .idle {
                 refreshProgress(for: session, fillsViewport: true)
+            } else if selectedSession?.isLoading(.devices) == true {
+                LoadingStateView(title: "Connecting to \(selectedSession?.displayName ?? "the bridge")")
             } else {
                 ContentUnavailableView(
                     "No Network Map",

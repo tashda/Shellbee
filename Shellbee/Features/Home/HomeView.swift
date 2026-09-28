@@ -57,6 +57,10 @@ struct HomeView: View {
         environment.homeDeviceReadings(selectedBridgeID: selectedBridgeID)
     }
 
+    private var isLoadingDevices: Bool {
+        environment.allDevices.isEmpty && environment.isLoading(.devices)
+    }
+
     private var snapshot: HomeSnapshot {
         environment.homeSnapshot(selectedBridgeID: selectedBridgeID)
     }
@@ -67,8 +71,17 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxl) {
                 bridgeSection
                 nowSection
-                attentionSection
-                ForEach(shownCards) { card($0) }
+                if isLoadingDevices {
+                    // Cards drawn from placeholder data until the bridge's
+                    // devices arrive, instead of zeros and empty lists.
+                    ForEach(shownCards) { card($0) }
+                        .redacted(reason: .placeholder)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                } else {
+                    attentionSection
+                    ForEach(shownCards) { card($0) }
+                }
                 }
                 .padding(DesignTokens.Spacing.lg)
                 .frame(maxWidth: DesignTokens.Size.readableContentMaxWidth)

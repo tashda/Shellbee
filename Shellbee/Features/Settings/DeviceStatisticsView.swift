@@ -36,7 +36,10 @@ struct DeviceStatisticsView: View {
 
     var body: some View {
         ScrollView {
-            if stats.totalDevices == 0 {
+            if stats.totalDevices == 0, environment.isLoading(.devices) {
+                LoadingStateView(title: "Loading devices")
+                    .padding(.top, DesignTokens.Spacing.xxl)
+            } else if stats.totalDevices == 0 {
                 ContentUnavailableView(
                     "No Device Statistics",
                     systemImage: "chart.bar.xaxis",
