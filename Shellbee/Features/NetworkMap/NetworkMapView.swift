@@ -276,6 +276,7 @@ struct NetworkMapView: View {
 
     private func refreshProgress(for session: BridgeSession, fillsViewport: Bool) -> some View {
         NetworkMapRefreshProgressView(
+            bridgeID: session.bridgeID,
             bridgeName: session.displayName,
             phase: session.store.networkMapRefreshPhase,
             startedAt: session.store.networkMapRefreshStartedAt,

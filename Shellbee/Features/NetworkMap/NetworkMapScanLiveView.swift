@@ -12,34 +12,10 @@ struct NetworkMapScanLiveView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            if let fraction = scan.fractionComplete {
-                ProgressView(value: fraction)
-            }
-
-            Text(statusLine)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .contentTransition(.numericText())
-
-            NetworkMapScanRows {
-                if scan.visibility == .everyDevice {
-                    NetworkMapScanRow(label: "Completed", value: "\(scan.respondedCount)")
-                } else {
-                    NetworkMapScanRow(label: "Routers", value: "\(scan.targetCount)")
-                }
-                NetworkMapScanRow(
-                    label: "Failed",
-                    value: "\(scan.failedCount)",
-                    valueColor: scan.failedCount > 0 ? .red : .secondary
-                )
-                if scan.visibility == .everyDevice {
-                    NetworkMapScanRow(label: "Waiting", value: "\(scan.waitingCount)")
-                }
-            }
+            StatStrip(items: stats)
 
             if !scan.failedNames.isEmpty {
-                Text(scan.failedNames.joined(separator: ", "))
+                Text("No reply from \(scan.failedNames.joined(separator: ", "))")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -53,22 +29,23 @@ struct NetworkMapScanLiveView: View {
         .animation(.smooth, value: scan)
     }
 
-    private var statusLine: String {
-        let elapsed = Self.clock(now.timeIntervalSince(scan.requestedAt))
-        if scan.scanFinishedAt != nil {
-            return "Scan finished · \(elapsed)"
-        }
-        guard scan.scanStartedAt != nil || scan.visibility == .failuresOnly else {
-            return "Waiting for Zigbee2MQTT · \(elapsed)"
-        }
+    /// Routers done (or queried, when successes aren't logged), failures,
+    /// and time left once the pace is known.
+    private var stats: [StatStripItem] {
+        var items: [StatStripItem] = []
         if scan.visibility == .everyDevice {
-            var line = "\(scan.finishedCount) of \(scan.targetCount) routers · \(elapsed)"
-            if let remaining = scan.estimatedTimeRemaining(now: now) {
-                line += " · about \(Self.approximate(remaining)) left"
-            }
-            return line
+            items.append(StatStripItem(value: "\(scan.finishedCount)/\(scan.targetCount)", caption: "Routers"))
+        } else {
+            items.append(StatStripItem(value: "\(scan.targetCount)", caption: "Routers"))
         }
-        return "Scanning routers · \(elapsed)"
+        items.append(StatStripItem(value: "\(scan.failedCount)", caption: "No reply",
+                                   valueColor: scan.failedCount > 0 ? .red : nil))
+        if let remaining = scan.estimatedTimeRemaining(now: now) {
+            items.append(StatStripItem(value: Self.approximate(remaining), caption: "Left"))
+        } else if scan.scanStartedAt == nil && scan.visibility != .failuresOnly {
+            items.append(StatStripItem(value: "Waiting", caption: "Zigbee2MQTT"))
+        }
+        return items
     }
 
     private var loggingFootnote: some View {

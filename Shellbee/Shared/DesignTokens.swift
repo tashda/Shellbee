@@ -248,12 +248,8 @@ nonisolated enum DesignTokens {
         static let networkMapNodeLabelWidth: CGFloat = 120
         static let networkMapNodeLabelScale: CGFloat = 0.8
         static let networkMapNodeImageRatio: CGFloat = 0.64
-        static let networkMapRefreshOuterRing: CGFloat = 92
-        static let networkMapRefreshInnerRing: CGFloat = 64
-        static let networkMapRefreshGraphic: CGFloat = 104
-        static let networkMapRefreshActiveDot: CGFloat = 9
-        static let networkMapRefreshPassiveDot: CGFloat = 6
-        static let networkMapRefreshOrbitRadius: CGFloat = 39
+        static let networkMapScanRing: CGFloat = 64
+        static let networkMapScanRingLine: CGFloat = 5
         static let networkMapScanCardWidth: CGFloat = 380
         static let networkMapScanCardWideWidth: CGFloat = 440
         // Offsets (pixel-pushing for badge alignment over a parent shape)

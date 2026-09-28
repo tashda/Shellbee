@@ -47,6 +47,9 @@ struct ShellbeeDeveloperView: View {
                     NavigationLink("Activity Instruments") {
                         ActivityInstrumentGalleryView()
                     }
+                    NavigationLink("Network Map Scan") {
+                        NetworkMapScanCardGalleryView()
+                    }
                 } header: {
                     Text("Activity Center")
                 }

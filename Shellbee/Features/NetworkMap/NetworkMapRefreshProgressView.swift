@@ -1,6 +1,10 @@
 import SwiftUI
 
+/// The floating card over the map while it refreshes: a progress ring, the
+/// title and bridge, then live figures, the result, or what went wrong.
+/// One Liquid Glass panel, tinted toward the theme by the Card Tint.
 struct NetworkMapRefreshProgressView: View {
+    let bridgeID: UUID
     let bridgeName: String
     let phase: NetworkMapRefreshPhase
     let startedAt: Date?
@@ -9,8 +13,8 @@ struct NetworkMapRefreshProgressView: View {
     let onDismiss: () -> Void
     let onRetry: () -> Void
 
+    @Environment(AppEnvironment.self) private var environment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.shellbeeTheme) private var theme
 
     private var isWorking: Bool {
         switch phase {
@@ -22,36 +26,47 @@ struct NetworkMapRefreshProgressView: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: reduceMotion ? 1 : 1 / 30, paused: !isWorking)) { context in
             let elapsed = startedAt.map { max(0, context.date.timeIntervalSince($0)) } ?? 0
-            let rotation = reduceMotion || !isWorking ? 0 : elapsed * 42
 
-            VStack(spacing: DesignTokens.Spacing.md) {
-                networkActivityGraphic(rotation: rotation)
-                VStack(spacing: DesignTokens.Spacing.xxs) {
-                    Text(title)
-                        .font(.headline)
-                    Text(bridgeName)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    if let detail {
-                        Text(detail)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .contentTransition(.opacity)
-                    }
-                }
-
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                header(elapsed: elapsed)
                 content(now: context.date)
             }
             .frame(maxWidth: fillsViewport
                    ? DesignTokens.Size.networkMapScanCardWideWidth
                    : DesignTokens.Size.networkMapScanCardWidth)
             .padding(DesignTokens.Spacing.xl)
-            .modifier(CardBackground())
+            .modifier(NetworkMapScanCardBackground())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(DesignTokens.Spacing.xl)
         .animation(.smooth, value: phase)
+    }
+
+    private func header(elapsed: TimeInterval) -> some View {
+        HStack(spacing: DesignTokens.Spacing.lg) {
+            NetworkMapScanRing(state: ringState, elapsed: elapsed)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                Text(title)
+                    .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if let name = environment.attributionBridgeName(for: bridgeID) {
+                        BridgeMonogram(bridgeID: bridgeID, bridgeName: name)
+                        Text(name)
+                    } else {
+                        Text(bridgeName)
+                    }
+                    if isWorking {
+                        Text("· \(NetworkMapScanLiveView.clock(elapsed))")
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     @ViewBuilder
@@ -65,105 +80,62 @@ struct NetworkMapRefreshProgressView: View {
             }
         case .completed(let summary):
             NetworkMapScanSummaryView(summary: summary, onDismiss: onDismiss)
-        case .failed:
-            HStack(spacing: DesignTokens.Spacing.md) {
-                Button("Done", action: onDismiss)
-                    .buttonStyle(.bordered)
-                Button("Try Again", action: onRetry)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    Button(action: onDismiss) {
+                        Text("Done").frame(maxWidth: .infinity)
+                    }
+                    .glassButtonStyleIfAvailable()
+                    Button(action: onRetry) {
+                        Text("Try Again").frame(maxWidth: .infinity)
+                    }
                     .glassProminentButtonStyleIfAvailable()
+                }
+                .controlSize(.large)
             }
-            .controlSize(.large)
         }
     }
-
-    // MARK: - Copy
 
     private var title: String {
         switch phase {
-        case .idle: "Network Map"
-        case .requesting, .building: "Refreshing Network Map"
-        case .completed: "Network Map Updated"
-        case .failed: "Network Map Refresh Failed"
+        case .idle: "Network map"
+        case .requesting, .building: "Refreshing network map"
+        case .completed: "Network map updated"
+        case .failed: "Couldn't refresh the network map"
         }
     }
 
-    private var detail: String? {
-        if case .failed(let message) = phase { return message }
-        return nil
-    }
-
-    private func networkActivityGraphic(rotation: Double) -> some View {
-        ZStack {
-            Circle()
-                .stroke(.tint.opacity(0.14), lineWidth: DesignTokens.Size.hairline)
-                .frame(
-                    width: DesignTokens.Size.networkMapRefreshOuterRing,
-                    height: DesignTokens.Size.networkMapRefreshOuterRing
-                )
-            Circle()
-                .stroke(.tint.opacity(0.18), style: StrokeStyle(lineWidth: DesignTokens.Size.hairline, dash: [4, 7]))
-                .frame(
-                    width: DesignTokens.Size.networkMapRefreshInnerRing,
-                    height: DesignTokens.Size.networkMapRefreshInnerRing
-                )
-                .rotationEffect(.degrees(rotation))
-
-            ForEach(0..<6, id: \.self) { index in
-                let angle = Angle.degrees(Double(index) * 60 + rotation)
-                Circle()
-                    .fill(index.isMultiple(of: 2) ? theme.accent : Color.secondary.opacity(0.48))
-                    .frame(
-                        width: index.isMultiple(of: 2)
-                            ? DesignTokens.Size.networkMapRefreshActiveDot
-                            : DesignTokens.Size.networkMapRefreshPassiveDot,
-                        height: index.isMultiple(of: 2)
-                            ? DesignTokens.Size.networkMapRefreshActiveDot
-                            : DesignTokens.Size.networkMapRefreshPassiveDot
-                    )
-                    .offset(
-                        x: cos(angle.radians) * DesignTokens.Size.networkMapRefreshOrbitRadius,
-                        y: sin(angle.radians) * DesignTokens.Size.networkMapRefreshOrbitRadius
-                    )
-            }
-
-            Image(systemName: centerSymbol)
-                .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(centerTint)
-                .symbolRenderingMode(.hierarchical)
-                .contentTransition(.symbolEffect(.replace))
-        }
-        .frame(
-            width: DesignTokens.Size.networkMapRefreshGraphic,
-            height: DesignTokens.Size.networkMapRefreshGraphic
-        )
-        .accessibilityHidden(true)
-    }
-
-    private var centerSymbol: String {
+    private var ringState: NetworkMapScanRing.State {
         switch phase {
-        case .completed(let summary):
-            summary.failedDeviceNames.isEmpty ? "checkmark.circle" : "exclamationmark.triangle"
-        case .failed: "xmark.octagon"
-        case .idle, .requesting, .building: "point.3.connected.trianglepath.dotted"
-        }
-    }
-
-    private var centerTint: Color {
-        switch phase {
-        case .completed(let summary): summary.failedDeviceNames.isEmpty ? .green : .orange
-        case .failed: .red
-        case .idle, .requesting, .building: theme.accent
+        case .idle, .requesting, .building: .working(fraction: scan?.fractionComplete)
+        case .completed(let summary): summary.failedDeviceNames.isEmpty ? .succeeded : .partial
+        case .failed: .failed
         }
     }
 }
 
-/// Liquid Glass where available, otherwise a single system material — no
-/// stacked strokes or shadows, so the card reads like system chrome.
-private struct CardBackground: ViewModifier {
+/// Liquid Glass leaning toward the theme accent by the Card Tint, so the
+/// card belongs to the theme; Standard is plain glass. Material before
+/// iOS 26.
+private struct NetworkMapScanCardBackground: ViewModifier {
+    @Environment(\.shellbeeTheme) private var theme
+    @Environment(\.shellbeeSurfaceTint) private var surfaceTint
+
+    private static let maximumTint = 0.22
+
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous)
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: shape)
+            if let accent = theme.palette?.accent {
+                content.glassEffect(.regular.tint(accent.opacity(Self.maximumTint * surfaceTint)), in: shape)
+            } else {
+                content.glassEffect(.regular, in: shape)
+            }
         } else {
             content.background(.regularMaterial, in: shape)
         }
