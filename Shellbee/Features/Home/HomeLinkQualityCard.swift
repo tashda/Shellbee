@@ -61,7 +61,21 @@ struct HomeLinkQualityCard: View {
             }
             .frame(height: DesignTokens.Size.linkQualityChart)
 
-            if weakCount > 0 {
+            if let band = focusedBand {
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Text(bandSummary(band))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    if selectedBand != nil {
+                        Button("Clear") { withAnimation(.snappy) { selectedBand = nil } }
+                            .font(.subheadline.weight(.semibold))
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.tint)
+                    }
+                }
+            } else if weakCount > 0 {
                 HStack(spacing: DesignTokens.Spacing.xs) {
                     Button(action: onTapWeak) { chipLabel("\(weakCount) weak") }
                         .buttonStyle(.plain)
@@ -93,8 +107,15 @@ struct HomeLinkQualityCard: View {
     }
 
     private var headerValue: String? {
-        if let band = focusedBand { return "\(band.label) · \(band.count) device\(band.count == 1 ? "" : "s")" }
-        return median.map { "\($0) median" }
+        median.map { "\($0) median" }
+    }
+
+    /// "101 devices between 100 and 150", under the chart where there's
+    /// room for it.
+    private func bandSummary(_ band: HomeSnapshot.LinkQualityBand) -> String {
+        let devices = band.count == 1 ? "1 device" : "\(band.count) devices"
+        guard let upper = band.upperBound else { return "\(devices) at \(band.lowerBound) or above" }
+        return "\(devices) between \(band.lowerBound) and \(upper)"
     }
 
     private func chipLabel(_ text: String) -> some View {
