@@ -18,6 +18,7 @@ struct HomeSettingsView: View {
     @AppStorage(HomeSettings.recentEventsCountKey) private var recentEventsCount = HomeSettings.recentEventsCountDefault
 
     private var order: [HomeCardKind] { HomeCardKind.ordered(cardOrder) }
+    private var shownCards: [HomeCardKind] { order.filter { binding(for: $0).wrappedValue } }
 
     var body: some View {
         let previewData = HomeCardPreviewData(environment: environment)
@@ -25,7 +26,7 @@ struct HomeSettingsView: View {
             SwiftUI.Group {
                 Section {
                     ForEach(order) { kind in
-                        row(kind, previewData: previewData)
+                        row(kind)
                     }
                     .onMove { source, destination in
                         var moved = order
@@ -52,6 +53,19 @@ struct HomeSettingsView: View {
                         Text("How many recent events the card shows before \"See all\".")
                     }
                 }
+
+                if !shownCards.isEmpty {
+                    Section("Preview") {
+                        ForEach(shownCards) { kind in
+                            HomeCardPreview(kind: kind, data: previewData)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: DesignTokens.Spacing.xs, leading: 0,
+                                                          bottom: DesignTokens.Spacing.xs, trailing: 0))
+                        }
+                    }
+                    .moveDisabled(true)
+                }
             }
             .shellbeeThemedRows()
         }
@@ -62,21 +76,15 @@ struct HomeSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func row(_ kind: HomeCardKind, previewData: HomeCardPreviewData) -> some View {
-        let isOn = binding(for: kind)
-        return VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            Toggle(isOn: isOn) {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-                    Text(kind.title)
-                    Text(kind.summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+    private func row(_ kind: HomeCardKind) -> some View {
+        Toggle(isOn: binding(for: kind)) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                Text(kind.title)
+                Text(kind.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            HomeCardPreview(kind: kind, data: previewData)
-                .opacity(isOn.wrappedValue ? 1 : DesignTokens.Opacity.disabled)
         }
-        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
     private func binding(for kind: HomeCardKind) -> Binding<Bool> {
