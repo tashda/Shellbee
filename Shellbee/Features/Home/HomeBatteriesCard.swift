@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Which batteries are going flat, emptiest first. The Needs attention row
 /// says how many are low; this says which ones and how low. The five lowest
-/// show here, the rest on the Batteries page.
+/// show here; ↗ opens the Batteries page with the rest.
 struct HomeBatteriesCard: View {
     let snapshot: HomeSnapshot
     let readings: [HomeDeviceReading]
@@ -54,21 +54,8 @@ struct HomeBatteriesCard: View {
                             .padding(.vertical, DesignTokens.Spacing.xs)
                         }
                         .buttonStyle(.plain)
-                        Divider()
+                        if reading.id != visible.last?.id { Divider() }
                     }
-                    Button(action: onOpenPage) {
-                        HStack {
-                            Text("See all \(all.count) batteries")
-                                .font(.subheadline.weight(.medium))
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.top, DesignTokens.Spacing.sm)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
                 }
             }
         }
