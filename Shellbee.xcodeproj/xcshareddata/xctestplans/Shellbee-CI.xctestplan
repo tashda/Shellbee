@@ -40,6 +40,7 @@
         "NetworkMapIntegrationTests",
         "NotificationPreferencesTests",
         "OTABulkOperationQueueTests",
+        "Z2MEventBatcherTests\/testLoneMessageArrivesAtOnceAndBurstIsBatchedInOrder()",
         "Z2MIntegrationTests"
       ],
       "target" : {
