@@ -68,6 +68,7 @@ nonisolated enum DesignTokens {
         /// Home's Link quality chart and its shortest drawable bar.
         static let linkQualityChart: CGFloat = 92
         static let linkQualityBarMinimum: CGFloat = 3
+        static let linkQualitySelectionStroke: CGFloat = 2
         static let cardPreviewBlurRadius: CGFloat = 2
         static let dashboardCompactRow: CGFloat = 32
         /// Right-aligned percentage column in the Batteries card.

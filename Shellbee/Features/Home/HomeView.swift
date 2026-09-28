@@ -41,6 +41,7 @@ struct HomeView: View {
     @AppStorage(HomeCardKind.activity.storageKey) private var showsActivityCard = false
     @State private var showingAllLogs = false
     @State private var showingStatistics = false
+    @State private var showingLinkQuality = false
 
     /// One entry per saved bridge, including sessions that are reconnecting
     /// or offline, so Home can show their state. Each becomes a row.
@@ -60,6 +61,10 @@ struct HomeView: View {
         }
     }
 
+
+    private var deviceReadings: [HomeDeviceReading] {
+        environment.homeDeviceReadings(selectedBridgeID: selectedBridgeID)
+    }
 
     private var snapshot: HomeSnapshot {
         // Phase 2 multi-bridge: with 2+ bridges connected, aggregate every
@@ -160,6 +165,12 @@ struct HomeView: View {
                     DeviceStatisticsView(bridgeID: bridgeID, defaultsToAllBridges: true)
                         .environment(environment)
                 }
+            }
+            .navigationDestination(isPresented: $showingLinkQuality) {
+                LinkQualityPage(readings: deviceReadings)
+            }
+            .navigationDestination(for: DeviceRoute.self) { route in
+                DeviceDetailView(bridgeID: route.bridgeID, device: route.device)
             }
             .navigationDestination(isPresented: $showingAllLogs) {
                 LogsView(usesActivityFeed: true, navigationTitle: "Activity")
@@ -369,9 +380,12 @@ struct HomeView: View {
                     }
                 }
                 if showsLinkQualityCard {
-                    HomeLinkQualityCard(snapshot: snapshot) {
-                        showDevices(filter: .weakSignal)
-                    }
+                    HomeLinkQualityCard(
+                        snapshot: snapshot,
+                        readings: deviceReadings,
+                        onTapWeak: { showDevices(filter: .weakSignal) },
+                        onOpenPage: { showingLinkQuality = true }
+                    )
                 }
                 if showsBatteriesCard {
                     HomeBatteriesCard(snapshot: snapshot)
