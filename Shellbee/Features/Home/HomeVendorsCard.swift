@@ -3,7 +3,6 @@ import SwiftUI
 /// The leading makers on Home, with the complete ranking available in place.
 struct HomeVendorsCard: View {
     let devices: [Device]
-    let onTap: () -> Void
     @State private var isExpanded = false
 
     private static let visibleCount = 5
@@ -15,22 +14,15 @@ struct HomeVendorsCard: View {
     var body: some View {
         let makers = makers
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                ExpandableCardHeader(
-                    isExpanded: $isExpanded,
-                    hasMore: makers.count > Self.visibleCount,
-                    itemName: "vendors"
-                ) {
-                    CardHeader(
-                        instrument: .init(kind: .vendors),
-                        title: "Vendors",
-                        value: makers.isEmpty ? nil : "\(makers.count) maker\(makers.count == 1 ? "" : "s")"
-                    )
-                }
-                CardAccessoryButton(
-                    systemImage: "arrow.up.right",
-                    accessibilityLabel: "Open Device Statistics",
-                    action: onTap
+            ExpandableCardHeader(
+                isExpanded: $isExpanded,
+                hasMore: makers.count > Self.visibleCount,
+                itemName: "vendors"
+            ) {
+                CardHeader(
+                    instrument: .init(kind: .vendors),
+                    title: "Vendors",
+                    value: makers.isEmpty ? nil : "\(makers.count) maker\(makers.count == 1 ? "" : "s")"
                 )
             }
 
@@ -55,7 +47,7 @@ struct HomeVendorsCard: View {
 }
 
 #Preview {
-    HomeVendorsCard(devices: [], onTap: {})
+    HomeVendorsCard(devices: [])
         .padding()
         .background(Color(.systemGroupedBackground))
 }

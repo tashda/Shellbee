@@ -364,6 +364,8 @@ struct HomeView: View {
                 if showsNetworkCard {
                     HomeNetworkCard(snapshot: snapshot) {
                         sceneNavigation.selectedTab = .networkMap
+                    } onOpenStatistics: {
+                        showingStatistics = true
                     }
                 }
                 if showsLinkQualityCard {
@@ -375,9 +377,7 @@ struct HomeView: View {
                     HomeBatteriesCard(snapshot: snapshot)
                 }
                 if showsVendorsCard {
-                    HomeVendorsCard(devices: environment.allDevices.map(\.device)) {
-                        showingStatistics = true
-                    }
+                    HomeVendorsCard(devices: environment.allDevices.map(\.device))
                 }
                 if showsBridgeHealthCard {
                     if bridgeCardEntries.count >= 2 {
