@@ -7,10 +7,8 @@ struct LogFilterMenu: View {
     /// attached inside a toolbar item is torn down whenever the toolbar
     /// rebuilds, such as when a new filter adds the Clear Filters button.
     let onSelectDevices: () -> Void
-    @State private var namespaceSnapshot: [String] = []
-
-    private var logEntryCount: Int {
-        filteredSessions.reduce(0) { $0 + $1.store.logEntries.count }
+    private var namespaces: [String] {
+        filteredSessions.reduce(into: Set<String>()) { $0.formUnion($1.store.logNamespaces) }.sorted()
     }
 
     private var connectedSessions: [BridgeSession] {
@@ -24,7 +22,8 @@ struct LogFilterMenu: View {
             }
             levelMenu
             categoryMenu
-            if !namespaceSnapshot.isEmpty { namespaceMenu }
+            let namespaces = namespaces
+            if !namespaces.isEmpty || viewModel.selectedNamespace != nil { namespaceMenu(namespaces) }
             deviceButton
             ActivityDisplayToggles(showsSignalChanges: $viewModel.showLinkQualityChanges)
             ClearFiltersMenuItem(isActive: viewModel.hasActiveFilter) {
@@ -32,11 +31,6 @@ struct LogFilterMenu: View {
             }
         } label: {
             FilterMenuLabel(isActive: viewModel.hasActiveFilter)
-        }
-        // Menus on iOS 26 don't report the tap that opens them, so refresh
-        // the namespaces as entries arrive, a few dozen at a time.
-        .task(id: LogNamespaceRefresh.key(for: logEntryCount)) {
-            namespaceSnapshot = availableNamespaces()
         }
     }
 
@@ -78,11 +72,11 @@ struct LogFilterMenu: View {
         }
     }
 
-    private var namespaceMenu: some View {
+    private func namespaceMenu(_ namespaces: [String]) -> some View {
         Menu {
             Picker("Namespace", selection: $viewModel.selectedNamespace) {
                 Label("All Namespaces", systemImage: FilterMenuSymbol.all).tag(String?.none)
-                ForEach(namespaceSnapshot, id: \.self) { ns in
+                ForEach(namespaces, id: \.self) { ns in
                     Text(ns).tag(String?.some(ns))
                 }
             }
@@ -113,14 +107,6 @@ struct LogFilterMenu: View {
             viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true
         }
     }
-
-    private func availableNamespaces() -> [String] {
-        Set(
-            filteredSessions.flatMap { session in
-                session.store.logEntries.compactMap(\.namespace)
-            }
-        ).sorted()
-    }
 }
 
 #Preview {
@@ -134,15 +120,4 @@ struct LogFilterMenu: View {
     }
     .configuredTopScrollEdgeEffect()
     .environment(AppEnvironment())
-}
-
-/// When a filter menu recounts log namespaces: on each of the first few
-/// dozen lines, then once per few dozen, so a busy log doesn't rescan on
-/// every line.
-enum LogNamespaceRefresh {
-    private static let batch = 50
-
-    static func key(for count: Int) -> Int {
-        count < batch ? count : batch + count / batch
-    }
 }

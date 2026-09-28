@@ -390,8 +390,9 @@ private struct ActivityFeedSearch: ViewModifier {
 private struct BridgeLevelFilterMenu: View {
     @Bindable var viewModel: BridgeLogViewModel
     @Environment(AppEnvironment.self) private var environment
-    @State private var namespaces: [String] = []
-
+    private var namespaces: [String] {
+        scopedSessions.reduce(into: Set<String>()) { $0.formUnion($1.store.rawLogNamespaces) }.sorted()
+    }
 
     private var connectedSessions: [BridgeSession] {
         environment.registry.orderedSessions.filter(\.isConnected)
@@ -410,17 +411,10 @@ private struct BridgeLevelFilterMenu: View {
         } label: {
             FilterMenuLabel(isActive: viewModel.hasActiveFilter)
         }
-        .task(id: LogNamespaceRefresh.key(for: rawLogCount)) {
-            namespaces = Set(scopedSessions.flatMap { $0.store.rawLogEntries.compactMap(\.namespace) }).sorted()
-        }
     }
 
     private var scopedSessions: [BridgeSession] {
         connectedSessions.filter { session in viewModel.bridgeFilter.map { $0 == session.bridgeID } ?? true }
-    }
-
-    private var rawLogCount: Int {
-        scopedSessions.reduce(0) { $0 + $1.store.rawLogEntries.count }
     }
 
     private var namespaceMenu: some View {

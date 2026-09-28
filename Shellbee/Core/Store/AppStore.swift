@@ -74,6 +74,11 @@ final class AppStore {
     var otaUpdates: [String: OTAUpdateStatus] = [:]
     var logEntries: [LogEntry] = []
     var rawLogEntries: [LogEntry] = []
+    /// Every namespace seen in `logEntries` / `rawLogEntries`, for the
+    /// filter menus. Only changes when a new one first appears, so a menu
+    /// reading it doesn't redraw on every log line.
+    var logNamespaces: Set<String> = []
+    var rawLogNamespaces: Set<String> = []
     var operationErrors: [Z2MOperationError] = []
     var touchlinkDevices: [TouchlinkDevice] = []
     var touchlinkScanInProgress = false
@@ -140,6 +145,8 @@ final class AppStore {
         pendingRenames = []
         otaUpdates = [:]
         logEntries = []
+        logNamespaces = []
+        rawLogNamespaces = []
         operationErrors = []
         deviceCheckResults = [:]
         pendingRemovals = []
