@@ -46,6 +46,8 @@ struct HomeView: View {
     @State private var showingBatteries = false
     @State private var batterySheet: HomeDeviceReading?
     @State private var openedDevice: DeviceRoute?
+    @State private var pendingStopPermitJoin: UUID?
+    @State private var showingStopUpdateCheck = false
 
     private var bridgeCardEntries: [HomeBridgeCardEntry] {
         environment.homeBridgeCardEntries(selectedBridgeID: selectedBridgeID)
@@ -133,6 +135,24 @@ struct HomeView: View {
                         .environment(environment)
                 }
             }
+            .alert("Stop Pairing?", isPresented: Binding(
+                get: { pendingStopPermitJoin != nil },
+                set: { if !$0 { pendingStopPermitJoin = nil } }
+            )) {
+                Button("Stop Pairing", role: .destructive) {
+                    stopPermitJoin(bridgeID: pendingStopPermitJoin)
+                    pendingStopPermitJoin = nil
+                }
+                Button("Cancel", role: .cancel) { pendingStopPermitJoin = nil }
+            } message: {
+                Text("New devices can't join until you open pairing again.")
+            }
+            .alert("Stop Checking for Updates?", isPresented: $showingStopUpdateCheck) {
+                Button("Stop Checking", role: .destructive) { environment.cancelOTAChecks() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Devices already checked keep their result. The rest aren't checked.")
+            }
             .alert("Restart Bridge?", isPresented: $showingRestartAlert) {
                 Button("Restart", role: .destructive) {
                     let id = pendingRestartBridgeID ?? selectedBridgeID
@@ -216,8 +236,8 @@ struct HomeView: View {
                 interviewingCount: snapshot.interviewingDevices,
                 updateCheck: updateCheck,
                 onOpenUpdates: { showDevices(filter: .updatesAvailable) },
-                onStopPermitJoin: { stopPermitJoin(bridgeID: $0) },
-                onStopUpdateCheck: { environment.cancelOTAChecks() }
+                onStopPermitJoin: { pendingStopPermitJoin = $0 },
+                onStopUpdateCheck: { showingStopUpdateCheck = true }
             )
         }
     }
