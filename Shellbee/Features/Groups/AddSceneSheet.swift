@@ -12,15 +12,19 @@ struct AddSceneSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("Scene Name", text: $name)
-                        .focused($nameFieldFocused)
-                        .submitLabel(.done)
-                        .autocorrectionDisabled()
-                } footer: {
-                    Text("Saves the current group light state as a named scene.")
+                SwiftUI.Group {
+                    Section {
+                        TextField("Scene Name", text: $name)
+                            .focused($nameFieldFocused)
+                            .submitLabel(.done)
+                            .autocorrectionDisabled()
+                    } footer: {
+                        Text("Saves the current group light state as a named scene.")
+                    }
                 }
+                .shellbeeThemedRows()
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Save Scene")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
@@ -28,15 +32,14 @@ struct AddSceneSheet: View {
                     onConfirm(name.trimmingCharacters(in: .whitespaces))
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.sheetAction)
                 .disabled(!isNameValid)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .shellbeeThemedBar()
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.fraction(0.4)])
         .presentationDragIndicator(.visible)
         .task { nameFieldFocused = true }

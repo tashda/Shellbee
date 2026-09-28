@@ -6,8 +6,9 @@ struct DeviceImageView: View {
     var hasUpdate: Bool = false
     var otaStatus: OTAUpdateStatus?
     var size: CGFloat = 44
+    var showsAvailabilityIndicator = true
 
-    @State private var bundledImageData: Data?
+    @State private var bundledImage: UIImage?
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -22,23 +23,25 @@ struct DeviceImageView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !isAvailable {
+            if !isAvailable && showsAvailabilityIndicator {
                 offlineDot
             }
         }
         .frame(width: size, height: size)
         .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: isAvailable)
         .task(id: device.ieeeAddress) {
-            bundledImageData = nil
-            if let key = device.imageKey {
-                bundledImageData = await BundledImageStore.shared.imageData(for: key)
+            bundledImage = nil
+            // Decode once here rather than in `body`, which re-runs on every
+            // state change and would otherwise re-decode the PNG each time.
+            if let key = device.imageKey, let data = await BundledImageStore.shared.imageData(for: key) {
+                bundledImage = UIImage(data: data)
             }
         }
     }
 
     @ViewBuilder
     private var deviceImage: some View {
-        if let data = bundledImageData, let uiImage = UIImage(data: data) {
+        if let uiImage = bundledImage {
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -63,7 +66,7 @@ struct DeviceImageView: View {
         let dotSize = max(DesignTokens.Ratio.deviceImageDotMin,
                           size * DesignTokens.Ratio.deviceImageDot)
         return Circle()
-            .fill(Color.red)
+            .fill(.themedStatus(.red))
             .frame(width: dotSize, height: dotSize)
             .overlay(Circle().strokeBorder(Color(.systemBackground), lineWidth: max(1, dotSize * 0.22)))
             .offset(x: dotSize * 0.3, y: -(dotSize * 0.3))
@@ -72,7 +75,7 @@ struct DeviceImageView: View {
     private var fallbackIcon: some View {
         Image(systemName: device.categorySystemImage)
             .font(.system(size: size * DesignTokens.Typography.iconRatioHalf, weight: .medium))
-            .foregroundStyle(isAvailable ? Color.accentColor : .secondary.opacity(DesignTokens.Opacity.overlay))
+            .foregroundStyle(isAvailable ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary.opacity(DesignTokens.Opacity.overlay)))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Optional: add a very subtle circle for fallbacks only 
             // to maintain visual weight parity with real images

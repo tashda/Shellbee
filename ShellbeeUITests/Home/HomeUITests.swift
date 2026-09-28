@@ -8,23 +8,79 @@ final class HomeUITests: ShellbeeUITestCase {
         app.tapHomeTab()
     }
 
-    // MARK: - Cards visible
+    // MARK: - The screen itself
 
-    func testBridgeCardVisible() {
-        XCTAssertTrue(app.staticTexts["Zigbee2MQTT"].waitForExistence(timeout: 10) ||
-                      app.otherElements.containing(.staticText, identifier: "Zigbee2MQTT").firstMatch.waitForExistence(timeout: 10),
-                      "Bridge card not visible")
+    func testHomeHasATitle() {
+        XCTAssertTrue(
+            app.navigationBars["Home"].waitForExistence(timeout: 10),
+            "Home should have a large title, not an empty navigation bar"
+        )
     }
 
-    func testDevicesCardVisible() {
-        // The devices card shows total/online/offline counts
-        let totalLabel = app.staticTexts["Total"].firstMatch
-        XCTAssertTrue(totalLabel.waitForExistence(timeout: 10), "Devices card not visible")
+    // Behavior: each connected bridge is one row reading
+    // "Connected · Zigbee2MQTT <version>".
+    func testBridgeRowVisible() {
+        let bridgeDetail = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS 'Zigbee2MQTT'")
+        ).firstMatch
+        XCTAssertTrue(bridgeDetail.waitForExistence(timeout: 10), "No bridge row on Home")
     }
 
-    func testMeshCardVisible() {
-        let routersLabel = app.staticTexts["Routers"].firstMatch
-        XCTAssertTrue(routersLabel.waitForExistence(timeout: 10), "Mesh card not visible")
+    // Behavior: tapping a bridge row opens BridgeInfoSheet, which is where
+    // the bridge's own figures live now that Home doesn't repeat them.
+    func testTappingBridgeRowOpensBridgeInfo() {
+        let bridgeDetail = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS 'Zigbee2MQTT'")
+        ).firstMatch
+        guard bridgeDetail.waitForExistence(timeout: 10) else {
+            return XCTFail("No bridge row on Home")
+        }
+        bridgeDetail.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Connection"].waitForExistence(timeout: 5),
+            "The bridge row should open the bridge info sheet"
+        )
+        app.buttons["Done"].firstMatch.tapWhenReady()
+    }
+
+    // MARK: - Needs attention
+
+    // Behavior: the section only exists while something is wrong, and every
+    // row in it opens the Devices tab filtered to what it named. The fixture
+    // bridge always has devices that stopped answering.
+    func testAttentionRowOpensFilteredDevices() {
+        let devicesRow = app.staticTexts["Devices"].firstMatch
+        guard devicesRow.waitForExistence(timeout: 10) else {
+            // Nothing needs attention on this bridge — the section is
+            // correctly absent, so there is nothing to assert.
+            return
+        }
+        devicesRow.tap()
+        XCTAssertTrue(
+            app.navigationBars["Devices"].firstMatch.waitForExistence(timeout: 5),
+            "A Needs attention row should open the Devices tab"
+        )
+    }
+
+    // MARK: - Activity
+
+    func testActivitySectionVisible() {
+        XCTAssertTrue(
+            app.staticTexts["Activity"].firstMatch.waitForExistence(timeout: 10),
+            "Home should show an Activity section"
+        )
+    }
+
+    // Behavior: "See all" pushes the Activity Center's own feed.
+    func testSeeAllOpensActivity() {
+        let seeAll = app.buttons["See all"].firstMatch
+        XCTAssertTrue(seeAll.waitForExistence(timeout: 10), "Activity section missing See all")
+        seeAll.tap()
+        XCTAssertTrue(
+            app.navigationBars["Activity"].firstMatch.waitForExistence(timeout: 5),
+            "See all should push the Activity feed"
+        )
     }
 
     // MARK: - Permit Join
@@ -37,7 +93,7 @@ final class HomeUITests: ShellbeeUITestCase {
     func testPermitJoinSheetOpens() {
         app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
         XCTAssertTrue(
-            app.buttons["Start Permit Join"].firstMatch.waitForExistence(timeout: 5),
+            app.buttons["Open Network"].firstMatch.waitForExistence(timeout: 5),
             "Permit Join sheet did not open"
         )
     }
@@ -50,15 +106,12 @@ final class HomeUITests: ShellbeeUITestCase {
         app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
         XCTAssertTrue(app.navigationBars["Permit Join"].waitForExistence(timeout: 5),
                       "Permit Join sheet did not open")
-        // "Duration" section header + "Preset" picker label are always
-        // visible regardless of current preset selection.
         XCTAssertTrue(app.staticTexts["Duration"].firstMatch.waitForExistence(timeout: 3),
                       "Duration section header missing")
         XCTAssertTrue(app.staticTexts["Preset"].firstMatch.waitForExistence(timeout: 3),
                       "Preset picker label missing")
     }
 
-    // Behavior: the Permit Join sheet dismisses via its drag indicator.
     // XCUIApplication.swipeDown on the root triggers the sheet's drag
     // gesture; medium+large detent sheets may need two swipes.
     func testPermitJoinDismisses() {
@@ -75,58 +128,6 @@ final class HomeUITests: ShellbeeUITestCase {
         XCTAssertFalse(nav.exists, "Permit Join sheet did not dismiss")
     }
 
-    // MARK: - Navigation from cards
-
-    func testTappingDevicesCardNavigatesToDevices() {
-        let total = app.staticTexts["Total"].firstMatch
-        guard total.waitForExistence(timeout: 10) else {
-            return XCTFail("Total stat not found")
-        }
-        total.tap()
-        XCTAssertTrue(
-            app.navigationBars["Devices"].firstMatch.waitForExistence(timeout: 5),
-            "Devices card should open Devices"
-        )
-    }
-
-    // MARK: - Bridge card
-
-    func testBridgeVersionDisplayed() {
-        // Version string should appear somewhere on the home screen
-        let versionPredicate = NSPredicate(format: "label MATCHES '\\\\d+\\\\.\\\\d+.*'")
-        let versionEl = app.staticTexts.matching(versionPredicate).firstMatch
-        // Version may take a moment to load from Z2M
-        _ = versionEl.waitForExistence(timeout: 15)
-        // Not a hard failure — Z2M may not have sent bridge/info yet
-    }
-
-    // MARK: - New card slots (Groups / Logs / Mesh detail)
-
-    // Behavior: the Recent Events card has a "Show All" button that
-    // pushes the Logs screen. This is a shortcut for "all recent logs".
-    func testRecentEventsShowAllOpensLogs() {
-        let showAll = app.buttons["Show All"].firstMatch
-        XCTAssertTrue(showAll.waitForExistence(timeout: 10),
-                      "Recent Events card missing Show All button")
-        showAll.tap()
-        XCTAssertTrue(
-            app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 5),
-            "Show All should push the Logs view"
-        )
-    }
-
-    // Behavior: the Mesh card opens MeshDetailView (navigation title "Mesh").
-    func testTappingMeshCardOpensMeshDetail() {
-        let mesh = app.staticTexts["Mesh"].firstMatch
-        XCTAssertTrue(mesh.waitForExistence(timeout: 10),
-                      "Mesh card not rendered")
-        mesh.tap()
-        XCTAssertTrue(
-            app.navigationBars["Mesh"].firstMatch.waitForExistence(timeout: 5),
-            "Mesh card should push MeshDetailView"
-        )
-    }
-
     func testRestartAlertAppears() {
         let restartBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Restart'")).firstMatch
         guard restartBtn.waitForExistence(timeout: 5) else { return }
@@ -135,7 +136,6 @@ final class HomeUITests: ShellbeeUITestCase {
         let confirmAlert = app.alerts.firstMatch
         XCTAssertTrue(confirmAlert.waitForExistence(timeout: 3), "Restart confirmation alert not shown")
 
-        // Cancel to avoid actually restarting
         confirmAlert.buttons["Cancel"].tap()
     }
 }

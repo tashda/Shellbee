@@ -22,21 +22,25 @@ struct BridgeSettingsView: View {
 
     var body: some View {
         Form {
-            if scope.bridgeInfo?.restartRequired == true {
-                restartRequiredNotice
-            }
+            SwiftUI.Group {
+                if scope.bridgeInfo?.restartRequired == true {
+                    restartRequiredNotice
+                }
 
-            statusHeader
-            bridgeConfigSection
-            loggingSection
-            integrationsSection
-            networkSection
-            toolsSection
+                statusHeader
+                bridgeConfigSection
+                loggingSection
+                integrationsSection
+                networkSection
+                toolsSection
 
-            if session?.isConnected == true || (session?.controller.hasBeenConnected ?? false) {
-                dangerSection
+                if session?.isConnected == true || (session?.controller.hasBeenConnected ?? false) {
+                    dangerSection
+                }
             }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
         // Match SettingsView — Logs is reachable from per-bridge settings via
@@ -53,6 +57,7 @@ struct BridgeSettingsView: View {
             NavigationStack {
                 ConnectionEditorView(viewModel: vm, mode: .save)
             }
+            .configuredTopScrollEdgeEffect()
         }
         .alert("Remove Bridge?", isPresented: removeAlertBinding, presenting: removeConfirmation) { config in
             Button("Remove", role: .destructive) {
@@ -151,6 +156,7 @@ struct BridgeSettingsView: View {
             } label: {
                 settingsLabel(title: "Logging Level", systemImage: "slider.horizontal.below.square.filled.and.square", color: .gray)
             }
+            .tint(.secondary)
             NavigationLink { LogOutputView(bridgeID: bridgeID) } label: {
                 settingsLabel(title: "Log Output", systemImage: "doc.text.magnifyingglass", color: Color(.systemGray2))
             }
@@ -232,7 +238,7 @@ struct BridgeSettingsView: View {
                         .font(.title3)
                         .foregroundStyle(.white)
                         .frame(width: DesignTokens.Size.restartIconFrame, height: DesignTokens.Size.restartIconFrame)
-                        .background(.red, in: Circle())
+                        .background(.themedStatus(.red), in: Circle())
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                         Text("Restart Required")
                             .font(.headline)

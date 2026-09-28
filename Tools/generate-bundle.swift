@@ -172,6 +172,37 @@ struct IndexEntry: Codable {
     let exposes:     [String]
 }
 
+/// Sub-features of composite exposes, from the doc's Exposes row, as
+/// `parent.feature` ("light.color_xy", "cover.tilt"). The supported-devices
+/// list only names the composite, which can't tell a colour bulb from a
+/// dimmable one.
+func compositeFeatures(in markdown: String) -> [String] {
+    guard let row = markdown.split(separator: "\n").first(where: { $0.hasPrefix("| Exposes |") }) else { return [] }
+    var features: [String] = []
+    var parent = ""
+    var inner = ""
+    var depth = 0
+    for char in row.dropFirst("| Exposes |".count) {
+        switch char {
+        case "(":
+            depth += 1
+            if depth == 1 { inner = "" } else { inner.append(char) }
+        case ")":
+            depth -= 1
+            if depth == 0 {
+                let name = parent.trimmingCharacters(in: .whitespaces)
+                features += inner.split(separator: ",").map { "\(name).\($0.trimmingCharacters(in: .whitespaces))" }
+                parent = ""
+            } else { inner.append(char) }
+        case ",":
+            if depth == 0 { parent = "" } else { inner.append(char) }
+        default:
+            if depth == 0 { parent.append(char) } else { inner.append(char) }
+        }
+    }
+    return features
+}
+
 var index: [IndexEntry] = []
 
 for raw in rawDevices {
@@ -187,7 +218,7 @@ for raw in rawDevices {
     let docKey = URL(fileURLWithPath: link).deletingPathExtension().lastPathComponent
 
     // Only include entries that have a documentation page
-    guard docs[docKey] != nil else { continue }
+    guard let markdown = docs[docKey] else { continue }
 
     // e.g. "../images/devices/FL-230-C.png" → "FL-230-C"
     let imageKey: String
@@ -203,7 +234,7 @@ for raw in rawDevices {
 
     index.append(IndexEntry(
         docKey: docKey, imageKey: imageKey, model: model,
-        vendor: vendor, description: description, exposes: exposes
+        vendor: vendor, description: description, exposes: exposes + compositeFeatures(in: markdown)
     ))
 }
 

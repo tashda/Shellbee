@@ -27,14 +27,8 @@ nonisolated enum AppConfig {
         static let discoveryProbeTimeout: TimeInterval = 1.5
     }
 
-    /// UX-tuning windows that aren't visual (durations, coalescing, recency).
+    /// UX-tuning windows that aren't visual (durations and recency).
     nonisolated enum UX {
-        /// Notifications with the same `coalesceKey` arriving within this
-        /// window collapse into a single banner with a `× N` count badge.
-        /// Tuned so a burst of related events (e.g. an interview producing
-        /// multiple log lines) reads as one notification, not four.
-        static let notificationCoalesceWindow: TimeInterval = 1.5
-
         /// Default window after a device first joins the network during
         /// which it appears in the "Recently Added" section of the device
         /// list. User-overridable via Settings → General; this default

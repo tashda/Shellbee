@@ -1,12 +1,6 @@
 import SwiftUI
 
 struct LightControlCard: View {
-    enum Surface: String, CaseIterable, Identifiable {
-        case color = "Color"
-        case white = "White"
-        var id: String { rawValue }
-    }
-
     let context: LightControlContext
     let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
@@ -19,7 +13,7 @@ struct LightControlCard: View {
     /// configuration.
     var rendersAdvancedSheetsInline: Bool = true
 
-    @State private var selectedSurface: Surface
+    @State private var showColor = false
     @State private var showEffects = false
     @State private var showStartup = false
     @State private var showMore = false
@@ -32,19 +26,18 @@ struct LightControlCard: View {
         self.mode = mode
         self.onSend = onSend
         self.rendersAdvancedSheetsInline = rendersAdvancedSheetsInline
-        _selectedSurface = State(initialValue: Self.initialSurface(for: context))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            if mode == .snapshot { snapshotContent } else { interactiveContent }
+        // Snapshot bypasses the interactive-mode chrome (gradient tint,
+        // large padding, drop shadow) — those exist for the controls
+        // surface. Snapshot lives in a log row and uses the shared
+        // CompactSnapshotCard chrome so it lines up with every other
+        // card type at the same scale.
+        modeSwitchedBody
+        .sheet(isPresented: $showColor) {
+            LightColorSheet(context: context, onSend: onSend)
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
-        .shadow(color: .black.opacity(DesignTokens.Shadow.badgeOpacity),
-                radius: DesignTokens.Spacing.sm, y: DesignTokens.Spacing.xs)
         .sheet(isPresented: $showEffects) {
             if let effect = context.effectFeature {
                 LightEffectsSheet(feature: effect) { onSend(effect.payload($0)) }
@@ -58,34 +51,19 @@ struct LightControlCard: View {
         }
     }
 
-    // MARK: – Background
-
-    /// Snapshot mode gets a subtle gradient tinted by the bulb's displayColor
-    /// when on — same hero treatment as other cards, since there's no
-    /// interactive `LightBrightnessArea` to carry the color.
-    /// Interactive mode keeps a clean neutral card so the colored brightness
-    /// capsule inside doesn't have to compete with a gradient behind it.
     @ViewBuilder
-    private var cardBackground: some View {
+    private var modeSwitchedBody: some View {
         if mode == .snapshot {
-            ZStack {
-                Color(.secondarySystemGroupedBackground)
-                LinearGradient(
-                    colors: [
-                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(context.isOn ? 0.18 : 0.06),
-                        (context.isOn ? context.displayColor : Color(.tertiaryLabel)).opacity(DesignTokens.Opacity.subtleFade)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
+            snapshotContent
         } else {
-            Color(.secondarySystemGroupedBackground)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                interactiveContent
+            }
+            .cardSurface()
         }
     }
 
-    /// Tint used by the interactive eyebrow and snapshot eyebrow/value. Tracks
-    /// the live bulb color when on, fades to neutral when off.
+    /// Symbol tint. Tracks the live bulb colour when on, neutral when off.
     private var headerTint: Color {
         context.isOn ? context.displayColor : Color(.tertiaryLabel)
     }
@@ -93,23 +71,27 @@ struct LightControlCard: View {
     // MARK: – Interactive
 
     @ViewBuilder private var interactiveContent: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(eyebrowLabel)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-            }
-            .foregroundStyle(headerTint)
-            Spacer()
-            if context.effectFeature != nil { configButton("sparkles") { showEffects = true } }
-            if rendersAdvancedSheetsInline {
-                if !context.startupFeatures.isEmpty { configButton("sunrise.fill") { showStartup = true } }
-                if !context.otherAdvancedFeatures.isEmpty { configButton("ellipsis") { showMore = true } }
+        CardHeader(
+            systemImage: context.isOn ? "lightbulb.fill" : "lightbulb",
+            title: eyebrowLabel,
+            value: headerValue,
+            tint: headerTint
+        ) {
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                if hasColorControls {
+                    colorButton
+                }
+                if context.effectFeature != nil {
+                    CardAccessoryButton(systemImage: "sparkles", accessibilityLabel: "Effects") { showEffects = true }
+                }
+                if rendersAdvancedSheetsInline {
+                    if !context.startupFeatures.isEmpty {
+                        CardAccessoryButton(systemImage: "sunrise.fill", accessibilityLabel: "Startup") { showStartup = true }
+                    }
+                    if !context.otherAdvancedFeatures.isEmpty {
+                        CardAccessoryButton(systemImage: "ellipsis", accessibilityLabel: "Settings") { showMore = true }
+                    }
+                }
             }
         }
         if let brightness = context.brightness {
@@ -126,92 +108,77 @@ struct LightControlCard: View {
                 onTogglePower: togglePower
             )
         }
-        if context.supportsColorControls && context.supportsWhiteControls {
-            Picker("Mode", selection: $selectedSurface) {
-                ForEach(Surface.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
+    }
+
+    private var hasColorControls: Bool {
+        context.supportsColorControls || context.colorTemperature != nil
+    }
+
+    /// The light's current colour as a swatch; opens the Color sheet.
+    private var colorButton: some View {
+        Button { showColor = true } label: {
+            Circle()
+                .fill(context.displayColor)
+                .overlay(Circle().strokeBorder(Color.primary.opacity(DesignTokens.Opacity.hairline)))
+                .frame(width: DesignTokens.Size.changeSwatch, height: DesignTokens.Size.changeSwatch)
+                .frame(width: DesignTokens.Size.cardAccessoryButton, height: DesignTokens.Size.cardAccessoryButton)
         }
-        if selectedSurface == .color, context.supportsColorControls {
-            LightColorControl(
-                value: context.displayColor,
-                isInteractive: context.color?.isWritable ?? false,
-                onChange: { color in
-                    guard let hex = color.hexString, let payload = context.colorPayload(hex: hex) else { return }
-                    onSend(payload)
-                }
-            )
-        }
-        if selectedSurface == .white, let ct = context.colorTemperature {
-            LightTemperatureControl(
-                range: ct.range ?? 153...500,
-                value: context.colorTemperatureValue ?? ct.range?.lowerBound ?? 250,
-                isInteractive: ct.isWritable,
-                onChange: { value in
-                    guard let payload = context.colorTemperaturePayload(value) else { return }
-                    onSend(payload)
-                }
-            )
-        }
+        .buttonBorderShape(.circle)
+        .glassButtonStyleIfAvailable()
+        .accessibilityLabel("Color")
+        .accessibilityValue(colorDescription ?? "")
     }
 
     // MARK: – Snapshot
 
+    /// Compact log-row rendering. Single-row card with bulb icon, name +
+    /// summary value (brightness / on/off / color temp), and trailing
+    /// ON/OFF pill. Same scale as DeviceCard.compact so a stack of mixed
+    /// cards in the log detail reads as a uniform list.
     @ViewBuilder private var snapshotContent: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            snapshotHero
-            if hasColorOrTempInfo {
-                hairline
-                colorSnapshotRow
+        CompactSnapshotCard {
+            CompactControlSnapshotRow(
+                systemImage: context.isOn ? "lightbulb.fill" : "lightbulb",
+                title: eyebrowLabel,
+                subtitle: snapshotSecondaryText,
+                tint: headerTint
+            ) {
+                stateBadge
             }
         }
     }
 
-    private var snapshotHero: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    Image(systemName: context.isOn ? "lightbulb.fill" : "lightbulb")
-                        .font(DesignTokens.Typography.eyebrowIcon)
-                        .symbolRenderingMode(.hierarchical)
-                    Text(eyebrowLabel)
-                        .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(DesignTokens.Typography.eyebrowTracking)
-                        .textCase(.uppercase)
-                        .lineLimit(1)
-                }
-                .foregroundStyle(headerTint)
-
-                snapshotHeroValue
-            }
-            Spacer(minLength: 0)
-            stateBadge
-        }
-    }
-
-    @ViewBuilder
-    private var snapshotHeroValue: some View {
-        // Snapshot is a frozen view of the payload at log time — never invent
-        // a brightness value. State-change diffs (and ON/OFF-only publishes)
-        // omit brightness when it didn't change, so brightnessValue is nil;
-        // showing brightnessPercent there would fabricate a default (100%).
+    /// "80% · 2700 K" / "80%" / "2700 K" / nil. Only emits text when the
+    /// payload actually carries a brightness or color value — log entries
+    /// often don't (state-change diff omits unchanged fields). Returning
+    /// nil collapses the row to a single line.
+    private var snapshotSecondaryText: String? {
+        var parts: [String] = []
         if context.isOn, context.brightness != nil, context.brightnessValue != nil {
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xs) {
-                Text("\(context.brightnessPercent)")
-                    .font(DesignTokens.Typography.heroValue)
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(DesignTokens.Typography.scaleFactorMedium)
-                Text("%")
-                    .font(DesignTokens.Typography.heroUnit)
-                    .foregroundStyle(.secondary)
-            }
-        } else {
-            Text(context.isOn ? "On" : "Off")
-                .font(DesignTokens.Typography.heroStateText)
-                .foregroundStyle(headerTint)
+            parts.append("\(context.brightnessPercent)%")
         }
+        if !context.isColorMode, let mireds = context.colorTemperatureValue {
+            parts.append("\(Int(1_000_000 / mireds)) K")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// "Off", "Pink" or "Warm white" beside the title. Brightness is
+    /// left to the capsule, which already shows it.
+    private var headerValue: String {
+        guard context.isOn else { return "Off" }
+        return colorDescription ?? "On"
+    }
+
+    private var colorDescription: String? {
+        if context.isColorMode, context.supportsColorControls {
+            return LightDisplayColor.name(for: context.displayColor)
+        }
+        guard let mireds = context.colorTemperatureValue, mireds > 0 else { return nil }
+        let kelvin = 1_000_000 / mireds
+        if kelvin < 3000 { return String(localized: "Warm white") }
+        if kelvin < 4500 { return String(localized: "Neutral white") }
+        return String(localized: "Cool white")
     }
 
     private var stateBadge: some View {
@@ -227,88 +194,12 @@ struct LightControlCard: View {
             )
     }
 
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.primary.opacity(DesignTokens.Opacity.hairline))
-            .frame(height: DesignTokens.Size.hairline)
-    }
-
-    private var hasColorOrTempInfo: Bool {
-        let isColorMode = context.isColorMode
-        return isColorMode || context.colorTemperatureValue != nil
-    }
-
-    @ViewBuilder private var colorSnapshotRow: some View {
-        let isColorMode = context.isColorMode
-        if !isColorMode, let tempMireds = context.colorTemperatureValue {
-            snapshotInfoRow(
-                icon: "thermometer.medium",
-                label: "Color Temperature",
-                value: "\(Int(1_000_000 / tempMireds))",
-                unit: "K"
-            )
-        } else if isColorMode {
-            HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: DesignTokens.Spacing.xs) {
-                    Image(systemName: "paintpalette.fill")
-                        .font(DesignTokens.Typography.eyebrowIcon)
-                        .symbolRenderingMode(.hierarchical)
-                    Text("Color")
-                        .font(DesignTokens.Typography.eyebrowLabel)
-                        .tracking(DesignTokens.Typography.eyebrowTracking)
-                        .textCase(.uppercase)
-                }
-                .foregroundStyle(.secondary)
-                Spacer()
-            }
-        }
-    }
-
-    private func snapshotInfoRow(icon: String, label: String, value: String, unit: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            HStack(spacing: DesignTokens.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(DesignTokens.Typography.eyebrowIcon)
-                    .symbolRenderingMode(.hierarchical)
-                Text(label)
-                    .font(DesignTokens.Typography.eyebrowLabel)
-                    .tracking(DesignTokens.Typography.eyebrowTracking)
-                    .textCase(.uppercase)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(.secondary)
-            Spacer()
-            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.xxs) {
-                Text(value)
-                    .font(DesignTokens.Typography.snapshotRowValue)
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                Text(unit)
-                    .font(DesignTokens.Typography.snapshotRowUnit)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
     private var eyebrowLabel: String {
         if let endpoint = context.endpointLabel { return "Light · \(endpoint)" }
         return "Light"
     }
 
     // MARK: – Helpers
-
-    private func configButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(DesignTokens.Typography.sectionHeader)
-                .foregroundStyle(.primary)
-                .frame(width: DesignTokens.Size.lightControlButton, height: DesignTokens.Size.lightControlButton)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .glassEffectIfAvailable(in: Circle())
-    }
 
     private func togglePower() {
         if context.isOn {
@@ -318,13 +209,6 @@ struct LightControlCard: View {
         }
         guard let payload = context.brightnessCommandPayload(context.suggestedOnBrightnessValue()) else { return }
         onSend(payload)
-    }
-
-    private static func initialSurface(for context: LightControlContext) -> Surface {
-        if context.supportsColorControls && context.supportsWhiteControls {
-            return context.colorMode == "color_temp" ? .white : .color
-        }
-        return context.supportsWhiteControls ? .white : .color
     }
 }
 

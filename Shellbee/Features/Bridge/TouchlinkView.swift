@@ -20,6 +20,7 @@ struct TouchlinkView: View {
                 deviceList
             }
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Touchlink")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarItems }
@@ -39,6 +40,7 @@ struct TouchlinkView: View {
                         }
                     }
             }
+            .configuredTopScrollEdgeEffect()
         }
     }
 
@@ -62,14 +64,17 @@ struct TouchlinkView: View {
 
     private var deviceList: some View {
         List(store.touchlinkDevices) { device in
-            TouchlinkDeviceRow(
-                device: device,
-                knownName: store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName,
-                identifyInProgress: store.touchlinkIdentifyInProgress,
-                resetInProgress: store.touchlinkResetInProgress,
-                onIdentify: identify,
-                onReset: factoryReset
-            )
+            SwiftUI.Group {
+                TouchlinkDeviceRow(
+                    device: device,
+                    knownName: store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName,
+                    identifyInProgress: store.touchlinkIdentifyInProgress,
+                    resetInProgress: store.touchlinkResetInProgress,
+                    onIdentify: identify,
+                    onReset: factoryReset
+                )
+            }
+            .shellbeeThemedRows()
         }
     }
 
@@ -101,11 +106,20 @@ struct TouchlinkView: View {
 
     private func scan() {
         store.touchlinkScanInProgress = true
+        BridgeOperationLiveActivityCoordinator.shared.startScan(
+            bridgeID: bridgeID,
+            bridgeDisplayName: scope.displayName
+        )
         scope.send(topic: Z2MTopics.Request.touchlinkScan, payload: .string(""))
     }
 
     private func identify(_ device: TouchlinkDevice) {
         store.touchlinkIdentifyInProgress = true
+        BridgeOperationLiveActivityCoordinator.shared.startIdentify(
+            bridgeID: bridgeID,
+            bridgeDisplayName: scope.displayName,
+            deviceName: store.devices.first { $0.ieeeAddress == device.ieeeAddress }?.friendlyName ?? "Touchlink device"
+        )
         scope.send(
             topic: Z2MTopics.Request.touchlinkIdentify,
             payload: .object([
@@ -147,5 +161,6 @@ struct TouchlinkView: View {
     NavigationStack {
         TouchlinkView(bridgeID: UUID())
     }
+    .configuredTopScrollEdgeEffect()
     .environment(AppEnvironment())
 }

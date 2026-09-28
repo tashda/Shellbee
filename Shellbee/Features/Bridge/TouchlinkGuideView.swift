@@ -1,19 +1,15 @@
 import SwiftUI
 
+/// z2m's Touchlink guide laid out like a Documentation page: what Touchlink
+/// is and whether this coordinator supports it, the Philips Hue serial
+/// reset, then each part of the guide as a row that opens a reading page.
 struct TouchlinkGuideView: View {
     private static let sourcePath = "guide/usage/touchlink.md"
-    private static let serialNumberSectionTitles: Set<String> = [
-        "Serial number",
-        "Serial number (Philips Hue only)"
-    ]
 
     @Environment(AppEnvironment.self) private var environment
 
-    /// Phase 4 multi-bridge: bridge whose network the touchlink action runs
-    /// against. Touchlink is per-network, not global. Optional only because
-    /// the guide can be opened from the docs browser without an active
-    /// bridge — in that case actions are no-ops. Callers must pass it
-    /// explicitly (no default) to surface the no-bridge case at every site.
+    /// The bridge whose network Touchlink actions run on. `nil` when opened
+    /// from documentation without a bridge; actions are hidden then.
     let bridgeID: UUID?
 
     @State private var guide: ParsedGuideDoc?
@@ -26,12 +22,49 @@ struct TouchlinkGuideView: View {
     }
 
     var body: some View {
-        ScrollView {
-            content
-                .padding(.horizontal, DesignTokens.Spacing.lg)
-                .padding(.vertical, DesignTokens.Spacing.lg)
+        List {
+            SwiftUI.Group {
+                if let guide {
+                    let pages = TouchlinkGuidePage.pages(from: guide.parsed.sections)
+                    Section {
+                        header(summary: pages.first?.summary)
+                    }
+                    if bridgeID != nil {
+                        Section {
+                            Button {
+                                showHueResetSheet = true
+                            } label: {
+                                Label("Reset by Serial Number", systemImage: "wrench.and.screwdriver")
+                            }
+                        } footer: {
+                            Text("Factory resets Philips Hue devices without scanning, using the 6-character serial printed on the device.")
+                        }
+                    }
+                    Section("Guide") {
+                        ForEach(pages) { page in
+                            NavigationLink {
+                                DocReadingView(title: page.title, blocks: page.blocks, sourcePath: guide.sourcePath)
+                            } label: {
+                                Label {
+                                    Text(page.title)
+                                } icon: {
+                                    if DocNote.isWarning(page.blocks) {
+                                        DocNoteSymbol(isWarning: true)
+                                    } else {
+                                        Image(systemName: page.systemImage).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    DocSourceSection(sourcePath: guide.sourcePath)
+                }
+            }
+            .shellbeeThemedRows()
         }
-        .background(Color(.systemGroupedBackground))
+        .listStyle(.insetGrouped)
+        .shellbeeThemedCanvas()
+        .overlay { stateOverlay }
         .navigationTitle("Touchlink Guide")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showHueResetSheet) {
@@ -44,93 +77,55 @@ struct TouchlinkGuideView: View {
         .task { await loadGuide() }
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if isLoading {
-            VStack(spacing: DesignTokens.Spacing.md) {
-                ProgressView()
-                Text("Loading Touchlink guide")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+    private func header(summary: String?) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+            HStack(spacing: DesignTokens.Spacing.md) {
+                ShellbeeSymbol.custom("touchlink").image
+                    .font(.title)
+                    .foregroundStyle(.tint)
+                    .frame(width: DesignTokens.Size.deviceRowImage)
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    Text("Touchlink")
+                        .font(.headline)
+                    if let summary {
+                        Text(summary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
-            .frame(maxWidth: .infinity, minHeight: 320)
-        } else if let loadError {
+            Divider()
+            StatStrip(items: stats)
+        }
+        .padding(.vertical, DesignTokens.Spacing.xs)
+    }
+
+    /// Range and scan time from z2m's guide, and whether this coordinator
+    /// can do Touchlink at all.
+    private var stats: [StatStripItem] {
+        var items = [
+            StatStripItem(value: "10 cm–1 m", caption: "Range"),
+            StatStripItem(value: "Up to 1 min", caption: "Scan")
+        ]
+        if let support = TouchlinkSupport(coordinatorType: scope?.bridgeInfo?.coordinator.type) {
+            items.append(StatStripItem(value: support.title, caption: "Coordinator",
+                                       valueColor: support.needsAttention ? .orange : nil))
+        }
+        return items
+    }
+
+    @ViewBuilder
+    private var stateOverlay: some View {
+        if isLoading && guide == nil {
+            ProgressView("Loading Touchlink guide")
+        } else if let loadError, guide == nil {
             ContentUnavailableView(
                 "Guide Unavailable",
                 systemImage: "wifi.exclamationmark",
                 description: Text(loadError.localizedDescription)
             )
-            .frame(maxWidth: .infinity, minHeight: 320)
-        } else if let guide {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                touchlinkHero
-
-                ForEach(guide.parsed.sections) { section in
-                    TouchlinkGuideSectionCard(title: section.title) {
-                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-                            if Self.serialNumberSectionTitles.contains(section.title) {
-                                serialNumberSectionContent
-                            } else {
-                                ForEach(Array(section.blocks.enumerated()), id: \.offset) { _, block in
-                                    DocBlockView(block: block, sourcePath: guide.sourcePath)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
-    }
-
-    private var touchlinkHero: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            Text("Touchlink lets nearby Zigbee devices communicate outside the normal network join flow.")
-                .font(.title3.weight(.bold))
-
-            Text("Use it to scan nearby Touchlink-capable devices, identify them, or factory reset them before pairing again. Devices usually need to be very close to the coordinator.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                TouchlinkHeroChip(label: "Close Range", tint: .orange)
-                TouchlinkHeroChip(label: "Scan Nearby Devices", tint: .teal)
-                TouchlinkHeroChip(label: "Philips Hue Reset", tint: .blue)
-            }
-        }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.teal.opacity(DesignTokens.Opacity.onStateTint),
-                    Color.cyan.opacity(DesignTokens.Opacity.lightOpaque),
-                    Color(.secondarySystemGroupedBackground)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.xl, style: .continuous)
-        )
-    }
-
-    @ViewBuilder
-    private var serialNumberSectionContent: some View {
-        Text("Most **Philips Hue** devices can be factory reset **without scanning**, by using the serial number printed on the device. _Usually a 6-character code under the barcode on the base or housing._")
-            .font(.body)
-
-        Text("Shellbee can send this reset directly — enter one or more serial numbers and Shellbee handles the rest. _Separate multiple codes with commas to reset several devices at once._")
-            .font(.body)
-            .foregroundStyle(.secondary)
-
-        Button {
-            showHueResetSheet = true
-        } label: {
-            Label("Reset by Serial Number", systemImage: "wrench.and.screwdriver")
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .padding(.top, DesignTokens.Spacing.xs)
     }
 
     private func philipsHueReset(extendedPanId: String, serialNumbers: [String]) {
@@ -164,34 +159,78 @@ struct TouchlinkGuideView: View {
     }
 }
 
-private struct TouchlinkHeroChip: View {
-    let label: String
-    let tint: Color
+/// One reading page of the guide: a top-level section with its
+/// subsections folded in, so "Factory reset device" carries "Any device"
+/// and "Serial number" rather than each being a row of its own.
+struct TouchlinkGuidePage: Identifiable {
+    let title: String
+    var blocks: [DocBlock]
 
-    var body: some View {
-        Text(label)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, DesignTokens.Spacing.sm)
-            .padding(.vertical, DesignTokens.Size.compactChipVerticalPadding)
-            .background(tint.opacity(DesignTokens.Opacity.chipFill), in: Capsule())
-            .foregroundStyle(tint)
+    var id: String { title }
+
+    /// The first paragraph, for the header.
+    var summary: String? {
+        for block in blocks {
+            if case .paragraph(let spans) = block { return spans.plainText }
+        }
+        return nil
+    }
+
+    /// Rows use a symbol for what the page is about; warnings keep the
+    /// triangle.
+    var systemImage: String {
+        let t = title.lowercased()
+        if t.contains("support") { return "checkmark.seal" }
+        if t.contains("scan") { return "dot.radiowaves.left.and.right" }
+        if t.contains("identify") { return "lightbulb.max" }
+        if t.contains("reset") { return "arrow.counterclockwise" }
+        return "info.circle"
+    }
+
+    /// z2m's intro section (the parser calls it "Overview") becomes "About
+    /// Touchlink"; deeper sections fold into the page above them.
+    static func pages(from sections: [DocSection]) -> [Self] {
+        let top = sections.map(\.level).min() ?? 1
+        var pages: [Self] = []
+        for section in sections {
+            if section.level <= top + 1 || pages.isEmpty {
+                let isIntro = pages.isEmpty && (section.level < top + 1 || section.title == "Overview")
+                pages.append(Self(title: isIntro ? "About Touchlink" : section.title, blocks: section.blocks))
+            } else {
+                pages[pages.count - 1].blocks.append(.subsection(title: section.title, blocks: section.blocks))
+            }
+        }
+        return pages.filter { !$0.blocks.isEmpty }
     }
 }
 
-private struct TouchlinkGuideSectionCard<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: () -> Content
+/// How well a coordinator does Touchlink, per z2m's guide: Texas
+/// Instruments fully, Silicon Labs partly, the rest not at all.
+enum TouchlinkSupport {
+    case full
+    case partial
+    case none
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            Text(title)
-                .font(.title3.weight(.bold))
-            content()
+    init?(coordinatorType: String?) {
+        guard let type = coordinatorType?.lowercased(), !type.isEmpty else { return nil }
+        if type.contains("zstack") || type.contains("z-stack") {
+            self = .full
+        } else if type.contains("ember") || type.contains("ezsp") {
+            self = .partial
+        } else {
+            self = .none
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.lg, style: .continuous))
     }
+
+    var title: String {
+        switch self {
+        case .full: "Supported"
+        case .partial: "Partial"
+        case .none: "Not supported"
+        }
+    }
+
+    var needsAttention: Bool { self != .full }
 }
 
 #Preview {
@@ -199,4 +238,5 @@ private struct TouchlinkGuideSectionCard<Content: View>: View {
         TouchlinkGuideView(bridgeID: nil)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

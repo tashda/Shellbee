@@ -19,38 +19,43 @@ struct RenameDeviceSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    HStack(spacing: DesignTokens.Spacing.md) {
-                        DeviceImageView(
-                            device: device,
-                            isAvailable: true,
-                            size: DesignTokens.Size.deviceActionSheetImage
-                        )
-                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                            Text(device.friendlyName)
-                                .font(.headline)
-                            Text(device.definition?.model ?? "Unknown Model")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                SwiftUI.Group {
+                    Section {
+                        HStack(spacing: DesignTokens.Spacing.md) {
+                            DeviceImageView(
+                                device: device,
+                                isAvailable: true,
+                                size: DesignTokens.Size.deviceActionSheetImage
+                            )
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                                Text(device.friendlyName)
+                                    .font(.headline)
+                                Text(device.definition?.model ?? "Unknown Model")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    Section {
+                        TextField("New name", text: $newName)
+                            .submitLabel(.done)
+                            .onSubmit { saveIfPossible() }
+                        Toggle("Home Assistant Entity ID", isOn: $updateHomeAssistant)
+                    } footer: {
+                        if updateHomeAssistant {
+                            Text("Also updates the Home Assistant entity ID to match the new name.")
                         }
                     }
                 }
-
-                Section {
-                    TextField("New name", text: $newName)
-                        .submitLabel(.done)
-                        .onSubmit { saveIfPossible() }
-                    Toggle("Home Assistant Entity ID", isOn: $updateHomeAssistant)
-                } footer: {
-                    if updateHomeAssistant {
-                        Text("Also updates the Home Assistant entity ID to match the new name.")
-                    }
-                }
+                .shellbeeThemedRows()
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Rename Device")
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .bottom) { actionBar }
+            .safeAreaInset(edge: .bottom) { actionBar.shellbeeThemedBar() }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }
@@ -59,10 +64,7 @@ struct RenameDeviceSheet: View {
         Button("Save Changes") {
             saveIfPossible()
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .fontWeight(.semibold)
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.sheetAction)
         .disabled(!canSave)
         .padding(.horizontal, DesignTokens.Spacing.lg)
         .padding(.vertical, DesignTokens.Spacing.md)

@@ -34,55 +34,61 @@ struct MainSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                Picker("Last Seen Format", selection: $lastSeen) {
-                    ForEach(BridgeSettings.LastSeenFormat.allCases, id: \.self) { format in
-                        Text(format.label).tag(format)
+            SwiftUI.Group {
+                Section {
+                    Picker("Last Seen Format", selection: $lastSeen) {
+                        ForEach(BridgeSettings.LastSeenFormat.allCases, id: \.self) { format in
+                            Text(format.label).tag(format)
+                        }
                     }
+                    .tint(.secondary)
+                    Toggle("Show Elapsed Time", isOn: $elapsed)
+                    LabeledContent("Timestamp Format") {
+                        TextField("YYYY-MM-DD HH:mm:ss", text: $timestampFormat)
+                            .multilineTextAlignment(.trailing)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .font(.caption.monospaced())
+                    }
+                } header: {
+                    Text("Timestamps")
+                } footer: {
+                    Text("Last Seen adds a timestamp to device state messages. Elapsed Time shows the duration between consecutive messages from the same device.")
                 }
-                Toggle("Show Elapsed Time", isOn: $elapsed)
-                LabeledContent("Timestamp Format") {
-                    TextField("YYYY-MM-DD HH:mm:ss", text: $timestampFormat)
-                        .multilineTextAlignment(.trailing)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .font(.caption.monospaced())
-                }
-            } header: {
-                Text("Timestamps")
-            } footer: {
-                Text("Last Seen adds a timestamp to device state messages. Elapsed Time shows the duration between consecutive messages from the same device.")
-            }
 
-            Section {
-                Toggle("Cache Device State", isOn: $cacheState)
-                if cacheState {
-                    Toggle("Keep Cache Between Restarts", isOn: $cacheStatePersistent)
-                    Toggle("Publish Cached State on Startup", isOn: $cacheStateSendOnStartup)
+                Section {
+                    Toggle("Cache Device State", isOn: $cacheState)
+                    if cacheState {
+                        Toggle("Keep Cache Between Restarts", isOn: $cacheStatePersistent)
+                        Toggle("Publish Cached State on Startup", isOn: $cacheStateSendOnStartup)
+                    }
+                } header: {
+                    Text("State Caching")
+                } footer: {
+                    Text("Caching sends all device properties in every state message, even unchanged ones. Recommended if you use Home Assistant. Keep Cache Between Restarts saves this data across bridge restarts.")
                 }
-            } header: {
-                Text("State Caching")
-            } footer: {
-                Text("Caching sends all device properties in every state message, even unchanged ones. Recommended if you use Home Assistant. Keep Cache Between Restarts saves this data across bridge restarts.")
-            }
 
-            Section {
-                if serverOutputIsAttributeOnly {
-                    SettingsWarningBanner(
-                        message: "Your Zigbee2MQTT server is set to Attribute-only output. Shellbee requires JSON to display device states — change to JSON or Both below and tap Apply.",
-                        severity: .caution
-                    )
+                Section {
+                    if serverOutputIsAttributeOnly {
+                        SettingsWarningBanner(
+                            message: "Your Zigbee2MQTT server is set to Attribute-only output. Shellbee requires JSON to display device states — change to JSON or Both below and tap Apply.",
+                            severity: .caution
+                        )
+                    }
+                    Picker("Output Format", selection: $output) {
+                        Text(BridgeSettings.OutputFormat.json.label).tag(BridgeSettings.OutputFormat.json)
+                        Text(BridgeSettings.OutputFormat.attributeAndJson.label).tag(BridgeSettings.OutputFormat.attributeAndJson)
+                    }
+                    .tint(.secondary)
+                } header: {
+                    Text("Output")
+                } footer: {
+                    Text("JSON publishes all device properties in a single message. Both adds a separate per-topic message for each property alongside JSON. Shellbee requires JSON to be included.")
                 }
-                Picker("Output Format", selection: $output) {
-                    Text(BridgeSettings.OutputFormat.json.label).tag(BridgeSettings.OutputFormat.json)
-                    Text(BridgeSettings.OutputFormat.attributeAndJson.label).tag(BridgeSettings.OutputFormat.attributeAndJson)
-                }
-            } header: {
-                Text("Output")
-            } footer: {
-                Text("JSON publishes all device properties in a single message. Both adds a separate per-topic message for each property alongside JSON. Shellbee requires JSON to be included.")
             }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("General")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -148,4 +154,5 @@ struct MainSettingsView: View {
     NavigationStack {
         MainSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

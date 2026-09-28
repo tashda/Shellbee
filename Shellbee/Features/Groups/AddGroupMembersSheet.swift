@@ -1,102 +1,32 @@
 import SwiftUI
 
+/// Picks devices to add to a group. Members must come from the group's own
+/// bridge: z2m can't add cross-bridge members.
 struct AddGroupMembersSheet: View {
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.dismiss) private var dismiss
-    /// Phase 1 multi-bridge: source bridge for the group. Devices added must
-    /// come from the same z2m instance — z2m can't add cross-bridge members.
     let bridgeID: UUID
     let group: Group
     let onConfirm: ([(Device, Int)]) -> Void
 
-    @State private var selectedDevices: [String: Int] = [:]
-    @State private var searchText = ""
-
-    private var bridgeStore: AppStore {
-        environment.scope(for: bridgeID).store
-    }
-
-    private var eligibleDevices: [Device] {
+    private var items: [DevicePickerItem] {
         let memberIEEEs = Set(group.members.map(\.ieeeAddress))
-        return bridgeStore.devices
-            .filter { $0.type != .coordinator && !memberIEEEs.contains($0.ieeeAddress) }
-            .sorted { $0.friendlyName.localizedCaseInsensitiveCompare($1.friendlyName) == .orderedAscending }
-    }
-
-    private var filteredDevices: [Device] {
-        guard !searchText.isEmpty else { return eligibleDevices }
-        let q = searchText.lowercased()
-        return eligibleDevices.filter {
-            $0.friendlyName.lowercased().contains(q)
-            || $0.definition?.vendor.lowercased().contains(q) == true
-            || $0.definition?.model.lowercased().contains(q) == true
-        }
+        return environment.devicePickerItems(bridgeID: bridgeID)
+            .filter { !memberIEEEs.contains($0.device.ieeeAddress) }
     }
 
     var body: some View {
-        NavigationStack {
-            SwiftUI.Group {
-                if eligibleDevices.isEmpty {
-                    ContentUnavailableView(
-                        "No Devices Available",
-                        systemImage: "cpu",
-                        description: Text("All devices are already in this group.")
-                    )
-                } else {
-                    deviceList
-                }
-            }
-            .navigationTitle("Add Devices")
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, prompt: "Search")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
-                        let selections = selectedDevices.compactMap { ieee, endpoint -> (Device, Int)? in
-                            guard let device = bridgeStore.devices.first(where: { $0.ieeeAddress == ieee }) else { return nil }
-                            return (device, endpoint)
-                        }
-                        onConfirm(selections)
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                    .disabled(selectedDevices.isEmpty)
-                }
-            }
-        }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-    }
-
-    private var deviceList: some View {
-        List {
-            ForEach(filteredDevices) { device in
-                AddGroupMemberDeviceRow(
-                    device: device,
-                    isAvailable: bridgeStore.isAvailable(device.friendlyName),
-                    isSelected: selectedDevices[device.ieeeAddress] != nil,
-                    selectedEndpoint: selectedDevices[device.ieeeAddress] ?? device.availableEndpoints[0],
-                    onTap: { toggleSelection(device) },
-                    onEndpointChange: { selectedDevices[device.ieeeAddress] = $0 }
-                )
-            }
-        }
-        .listStyle(.plain)
-        .overlay {
-            if !searchText.isEmpty && filteredDevices.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-            }
-        }
-    }
-
-    private func toggleSelection(_ device: Device) {
-        if selectedDevices[device.ieeeAddress] != nil {
-            selectedDevices.removeValue(forKey: device.ieeeAddress)
-        } else {
-            selectedDevices[device.ieeeAddress] = device.availableEndpoints[0]
+        let items = items
+        DevicePickerSheet(
+            title: "Add Devices",
+            items: items,
+            showsEndpoints: true,
+            confirmTitle: "Add",
+            emptyTitle: "No Devices Available",
+            emptyDescription: "All devices are already in this group."
+        ) { selection in
+            onConfirm(items.compactMap { item in
+                selection[item.id].map { (item.device, $0) }
+            })
         }
     }
 }

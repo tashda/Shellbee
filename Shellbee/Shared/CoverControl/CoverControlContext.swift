@@ -14,6 +14,8 @@ struct CoverControlContext: Equatable, Identifiable {
     let stateValue: String?
     let positionValue: Double?
     let tiltValue: Double?
+    /// The motor is running, from `state` (OPENING/CLOSING) or z2m's `moving`.
+    let isMoving: Bool
 
     let endpointLabel: String?
 
@@ -72,6 +74,9 @@ struct CoverControlContext: Equatable, Identifiable {
         self.stateValue = state[stateFeature?.property ?? "state"]?.stringValue
         self.positionValue = positionFeature.flatMap { state[$0.property]?.numberValue }
         self.tiltValue = tiltFeature.flatMap { state[$0.property]?.numberValue }
+        let stateWord = self.stateValue?.uppercased()
+        let moving = state["moving"]?.stringValue?.uppercased()
+        self.isMoving = stateWord == "OPENING" || stateWord == "CLOSING" || moving == "UP" || moving == "DOWN"
         self.endpointLabel = coverBlock?.endpoint.map { $0.replacingOccurrences(of: "_", with: " ").capitalized }
     }
 

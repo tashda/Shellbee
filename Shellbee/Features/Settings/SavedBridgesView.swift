@@ -13,12 +13,16 @@ struct SavedBridgesView: View {
 
     var body: some View {
         Form {
-            if environment.history.connections.isEmpty {
-                emptyStateSection
-            } else {
-                bridgesSection
+            SwiftUI.Group {
+                if environment.history.connections.isEmpty {
+                    emptyStateSection
+                } else {
+                    bridgesSection
+                }
             }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Saved Bridges")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -35,6 +39,7 @@ struct SavedBridgesView: View {
             NavigationStack {
                 ConnectionEditorView(viewModel: vm, mode: .save)
             }
+            .configuredTopScrollEdgeEffect()
         }
         .alert("Rename Bridge", isPresented: renameAlertBinding, presenting: renameTarget) { config in
             TextField("Name", text: $renameDraft)
@@ -52,6 +57,7 @@ struct SavedBridgesView: View {
                 Task {
                     await environment.disconnect(bridgeID: config.id)
                     environment.history.remove(config)
+                    environment.notificationPreferences.forgetBridge(config.id)
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -160,16 +166,22 @@ private struct BridgeRow: View {
                     if isDefault {
                         Image(systemName: "star.fill")
                             .font(.caption2)
-                            .foregroundStyle(.yellow)
+                            .foregroundStyle(.themedStatus(.yellow))
                             .accessibilityLabel("Default bridge")
+                    }
+                    if isMuted {
+                        Image(systemName: "bell.slash.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Notifications muted")
                     }
                     if isFocused && hasMultipleConnected {
                         Text("Focused")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, DesignTokens.Spacing.xs)
                             .padding(.vertical, 1)
-                            .background(Color.blue.opacity(0.15), in: Capsule())
-                            .foregroundStyle(.blue)
+                            .background(.themedStatus(.blue).opacity(0.15), in: Capsule())
+                            .foregroundStyle(.themedStatus(.blue))
                     }
                 }
                 Text(config.displayURL)
@@ -192,10 +204,19 @@ private struct BridgeRow: View {
             Button(role: .destructive, action: onRemove) {
                 Label("Remove", systemImage: "trash")
             }
+            .shellbeeSwipeTint(.red)
             Button(action: onRename) {
                 Label("Rename", systemImage: "pencil")
             }
-            .tint(.blue)
+            .tint(.accentColor)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button {
+                environment.notificationPreferences.setMuted(!isMuted, bridgeID: config.id)
+            } label: {
+                Label(isMuted ? "Unmute" : "Mute", systemImage: isMuted ? "bell" : "bell.slash")
+            }
+            .tint(isMuted ? .accentColor : .gray)
         }
     }
 
@@ -210,6 +231,11 @@ private struct BridgeRow: View {
             environment.history.setAutoConnect(config, !isAutoConnect)
         } label: {
             Label(isAutoConnect ? "Disable Auto-Connect" : "Enable Auto-Connect", systemImage: isAutoConnect ? "bolt.slash" : "bolt")
+        }
+        Button {
+            environment.notificationPreferences.setMuted(!isMuted, bridgeID: config.id)
+        } label: {
+            Label(isMuted ? "Unmute Notifications" : "Mute Notifications", systemImage: isMuted ? "bell" : "bell.slash")
         }
         if isConnected && !isFocused {
             Button {
@@ -268,6 +294,7 @@ private struct BridgeRow: View {
     private var isFocused: Bool { environment.registry.primaryBridgeID == config.id }
     private var isDefault: Bool { environment.history.defaultBridgeID == config.id }
     private var isAutoConnect: Bool { environment.history.isAutoConnect(config) }
+    private var isMuted: Bool { environment.notificationPreferences.isMuted(bridgeID: config.id) }
     private var hasMultipleConnected: Bool {
         environment.registry.sessions.values.filter(\.isConnected).count >= 2
     }
@@ -303,4 +330,5 @@ extension ConnectionViewModel: Identifiable {
         SavedBridgesView()
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

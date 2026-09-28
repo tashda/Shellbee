@@ -49,4 +49,5 @@ struct LogDetailDevicesSection: View {
         }
         .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

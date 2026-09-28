@@ -14,14 +14,14 @@ struct FeatureDetailSheet<Content: View>: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) { content() }
-                    .background(Color(.secondarySystemGroupedBackground))
+                    .background(.shellbeeSurface)
                     .clipShape(RoundedRectangle(
                         cornerRadius: DesignTokens.CornerRadius.lg,
                         style: .continuous
                     ))
                     .padding(DesignTokens.Spacing.lg)
             }
-            .background(Color(.systemGroupedBackground))
+            .shellbeeThemedCanvas(fallback: Color(.systemGroupedBackground))
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -31,6 +31,7 @@ struct FeatureDetailSheet<Content: View>: View {
                 }
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

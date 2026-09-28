@@ -11,12 +11,16 @@ struct FeatureGroupDetailView: View {
 
     var body: some View {
         Form {
-            Section {
-                ForEach(group.members, id: \.property) { e in
-                    SettingsFormRow(expose: e, state: state, mode: mode, onSend: onSend)
+            SwiftUI.Group {
+                Section {
+                    ForEach(group.members, id: \.property) { e in
+                        SettingsFormRow(expose: e, state: state, mode: mode, onSend: onSend)
+                    }
                 }
             }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .navigationTitle(group.label)
         .navigationBarTitleDisplayMode(.inline)
     }

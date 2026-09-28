@@ -3,6 +3,8 @@ import SwiftUI
 struct GroupRowView: View {
     let group: Group
     let memberDevices: [Device]
+    /// The source bridge, marked with its monogram before the member count.
+    var bridgeID: UUID? = nil
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
@@ -14,9 +16,14 @@ struct GroupRowView: View {
                     .fontWeight(.semibold)
                     .lineLimit(1)
 
-                Text(memberSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if let bridgeID {
+                        BridgeMonogram(bridgeID: bridgeID, size: DesignTokens.Size.bridgeMonogramCompact)
+                    }
+                    Text(memberSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
@@ -63,4 +70,5 @@ struct GroupRowView: View {
             )
         }
     }
+    .configuredTopScrollEdgeEffect()
 }

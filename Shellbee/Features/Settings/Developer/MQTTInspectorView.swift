@@ -107,21 +107,25 @@ private struct SubscribeView: View {
 
     var body: some View {
         List {
-            if store.filtered.isEmpty {
-                ContentUnavailableView {
-                    Label("No messages", systemImage: "dot.radiowaves.left.and.right")
-                } description: {
-                    Text(emptyDescription)
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            } else {
-                ForEach(store.filtered.reversed()) { msg in
-                    MessageRow(message: msg)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            SwiftUI.Group {
+                if store.filtered.isEmpty {
+                    ContentUnavailableView {
+                        Label("No messages", systemImage: "dot.radiowaves.left.and.right")
+                    } description: {
+                        Text(emptyDescription)
+                    }
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                } else {
+                    ForEach(store.filtered.reversed()) { msg in
+                        MessageRow(message: msg)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    }
                 }
             }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .listStyle(.plain)
         .searchable(text: $store.filter, prompt: "Filter topics")
         .autocorrectionDisabled()
@@ -244,56 +248,60 @@ private struct PublishView: View {
 
     var body: some View {
         Form {
-            Section {
-                TextField("e.g. zigbee2mqtt/Office Lamp/set", text: $topic)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.callout.monospaced())
-                    .focused($focusedField, equals: .topic)
-                    .submitLabel(.next)
-                    .onSubmit { focusedField = .payload }
-            } header: {
-                Text("Topic")
-            }
+            SwiftUI.Group {
+                Section {
+                    TextField("e.g. zigbee2mqtt/Office Lamp/set", text: $topic)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.callout.monospaced())
+                        .focused($focusedField, equals: .topic)
+                        .submitLabel(.next)
+                        .onSubmit { focusedField = .payload }
+                } header: {
+                    Text("Topic")
+                }
 
-            Section {
-                TextEditor(text: $payload)
-                    .frame(minHeight: 140)
-                    .font(.callout.monospaced())
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .focused($focusedField, equals: .payload)
-            } header: {
-                Text("Payload")
-            } footer: {
-                Text("JSON object, JSON literal, or raw string. Empty payload is allowed.")
-            }
+                Section {
+                    TextEditor(text: $payload)
+                        .frame(minHeight: 140)
+                        .font(.callout.monospaced())
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($focusedField, equals: .payload)
+                } header: {
+                    Text("Payload")
+                } footer: {
+                    Text("JSON object, JSON literal, or raw string. Empty payload is allowed.")
+                }
 
-            Section {
-                Button("Publish") {
-                    if topic.hasPrefix("bridge/request/") {
-                        showWarning = true
-                    } else {
-                        sendNow()
+                Section {
+                    Button("Publish") {
+                        if topic.hasPrefix("bridge/request/") {
+                            showWarning = true
+                        } else {
+                            sendNow()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .disabled(!isValid)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    .listRowBackground(Color.clear)
+                }
+
+                if let lastResult {
+                    Section {
+                        Label(lastResult, systemImage: "checkmark.circle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.green)
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .disabled(!isValid)
-                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                .listRowBackground(Color.clear)
             }
-
-            if let lastResult {
-                Section {
-                    Label(lastResult, systemImage: "checkmark.circle.fill")
-                        .font(.footnote)
-                        .foregroundStyle(.green)
-                }
-            }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -334,5 +342,6 @@ private struct PublishView: View {
 
 #Preview {
     NavigationStack { MQTTInspectorView() }
+    .configuredTopScrollEdgeEffect()
         .environment(AppEnvironment())
 }

@@ -4,6 +4,7 @@ import UIKit
 #endif
 
 struct DeviceListRow: View {
+
     let device: Device
     let state: [String: JSONValue]
     let isAvailable: Bool
@@ -38,6 +39,14 @@ struct DeviceListRow: View {
         device.definition?.supportsOTA == true
     }
 
+    private var transferPayload: DeviceTransferPayload {
+        DeviceTransferPayload(
+            device: device,
+            bridgeID: bridgeID,
+            bridgeName: bridgeName
+        )
+    }
+
     private var rejectionMessage: (text: String, icon: String)? {
         if !supportsOTA {
             return ("OTA not supported", "xmark.circle")
@@ -62,11 +71,6 @@ struct DeviceListRow: View {
 
     @ViewBuilder
     private var rowBody: some View {
-        // Multi-bridge attribution lives entirely on the trailing chevron via
-        // `.tint(BridgeColor.color(for:))` on the NavigationLink (see
-        // `rowContent`). The earlier leading color-bar variant was tested but
-        // read as decorative noise when most rows were from the same bridge —
-        // the chevron tint wins when only the outlier rows stand out.
         DeviceRowView(
             device: device,
             state: state,
@@ -85,12 +89,6 @@ struct DeviceListRow: View {
             // Phase 1: push a `DeviceRoute` that carries the device's source
             // bridge id alongside the device. The destination resolves the
             // right `BridgeScope` from the route.
-            //
-            // Multi-bridge attribution is handled at the row-background
-            // layer (`.listRowBackground` below) — `.tint()` on a
-            // NavigationLink does NOT propagate to the system disclosure
-            // chevron in iOS 17+, so we rely on a subtle leading-edge
-            // gradient on the row instead.
             NavigationLink(value: DeviceRoute(bridgeID: bridgeID, device: device)) { rowBody }
         } else if navigates {
             // Defensive: a nav-capable row with no bridgeID has nothing to
@@ -103,51 +101,58 @@ struct DeviceListRow: View {
 
     var body: some View {
         rowContent
-        // Multi-bridge attribution: a thin colored bar on the cell's leading
-        // edge, full row height. Visibility honors the Bridge Indicator
-        // setting (Settings → Application → General → Appearance).
-        .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
+        .draggable(transferPayload) {
+            DeviceTransferPreview(
+                device: device,
+                isAvailable: effectiveTransferAvailability,
+                otaStatus: otaStatus
+            )
+        }
+        .accessibilityAction(named: "Copy Device Information") {
+            UIPasteboard.general.string = transferPayload.plainText
+        }
+        .accessibilityAction(named: "Add to Favorites", addToFavorites)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if otaStatus?.phase == .scheduled, let onUnschedule {
                 Button(action: onUnschedule) {
                     Label("Cancel", systemImage: "xmark.circle")
                 }
-                .tint(.orange)
+                .shellbeeSwipeTint(.orange)
             } else if let rejection = rejectionMessage {
                 Button(action: rejectSwipe) {
                     Label(rejection.text, systemImage: rejection.icon)
                 }
-                .tint(.gray)
+                .shellbeeSwipeTint(.gray)
             } else {
                 Button(action: onCheckUpdate) {
                     Label("Check", systemImage: "arrow.triangle.2.circlepath")
                 }
-                .tint(.blue)
+                .tint(.accentColor)
                 if isBatteryPowered {
                     if let onSchedule {
                         Button(action: onSchedule) {
                             Label("Schedule", systemImage: "calendar.badge.clock")
                         }
-                        .tint(.indigo)
+                        .shellbeeSwipeTint(.indigo)
                     }
                     if let onUpdate {
                         Button(action: onUpdate) {
                             Label("Update", systemImage: "arrow.up.circle")
                         }
-                        .tint(.green)
+                        .shellbeeSwipeTint(.green)
                     }
                 } else {
                     if let onUpdate {
                         Button(action: onUpdate) {
                             Label("Update", systemImage: "arrow.up.circle")
                         }
-                        .tint(.green)
+                        .shellbeeSwipeTint(.green)
                     }
                     if let onSchedule {
                         Button(action: onSchedule) {
                             Label("Schedule", systemImage: "calendar.badge.clock")
                         }
-                        .tint(.indigo)
+                        .shellbeeSwipeTint(.indigo)
                     }
                 }
             }
@@ -161,29 +166,38 @@ struct DeviceListRow: View {
             Button(action: { if !isDeleting { onRemove() } }) {
                 Label("Delete", systemImage: "trash")
             }
-            .tint(.red)
+            .shellbeeSwipeTint(.red)
             Button(action: onRename) {
                 Label("Rename", systemImage: "pencil")
             }
-            .tint(.orange)
+            .shellbeeSwipeTint(.orange)
             Button(action: onReconfigure) {
                 Label("Config", systemImage: "gearshape")
             }
-            .tint(.gray)
+            .shellbeeSwipeTint(.gray)
             Button(action: onInterview) {
                 Label("Interview", systemImage: "questionmark.circle")
             }
-            .tint(.purple)
+            .shellbeeSwipeTint(.purple)
             if device.supportsIdentify {
                 Button(action: onIdentify) {
                     Label(isIdentifying ? "Identifying" : "Identify",
                           systemImage: isIdentifying ? "wave.3.right" : "wave.3.right.circle")
                 }
-                .tint(.teal)
+                .shellbeeSwipeTint(.teal)
                 .disabled(isIdentifying)
             }
         }
         .contextMenu {
+            Button {
+                UIPasteboard.general.string = transferPayload.plainText
+            } label: {
+                Label("Copy Device Information", systemImage: "doc.on.doc")
+            }
+            Button(action: addToFavorites) {
+                Label("Add to Favorites", systemImage: "star")
+            }
+            Divider()
             if device.supportsIdentify {
                 Button(action: onIdentify) {
                     Label("Identify", systemImage: "wave.3.right.circle")
@@ -246,6 +260,15 @@ struct DeviceListRow: View {
         }
     }
 
+    private var effectiveTransferAvailability: Bool {
+        isDeleting ? false : isAvailable
+    }
+
+    private func addToFavorites() {
+        if DeviceFavoritesStore().add(transferPayload) {
+            Haptics.impact(.light)
+        }
+    }
 }
 
 #Preview {
@@ -268,4 +291,5 @@ struct DeviceListRow: View {
             )
         }
     }
+    .configuredTopScrollEdgeEffect()
 }

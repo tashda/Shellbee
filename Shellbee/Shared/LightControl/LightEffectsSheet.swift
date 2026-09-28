@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct LightEffectsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
     let feature: LightAdvancedFeature
     let onChange: (JSONValue) -> Void
 
@@ -16,29 +14,27 @@ struct LightEffectsSheet: View {
     var body: some View {
         NavigationStack {
             List(values, id: \.self) { effect in
-                Button {
-                    onChange(.string(effect))
-                    dismiss()
-                } label: {
-                    HStack {
-                        Text(effect.replacingOccurrences(of: "_", with: " ").capitalized)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        if currentValue == effect {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.tint)
+                SwiftUI.Group {
+                    Button {
+                        onChange(.string(effect))
+                    } label: {
+                        HStack {
+                            Text(effect.replacingOccurrences(of: "_", with: " ").capitalized)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            SelectionIndicator(isSelected: currentValue == effect)
                         }
                     }
+                    .buttonStyle(.plain)
                 }
+                .shellbeeThemedRows()
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Effects")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }

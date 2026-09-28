@@ -40,6 +40,32 @@ enum DocDeviceType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// One device of this type, for a Type stat ("Light").
+    var singularTitle: String {
+        switch self {
+        case .light: "Light"
+        case .switch_: "Switch"
+        case .sensor: "Sensor"
+        case .thermostat: "Thermostat"
+        case .cover: "Cover"
+        case .remote: "Remote"
+        case .energy: "Meter"
+        }
+    }
+
+    /// A browse tile or list title ("Lights").
+    var pluralTitle: String {
+        switch self {
+        case .light: "Lights"
+        case .switch_: "Switches and plugs"
+        case .sensor: "Sensors"
+        case .thermostat: "Thermostats"
+        case .cover: "Covers"
+        case .remote: "Remotes"
+        case .energy: "Energy meters"
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .light:      "lightbulb.fill"
@@ -59,18 +85,20 @@ actor DocBrowserIndex {
     static let shared = DocBrowserIndex()
 
     private nonisolated let log = Logger(subsystem: "dev.echodb.shellbee", category: "DocBrowserIndex")
-    private var entries: [DocBrowserEntry]?
-    private var loaded = false
+    /// One shared load, so callers that arrive while the index is still
+    /// decoding wait for it instead of getting an empty list.
+    private var loadTask: Task<[DocBrowserEntry], Never>?
 
     private init() {}
 
     func allEntries() async -> [DocBrowserEntry] {
-        if !loaded { await load() }
-        return entries ?? []
+        if let loadTask { return await loadTask.value }
+        let task = Task { await Self.load(log: log) }
+        loadTask = task
+        return await task.value
     }
 
-    private func load() async {
-        loaded = true
+    private static func load(log: Logger) async -> [DocBrowserEntry] {
         let result: [DocBrowserEntry]? = await Task.detached(priority: .userInitiated) {
             guard
                 let url        = Bundle.main.url(forResource: "device_index", withExtension: "lzfse"),
@@ -81,11 +109,11 @@ actor DocBrowserIndex {
             return list
         }.value
 
-        entries = result
-        if let entries {
-            log.info("Device index loaded: \(entries.count) entries")
+        if let result {
+            log.info("Device index loaded: \(result.count) entries")
         } else {
             log.warning("Device index unavailable")
         }
+        return result ?? []
     }
 }

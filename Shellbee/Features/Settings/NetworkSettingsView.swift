@@ -17,6 +17,10 @@ struct NetworkSettingsView: View {
         return scope.bridgeInfo?.network?.channel ?? adv?.channel ?? 11
     }
 
+    private var currentPanID: Int? {
+        scope.bridgeInfo?.network?.panID ?? scope.bridgeInfo?.config?.advanced?.panId
+    }
+
     private var hasChanges: Bool {
         let adv = scope.bridgeInfo?.config?.advanced
         return transmitPower != optionalIntString(adv?.transmitPower)
@@ -26,24 +30,31 @@ struct NetworkSettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                LabeledContent("Zigbee Channel", value: "\(currentChannel)")
-            } header: {
-                Text("RF Channel")
-            } footer: {
-                Text("To change the Zigbee channel, use the Zigbee2MQTT web interface. Changing it causes all paired devices to lose connection and require re-pairing.")
-            }
+            SwiftUI.Group {
+                Section {
+                    LabeledContent("Zigbee Channel", value: "\(currentChannel)")
+                    if let panID = currentPanID {
+                        CopyableRow(label: "PAN ID", value: "\(panID)")
+                    }
+                } header: {
+                    Text("Network Identifiers")
+                } footer: {
+                    Text("To change the channel or PAN ID, use the Zigbee2MQTT web interface. Changing either causes all paired devices to lose connection and require re-pairing.")
+                }
 
-            Section {
-                numericField("Transmit Power", text: $transmitPower, placeholder: "Default", unit: "dBm")
-                numericField("Concurrency", text: $adapterConcurrent, placeholder: "Default", unit: "threads")
-                numericField("Message Delay", text: $adapterDelay, placeholder: "Default", unit: "ms")
-            } header: {
-                Text("Adapter Tuning")
-            } footer: {
-                Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrency and message delay affect how fast commands are sent to the adapter.")
+                Section {
+                    numericField("Transmit Power", text: $transmitPower, placeholder: "Default", unit: "dBm")
+                    numericField("Concurrency", text: $adapterConcurrent, placeholder: "Default", unit: "threads")
+                    numericField("Message Delay", text: $adapterDelay, placeholder: "Default", unit: "ms")
+                } header: {
+                    Text("Adapter Tuning")
+                } footer: {
+                    Text("Leave blank to use bridge defaults. Transmit power affects range. Concurrency and message delay affect how fast commands are sent to the adapter.")
+                }
             }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Network & Hardware")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -98,4 +109,5 @@ struct NetworkSettingsView: View {
     NavigationStack {
         NetworkSettingsView(bridgeID: UUID()).environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

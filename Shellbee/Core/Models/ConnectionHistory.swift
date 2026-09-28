@@ -14,12 +14,21 @@ final class ConnectionHistory {
     private let defaultIDKey = "savedBridges.defaultID"
     private let autoConnectKey = "savedBridges.autoConnectIDs"
     private let migrationDoneKey = "savedBridges.autoConnectMigrationDone"
+    private static let savedBridgeCountKey = "savedBridges.count"
+
+    /// How many bridges are saved, readable without loading the history.
+    /// Surfaces outside the view tree (Live Activities) use it to name the
+    /// bridge only when there's more than one to tell apart.
+    static var savedBridgeCount: Int {
+        UserDefaults.standard.integer(forKey: savedBridgeCountKey)
+    }
 
     init() {
         load()
     }
 
     func load() {
+        defer { UserDefaults.standard.set(connections.count, forKey: Self.savedBridgeCountKey) }
         if let raw = UserDefaults.standard.string(forKey: defaultIDKey) {
             defaultBridgeID = UUID(uuidString: raw)
         }
@@ -47,6 +56,7 @@ final class ConnectionHistory {
     }
 
     func save() {
+        UserDefaults.standard.set(connections.count, forKey: Self.savedBridgeCountKey)
         let snapshots = connections.map(\.persistedSnapshot)
         guard let data = try? JSONEncoder().encode(snapshots) else { return }
         UserDefaults.standard.set(data, forKey: key)

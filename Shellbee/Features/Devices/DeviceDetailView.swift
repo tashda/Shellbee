@@ -6,6 +6,8 @@ private enum DeviceMenuDestination: Hashable {
 
 struct DeviceDetailView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.sceneNavigation) private var sceneNavigation
+    @AppStorage(ActivityCenterSettings.isEnabledStorageKey) private var isActivityCenterEnabled = true
     /// Phase 1 multi-bridge: the bridge that owns this device. Pushed as part
     /// of `DeviceRoute` from the list/notification layer so detail reads
     /// land on the correct store regardless of which bridge has focus.
@@ -16,6 +18,8 @@ struct DeviceDetailView: View {
     @State private var pendingDeviceAlert: PendingDeviceAlert?
     @State private var showRemoveSheet = false
     @State private var showRenameSheet = false
+    /// The hero shows the name; the navigation title appears once it scrolls away.
+    @State private var isNameHidden = false
 
     private var scope: BridgeScope { environment.scope(for: bridgeID) }
 
@@ -26,62 +30,69 @@ struct DeviceDetailView: View {
         let otaStatus = scope.store.otaStatus(for: device.friendlyName)
 
         List {
-            DeviceCard(
-                device: device,
-                state: state,
-                isAvailable: isAvailable,
-                otaStatus: otaStatus,
-                bridgeID: bridgeID,
-                bridgeName: environment.registry.session(for: bridgeID)?.displayName,
-                lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
-                onRenameTapped: { showRenameSheet = true }
-            )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            SwiftUI.Group {
+                DeviceCard(
+                    device: device,
+                    state: state,
+                    isAvailable: isAvailable,
+                    otaStatus: otaStatus,
+                    bridgeID: bridgeID,
+                    bridgeName: environment.attributionBridgeName(for: bridgeID),
+                    lastSeenEnabled: (scope.store.bridgeInfo?.config?.advanced?.lastSeen ?? "disable") != "disable",
+                    onRenameTapped: { showRenameSheet = true },
+                    onNameHiddenChange: { isNameHidden = $0 }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
-            heroAndSettingsSections(for: device, state: state)
+                heroAndSettingsSections(for: device, state: state)
 
-            if device.definition != nil {
-                Section("Documentation") {
-                    NavigationLink {
-                        DeviceDocView(bridgeID: bridgeID, device: device)
-                    } label: {
-                        Label("Device Documentation", systemImage: "doc.text")
+                if device.definition != nil {
+                    Section("Documentation") {
+                        NavigationLink {
+                            DeviceDocView(bridgeID: bridgeID, device: device)
+                        } label: {
+                            Label("Device Documentation", systemImage: "doc.text")
+                        }
+                        Button {
+                            showPairingSheet = true
+                        } label: {
+                            Label("How to Pair", systemImage: "personalhotspot")
+                        }
                     }
-                    Button {
-                        showPairingSheet = true
-                    } label: {
-                        Label("How to Pair", systemImage: "personalhotspot")
+                }
+
+                Section("Device Info") {
+                    if let model = device.definition?.model {
+                        CopyableRow(label: "Model", value: model)
+                    }
+                    CopyableRow(label: "Zigbee Model", value: device.modelId ?? "Unknown")
+                    CopyableRow(label: "IEEE Address", value: device.ieeeAddress)
+                    CopyableRow(label: "Network Address", value: "\(device.networkAddress)")
+                    CopyableRow(label: "MQTT Topic", value: "zigbee2mqtt/\(device.friendlyName)")
+                    if let fw = device.softwareBuildId {
+                        CopyableRow(label: "Firmware", value: fw)
                     }
                 }
-            }
 
-            Section("Device Info") {
-                CopyableRow(label: "Zigbee Model", value: device.modelId ?? "Unknown")
-                CopyableRow(label: "IEEE Address", value: device.ieeeAddress)
-                CopyableRow(label: "Network Address", value: "\(device.networkAddress)")
-                CopyableRow(label: "MQTT Topic", value: "zigbee2mqtt/\(device.friendlyName)")
-                if let fw = device.softwareBuildId {
-                    CopyableRow(label: "Firmware", value: fw)
-                }
+                logsSection
             }
-
-            if let description = device.definition?.description, !description.isEmpty {
-                Section("About") {
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            logsSection
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(DesignTokens.Spacing.lg)
         .toolbarBackground(.automatic, for: .navigationBar)
-        .navigationTitle(device.friendlyName)
+        .navigationTitle(isNameHidden ? device.friendlyName : "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                OpenInNewWindowButton(destination: .device(
+                    bridgeID: bridgeID,
+                    ieeeAddress: device.ieeeAddress
+                ))
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 deviceConfigMenu(for: device)
             }
@@ -147,11 +158,12 @@ struct DeviceDetailView: View {
         case .fan:
             if let ctx = FanControlContext(device: device, state: state) {
                 Section {
-                    FanControlCard(context: ctx, mode: .interactive, onSend: send, rendersSectionsInline: false)
+                    FanControlCard(context: ctx, mode: .interactive, onSend: send)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                 }
-                FanFeatureSections(context: ctx, mode: .interactive, onSend: send)
+                FanReadingsSections(context: ctx)
+                FanFeatureSections(context: ctx, onSend: send)
             } else {
                 genericExposeSection(device: device, state: state, send: send)
             }
@@ -218,6 +230,19 @@ struct DeviceDetailView: View {
                 genericExposeSection(device: device, state: state, send: send)
             }
 
+        case .remote:
+            RemoteSections(device: device, state: state)
+            DeviceSettingsSections(device: device, state: state,
+                                   claimedProperties: RemoteSections.claimedProperties,
+                                   onSend: send)
+
+        case .sensor where SensorSections.hasReadings(device: device, state: state):
+            SensorSections(device: device, state: state)
+            // Writable config beside the readings (issue #135).
+            DeviceSettingsSections(device: device, state: state,
+                                   claimedProperties: SensorSections.readingProperties(device: device, state: state),
+                                   onSend: send)
+
         default:
             genericExposeSection(device: device, state: state, send: send)
         }
@@ -225,40 +250,47 @@ struct DeviceDetailView: View {
 
     @ViewBuilder
     private func genericExposeSection(device: Device, state: [String: JSONValue], send: @escaping (JSONValue) -> Void) -> some View {
-        Section {
-            ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
+        let hasPrimaryCard = ExposeCardView.hasPrimaryCard(device: device, state: state)
+        if hasPrimaryCard {
+            Section {
+                ExposeCardView(device: device, state: state, mode: .interactive, onSend: send)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
         }
+        // Everything the card doesn't show, so no setting is ever hidden.
+        DeviceSettingsSections(
+            device: device,
+            state: state,
+            claimedProperties: hasPrimaryCard ? ExposeCardView.claimedProperties(device: device, state: state) : [],
+            onSend: send
+        )
     }
-
-    private static let recentLogLimit = 5
 
     @ViewBuilder
     private var logsSection: some View {
-        let deviceEntries = scope.store.logEntries.filter { $0.deviceName == device.friendlyName }
-        let recent = Array(deviceEntries.prefix(Self.recentLogLimit))
+        ActivitySubjectLogsSection(
+            bridgeID: bridgeID,
+            subjectName: device.friendlyName,
+            subjectLabel: "device",
+            showsSignalChanges: true,
+            onSeeAll: { openAllLogs(for: device) }
+        ) {
+            DeviceLogsView(bridgeID: bridgeID, device: device)
+        }
+    }
 
-        Section("Logs") {
-            if deviceEntries.isEmpty {
-                Text("No logs for this device yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(recent) { entry in
-                    NavigationLink {
-                        LogDetailView(bridgeID: bridgeID, entry: entry)
-                    } label: {
-                        LogRowView(entry: entry, store: scope.store, bridgeID: bridgeID)
-                    }
-                    .listRowBackground(BridgeRowLeadingBar(bridgeID: bridgeID))
-                }
-                NavigationLink {
-                    DeviceLogsView(bridgeID: bridgeID, device: device)
-                } label: {
-                    Label("See All Logs", systemImage: "list.bullet")
-                }
+    private func openAllLogs(for device: Device) {
+        let filter = ActivityLogFilter(bridgeID: bridgeID, deviceName: device.friendlyName)
+        if isActivityCenterEnabled || AdaptiveLayout.isPad {
+            sceneNavigation.pendingActivityLogFilter = filter
+            sceneNavigation.selectedTab = .logs
+            if !AdaptiveLayout.isPad {
+                sceneNavigation.isActivityCenterPresented = true
             }
+        } else {
+            sceneNavigation.pendingSettingsLogFilter = filter
+            sceneNavigation.selectedTab = .settings
         }
     }
 
@@ -410,4 +442,5 @@ struct DeviceDetailView: View {
         DeviceDetailView(bridgeID: UUID(), device: .preview)
             .environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

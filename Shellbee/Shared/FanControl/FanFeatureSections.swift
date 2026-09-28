@@ -6,44 +6,17 @@ import SwiftUI
 /// `FanControlCard` (with `rendersSectionsInline: false`).
 struct FanFeatureSections: View {
     let context: FanControlContext
-    let mode: CardDisplayMode
     let onSend: (JSONValue) -> Void
 
-    private let filterProps: Set<String> = ["replace_filter", "filter_age", "device_age"]
-
+    /// Air readings and filter health have their own sections.
     private var eligibleExtras: [Expose] {
-        let claimed: Set<String> = Set(["pm25", "air_quality"]).union(filterProps)
-        return context.extras.filter { e in
+        context.extras.filter { e in
             guard let prop = e.property else { return false }
-            return !claimed.contains(prop)
+            return !FanAirReadings.claimedProperties.contains(prop)
         }
     }
-
-    private var sections: [LayoutSection] { FeatureLayout.sections(from: eligibleExtras) }
 
     var body: some View {
-        ForEach(sections) { section in
-            Section(section.title) {
-                ForEach(section.items, id: \.id) { item in
-                    rowFor(item)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func rowFor(_ item: LayoutItem) -> some View {
-        switch item {
-        case .row(let expose):
-            SettingsFormRow(expose: expose, state: context.state, mode: mode, onSend: onSend)
-        case .indexedGroup(let group):
-            NavigationLink {
-                FeatureGroupDetailView(group: group, state: context.state, mode: mode, onSend: onSend)
-            } label: {
-                LabeledContent(group.label) {
-                    Text("\(group.members.count)")
-                }
-            }
-        }
+        FeatureSectionsList(exposes: eligibleExtras, state: context.state, onSend: onSend)
     }
 }

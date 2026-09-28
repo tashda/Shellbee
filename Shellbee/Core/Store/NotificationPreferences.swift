@@ -4,10 +4,15 @@ import Foundation
 final class NotificationPreferences {
     private static let enabledKey = "notificationPreferences.enabledCategories"
     private static let overrideKey = "notificationPreferences.followLogLevelOverride"
+    private static let mutedBridgesKey = "notificationPreferences.mutedBridgeIDs"
 
     // Nil means "follow Z2M bridge log level"; non-nil pins preferences at
     // a fixed baseline regardless of bridge log level.
     var pinnedBaseline: NotificationCategory.DefaultLevel?
+
+    /// Bridges the user has silenced. Notifications from a muted bridge are
+    /// dropped before category filtering — disconnecting is unaffected.
+    private(set) var mutedBridgeIDs: Set<UUID> = []
 
     private var customEnabled: Set<NotificationCategory>?
 
@@ -20,6 +25,32 @@ final class NotificationPreferences {
            let decoded = try? JSONDecoder().decode(Set<NotificationCategory>.self, from: data) {
             customEnabled = decoded
         }
+        if let data = UserDefaults.standard.data(forKey: Self.mutedBridgesKey),
+           let decoded = try? JSONDecoder().decode(Set<UUID>.self, from: data) {
+            mutedBridgeIDs = decoded
+        }
+    }
+
+    func isMuted(bridgeID: UUID) -> Bool {
+        mutedBridgeIDs.contains(bridgeID)
+    }
+
+    func setMuted(_ muted: Bool, bridgeID: UUID) {
+        if muted {
+            mutedBridgeIDs.insert(bridgeID)
+        } else {
+            mutedBridgeIDs.remove(bridgeID)
+        }
+        if let data = try? JSONEncoder().encode(mutedBridgeIDs) {
+            UserDefaults.standard.set(data, forKey: Self.mutedBridgesKey)
+        }
+    }
+
+    /// Drop a bridge's mute entry. Called when the bridge is removed from
+    /// saved history so stale ids don't accumulate.
+    func forgetBridge(_ bridgeID: UUID) {
+        guard mutedBridgeIDs.contains(bridgeID) else { return }
+        setMuted(false, bridgeID: bridgeID)
     }
 
     /// True when the user has opted in/out manually. Used to decide whether

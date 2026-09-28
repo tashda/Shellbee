@@ -39,12 +39,12 @@ struct BindingRow: View {
         if binding.targetType == "group" {
             ZStack {
                 RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.summaryRowSymbolBackground)
-                    .fill(Color.blue.opacity(DesignTokens.Opacity.chipFill))
+                    .fill(.themedStatus(.blue).opacity(DesignTokens.Opacity.chipFill))
                     .frame(width: DesignTokens.Size.summaryRowSymbolFrame,
                            height: DesignTokens.Size.summaryRowSymbolFrame)
                 Image(systemName: "rectangle.3.group.fill")
                     .font(.system(size: DesignTokens.Size.chipSymbol + 2, weight: .semibold))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.themedStatus(.blue))
             }
         } else if let device = targetDevice {
             DeviceImageView(

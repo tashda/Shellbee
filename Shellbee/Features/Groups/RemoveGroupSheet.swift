@@ -17,28 +17,32 @@ struct RemoveGroupSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    HStack(spacing: DesignTokens.Spacing.md) {
-                        GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceActionSheetImage)
-                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                            Text(group.friendlyName)
-                                .font(.headline)
-                            Text("\(group.members.count) member\(group.members.count == 1 ? "" : "s")")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                SwiftUI.Group {
+                    Section {
+                        HStack(spacing: DesignTokens.Spacing.md) {
+                            GroupIconView(memberDevices: memberDevices, size: DesignTokens.Size.deviceActionSheetImage)
+                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                                Text(group.friendlyName)
+                                    .font(.headline)
+                                Text("\(group.members.count) member\(group.members.count == 1 ? "" : "s")")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    Section {
+                        Toggle("Force Remove", isOn: $forceRemove)
+                    } footer: {
+                        if forceRemove {
+                            Text("Force remove deletes the group even if the bridge cannot reach all members.")
+                                .foregroundStyle(.themedStatus(.orange))
                         }
                     }
                 }
-
-                Section {
-                    Toggle("Force Remove", isOn: $forceRemove)
-                } footer: {
-                    if forceRemove {
-                        Text("Force remove deletes the group even if the bridge cannot reach all members.")
-                            .foregroundStyle(.orange)
-                    }
-                }
+                .shellbeeThemedRows()
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Remove Group")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
@@ -46,14 +50,13 @@ struct RemoveGroupSheet: View {
                     onConfirm(forceRemove)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.sheetAction)
                 .padding(.horizontal, DesignTokens.Spacing.lg)
                 .padding(.vertical, DesignTokens.Spacing.md)
+                .shellbeeThemedBar()
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }

@@ -27,6 +27,16 @@ struct HomeStatsSnapshot: Sendable {
         )
     }
 
+    static func vendorCounts(for devices: [Device]) -> [HomeStatsCount] {
+        let labels = devices.filter { $0.type != .coordinator }.map(vendorLabel)
+        var countsByTitle: [String: Int] = [:]
+        for label in labels { countsByTitle[label, default: 0] += 1 }
+
+        return countsByTitle
+            .map { HomeStatsCount(title: $0.key, count: $0.value) }
+            .sorted(by: sortCounts)
+    }
+
     private enum Limits {
         static let deviceTypes = 4
         static let powerSources = 4

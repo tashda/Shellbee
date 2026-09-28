@@ -22,7 +22,7 @@ struct PendingCrashSheet: View {
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(DesignTokens.Spacing.md)
-                                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))
+                                .background(.shellbeeSurface, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm))
                         } label: {
                             Text("Show report")
                                 .font(.subheadline.weight(.semibold))
@@ -67,9 +67,11 @@ struct PendingCrashSheet: View {
                 }
                 .padding(DesignTokens.Spacing.lg)
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Shellbee crashed")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium, .large])
     }
 

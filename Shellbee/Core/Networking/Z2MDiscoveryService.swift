@@ -37,8 +37,8 @@ final class Z2MDiscoveryService {
         scanTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             await Self.scan { endpoint in
-                Task { @MainActor [weak self] in
-                    self?.discoveredEndpoints.insert(endpoint)
+                Task { @MainActor in
+                    self.discoveredEndpoints.insert(endpoint)
                 }
             }
             await MainActor.run { self.isScanning = false }

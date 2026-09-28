@@ -7,11 +7,7 @@ struct DeviceRowView: View {
     let otaStatus: OTAUpdateStatus?
     var checkResult: AppStore.DeviceCheckResult? = nil
     var isDeleting: Bool = false
-    /// Phase 2 multi-bridge: source-bridge tag. Surfaces as a thin leading
-    /// bar drawn by `BridgeRowLeadingBar` via `DeviceListRow.listRowBackground`
-    /// — uniform across Devices, Groups, and Logs. The fields are kept here
-    /// for callers that pass them, but the row body itself doesn't render any
-    /// per-row bridge chrome.
+    /// The source bridge, marked with its monogram before the vendor.
     var bridgeID: UUID? = nil
     var bridgeName: String = ""
 
@@ -30,11 +26,17 @@ struct DeviceRowView: View {
             )
 
             VStack(alignment: .leading, spacing: 0) {
-                if let vendor = device.definition?.vendor {
-                    Text(vendor.uppercased())
-                        .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary.opacity(DesignTokens.Opacity.secondaryText))
-                        .lineLimit(1)
+                HStack(spacing: DesignTokens.Spacing.xs) {
+                    if let bridgeID {
+                        BridgeMonogram(bridgeID: bridgeID, bridgeName: bridgeName,
+                                       size: DesignTokens.Size.bridgeMonogramCompact)
+                    }
+                    if let vendor = device.definition?.vendor {
+                        Text(vendor.uppercased())
+                            .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
+                            .foregroundStyle(.secondary.opacity(DesignTokens.Opacity.secondaryText))
+                            .lineLimit(1)
+                    }
                 }
 
                 Text(device.friendlyName)
@@ -58,7 +60,7 @@ struct DeviceRowView: View {
         if isDeleting {
             Label("Deleting", systemImage: "trash")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.red)
+                .foregroundStyle(.themedStatus(.red))
                 .labelStyle(.titleAndIcon)
         } else if isInterviewing {
             Label("Interviewing", systemImage: "waveform.path.ecg")
@@ -68,7 +70,7 @@ struct DeviceRowView: View {
         } else if let otaStatus, otaStatus.isActive {
             Text(otaPhaseLabel(otaStatus))
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.blue)
+                .foregroundStyle(.themedStatus(.blue))
         } else if let checkResult {
             checkResultLabel(checkResult)
         } else if !device.availabilityTrackingEnabled {
@@ -79,19 +81,19 @@ struct DeviceRowView: View {
         } else if !isAvailable {
             Text("Offline")
                 .font(.caption.weight(.medium))
-                .foregroundStyle(.red)
+                .foregroundStyle(.themedStatus(.red))
         } else {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 if let battery = state.battery {
                     Image(systemName: battery.batterySymbol)
-                        .foregroundStyle(battery.batteryColor)
+                        .foregroundStyle(.status(battery.batteryTone))
                 }
                 if let lqi = state.linkQuality {
                     HStack(spacing: DesignTokens.Spacing.summaryRowTextSpacing) {
                         Image(systemName: lqi.lqiSymbol)
                         Text("\(lqi)")
                     }
-                    .foregroundStyle(lqi.lqiColor)
+                    .foregroundStyle(lqi.lqiTone.map { AnyShapeStyle(.status($0)) } ?? AnyShapeStyle(.secondary))
                 }
             }
             .font(.caption.weight(.medium))
@@ -110,12 +112,12 @@ struct DeviceRowView: View {
         case .updateFound:
             Label("Update found", systemImage: "arrow.up.circle.fill")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.blue)
+                .foregroundStyle(.themedStatus(.blue))
                 .labelStyle(.titleAndIcon)
         case .failed:
             Label("Error", systemImage: "exclamationmark.triangle.fill")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(.themedStatus(.orange))
                 .labelStyle(.titleAndIcon)
         }
     }

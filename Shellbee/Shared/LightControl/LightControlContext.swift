@@ -10,7 +10,7 @@ struct LightControlContext: Equatable, Identifiable {
 
     let power: Feature?
     let brightness: Feature?
-    let colorTemperature: Feature?
+    private(set) var colorTemperature: Feature?
     let color: Feature?
     let advancedFeatures: [LightAdvancedFeature]
     let isOn: Bool
@@ -34,6 +34,40 @@ struct LightControlContext: Equatable, Identifiable {
     var id: String { power?.property ?? brightness?.property ?? endpointLabel ?? "light" }
 
     var supportsWhiteControls: Bool { colorTemperature != nil }
+
+    /// z2m's own range when a definition doesn't give a usable one.
+    static let defaultColorTemperatureRange: ClosedRange<Double> = 150...500
+
+    /// The colour temperatures, in mireds, this light can reach. z2m reports
+    /// them per device; a few definitions report a placeholder such as
+    /// 0–1000 (1000 K to infinity), and those fall back to z2m's default.
+    var colorTemperatureRange: ClosedRange<Double> {
+        Self.plausibleColorTemperatureRange(colorTemperature?.range)
+    }
+
+    static func plausibleColorTemperatureRange(_ range: ClosedRange<Double>?) -> ClosedRange<Double> {
+        guard let range, range.lowerBound >= 100, range.upperBound <= 1000,
+              range.upperBound > range.lowerBound else { return defaultColorTemperatureRange }
+        return range
+    }
+
+    /// The same light limited to the colour temperatures every member of a
+    /// group can reach, so the slider never asks one bulb for more than it has.
+    func limitingColorTemperature(toMembers members: [LightControlContext]) -> LightControlContext {
+        let ranges = members.filter(\.supportsWhiteControls).map(\.colorTemperatureRange)
+        guard let colorTemperature, !ranges.isEmpty else { return self }
+        let lower = ranges.map(\.lowerBound).max()!
+        let upper = ranges.map(\.upperBound).min()!
+        guard upper > lower else { return self }
+        var limited = self
+        limited.colorTemperature = Feature(
+            property: colorTemperature.property,
+            isWritable: colorTemperature.isWritable,
+            range: lower...upper,
+            step: colorTemperature.step
+        )
+        return limited
+    }
     var supportsColorControls: Bool { color != nil }
     var hasAdvancedFeatures: Bool { !advancedFeatures.isEmpty }
 
@@ -159,7 +193,9 @@ struct LightControlContext: Equatable, Identifiable {
 
     func colorTemperaturePayload(_ value: Double) -> JSONValue? {
         guard let colorTemperature, colorTemperature.isWritable else { return nil }
-        return .object([colorTemperature.property: .int(Int(value.rounded()))])
+        let range = colorTemperatureRange
+        let clamped = min(max(value, range.lowerBound), range.upperBound)
+        return .object([colorTemperature.property: .int(Int(clamped.rounded()))])
     }
 
     func colorPayload(hex: String) -> JSONValue? {
@@ -280,7 +316,8 @@ struct LightControlContext: Equatable, Identifiable {
                 payloadPath: payloadPath,
                 label: label,
                 kind: .numeric(range: range(for: expose), step: expose.valueStep),
-                value: currentValue
+                value: currentValue,
+                presets: expose.presets ?? []
             )
         default:
             return nil

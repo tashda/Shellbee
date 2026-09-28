@@ -3,6 +3,13 @@ import SwiftUI
 struct BridgeLogView: View {
     @Environment(AppEnvironment.self) private var environment
     let viewModel: BridgeLogViewModel
+    let selection: Binding<LogsPaneRoute?>?
+    @State private var liveFeed = LiveFeedState<BridgeBoundLogEntry>()
+
+    init(viewModel: BridgeLogViewModel, selection: Binding<LogsPaneRoute?>? = nil) {
+        self.viewModel = viewModel
+        self.selection = selection
+    }
 
     private var connectedSessions: [BridgeSession] {
         environment.registry.orderedSessions.filter(\.isConnected)
@@ -38,40 +45,103 @@ struct BridgeLogView: View {
     }
 
     var body: some View {
-        let entries = mergedEntries
-        List {
-            ForEach(entries) { item in
-                NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
-                    BridgeLogRowView(entry: item.entry)
+        let liveEntries = mergedEntries
+        let entries = liveFeed.displayedItems(from: liveEntries)
+        ScrollViewReader { proxy in
+            ZStack {
+                selectableList {
+                    ForEach(entries) { item in
+                        bridgeLogRow(item)
+                            .id(item.id)
+                            .listRowInsets(EdgeInsets(
+                                top: DesignTokens.Spacing.bridgeLogRowVerticalInset,
+                                leading: DesignTokens.Spacing.bridgeLogRowHorizontalInset,
+                                bottom: DesignTokens.Spacing.bridgeLogRowVerticalInset,
+                                trailing: DesignTokens.Spacing.bridgeLogRowHorizontalInset
+                            ))
+                    }
                 }
-                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                .listRowBackground(BridgeRowLeadingBar(bridgeID: item.bridgeID))
+                .listStyle(.plain)
+                .overlay {
+                    if displayedSessions.isEmpty || !hasAnyRawEntries {
+                        ContentUnavailableView(
+                            "No Log Entries",
+                            systemImage: "terminal",
+                            description: Text("Raw zigbee2mqtt log lines will appear here in real time.")
+                        )
+                    } else if entries.isEmpty {
+                        ContentUnavailableView.search(text: viewModel.searchText)
+                    }
+                }
+
+            }
+            .toolbar {
+                if liveFeed.isReadingHistory {
+                    TrailingToolbarGroupSpacer()
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        FollowLiveButton {
+                            withAnimation(.smooth) {
+                                liveFeed.followLive()
+                                if let first = liveEntries.first {
+                                    proxy.scrollTo(first.id, anchor: .top)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .simultaneousGesture(DragGesture(minimumDistance: DesignTokens.Spacing.xs).onChanged { _ in
+                liveFeed.beginReadingHistory(with: liveEntries)
+            })
+        }
+    }
+
+    @ViewBuilder
+    private func bridgeLogRow(_ item: BridgeBoundLogEntry) -> some View {
+        if selection != nil {
+            NavigationLink(value: LogsPaneRoute.bridge(LogRoute(bridgeID: item.bridgeID, entry: item.entry))) {
+                BridgeLogRowView(entry: item.entry, bridgeID: item.bridgeID)
+            }
+        } else {
+            NavigationLink(destination: BridgeLogDetailView(entry: item.entry)) {
+                BridgeLogRowView(entry: item.entry, bridgeID: item.bridgeID)
             }
         }
-        .listStyle(.plain)
-        .overlay {
-            if displayedSessions.isEmpty || !hasAnyRawEntries {
-                ContentUnavailableView(
-                    "No Log Entries",
-                    systemImage: "terminal",
-                    description: Text("Raw zigbee2mqtt log lines will appear here in real time.")
-                )
-            } else if entries.isEmpty {
-                ContentUnavailableView.search(text: viewModel.searchText)
+    }
+
+    @ViewBuilder
+    private func selectableList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if let selection {
+            List(selection: selection) {
+                SwiftUI.Group {
+                    content()
+                }
+                .shellbeeThemedRows()
             }
+            .shellbeeThemedCanvas()
+        } else {
+            List {
+                SwiftUI.Group {
+                    content()
+                }
+                .shellbeeThemedRows()
+            }
+            .shellbeeThemedCanvas()
         }
     }
 }
 
 struct BridgeLogRowView: View {
     let entry: LogEntry
+    /// The source bridge, marked with its monogram beside the time.
+    var bridgeID: UUID? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.summaryRowVerticalPadding) {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: entry.level.systemImage)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(entry.level.color)
+                    .foregroundStyle(.themedStatus(entry.level.color))
                     .frame(width: DesignTokens.Size.logLevelIconWidth, alignment: .center)
                 if let topic = mqttTopic {
                     Text(topic)
@@ -85,6 +155,9 @@ struct BridgeLogRowView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
+                if let bridgeID {
+                    BridgeMonogram(bridgeID: bridgeID, size: DesignTokens.Size.bridgeMonogramCompact)
+                }
                 Text(entry.timestamp, format: .dateTime.hour().minute().second())
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.tertiary)
@@ -104,6 +177,7 @@ struct BridgeLogRowView: View {
 
 struct BridgeLogDetailView: View {
     let entry: LogEntry
+    @Environment(\.shellbeeTheme) private var theme
     @State private var prettyPrint = true
     @AppStorage("bridgeLogDetailFontSize") private var fontSize: Double = Double(DesignTokens.Size.bridgeLogDetailFontDefault)
 
@@ -175,10 +249,10 @@ struct BridgeLogDetailView: View {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: entry.level.systemImage)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(entry.level.color)
+                        .foregroundStyle(.themedStatus(entry.level.color))
                     Text(entry.level.label)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(entry.level.color)
+                        .foregroundStyle(.themedStatus(entry.level.color))
                     Spacer()
                     Text(entry.timestamp, format: .dateTime.hour().minute().second())
                         .font(.subheadline.monospacedDigit())
@@ -205,6 +279,7 @@ struct BridgeLogDetailView: View {
             }
             .padding(DesignTokens.Spacing.lg)
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Raw Log")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -222,16 +297,20 @@ struct BridgeLogDetailView: View {
                     Image(systemName: "plus.magnifyingglass")
                 }
                 .disabled(fontSize >= Self.maxFontSize)
+            }
 
-                if prettyMessage != nil {
+            if prettyMessage != nil {
+                TrailingToolbarGroupSpacer()
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         prettyPrint.toggle()
                     } label: {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                     }
-                    .tint(prettyPrint ? .accentColor : .secondary)
+                    .tint(prettyPrint ? theme.accent : .primary)
                 }
             }
+
         }
     }
 }

@@ -23,6 +23,16 @@ nonisolated struct OTAUpdateActivityAttributes: ActivityAttributes, Sendable {
         let detail: String
         let progress: Int?
         let items: [Item]
+        /// When the running update should finish, from Z2M's time-remaining
+        /// estimate. With `progressStart` it drives a system timer, so the
+        /// card keeps counting down and filling while the app is suspended.
+        var estimatedEnd: Date? = nil
+        /// When the running update would have started at its current pace;
+        /// places the filling bar at the reported progress.
+        var progressStart: Date? = nil
+        /// The app's theme when this content was sent; see
+        /// `LiveActivityAppearance`. Optional so older content still decodes.
+        var appearance: LiveActivityAppearance? = .current
     }
 
     /// Stable per-bridge identifier (e.g. `"ota-updates-<UUID>"`). Multi-bridge:

@@ -16681,7 +16681,10 @@
         "type": "enum",
         "property": "effect_color_mode",
         "description": "Controls what happens when color is changed while an effect is active (requires Hue native control). 'stop' (default): color change stops the effect (Hue app behavior). 'update': color change re-sends the effect with the new color.",
-        "values": ["stop", "update"]
+        "values": [
+          "stop",
+          "update"
+        ]
       }
     ],
     "meta": {
@@ -28701,7 +28704,10 @@
         "type": "enum",
         "property": "effect_color_mode",
         "description": "Controls what happens when color is changed while an effect is active (requires Hue native control). 'stop' (default): color change stops the effect (Hue app behavior). 'update': color change re-sends the effect with the new color.",
-        "values": ["stop", "update"]
+        "values": [
+          "stop",
+          "update"
+        ]
       }
     ],
     "meta": {
@@ -28963,7 +28969,10 @@
         "type": "enum",
         "property": "effect_color_mode",
         "description": "Controls what happens when color is changed while an effect is active (requires Hue native control). 'stop' (default): color change stops the effect (Hue app behavior). 'update': color change re-sends the effect with the new color.",
-        "values": ["stop", "update"]
+        "values": [
+          "stop",
+          "update"
+        ]
       }
     ],
     "meta": {
@@ -33833,6 +33842,259 @@
       "battery": {
         "dontDividePercentage": true
       }
+    }
+  },
+  "ZG-204ZV": {
+    "model": "ZG-204ZV",
+    "vendor": "HOBEIAN",
+    "description": "Millimeter wave motion detection",
+    "zigbeeModel": [
+      "ZG-204ZV"
+    ],
+    "exposes": [
+      {
+        "name": "presence",
+        "label": "Presence",
+        "access": 1,
+        "type": "binary",
+        "property": "presence",
+        "description": "Indicates whether the device detected presence",
+        "value_on": true,
+        "value_off": false
+      },
+      {
+        "name": "illuminance",
+        "label": "Illuminance",
+        "access": 1,
+        "type": "numeric",
+        "property": "illuminance",
+        "description": "Measured illuminance",
+        "unit": "lx"
+      },
+      {
+        "name": "temperature",
+        "label": "Temperature",
+        "access": 1,
+        "type": "numeric",
+        "property": "temperature",
+        "description": "Measured temperature value",
+        "unit": "°C"
+      },
+      {
+        "name": "humidity",
+        "label": "Humidity",
+        "access": 1,
+        "type": "numeric",
+        "property": "humidity",
+        "description": "Measured relative humidity",
+        "unit": "%"
+      },
+      {
+        "name": "temperature_unit",
+        "label": "Temperature unit",
+        "access": 3,
+        "type": "enum",
+        "property": "temperature_unit",
+        "description": "Temperature unit",
+        "values": [
+          "celsius",
+          "fahrenheit"
+        ]
+      },
+      {
+        "name": "temperature_calibration",
+        "label": "Temperature calibration",
+        "access": 3,
+        "type": "numeric",
+        "property": "temperature_calibration",
+        "description": "Temperature calibration",
+        "unit": "°C",
+        "value_max": 2,
+        "value_min": -2,
+        "value_step": 0.1
+      },
+      {
+        "name": "humidity_calibration",
+        "label": "Humidity calibration",
+        "access": 3,
+        "type": "numeric",
+        "property": "humidity_calibration",
+        "description": "Humidity calibration",
+        "unit": "%",
+        "value_max": 30,
+        "value_min": -30,
+        "value_step": 1
+      },
+      {
+        "name": "battery",
+        "label": "Battery",
+        "access": 1,
+        "type": "numeric",
+        "property": "battery",
+        "description": "Remaining battery in %, can take up to 24 hours before reported",
+        "category": "diagnostic",
+        "unit": "%",
+        "value_max": 100,
+        "value_min": 0
+      },
+      {
+        "name": "fading_time",
+        "label": "Fading time",
+        "access": 3,
+        "type": "numeric",
+        "property": "fading_time",
+        "description": "Motion keep time",
+        "unit": "s",
+        "value_max": 28800,
+        "value_min": 0,
+        "value_step": 1
+      },
+      {
+        "name": "indicator",
+        "label": "Indicator",
+        "access": 3,
+        "type": "binary",
+        "property": "indicator",
+        "description": "LED indicator mode",
+        "value_on": "ON",
+        "value_off": "OFF"
+      },
+      {
+        "name": "illuminance_interval",
+        "label": "Illuminance interval",
+        "access": 3,
+        "type": "numeric",
+        "property": "illuminance_interval",
+        "description": "Light sensing sampling(refresh and update only while active)",
+        "unit": "minutes",
+        "value_max": 720,
+        "value_min": 1,
+        "value_step": 1
+      },
+      {
+        "name": "motion_detection_sensitivity",
+        "label": "Motion detection sensitivity",
+        "access": 3,
+        "type": "numeric",
+        "property": "motion_detection_sensitivity",
+        "description": "The larger the value, the more sensitive it is (refresh and update only while active)",
+        "value_max": 19,
+        "value_min": 0,
+        "value_step": 1
+      }
+    ],
+    "options": [
+      {
+        "name": "illuminance_calibration",
+        "label": "Illuminance calibration",
+        "access": 2,
+        "type": "numeric",
+        "property": "illuminance_calibration",
+        "description": "Calibrates the illuminance value (percentual offset), takes into effect on next report of device.",
+        "value_step": 0.1
+      },
+      {
+        "name": "temperature_calibration",
+        "label": "Temperature calibration",
+        "access": 2,
+        "type": "numeric",
+        "property": "temperature_calibration",
+        "description": "Calibrates the temperature value (absolute offset), takes into effect on next report of device.",
+        "value_step": 0.1
+      },
+      {
+        "name": "temperature_precision",
+        "label": "Temperature precision",
+        "access": 2,
+        "type": "numeric",
+        "property": "temperature_precision",
+        "description": "Number of digits after decimal point for temperature, takes into effect on next report of device. This option can only decrease the precision, not increase it.",
+        "value_max": 3,
+        "value_min": 0
+      },
+      {
+        "name": "humidity_calibration",
+        "label": "Humidity calibration",
+        "access": 2,
+        "type": "numeric",
+        "property": "humidity_calibration",
+        "description": "Calibrates the humidity value (absolute offset), takes into effect on next report of device.",
+        "value_step": 0.1
+      },
+      {
+        "name": "humidity_precision",
+        "label": "Humidity precision",
+        "access": 2,
+        "type": "numeric",
+        "property": "humidity_precision",
+        "description": "Number of digits after decimal point for humidity, takes into effect on next report of device. This option can only decrease the precision, not increase it.",
+        "value_max": 3,
+        "value_min": 0
+      }
+    ],
+    "meta": {
+      "tuyaDatapoints": [
+        [
+          1,
+          "presence",
+          {}
+        ],
+        [
+          106,
+          "illuminance",
+          {}
+        ],
+        [
+          102,
+          "fading_time",
+          {}
+        ],
+        [
+          2,
+          "motion_detection_sensitivity",
+          {}
+        ],
+        [
+          108,
+          "indicator",
+          {}
+        ],
+        [
+          110,
+          "battery",
+          {}
+        ],
+        [
+          111,
+          "temperature",
+          {}
+        ],
+        [
+          101,
+          "humidity",
+          {}
+        ],
+        [
+          109,
+          "temperature_unit",
+          {}
+        ],
+        [
+          105,
+          "temperature_calibration",
+          {}
+        ],
+        [
+          104,
+          "humidity_calibration",
+          {}
+        ],
+        [
+          107,
+          "illuminance_interval",
+          {}
+        ]
+      ]
     }
   }
 }

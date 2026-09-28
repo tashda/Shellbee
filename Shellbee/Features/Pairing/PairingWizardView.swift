@@ -35,20 +35,24 @@ struct PairingWizardView: View {
     var body: some View {
         NavigationStack {
             List {
-                bridgeSection
-                permitJoinSection
-                if !sessionDevices.isEmpty {
-                    Section {
-                        ForEach(sessionDevices, id: \.ieeeAddress) { device in
-                            wizardRow(for: device)
+                SwiftUI.Group {
+                    bridgeSection
+                    permitJoinSection
+                    if !sessionDevices.isEmpty {
+                        Section {
+                            ForEach(sessionDevices, id: \.ieeeAddress) { device in
+                                wizardRow(for: device)
+                            }
+                        } header: {
+                            Text("New Devices")
+                        } footer: {
+                            Text("Swipe a device left or right for actions, or long-press for more options.")
                         }
-                    } header: {
-                        Text("New Devices")
-                    } footer: {
-                        Text("Swipe a device left or right for actions, or long-press for more options.")
                     }
                 }
+                .shellbeeThemedRows()
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Add Devices")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -115,6 +119,7 @@ struct PairingWizardView: View {
                 Text(alert.message)
             }
         }
+        .configuredTopScrollEdgeEffect()
     }
 
     // MARK: - Bridge picker (multi-bridge only)
@@ -277,12 +282,14 @@ private struct PermitJoinControls: View {
                     Text(device.friendlyName).tag(String?.some(device.friendlyName))
                 }
             }
+            .tint(.secondary)
             Picker("Duration", selection: $duration) {
                 Text("1 min").tag(60)
                 Text("2 min").tag(120)
                 Text("3 min").tag(180)
                 Text("~4 min").tag(254)
             }
+            .tint(.secondary)
         } header: {
             Text("Open the network")
         } footer: {
@@ -293,7 +300,7 @@ private struct PermitJoinControls: View {
             Button {
                 onStart(duration, targetName)
             } label: {
-                Label("Start Permit Join", systemImage: "dot.radiowaves.up.forward")
+                Label("Start Permit Join", symbol: .permitJoin)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -320,28 +327,24 @@ private struct NetworkOpenRow: View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
             let remaining = remainingSeconds(at: ctx.date)
             HStack(spacing: DesignTokens.Spacing.md) {
-                Image(systemName: "dot.radiowaves.up.forward")
-                    .foregroundStyle(.white)
-                    .frame(width: DesignTokens.Size.settingsIconFrame, height: DesignTokens.Size.settingsIconFrame)
-                    .background(.green, in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.sm, style: .continuous))
-                    .symbolEffect(.pulse)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
+                    Text("Network is open")
+                        .font(.body.weight(.semibold))
                     if let target, !target.isEmpty {
-                        Text("Network is open via \(target)")
-                            .foregroundStyle(.primary)
-                    } else {
-                        Text("Network is open")
-                            .foregroundStyle(.primary)
-                    }
-                    if let remaining {
-                        Text(String(format: "%d:%02d remaining", remaining / 60, remaining % 60))
+                        Text("Pairing through \(target)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .contentTransition(.numericText(countsDown: true))
+                            .lineLimit(1)
                     }
                 }
                 Spacer()
+                if let remaining {
+                    Text(String(format: "%d:%02d", remaining / 60, remaining % 60))
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText(countsDown: true))
+                        .accessibilityLabel("\(remaining / 60) minutes and \(remaining % 60) seconds remaining")
+                }
             }
         }
     }

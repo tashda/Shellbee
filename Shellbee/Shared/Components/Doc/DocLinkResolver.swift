@@ -42,6 +42,12 @@ enum DocLinkResolver {
         return webURL(for: resolved)
     }
 
+    /// The device's page on zigbee2mqtt.io, from the path of its markdown.
+    static func pageURL(for sourcePath: String) -> URL? {
+        guard let resolved = URL(string: sourcePath, relativeTo: siteBaseURL)?.absoluteURL else { return nil }
+        return webURL(for: resolved)
+    }
+
     static func destination(for url: URL) -> InAppDocumentationDestination? {
         guard url.scheme == inAppScheme else { return nil }
         switch (url.host, url.path) {

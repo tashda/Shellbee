@@ -1,6 +1,9 @@
 import XCTest
 
 final class SettingsUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += ["-activityCenterEnabled", "NO"]
+    }
 
     override func setUp() {
         super.setUp()
@@ -40,6 +43,26 @@ final class SettingsUITests: ShellbeeUITestCase {
             app.navigationBars["Server"].firstMatch.waitForExistence(timeout: 5),
             "Server detail did not open"
         )
+    }
+
+    // Behavior: Device Statistics is a visual dashboard rather than a Form of
+    // raw counts. Its chart cards stay discoverable to accessibility clients.
+    func testDeviceStatisticsDashboardOpens() {
+        app.cells.containing(.staticText, identifier: "Server").firstMatch.tapWhenReady()
+        app.staticTexts["Device Statistics"].firstMatch.tapWhenReady()
+
+        XCTAssertTrue(app.navigationBars["Device Statistics"].waitForExistence(timeout: 5))
+        for heading in ["Network overview", "Device types", "Power sources", "Vendors"] {
+            XCTAssertTrue(
+                app.staticTexts[heading].firstMatch.waitForExistence(timeout: 5),
+                "Missing dashboard section: \(heading)"
+            )
+        }
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Device Statistics dashboard"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
     }
 
     // MARK: - General bridge settings
@@ -318,18 +341,16 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     // MARK: - Logs
 
-    // Behavior: tapping the "Logs" row in Settings pushes LogsView.
-    // The Settings nav stack is the only one visible (LogsView's nested
-    // NavigationStack renders into the same nav bar), so we assert that
-    // the Logs title is on screen.
+    // When Activity Center is disabled, tapping the fallback Logs row opens
+    // the same Activity feed used by Activity Center.
     func testLogsNavigationFromSettings() {
         let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
         XCTAssertTrue(logsRow.waitForExistence(timeout: 5),
                       "Logs row not found in Settings")
         logsRow.tap()
         XCTAssertTrue(
-            app.navigationBars["Logs"].firstMatch.waitForExistence(timeout: 5),
-            "Logs view did not open after tapping Logs row"
+            app.navigationBars["Activity"].firstMatch.waitForExistence(timeout: 5),
+            "Activity feed did not open after tapping Logs row"
         )
     }
 
@@ -389,5 +410,125 @@ final class SettingsUITests: ShellbeeUITestCase {
             app.swipeUp()
         }
         cell.tapWhenReady()
+    }
+}
+
+final class ActivityCenterEnabledSettingsUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += ["-activityCenterEnabled", "YES"]
+    }
+
+    override func setUp() {
+        super.setUp()
+        waitForMainTab()
+        app.tapSettingsTab()
+    }
+
+    func testLogsFallbackIsHidden() {
+        let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
+        XCTAssertFalse(
+            logsRow.waitForExistence(timeout: 2),
+            "Logs should only appear in Settings when Activity Center is disabled"
+        )
+    }
+}
+
+final class ActivityInstrumentGalleryUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += [
+            "-activityCenterEnabled", "NO",
+            "-developerModeEnabled", "YES"
+        ]
+    }
+
+    override func setUp() {
+        super.setUp()
+        waitForMainTab()
+        app.tapSettingsTab()
+    }
+
+    func testGalleryOpensAndSwitchesCoverage() {
+        let developerRow = app.buttons["Developer"].firstMatch
+        reveal(developerRow)
+        developerRow.tapWhenReady()
+
+        let galleryRow = app.buttons["Activity Instruments"].firstMatch
+        galleryRow.tapWhenReady()
+
+        XCTAssertTrue(
+            app.navigationBars["Activity Instruments"].waitForExistence(timeout: 5),
+            "Activity instrument gallery did not open"
+        )
+        let bridgeScope = app.segmentedControls.buttons["Bridge"].firstMatch
+        bridgeScope.tapWhenReady()
+        let healthCheck = app.staticTexts["Health Check"].firstMatch
+        XCTAssertTrue(
+            healthCheck.waitForExistence(timeout: 3),
+            "Bridge coverage should include health-check activity"
+        )
+
+        healthCheck.tapWhenReady()
+        XCTAssertTrue(
+            app.buttons["Next instrument"].waitForExistence(timeout: 5),
+            "Tapping a sample should open it on the stage"
+        )
+        app.buttons["Minimized Tab Bar"].tapWhenReady()
+        app.buttons["Close"].tapWhenReady()
+        XCTAssertTrue(app.navigationBars["Activity Instruments"].waitForExistence(timeout: 5))
+    }
+
+    private func reveal(_ element: XCUIElement) {
+        for _ in 0..<4 {
+            if element.exists { return }
+            app.swipeUp()
+        }
+    }
+}
+
+final class IconGalleryUITests: ShellbeeUITestCase {
+    override func configureAppBeforeLaunch() {
+        app.launchArguments += ["-activityCenterEnabled", "NO", "-developerModeEnabled", "YES"]
+    }
+
+    func testCustomSymbolsAndCardInstrumentsAppear() {
+        waitForMainTab()
+        app.tapSettingsTab()
+
+        let developer = app.buttons["Developer"].firstMatch
+        for _ in 0..<4 where !developer.exists { app.swipeUp() }
+        developer.tapWhenReady()
+        app.buttons["Shellbee"].firstMatch.tapWhenReady()
+        app.buttons["Icon Gallery"].firstMatch.tapWhenReady()
+
+        XCTAssertTrue(app.navigationBars["Icon Gallery"].waitForExistence(timeout: 5))
+        app.segmentedControls.buttons["Symbols"].firstMatch.tapWhenReady()
+        XCTAssertTrue(app.staticTexts["shellbee.home"].exists)
+
+        app.segmentedControls.buttons["Instruments"].firstMatch.tapWhenReady()
+        XCTAssertTrue(app.staticTexts["Health"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["16 pt"].firstMatch.exists)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Icon Gallery card instruments"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        let models = app.staticTexts["Models"].firstMatch
+        for _ in 0..<4 where !models.isHittable { app.swipeUp() }
+        XCTAssertTrue(models.isHittable)
+
+        let lowerScreenshot = XCTAttachment(screenshot: app.screenshot())
+        lowerScreenshot.name = "Icon Gallery lower card instruments"
+        lowerScreenshot.lifetime = .keepAlways
+        add(lowerScreenshot)
+
+        let pairing = app.staticTexts["Pairing"].firstMatch
+        for _ in 0..<3 where !pairing.isHittable { app.swipeUp() }
+        XCTAssertTrue(pairing.isHittable)
+
+        let stateScreenshot = XCTAttachment(screenshot: app.screenshot())
+        stateScreenshot.name = "Icon Gallery pairing and update"
+        stateScreenshot.lifetime = .keepAlways
+        add(stateScreenshot)
     }
 }

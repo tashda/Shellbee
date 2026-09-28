@@ -22,10 +22,11 @@ extension View {
                 Button(role: .destructive, action: onRemove) {
                     Label("Remove", systemImage: "trash")
                 }
+                .shellbeeSwipeTint(.red)
                 Button(action: onEdit) {
                     Label("Edit", systemImage: "pencil")
                 }
-                .tint(.blue)
+                .tint(.accentColor)
             }
     }
 }

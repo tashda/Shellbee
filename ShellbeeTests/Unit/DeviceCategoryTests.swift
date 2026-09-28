@@ -116,12 +116,9 @@ final class DeviceCategoryTests: XCTestCase {
             )
         ])
 
-        let rows = GenericExposeCard.rows(for: device, state: [
-            "linkquality": .int(120),
-            "transition": .int(1)
-        ])
+        let exposes = DeviceSettingsSections.exposes(for: device, claimedProperties: [])
 
-        XCTAssertEqual(rows.map(\.property), ["transition"])
+        XCTAssertEqual(exposes.compactMap(\.property), ["transition"])
     }
 
     @MainActor
@@ -141,9 +138,9 @@ final class DeviceCategoryTests: XCTestCase {
             )
         ])
 
-        let rows = GenericExposeCard.rows(for: device, state: ["linkquality": .int(120)])
+        let exposes = DeviceSettingsSections.exposes(for: device, claimedProperties: [])
 
-        XCTAssertTrue(rows.isEmpty)
+        XCTAssertTrue(exposes.isEmpty)
     }
 
     @MainActor

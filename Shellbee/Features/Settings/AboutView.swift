@@ -14,9 +14,13 @@ struct AboutView: View {
 
     var body: some View {
         Form {
-            shellbeeSection
-            connectSection
+            SwiftUI.Group {
+                shellbeeSection
+                connectSection
+            }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -73,4 +77,5 @@ struct AboutView: View {
     NavigationStack {
         AboutView()
     }
+    .configuredTopScrollEdgeEffect()
 }

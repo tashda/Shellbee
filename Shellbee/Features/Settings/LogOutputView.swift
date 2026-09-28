@@ -42,57 +42,61 @@ struct LogOutputView: View {
 
     var body: some View {
         Form {
-            Section {
-                Toggle("Console", isOn: $logOutputConsole)
-                Toggle("File", isOn: $logOutputFile)
-                Toggle("Syslog", isOn: $logOutputSyslog)
-            } header: {
-                Text("Log Outputs")
-            } footer: {
-                Text("Choose where log messages are written. Console logs to stdout, File saves logs to disk, and Syslog sends them to the system logging daemon.")
-            }
-
-            if logOutputFile {
+            SwiftUI.Group {
                 Section {
-                    SettingsTextField("Directory", text: $logDirectory, placeholder: "data/log (default)")
-                    SettingsTextField("Filename", text: $logFile, placeholder: "log.log")
-                    Toggle("Create 'current' Shortcut", isOn: $logSymlinkCurrent)
+                    Toggle("Console", isOn: $logOutputConsole)
+                    Toggle("File", isOn: $logOutputFile)
+                    Toggle("Syslog", isOn: $logOutputSyslog)
                 } header: {
-                    Text("File Settings")
+                    Text("Log Outputs")
                 } footer: {
-                    Text("Creates a 'current' symlink in the log directory pointing to the most recent log folder.")
+                    Text("Choose where log messages are written. Console logs to stdout, File saves logs to disk, and Syslog sends them to the system logging daemon.")
+                }
+
+                if logOutputFile {
+                    Section {
+                        SettingsTextField("Directory", text: $logDirectory, placeholder: "data/log (default)")
+                        SettingsTextField("Filename", text: $logFile, placeholder: "log.log")
+                        Toggle("Create 'current' Shortcut", isOn: $logSymlinkCurrent)
+                    } header: {
+                        Text("File Settings")
+                    } footer: {
+                        Text("Creates a 'current' symlink in the log directory pointing to the most recent log folder.")
+                    }
+
+                    Section {
+                        Toggle("Log Rotation", isOn: $logRotation)
+                        InlineIntField("Directories to Keep", value: $logDirectoriesToKeep, range: 5...1000)
+                    } header: {
+                        Text("Log Files")
+                    } footer: {
+                        Text("Log rotation deletes old log directories automatically. Adjust how many to keep on disk.")
+                    }
                 }
 
                 Section {
-                    Toggle("Log Rotation", isOn: $logRotation)
-                    InlineIntField("Directories to Keep", value: $logDirectoriesToKeep, range: 5...1000)
-                } header: {
-                    Text("Log Files")
+                    Toggle("Format Console Logs as JSON", isOn: $logConsoleJson)
                 } footer: {
-                    Text("Log rotation deletes old log directories automatically. Adjust how many to keep on disk.")
+                    Text("When enabled, console output is formatted as JSON instead of plain text. Useful for log aggregation pipelines.")
+                }
+
+                Section {
+                    LabeledContent("Suppression Pattern") {
+                        TextField("e.g. \\bz-stack\\b", text: $logDebugNamespaceIgnore)
+                            .multilineTextAlignment(.trailing)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .font(.caption.monospaced())
+                    }
+                } header: {
+                    Text("Debug Filter")
+                } footer: {
+                    Text("Regular expression to suppress debug messages from matching namespaces. Leave empty to log all namespaces.")
                 }
             }
-
-            Section {
-                Toggle("Format Console Logs as JSON", isOn: $logConsoleJson)
-            } footer: {
-                Text("When enabled, console output is formatted as JSON instead of plain text. Useful for log aggregation pipelines.")
-            }
-
-            Section {
-                LabeledContent("Suppression Pattern") {
-                    TextField("e.g. \\bz-stack\\b", text: $logDebugNamespaceIgnore)
-                        .multilineTextAlignment(.trailing)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .font(.caption.monospaced())
-                }
-            } header: {
-                Text("Debug Filter")
-            } footer: {
-                Text("Regular expression to suppress debug messages from matching namespaces. Leave empty to log all namespaces.")
-            }
+            .shellbeeThemedRows()
         }
+        .shellbeeThemedCanvas()
         .navigationTitle("Log Output")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -144,4 +148,5 @@ struct LogOutputView: View {
     NavigationStack {
         LogOutputView(bridgeID: UUID()).environment(AppEnvironment())
     }
+    .configuredTopScrollEdgeEffect()
 }

@@ -17,7 +17,8 @@ What is faithfully simulated
   Covered: device rename/remove/options/interview/configure/bind/unbind,
   OTA check/update (with progress ticks), group add/remove/rename/options +
   group members add/remove, permit_join, info, restart, backup, options,
-  health_check, install_code/add, devices, groups, touchlink scan/identify/
+  health_check, install_code/add, devices, groups, networkmap (a paced scan that
+  logs z2m's per-router LQI lines, NETWORKMAP_TICK_MS), touchlink scan/identify/
   factory_reset, action, configure_reporting.
 - ``bridge/event``: emitted for device_joined, device_leave, device_renamed,
   device_interview, device_announce, and permit_join state changes.
@@ -82,6 +83,10 @@ DRIFT_ON_CLIENT_CONNECT = os.environ.get("DRIFT_ON_CLIENT_CONNECT", "1").lower()
     "0", "false", "no"
 }
 OTA_TICK_MS = int(os.environ.get("OTA_TICK_MS", "400"))
+# Pause between routers during a simulated network scan. Real z2m sleeps
+# 1 s per router plus the LQI round-trip; the default keeps a 100-router mock
+# scan around 30 s so progress is visible without being tedious.
+NETWORKMAP_TICK_MS = int(os.environ.get("NETWORKMAP_TICK_MS", "300"))
 OTA_STEP = int(os.environ.get("OTA_STEP", "10"))
 
 # ── Mutable engine state ──────────────────────────────────────────────────
@@ -496,13 +501,31 @@ def _req_ota_update(client, payload):
     name = device["friendly_name"]
     transaction = payload.get("transaction")
     versions = _device_version_map(device)
+    # The test center can slow a run down (so there's time to lock the
+    # phone and watch the Live Activity) or make it fail part-way.
+    tick_s = float(payload.get("_tick_ms", OTA_TICK_MS)) / 1000.0
+    fail_at = payload.get("_fail_at")
 
     def run():
         _emit_log(client, "info", f"Updating '{name}' to latest firmware")
         progress = 0
         while progress < 100:
             progress = min(100, progress + OTA_STEP)
-            remaining_s = max(0, (100 - progress) * OTA_TICK_MS // 1000)
+            if fail_at is not None and progress >= int(fail_at):
+                with _lock:
+                    _states.setdefault(name, {})["update"] = {
+                        "installed_version": versions["installed_version"],
+                        "latest_version": versions["latest_version"],
+                        "state": "available",
+                    }
+                _publish_state(client, name)
+                failure = {"data": {"id": ident}, "status": "error",
+                           "error": f"Update of '{name}' failed (Device didn't respond to OTA request)"}
+                if transaction is not None:
+                    failure["transaction"] = transaction
+                _pub(client, f"{Z2M_TOPIC}/bridge/response/device/ota_update/update", failure, retain=False)
+                return
+            remaining_s = max(0, int((100 - progress) / OTA_STEP * tick_s))
             with _lock:
                 _states.setdefault(name, {})["update"] = {
                     "installed_version": versions["installed_version"],
@@ -512,7 +535,7 @@ def _req_ota_update(client, payload):
                     "remaining": remaining_s,
                 }
             _publish_state(client, name)
-            time.sleep(OTA_TICK_MS / 1000.0)
+            time.sleep(tick_s)
         with _lock:
             _states.setdefault(name, {})["update"] = {
                 "installed_version": versions["latest_version"],
@@ -660,6 +683,8 @@ def _req_permit_join(client, payload):
     with _lock:
         _bridge_info["permit_join"] = value
         _bridge_info["permit_join_timeout"] = int(time_s) if (value and time_s) else None
+        # Z2M 2.x reports the window as an absolute epoch-ms deadline.
+        _bridge_info["permit_join_end"] = int((time.time() + float(time_s)) * 1000) if (value and time_s) else None
         _bridge_info["config"]["permit_join"] = value
     _publish_info(client)
     _emit_event(client, "permit_join", {"permitted": value, "time": time_s, "device": payload.get("device")})
@@ -669,6 +694,7 @@ def _req_permit_join(client, payload):
             with _lock:
                 _bridge_info["permit_join"] = False
                 _bridge_info["permit_join_timeout"] = None
+                _bridge_info["permit_join_end"] = None
                 _bridge_info["config"]["permit_join"] = False
             _publish_info(client)
             _emit_event(client, "permit_join", {"permitted": False})
@@ -712,6 +738,10 @@ def _req_options(client, payload):
     with _lock:
         options = payload.get("options", payload)
         deep_merge(_bridge_info["config"], options)
+        # z2m mirrors advanced.log_level at the top of bridge/info.
+        level = options.get("advanced", {}).get("log_level") if isinstance(options.get("advanced"), dict) else None
+        if level:
+            _bridge_info["log_level"] = level
         snapshot = copy.deepcopy(_bridge_info)
     _publish_info(client)
     return {"restart_required": False, "config": snapshot["config"]}
@@ -741,14 +771,150 @@ def _req_groups(client, payload):
     return []
 
 
+@_register("networkmap")
+def _req_networkmap(client, payload):
+    """Simulate z2m's network scan, then answer with a raw topology.
+
+    Mirrors lib/extension/networkMap.ts: the coordinator and every router are
+    queried one at a time; each logs ``LQI succeeded for '<name>'`` (debug,
+    only forwarded with log_debug_to_mqtt_frontend) or ``Failed to execute
+    LQI for '<name>'`` (error, after one retry), bracketed by the info-level
+    ``Starting network scan`` / ``Network scan finished`` lines. Every queried
+    node carries a ``failed`` list in the response; end devices do not.
+    """
+    transaction = payload.get("transaction") if isinstance(payload, dict) else None
+    routes = bool(payload.get("routes", False))
+    map_type = payload.get("type", "raw")
+
+    with _lock:
+        devices = copy.deepcopy(_devices)
+        states = copy.deepcopy(_states)
+        advanced = copy.deepcopy(_bridge_info.get("config", {}).get("advanced", {}))
+        log_level = _bridge_info.get("log_level", "info")
+
+    coordinator = next((d for d in devices if d.get("type") == "Coordinator"), None)
+    if coordinator is None:
+        raise RequestError("Coordinator is unavailable")
+    routers = [d for d in devices if d.get("type") == "Router"]
+    queried = [coordinator] + [d for d in routers if not d.get("disabled")]
+    debug_forwarded = log_level == "debug" and bool(advanced.get("log_debug_to_mqtt_frontend"))
+
+    def scan_fails(device: dict) -> bool:
+        # Deterministic ~1 in 20 routers never answer, so failures are
+        # reproducible across runs.
+        return device is not coordinator and sum(device["ieee_address"].encode()) % 20 == 0
+
+    def scan_log(level: str, message: str) -> None:
+        # Real z2m (2.x) prefixes forwarded lines with their namespace.
+        _emit_log(client, level, f"z2m: {message}")
+
+    def run() -> None:
+        scan_log("info", f"Starting network scan (includeRoutes '{str(routes).lower()}')")
+        failed_ieee: set[str] = set()
+        for device in queried:
+            time.sleep(NETWORKMAP_TICK_MS / 1000.0)
+            if scan_fails(device):
+                # z2m retries once after a 5 s back-off; keep it short here.
+                time.sleep(NETWORKMAP_TICK_MS * 3 / 1000.0)
+                failed_ieee.add(device["ieee_address"])
+                scan_log("error", f"Failed to execute LQI for '{device['friendly_name']}'")
+            elif debug_forwarded:
+                scan_log("debug", f"LQI succeeded for '{device['friendly_name']}'")
+        scan_log("info", "Network scan finished")
+
+        queried_ieee = {d["ieee_address"] for d in queried}
+        nodes = []
+        for d in devices:
+            node = {
+                "friendlyName": d["friendly_name"],
+                "ieeeAddr": d["ieee_address"],
+                "networkAddress": d.get("network_address"),
+                "type": d.get("type", "Unknown"),
+                "manufacturerName": d.get("manufacturer"),
+                "modelID": d.get("model_id"),
+            }
+            if d["ieee_address"] in queried_ieee:
+                node["failed"] = ["lqi"] if d["ieee_address"] in failed_ieee else []
+            nodes.append(node)
+
+        links = []
+        end_index = 0
+        for device in devices:
+            if device is coordinator:
+                continue
+            if device.get("type") == "Router" or not routers:
+                parent = coordinator
+                depth = 1
+            else:
+                parent = routers[end_index % len(routers)]
+                end_index += 1
+                depth = 2
+            lqi = states.get(device["friendly_name"], {}).get("linkquality")
+            links.append({
+                "source": {"ieeeAddr": device["ieee_address"], "networkAddress": device.get("network_address")},
+                "sourceIeeeAddr": device["ieee_address"],
+                "target": {"ieeeAddr": parent["ieee_address"], "networkAddress": parent.get("network_address")},
+                "targetIeeeAddr": parent["ieee_address"],
+                "linkquality": lqi,
+                "lqi": lqi,
+                "depth": depth,
+                "relationship": 1,
+                "routes": [],
+            })
+
+        envelope: dict[str, Any] = {
+            "data": {"routes": routes, "type": map_type, "value": {"nodes": nodes, "links": links}},
+            "status": "ok",
+        }
+        if transaction is not None:
+            envelope["transaction"] = transaction
+        _pub(client, f"{Z2M_TOPIC}/bridge/response/networkmap", envelope, retain=False)
+
+    threading.Thread(target=run, daemon=True).start()
+    raise _DeferResponse()
+
+
+# How touchlink requests behave; the test center's `touchlink` scenario
+# changes it. Real z2m scans for roughly half a minute before answering.
+touchlink_config: dict[str, Any] = {
+    "found": 2,
+    "scan_ms": 12_000,
+    "identify_ms": 3_000,
+    "fail": False,
+}
+
+
+def _deferred_touchlink(client, subpath: str, payload: Any, delay_ms: int, data: Any) -> None:
+    transaction = payload.get("transaction") if isinstance(payload, dict) else None
+
+    def run():
+        time.sleep(delay_ms / 1000.0)
+        if touchlink_config["fail"]:
+            envelope: dict[str, Any] = {"data": {}, "status": "error",
+                                        "error": "Touchlink failed: no response from coordinator"}
+        else:
+            envelope = {"data": data, "status": "ok"}
+        if transaction is not None:
+            envelope["transaction"] = transaction
+        _pub(client, f"{Z2M_TOPIC}/bridge/response/{subpath}", envelope, retain=False)
+
+    threading.Thread(target=run, daemon=True).start()
+    raise _DeferResponse()
+
+
 @_register("touchlink/scan")
 def _req_touchlink_scan(client, payload):
-    return {"found": []}
+    found = [
+        {"ieee_address": "0x0017880100%06x" % (0xa1b2c3 + i), "channel": [11, 15, 20, 25][i % 4]}
+        for i in range(max(0, int(touchlink_config["found"])))
+    ]
+    _deferred_touchlink(client, "touchlink/scan", payload, int(touchlink_config["scan_ms"]), {"found": found})
 
 
 @_register("touchlink/identify")
 def _req_touchlink_identify(client, payload):
-    return payload
+    data = {k: v for k, v in (payload or {}).items() if k != "transaction"}
+    _deferred_touchlink(client, "touchlink/identify", payload, int(touchlink_config["identify_ms"]), data)
 
 
 @_register("touchlink/factory_reset")
@@ -1002,4 +1168,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # control.py does `import seeder`; without this alias it would load a
+    # second, never-started copy of this module whose `_client` stays None.
+    import sys
+    sys.modules.setdefault("seeder", sys.modules[__name__])
     main()

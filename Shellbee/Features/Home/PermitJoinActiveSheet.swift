@@ -25,9 +25,11 @@ struct PermitJoinActiveSheet: View {
                 }
                 .padding(.horizontal, DesignTokens.Spacing.xl)
             }
+            .shellbeeThemedCanvas()
             .navigationTitle("Permit Join")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
     }
@@ -50,9 +52,9 @@ struct PermitJoinActiveSheet: View {
                     .foregroundStyle(.primary)
                     .contentTransition(.numericText(countsDown: true))
             } else {
-                Image(systemName: "dot.radiowaves.up.forward")
+                ShellbeeSymbol.permitJoin.image
                     .font(DesignTokens.Typography.permitJoinSymbol)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.themedStatus(.green))
                     .symbolEffect(.pulse)
             }
         }
@@ -70,12 +72,8 @@ struct PermitJoinActiveSheet: View {
             dismiss()
         } label: {
             Text("Disable Join")
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.red)
-        .controlSize(.large)
+        .buttonStyle(.sheetAction)
     }
 
     private func remainingSeconds(at date: Date) -> Int? {

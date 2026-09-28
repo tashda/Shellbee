@@ -71,6 +71,11 @@ const MODELS = [
     "Flower_Sensor_v2", "SLACKY_DIY_CO2_SENSOR_R02", "WS01", "WS90",
     "ZF24", "HM-722ESY-E Plus", "3328-G", "3310-G",
     "3315-Geu", "SS300", "SD-8SCZBS", "WLS-15ZBS",
+    // Issue #135: sensor with readable state + writable config exposes
+    // (fading_time, indicator, illuminance_interval, motion_detection_sensitivity)
+    // that are NOT in definition.options — regression coverage for
+    // ExposeCardView showing SensorCard + GenericExposeCard together.
+    "ZG-204ZV",
 ];
 
 const devicesDir = path.join(

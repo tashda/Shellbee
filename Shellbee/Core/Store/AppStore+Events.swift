@@ -22,9 +22,15 @@ extension AppStore {
                     network: info.network,
                     logLevel: info.logLevel,
                     permitJoin: true,
-                    permitJoinTimeout: previous.permitJoinTimeout,
-                    permitJoinEnd: previous.permitJoinEnd,
-                    permitJoinTarget: previous.permitJoinTarget,
+                    // A reported `permit_join_end` is absolute and always
+                    // wins (re-opening while open extends the window). An
+                    // estimate from a duration keeps the known deadline.
+                    permitJoinTimeout: previous.permitJoinTimeout ?? info.permitJoinTimeout,
+                    permitJoinEnd: info.permitJoinEndReported
+                        ? info.permitJoinEnd
+                        : previous.permitJoinEnd ?? info.permitJoinEnd,
+                    permitJoinEndReported: info.permitJoinEndReported || previous.permitJoinEndReported,
+                    permitJoinTarget: previous.permitJoinTarget ?? info.permitJoinTarget,
                     restartRequired: info.restartRequired,
                     config: info.config
                 )
@@ -32,8 +38,23 @@ extension AppStore {
                 bridgeInfo = info
             }
             syncConfiguredAvailability()
+            syncPermitJoinLiveActivity()
         case .bridgeState(let state):
-            bridgeOnline = state == "online"
+            let nextOnline = state == "online"
+            // Only emit a log entry on actual transitions — Z2M republishes
+            // bridge/state on every reconnect, and a stream of "Bridge online"
+            // rows when nothing changed would be noise.
+            if bridgeOnline != nextOnline {
+                let level: LogLevel = nextOnline ? .info : .warning
+                let message = nextOnline ? "Bridge Online" : "Bridge Offline"
+                insertLogEntry(LogEntry(
+                    id: UUID(), timestamp: .now, level: level,
+                    category: .bridgeState, namespace: nil,
+                    message: message, deviceName: nil
+                ))
+            }
+            bridgeOnline = nextOnline
+            networkMapRenderRevision &+= 1
         case .devices(let list):
             // Backfill first-seen for any device we've never recorded.
             // Covers the case where a device joined while the app was closed
@@ -47,9 +68,16 @@ extension AppStore {
                 }
             }
             devices = list.map(applyingConfiguredAvailability)
+            networkMapRenderRevision &+= 1
         case .groups(let list):
             groups = list
         case .logMessage(let msg):
+            var isOwnScanProgress = false
+            if networkMapIsRefreshing, var scan = networkMapScan,
+               scan.ingest(logMessage: msg.message, at: .now) {
+                networkMapScan = scan
+                isOwnScanProgress = true
+            }
             let level = LogLevel(raw: msg.level) ?? .info
             insertRawLogEntry(LogEntry(
                 id: msg.id, timestamp: .now, level: level,
@@ -69,14 +97,24 @@ extension AppStore {
                knownNames.contains(deviceName) {
                 break
             }
-            let entry = LogEntry(
+            var entry = LogEntry(
                 id: msg.id, timestamp: .now, level: level,
                 category: ctx.inferredCategory,
                 namespace: msg.namespace, message: msg.message,
                 deviceName: ctx.primaryDevice?.friendlyName, context: ctx
             )
+            // Recognised bridge topics (health_check, options, restart,
+            // device/configure, etc.) get their friendly category so the
+            // row uses bridge-activity iconography instead of the generic
+            // bubble glyph.
+            if let display = entry.bridgeTopicDisplay {
+                entry.category = display.category
+            }
             insertLogEntry(entry)
-            if let note = notification(for: ctx.action, level: level, deviceName: ctx.primaryDevice?.friendlyName, message: msg.message, id: msg.id) {
+            // Our own scan's per-router lines are already shown live on the
+            // refresh card; a banner for each failed router would repeat it.
+            if !isOwnScanProgress,
+               let note = notification(for: ctx.action, level: level, deviceName: ctx.primaryDevice?.friendlyName, message: msg.message, id: msg.id) {
                 enqueueNotification(note)
             }
         case .bridgeEvent(let event):
@@ -98,12 +136,18 @@ extension AppStore {
                     timeout: permitted ? time : nil,
                     target: permitted ? target : nil
                 )
+                syncPermitJoinLiveActivity()
             }
             if let ieee = event.data.object?["ieee_address"]?.stringValue {
                 switch event.type {
                 case "device_joined":
                     // Restart the 30-min window on (re)join.
                     recordFirstSeen(ieee: ieee, overwrite: true)
+                    if bridgeInfo?.permitJoin == true {
+                        permitJoinJoinedCount += 1
+                        permitJoinInterviewFailure = nil
+                        syncPermitJoinLiveActivity()
+                    }
                 case "device_leave":
                     removeFirstSeen(ieee: ieee)
                 case "device_interview":
@@ -147,22 +191,12 @@ extension AppStore {
                         }
                     }
 
-                    Task { @MainActor in
-                        switch status {
-                        case "started":
-                            InterviewLiveActivityCoordinator.shared.start(deviceName: name, ieeeAddress: ieee)
-                        case "successful":
-                            InterviewLiveActivityCoordinator.shared.finish(deviceName: name, ieeeAddress: ieee, success: true)
-                        case "failed":
-                            InterviewLiveActivityCoordinator.shared.finish(deviceName: name, ieeeAddress: ieee, success: false)
-                        default:
-                            break
-                        }
-                    }
+                    if let status { trackPermitJoinInterview(name: name, status: status) }
                 default:
                     break
                 }
             }
+            networkMapRenderRevision &+= 1
         case .deviceState(let name, let state):
             let previous = deviceStates[name] ?? [:]
             // Devices: skip the empty → value transition because retained MQTT
@@ -176,26 +210,70 @@ extension AppStore {
             // section immediately.
             let isGroup = groups.contains { $0.friendlyName == name }
             if !previous.isEmpty || isGroup {
-                let changes = LogMapperEngine.diff(previous, state)
+                let changes = LogMapperEngine.diff(previous, state, units: exposeUnits(for: name))
                 if !changes.isEmpty {
                     insertLogEntry(LogMapperEngine.stateChangeEntry(device: name, changes: changes, payload: state))
                 }
             }
             deviceStates[name] = state
             handleOTAState(for: name, state: state)
+            networkMapRenderRevision &+= 1
         case .deviceAvailability(let name, let available):
+            // Only log transitions — the first availability snapshot after
+            // (re)connect would otherwise produce a flood of "X online"
+            // rows for every device the bridge tracks.
+            if let previous = deviceAvailability[name], previous != available {
+                let level: LogLevel = available ? .info : .warning
+                // Subtitle wording — the device name is already in summaryTitle,
+                // so the message just says what changed.
+                let message = available ? "Came Online" : "Went Offline"
+                insertLogEntry(LogEntry(
+                    id: UUID(), timestamp: .now, level: level,
+                    category: .availability, namespace: nil,
+                    message: message, deviceName: name
+                ))
+            }
             deviceAvailability[name] = available
+            networkMapRenderRevision &+= 1
         case .deviceOTAUpdateResponse(let response):
             handleOTAResponse(response)
+            networkMapRenderRevision &+= 1
         case .deviceOTACheckResponse(let response):
             handleOTACheckResponse(response)
+            networkMapRenderRevision &+= 1
         case .permitJoinChanged(let enabled, let remaining):
-            if let info = bridgeInfo {
+            // Log the transition — pairing-window state is security-relevant
+            // and worth a discrete row even though `bridge/info` will
+            // republish it. Comparing to bridgeInfo?.permitJoin guards
+            // against logging the same state twice on connect.
+            if bridgeInfo?.permitJoin != enabled {
+                let level: LogLevel = enabled ? .info : .info
+                let message: String
+                if enabled, let remaining {
+                    message = "Pairing Opened (\(remaining)s)"
+                } else if enabled {
+                    message = "Pairing Opened"
+                } else {
+                    message = "Pairing Closed"
+                }
+                insertLogEntry(LogEntry(
+                    id: UUID(), timestamp: .now, level: level,
+                    category: .permitJoin, namespace: nil,
+                    message: message, deviceName: nil
+                ))
+            }
+            // "Still open" without a remaining time carries nothing new, and
+            // applying it would wipe the known deadline and the countdown.
+            if let info = bridgeInfo, !(enabled && info.permitJoin && remaining == nil) {
+                if enabled, info.permitJoin != enabled {
+                    permitJoinJoinedCount = 0
+                }
                 bridgeInfo = info.copyUpdatingPermitJoin(
                     enabled: enabled,
                     timeout: remaining,
                     target: enabled ? info.permitJoinTarget : nil
                 )
+                syncPermitJoinLiveActivity()
             }
 
         case .bridgeResponse(let topic, let payload):
@@ -235,12 +313,71 @@ extension AppStore {
                 bridgeHealth = health
             }
 
+        case .networkMapResponse(let response):
+            let wasRefreshing = networkMapIsRefreshing
+            networkMapIsRefreshing = false
+            guard response.status == "ok", let topology = response.data?.value else {
+                if wasRefreshing {
+                    networkMapRefreshPhase = .failed(
+                        message: response.error ?? "The coordinator could not return a network map."
+                    )
+                }
+                let error = Z2MOperationError(
+                    id: UUID(),
+                    topic: Z2MTopics.bridgeResponseNetworkMap,
+                    message: response.error ?? "Network map refresh failed",
+                    timestamp: .now
+                )
+                apply(.operationError(error))
+                break
+            }
+            let updatedAt = Date()
+            networkMapRefreshPhase = .building(deviceCount: topology.nodes.count)
+            networkTopology = topology
+            networkMapLastUpdated = updatedAt
+            let summary = NetworkMapScanSummary(topology: topology, progress: networkMapScan, finishedAt: updatedAt)
+            // Every connected client receives every networkmap response, so
+            // a scan someone else started (another app, the Z2M frontend)
+            // refreshes the map quietly; only our own gets the summary card.
+            networkMapRefreshPhase = wasRefreshing ? .completed(summary) : .idle
+            networkMapRenderRevision &+= 1
+            if let activeBridgeID {
+                networkMapCache.save(
+                    NetworkMapCacheRecord(topology: topology, updatedAt: updatedAt),
+                    bridgeID: activeBridgeID
+                )
+            }
+            if wasRefreshing {
+                let failures = summary.failedDeviceNames.count
+                enqueueNotification(InAppNotification(
+                    level: failures > 0 ? .warning : .info,
+                    title: "Network Map Updated",
+                    subtitle: failures > 0
+                        ? "\(summary.deviceCount) devices · \(failures) did not respond"
+                        : "\(summary.deviceCount) devices"
+                ))
+            }
+            // A clean scan's summary shows briefly, then gets out of the way.
+            // One with failures stays until dismissed, so the list of
+            // routers that did not answer can actually be read.
+            if wasRefreshing, summary.failedDeviceNames.isEmpty {
+                settleNetworkMapRefreshPhase(after: .seconds(3))
+            }
+
         case .touchlinkScanResult(let devices):
             touchlinkDevices = devices
             touchlinkScanInProgress = false
+            BridgeOperationLiveActivityCoordinator.shared.finishScan(
+                bridgeID: activeBridgeID,
+                foundCount: devices.count
+            )
 
         case .touchlinkIdentifyDone:
             touchlinkIdentifyInProgress = false
+            BridgeOperationLiveActivityCoordinator.shared.finishIdentify(
+                bridgeID: activeBridgeID,
+                success: true
+            )
 
         case .touchlinkFactoryResetDone:
             touchlinkResetInProgress = false
@@ -287,6 +424,10 @@ extension AppStore {
             touchlinkScanInProgress = false
             touchlinkIdentifyInProgress = false
             touchlinkResetInProgress = false
+            if error.topic == Z2MTopics.bridgeResponseTouchlinkScan
+                || error.topic == Z2MTopics.bridgeResponseTouchlinkIdentify {
+                BridgeOperationLiveActivityCoordinator.shared.failAll(bridgeID: activeBridgeID)
+            }
             operationErrors.insert(error, at: 0)
             let entry = LogEntry(
                 id: UUID(),

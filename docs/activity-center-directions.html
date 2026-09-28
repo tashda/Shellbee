@@ -1,0 +1,125 @@
+<div id="activity-center-directions" aria-label="Three Activity Center design directions">
+  <style>
+    #activity-center-directions {
+      color-scheme: light dark;
+      --ac-bg: light-dark(#f4f4f7, #101114);
+      --ac-surface: light-dark(#ffffff, #1b1c20);
+      --ac-text: light-dark(#111216, #f6f6f8);
+      --ac-secondary: light-dark(#75767d, #a7a8b0);
+      --ac-divider: light-dark(#e5e5e9, #303136);
+      --ac-blue: light-dark(#007aff, #0a84ff);
+      --ac-red: light-dark(#ff3b30, #ff453a);
+      --ac-green: light-dark(#34c759, #30d158);
+      --ac-amber: light-dark(#ff9f0a, #ff9f0a);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      color: var(--ac-text);
+    }
+    #activity-center-directions * { box-sizing: border-box; }
+    #activity-center-directions .directions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+    #activity-center-directions .direction { min-width: 0; }
+    #activity-center-directions .direction-title { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+    #activity-center-directions .direction-note { margin: 0 0 12px; color: var(--ac-secondary); font-size: 13px; line-height: 1.35; }
+    #activity-center-directions .phone { overflow: hidden; min-height: 585px; border-radius: 32px; background: var(--ac-bg); box-shadow: 0 10px 28px light-dark(rgb(0 0 0 / 15%), rgb(0 0 0 / 45%)); }
+    #activity-center-directions .status { display: flex; justify-content: space-between; padding: 16px 20px 10px; font-size: 12px; font-weight: 600; }
+    #activity-center-directions .navigation { display: flex; align-items: center; justify-content: space-between; padding: 5px 18px 15px; }
+    #activity-center-directions .navigation h2 { margin: 0; font-size: 27px; letter-spacing: -0.6px; }
+    #activity-center-directions .nav-action { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ac-surface); color: var(--ac-blue); }
+    #activity-center-directions .nav-action i { width: 18px; height: 18px; }
+    #activity-center-directions .segment { display: inline-flex; margin: 0 18px 16px; padding: 3px; gap: 2px; border-radius: 9px; background: light-dark(#dedee4, #2b2c31); font-size: 12px; font-weight: 500; }
+    #activity-center-directions .segment span { padding: 5px 15px; border-radius: 7px; color: var(--ac-secondary); }
+    #activity-center-directions .segment .active { color: var(--ac-text); background: var(--ac-surface); box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / 12%), rgb(0 0 0 / 35%)); }
+    #activity-center-directions .section-label { margin: 2px 20px 8px; color: var(--ac-secondary); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .2px; }
+    #activity-center-directions .list { margin: 0 12px 16px; overflow: hidden; border-radius: 16px; background: var(--ac-surface); }
+    #activity-center-directions .row { display: flex; align-items: center; gap: 11px; min-height: 58px; padding: 9px 12px; border-bottom: 1px solid var(--ac-divider); }
+    #activity-center-directions .row:last-child { border-bottom: 0; }
+    #activity-center-directions .icon { display: grid; flex: 0 0 auto; place-items: center; width: 31px; height: 31px; border-radius: 9px; background: color-mix(in srgb, var(--row-color) 14%, transparent); color: var(--row-color); }
+    #activity-center-directions .icon i { width: 17px; height: 17px; }
+    #activity-center-directions .row-copy { min-width: 0; flex: 1; }
+    #activity-center-directions .row-title { overflow: hidden; font-size: 14px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    #activity-center-directions .row-detail { overflow: hidden; margin-top: 2px; color: var(--ac-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    #activity-center-directions .time { flex: 0 0 auto; align-self: flex-start; padding-top: 2px; color: var(--ac-secondary); font-size: 11px; }
+    #activity-center-directions .now-card { margin: 0 12px 16px; padding: 14px; border-radius: 20px; background: linear-gradient(135deg, color-mix(in srgb, var(--ac-blue) 15%, var(--ac-surface)), var(--ac-surface)); }
+    #activity-center-directions .now-top { display: flex; align-items: center; gap: 9px; color: var(--ac-blue); font-size: 12px; font-weight: 600; }
+    #activity-center-directions .now-top i { width: 15px; height: 15px; }
+    #activity-center-directions .now-title { margin-top: 9px; font-size: 19px; font-weight: 600; letter-spacing: -0.25px; }
+    #activity-center-directions .now-detail { margin-top: 3px; color: var(--ac-secondary); font-size: 13px; }
+    #activity-center-directions .now-footer { display: flex; justify-content: space-between; margin-top: 14px; color: var(--ac-secondary); font-size: 12px; }
+    #activity-center-directions .compact-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--ac-divider); }
+    #activity-center-directions .compact-row:last-child { border-bottom: 0; }
+    #activity-center-directions .device { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--device-color) 16%, transparent); color: var(--device-color); }
+    #activity-center-directions .device i { width: 18px; height: 18px; }
+    #activity-center-directions .device-copy { flex: 1; min-width: 0; }
+    #activity-center-directions .device-name { font-size: 14px; font-weight: 500; }
+    #activity-center-directions .device-summary { margin-top: 2px; color: var(--ac-secondary); font-size: 12px; }
+    #activity-center-directions .count { color: var(--ac-secondary); font-size: 12px; }
+    #activity-center-directions .chevron { color: var(--ac-secondary); }
+    #activity-center-directions .chevron i { width: 16px; height: 16px; }
+    #activity-center-directions .foot { margin: 14px 20px 0; color: var(--ac-secondary); font-size: 12px; text-align: center; }
+    @media (max-width: 760px) { #activity-center-directions .directions { grid-template-columns: 1fr; } #activity-center-directions .phone { min-height: 520px; } }
+  </style>
+
+  <div class="directions">
+    <section class="direction" aria-label="Direction one: chronological Activity">
+      <h2 class="direction-title">1. Recents</h2>
+      <p class="direction-note">The lightest option: an iOS-style chronological list, like Phone Recents.</p>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▮▮▮ Wi‑Fi&nbsp; 100%</span></div>
+        <div class="navigation"><h2>Activity</h2><span class="nav-action"><i data-lucide="ellipsis" aria-hidden="true"></i></span></div>
+        <div class="segment"><span class="active">All</span><span>Attention</span></div>
+        <p class="section-label">Today</p>
+        <div class="list">
+          <div class="row" style="--row-color:var(--ac-red)"><span class="icon"><i data-lucide="circle-x" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">OTA check failed</span><span class="row-detail">basement_remote</span></span><span class="time">Now</span></div>
+          <div class="row" style="--row-color:var(--ac-green)"><span class="icon"><i data-lucide="wifi" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">krea_ambient is online</span><span class="row-detail">Signal quality 220</span></span><span class="time">2m</span></div>
+          <div class="row" style="--row-color:var(--ac-blue)"><span class="icon"><i data-lucide="arrow-down-to-line" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">Update installed</span><span class="row-detail">Kitchen bulb</span></span><span class="time">12m</span></div>
+        </div>
+        <p class="section-label">Earlier</p>
+        <div class="list">
+          <div class="row" style="--row-color:var(--ac-amber)"><span class="icon"><i data-lucide="triangle-alert" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">Device unavailable</span><span class="row-detail">krea_led_strip</span></span><span class="time">14:20</span></div>
+          <div class="row" style="--row-color:var(--ac-blue)"><span class="icon"><i data-lucide="radio" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">Interview completed</span><span class="row-detail">Hall sensor</span></span><span class="time">13:56</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="direction" aria-label="Direction two: current status and recent activity">
+      <h2 class="direction-title">2. Now &amp; Recent</h2>
+      <p class="direction-note">A single calm “now” state, followed by compact history—closest to a player.</p>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▮▮▮ Wi‑Fi&nbsp; 100%</span></div>
+        <div class="navigation"><h2>Activity</h2><span class="nav-action"><i data-lucide="ellipsis" aria-hidden="true"></i></span></div>
+        <div class="now-card">
+          <div class="now-top"><i data-lucide="radio-tower" aria-hidden="true"></i><span>NOW</span></div>
+          <div class="now-title">Checking updates</div>
+          <div class="now-detail">3 devices are being checked</div>
+          <div class="now-footer"><span>1 complete</span><span>View details&nbsp; ›</span></div>
+        </div>
+        <p class="section-label">Recent activity</p>
+        <div class="list">
+          <div class="compact-row" style="--row-color:var(--ac-red)"><span class="icon"><i data-lucide="circle-x" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">OTA check failed</span><span class="row-detail">basement_remote</span></span><span class="time">Now</span></div>
+          <div class="compact-row" style="--row-color:var(--ac-green)"><span class="icon"><i data-lucide="wifi" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">krea_ambient is online</span><span class="row-detail">Signal quality 220</span></span><span class="time">2m</span></div>
+          <div class="compact-row" style="--row-color:var(--ac-blue)"><span class="icon"><i data-lucide="arrow-down-to-line" aria-hidden="true"></i></span><span class="row-copy"><span class="row-title">Update installed</span><span class="row-detail">Kitchen bulb</span></span><span class="time">12m</span></div>
+        </div>
+        <p class="foot">Logs stay in Settings for diagnostics.</p>
+      </div>
+    </section>
+
+    <section class="direction" aria-label="Direction three: Activity grouped by device">
+      <h2 class="direction-title">3. By Device</h2>
+      <p class="direction-note">A quieter Home-like overview: each device earns one row, with its latest event.</p>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▮▮▮ Wi‑Fi&nbsp; 100%</span></div>
+        <div class="navigation"><h2>Activity</h2><span class="nav-action"><i data-lucide="ellipsis" aria-hidden="true"></i></span></div>
+        <p class="section-label">Needs attention</p>
+        <div class="list">
+          <div class="compact-row" style="--device-color:var(--ac-red)"><span class="device"><i data-lucide="remote" aria-hidden="true"></i></span><span class="device-copy"><span class="device-name">basement_remote</span><span class="device-summary">OTA check failed · Now</span></span><span class="chevron"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="compact-row" style="--device-color:var(--ac-amber)"><span class="device"><i data-lucide="lightbulb" aria-hidden="true"></i></span><span class="device-copy"><span class="device-name">krea_led_strip</span><span class="device-summary">Offline · 14:20</span></span><span class="chevron"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+        </div>
+        <p class="section-label">Devices</p>
+        <div class="list">
+          <div class="compact-row" style="--device-color:var(--ac-green)"><span class="device"><i data-lucide="radio" aria-hidden="true"></i></span><span class="device-copy"><span class="device-name">krea_ambient</span><span class="device-summary">Online · Signal quality 220</span></span><span class="count">2</span><span class="chevron"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="compact-row" style="--device-color:var(--ac-blue)"><span class="device"><i data-lucide="lightbulb" aria-hidden="true"></i></span><span class="device-copy"><span class="device-name">Kitchen bulb</span><span class="device-summary">Update installed · 12m</span></span><span class="count">3</span><span class="chevron"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+          <div class="compact-row" style="--device-color:var(--ac-blue)"><span class="device"><i data-lucide="thermometer" aria-hidden="true"></i></span><span class="device-copy"><span class="device-name">Hall sensor</span><span class="device-summary">Interview completed · 13:56</span></span><span class="chevron"><i data-lucide="chevron-right" aria-hidden="true"></i></span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

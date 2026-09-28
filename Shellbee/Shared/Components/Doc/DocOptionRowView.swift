@@ -1,8 +1,11 @@
 import SwiftUI
 
+/// A device option inside documentation prose: z2m's label with its type in
+/// secondary text, then the description.
 struct DocOptionRowView: View {
     let option: DocOption
     let sourcePath: String?
+    @Environment(\.docContextDevice) private var contextDevice: Device?
 
     init(option: DocOption, sourcePath: String? = nil) {
         self.option = option
@@ -11,20 +14,13 @@ struct DocOptionRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                Text(option.name)
-                    .font(.system(.subheadline, design: .monospaced).weight(.medium))
-                    .padding(.horizontal, DesignTokens.Spacing.sm)
-                    .padding(.vertical, DesignTokens.Size.docOptionPaddingV)
-                    .background(Color(.quaternarySystemFill), in: Capsule())
-
-                if let type = option.type {
+            HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.sm) {
+                Text(option.label(in: contextDevice?.definition))
+                    .font(.headline)
+                if let type = option.typeText {
                     Text(type)
-                        .font(.caption.weight(.medium))
-                        .padding(.horizontal, DesignTokens.Spacing.sm)
-                        .padding(.vertical, DesignTokens.Size.docOptionPaddingV)
-                        .foregroundStyle(typeColor(type))
-                        .background(typeColor(type).opacity(DesignTokens.Opacity.chipFill), in: Capsule())
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -36,14 +32,27 @@ struct DocOptionRowView: View {
             }
         }
     }
+}
 
-    private func typeColor(_ type: String) -> Color {
+extension DocOption {
+    /// z2m's label from the device definition when there is one, otherwise
+    /// the key humanised the way z2m builds its labels ("color_sync" →
+    /// "Color sync").
+    func label(in definition: DeviceDefinition?) -> String {
+        let match = definition?.options?.first { $0.property == name || $0.name == name }
+        if let label = match?.label { return label }
+        let words = name.replacingOccurrences(of: "_", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
+
+    var typeText: String? {
         switch type {
-        case "boolean": return .green
-        case "number": return .blue
-        case "enum": return .purple
-        case "string": return .orange
-        default: return .secondary
+        case "number": "Number"
+        case "boolean": "On or off"
+        case "enum": "Choice"
+        case "string": "Text"
+        case .some(let other): other.capitalized
+        case nil: nil
         }
     }
 }

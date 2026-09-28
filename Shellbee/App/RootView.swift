@@ -7,6 +7,11 @@ struct RootView: View {
     @State private var pendingCrash: PendingCrash?
     @AppStorage(OnboardingStep.completedKey) private var onboardingCompleted: Bool = false
     @State private var showOnboarding = false
+    let windowDestination: ShellbeeWindowDestination
+
+    init(windowDestination: ShellbeeWindowDestination = .home) {
+        self.windowDestination = windowDestination
+    }
 
     /// Phase 2 multi-bridge: the most-attention-needing state across every
     /// connected session. `lost` always wins so the banner / alert surface
@@ -69,6 +74,7 @@ struct RootView: View {
             // First-launch only. Defer until splash dismisses so the cover
             // doesn't fight the splash transition.
             guard !stillInitializing,
+                  ProcessInfo.processInfo.environment["UI_TEST_MODE"] != "1",
                   !onboardingCompleted,
                   !environment.hasSavedBridges
             else { return }
@@ -101,22 +107,23 @@ struct RootView: View {
             // means we only retry bridges the user successfully connected to
             // before — never undo an explicit disconnect.
             guard phase == .active else { return }
-            for session in environment.registry.orderedSessions {
-                guard session.controller.hasBeenConnected else { continue }
-                switch session.connectionState {
-                case .lost, .failed, .idle:
-                    environment.retryFromLost(bridgeID: session.bridgeID)
-                case .connecting, .connected, .reconnecting:
-                    continue
-                }
-            }
+            environment.resumeConnectionsIfNeeded()
         }
     }
 
     // MARK: - Main interface (shown after first successful connection)
 
+    @ViewBuilder
+    private var mainShell: some View {
+        if AdaptiveLayout.isPad {
+            MainSplitView(initialDestination: windowDestination)
+        } else {
+            MainTabView()
+        }
+    }
+
     private var mainInterface: some View {
-        MainTabView()
+        mainShell
             .overlay(alignment: .top) { connectionBanner }
             .alert("Connection Lost", isPresented: lostBinding) {
                 Button("Try Again") {

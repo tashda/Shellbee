@@ -38,7 +38,6 @@ struct DeviceDocIdentity: Sendable {
     let description: String
     let imageURL: URL?
     let supportsOTA: Bool
-    let exposesSummary: String?
 }
 
 struct DevicePairingGuide: Sendable {
@@ -85,35 +84,82 @@ struct DevicePairingMethod: Sendable, Identifiable {
     }
 }
 
+/// One expose from the device definition, as the documentation lists it:
+/// z2m's label, what it accepts and whether it can be read or set.
 struct DeviceDocCapability: Sendable, Identifiable {
     let id: UUID
-    let title: String
-    let subtitle: String?
-    let summary: String
+    let label: String
+    let property: String?
+    let description: String?
     let kind: String
     let unit: String?
+    let valueMin: Double?
+    let valueMax: Double?
+    let valueStep: Double?
+    let values: [String]
+    let endpoint: String?
     let isReadable: Bool
     let isWritable: Bool
-    let detailChips: [String]
+    let isDiagnostic: Bool
 
-    nonisolated init(
-        title: String,
-        subtitle: String? = nil,
-        summary: String,
-        kind: String,
-        unit: String? = nil,
-        isReadable: Bool,
-        isWritable: Bool,
-        detailChips: [String] = []
-    ) {
+    nonisolated init(expose: Expose) {
         self.id = UUID()
-        self.title = title
-        self.subtitle = subtitle
-        self.summary = summary
-        self.kind = kind
-        self.unit = unit
-        self.isReadable = isReadable
-        self.isWritable = isWritable
-        self.detailChips = detailChips
+        self.label = expose.label ?? expose.name ?? expose.property ?? expose.type.capitalized
+        self.property = expose.property
+        self.description = expose.description
+        self.kind = expose.type
+        self.unit = expose.unit
+        self.valueMin = expose.valueMin
+        self.valueMax = expose.valueMax
+        self.valueStep = expose.valueStep
+        self.values = expose.values ?? []
+        self.endpoint = expose.endpoint
+        self.isReadable = expose.isReadable
+        self.isWritable = expose.isWritable
+        self.isDiagnostic = expose.isDiagnostic
+    }
+
+    /// The range with its unit, e.g. "0–254" or "153–500 mired".
+    nonisolated var rangeText: String? {
+        guard let valueMin, let valueMax else { return nil }
+        let range = "\(Self.format(valueMin))–\(Self.format(valueMax))"
+        guard let unit, !unit.isEmpty else { return range }
+        return "\(range) \(unit)"
+    }
+
+    /// A short summary for the trailing side of a row.
+    nonisolated var valueSummary: String? {
+        if let rangeText { return rangeText }
+        switch kind {
+        case "binary" where values.count == 2: return values.joined(separator: ", ")
+        case "binary": return "On, Off"
+        case "enum" where values.count > 4: return "\(values.count) options"
+        case "enum" where !values.isEmpty: return values.joined(separator: ", ")
+        default: return unit?.isEmpty == false ? unit : nil
+        }
+    }
+
+    nonisolated var accessText: String {
+        switch (isReadable, isWritable) {
+        case (true, true): "Read and write"
+        case (true, false): "Read only"
+        case (false, true): "Write only"
+        case (false, false): "Reported in state"
+        }
+    }
+
+    nonisolated var kindText: String {
+        switch kind {
+        case "numeric": "Number"
+        case "binary": "On or off"
+        case "enum": "Choice"
+        case "text": "Text"
+        case "list": "List"
+        default: kind.capitalized
+        }
+    }
+
+    private nonisolated static func format(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(value)
     }
 }

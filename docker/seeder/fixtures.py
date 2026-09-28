@@ -102,10 +102,10 @@ ALL_DEVICES: list[dict] = []
 DEVICE_STATES: dict[str, dict] = {}
 
 # Visually distinguish two simultaneous seeders during multi-bridge testing.
-# When set, every fixture device's friendly name (and the matching key in
-# DEVICE_STATES) is prefixed; IEEEs are also salted by appending the prefix
-# code so the two bridges' device lists look completely different to the app.
+# Name prefixing and IEEE salting are independently configurable so UI tests
+# can intentionally expose duplicate names on two genuinely distinct bridges.
 _FIXTURE_PREFIX = os.environ.get("FIXTURE_PREFIX", "")
+_FIXTURE_IEEE_SALT = os.environ.get("FIXTURE_IEEE_SALT", _FIXTURE_PREFIX)
 _NETWORK_ADDR = 10000
 
 
@@ -130,11 +130,12 @@ def device(
 
     if _FIXTURE_PREFIX:
         name = f"{_FIXTURE_PREFIX}{name}"
-        # Salt the last 6 hex chars of the IEEE so the prefixed bridge has
-        # genuinely distinct device IDs — otherwise the same IEEE under two
-        # bridges would race the firstSeen migration logic.
+
+    # Salt the last 6 hex chars independently of the display-name prefix.
+    # Otherwise equal IEEEs under two bridges race firstSeen migration logic.
+    if _FIXTURE_IEEE_SALT:
         if ieee.startswith("0x") and len(ieee) == 18:
-            salt = format(abs(hash(_FIXTURE_PREFIX)) & 0xFFFFFF, "06x")
+            salt = format(abs(hash(_FIXTURE_IEEE_SALT)) & 0xFFFFFF, "06x")
             ieee = ieee[:12] + salt
 
     ALL_DEVICES.append({
@@ -220,6 +221,8 @@ device("Dining Candle Bulb",         model="LED1949C5",         ieee="0x000b57ff
 device("Hallway Motion",             model="RTCGQ11LM",         ieee="0x00158d00011aa001",
        type="EndDevice", power_source="Battery")
 device("Garage Motion",              model="E1525/E1745",       ieee="0x000b57fffec0b333",
+       type="EndDevice", power_source="Battery")
+device("Attic Presence Sensor",      model="ZG-204ZV",          ieee="0x00158d00055ee005",
        type="EndDevice", power_source="Battery")
 device("Back Door Contact",          model="MCCGQ11LM",         ieee="0x00158d00022bb002",
        type="EndDevice", power_source="Battery")

@@ -42,6 +42,7 @@ struct BridgePicker: View {
             } label: {
                 Text("Bridge")
             }
+            .tint(.secondary)
             .onAppear {
                 // Default to the first connected bridge when the host view
                 // didn't pre-select one. Keeps the picker valid before the

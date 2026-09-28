@@ -68,6 +68,7 @@ final class ConnectionViewModel {
 
     private let environment: AppEnvironment
     private var editingConnection: ConnectionConfig?
+    private var discoveryTask: Task<Void, Never>?
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -77,17 +78,31 @@ final class ConnectionViewModel {
     }
 
     func startDiscovery() {
-        Task { @MainActor in
+        guard !environment.discovery.isScanning else { return }
+        discoveryTask?.cancel()
+        discoveryTask = Task { @MainActor [weak self] in
+            guard let self else { return }
             environment.discovery.start()
-            try? await Task.sleep(for: .seconds(DesignTokens.Duration.discoveryScanWindow))
-            environment.discovery.stop()
+            let deadline = Date.now.addingTimeInterval(DesignTokens.Duration.discoveryScanWindow)
+            while environment.discovery.isScanning && Date.now < deadline {
+                do {
+                    try await Task.sleep(for: .milliseconds(400))
+                } catch {
+                    return
+                }
+            }
+            if environment.discovery.isScanning {
+                environment.discovery.stop()
+            }
+            guard !Task.isCancelled else { return }
+            discoveryTask = nil
         }
     }
 
     func stopDiscovery() {
-        Task { @MainActor in
-            environment.discovery.stop()
-        }
+        discoveryTask?.cancel()
+        discoveryTask = nil
+        environment.discovery.stop()
     }
 
     func deleteConnection(_ config: ConnectionConfig) {
@@ -152,8 +167,14 @@ final class ConnectionViewModel {
             environment.history.add(config)
         }
         environment.history.setAutoConnect(config, autoConnect)
+        let previousColorHex = DesignTokens.Bridge.customColorHex(for: config.id)
         let selectedColor = usesAutoBridgeColor ? nil : bridgeColor
         DesignTokens.Bridge.setCustomColor(selectedColor, for: config.id)
+        if previousColorHex != DesignTokens.Bridge.customColorHex(for: config.id) {
+            Task { @MainActor in
+                BridgeColorObserver.shared.bump()
+            }
+        }
 
         editingConnection = config
         return true

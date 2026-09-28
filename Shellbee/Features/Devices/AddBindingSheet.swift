@@ -74,44 +74,48 @@ struct AddBindingSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                if !availableClusters.isEmpty {
-                    Section("Clusters to Bind") {
-                        ForEach(availableClusters, id: \.self) { cluster in
-                            Toggle(isOn: Binding(
-                                get: { selectedClusters.contains(cluster) },
-                                set: { if $0 { selectedClusters.insert(cluster) } else { selectedClusters.remove(cluster) } }
-                            )) {
-                                Text(cluster).font(.system(.subheadline, design: .monospaced))
+                SwiftUI.Group {
+                    if !availableClusters.isEmpty {
+                        Section("Clusters to Bind") {
+                            ForEach(availableClusters, id: \.self) { cluster in
+                                Toggle(isOn: Binding(
+                                    get: { selectedClusters.contains(cluster) },
+                                    set: { if $0 { selectedClusters.insert(cluster) } else { selectedClusters.remove(cluster) } }
+                                )) {
+                                    Text(cluster).font(.system(.subheadline, design: .monospaced))
+                                }
+                            }
+                        }
+                    }
+
+                    Section("Infrastructure") {
+                        Button { send("coordinator") } label: { CoordinatorRow() }
+                    }
+
+                    if !filteredDevices.isEmpty || !searchText.isEmpty {
+                        Section("Devices") {
+                            ForEach(filteredDevices) { target in
+                                Button { send(target.friendlyName) } label: {
+                                    BindTargetRow(device: target)
+                                }
+                            }
+                        }
+                    }
+
+                    if !sourceStore.groups.isEmpty {
+                        Section("Groups") {
+                            ForEach(sourceStore.groups) { group in
+                                Button { send(group.friendlyName) } label: {
+                                    Label(group.friendlyName, systemImage: "rectangle.3.group.fill")
+                                        .foregroundStyle(.primary)
+                                }
                             }
                         }
                     }
                 }
-
-                Section("Infrastructure") {
-                    Button { send("coordinator") } label: { CoordinatorRow() }
-                }
-
-                if !filteredDevices.isEmpty || !searchText.isEmpty {
-                    Section("Devices") {
-                        ForEach(filteredDevices) { target in
-                            Button { send(target.friendlyName) } label: {
-                                BindTargetRow(device: target)
-                            }
-                        }
-                    }
-                }
-
-                if !sourceStore.groups.isEmpty {
-                    Section("Groups") {
-                        ForEach(sourceStore.groups) { group in
-                            Button { send(group.friendlyName) } label: {
-                                Label(group.friendlyName, systemImage: "rectangle.3.group.fill")
-                                    .foregroundStyle(.primary)
-                            }
-                        }
-                    }
-                }
+                .shellbeeThemedRows()
             }
+            .shellbeeThemedCanvas()
             .listStyle(.plain)
             .searchable(text: $searchText, prompt: "Search")
             .overlay {
@@ -127,6 +131,7 @@ struct AddBindingSheet: View {
                 }
             }
         }
+        .configuredTopScrollEdgeEffect()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
@@ -137,7 +142,33 @@ struct AddBindingSheet: View {
     }
 }
 
-private typealias BindTargetRow = DevicePickerRow
+/// A bind target: the device's vendor and name.
+private struct BindTargetRow: View {
+    let device: Device
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.sm) {
+            DeviceImageView(
+                device: device,
+                isAvailable: true,
+                size: DesignTokens.Size.summaryRowSymbolFrame
+            )
+            VStack(alignment: .leading, spacing: 0) {
+                if let vendor = device.definition?.vendor {
+                    Text(vendor.uppercased())
+                        .font(.system(size: DesignTokens.Size.chipSymbol, weight: .bold, design: .rounded))
+                        .foregroundStyle(.secondary.opacity(DesignTokens.Opacity.secondaryText))
+                        .lineLimit(1)
+                }
+                Text(device.friendlyName)
+                    .font(.subheadline).fontWeight(.semibold)
+                    .foregroundStyle(.primary).lineLimit(1)
+            }
+            Spacer()
+        }
+        .padding(.vertical, DesignTokens.Spacing.xs)
+    }
+}
 
 private struct CoordinatorRow: View {
     var body: some View {

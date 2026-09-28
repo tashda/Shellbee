@@ -49,6 +49,20 @@ struct ConnectionEditorDraft: Equatable {
         return true
     }
 
+    /// Builds a throwaway `ConnectionConfig` for the "Test" button — never
+    /// saved, never assigned a stable id.
+    func testConfig() -> ConnectionConfig {
+        ConnectionConfig(
+            host: host.trimmingCharacters(in: .whitespaces),
+            port: Int(port) ?? ConnectionConfig.defaultPort,
+            useTLS: useTLS,
+            basePath: basePath.isEmpty ? "/" : basePath,
+            authToken: authToken.isEmpty ? nil : authToken,
+            name: nil,
+            allowInvalidCertificates: useTLS ? allowInvalidCertificates : false
+        )
+    }
+
     func normalizedForComparison() -> ConnectionEditorDraft {
         var copy = self
         copy.name = copy.name.trimmingCharacters(in: .whitespacesAndNewlines)
