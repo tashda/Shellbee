@@ -23,6 +23,7 @@ struct ShellbeeApp: App {
                 .environment(\.shellbeeTheme, theme)
                 .environment(\.shellbeeThemesStatusColors, themesStatusColors)
                 .environment(\.shellbeeSurfaceTint, surfaceTint)
+                .shellbeeWindowTint(theme)
         } defaultValue: {
             .home
         }
