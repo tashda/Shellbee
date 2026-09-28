@@ -79,28 +79,15 @@ struct BatteriesPage: View {
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: DesignTokens.Spacing.xs) {
-                chip("All", isSelected: filter == nil) { filter = nil }
+                SelectableFilterChip(title: "All", isSelected: filter == nil) { filter = nil }
                 ForEach(BatteryUrgency.allCases) { urgency in
-                    chip(urgency.title, isSelected: filter == urgency) {
+                    SelectableFilterChip(title: urgency.title, isSelected: filter == urgency) {
                         filter = filter == urgency ? nil : urgency
                     }
                 }
             }
             .padding(.horizontal, DesignTokens.Spacing.lg)
         }
-    }
-
-    private func chip(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.vertical, DesignTokens.Spacing.xs + DesignTokens.Spacing.xxs)
-                .foregroundStyle(isSelected ? AnyShapeStyle(.background) : AnyShapeStyle(.primary))
-                .background(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.shellbeeSurface), in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func seenText(_ reading: HomeDeviceReading) -> String {
