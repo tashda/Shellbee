@@ -1,4 +1,3 @@
-import os
 import SwiftUI
 
 enum LogLevel: String, CaseIterable, Sendable, Hashable, ChipRepresentable {
@@ -250,13 +249,16 @@ struct LogEntry: Identifiable, Sendable, Hashable {
 }
 
 /// Holds one entry's parsed message kind, filled on first read.
-private final class MessageKindCache: Sendable {
-    private let stored = OSAllocatedUnfairLock<LogEntry.MessageKind?>(initialState: nil)
+private final class MessageKindCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: LogEntry.MessageKind?
 
     func value(_ compute: () -> LogEntry.MessageKind) -> LogEntry.MessageKind {
-        if let cached = stored.withLock({ $0 }) { return cached }
+        lock.lock()
+        defer { lock.unlock() }
+        if let stored { return stored }
         let computed = compute()
-        stored.withLock { $0 = computed }
+        stored = computed
         return computed
     }
 }
