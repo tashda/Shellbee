@@ -10,7 +10,8 @@ the App Store lays the panels out in a row.
     python3 marketing/app-store/make_screenshots.py
 
 Raw captures live in raw/ (1320x2868 iPhone 6.9", 2064x2752 iPad 13");
-output goes to out/iphone/ and out/ipad/ at the same sizes.
+output goes to out/iphone/ (6.9", 1320x2868), out/iphone-6.5/ (1284x2778)
+and out/ipad/ (13", 2064x2752).
 """
 
 import math
@@ -247,5 +248,8 @@ def build(specs, folder, **kw):
 if __name__ == "__main__":
     build(IPHONE, "iphone", w=1320, h=2868, device_width=960, radius=0.145, bezel=0.03,
           top=round(2868 * 0.235), band=0.252, title_size=118, bee_size=0.1)
+    # App Store Connect's 6.5" slot takes 1284x2778; same layout, scaled.
+    build(IPHONE, "iphone-6.5", w=1284, h=2778, device_width=934, radius=0.145, bezel=0.03,
+          top=round(2778 * 0.235), band=0.252, title_size=115, bee_size=0.1)
     build(IPAD, "ipad", w=2064, h=2752, device_width=1520, radius=0.05, bezel=0.022,
           top=round(2752 * 0.215), band=0.24, title_size=140, bee_size=0.066)

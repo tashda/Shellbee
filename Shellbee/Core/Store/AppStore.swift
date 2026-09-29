@@ -3,7 +3,14 @@ import UIKit
 
 @Observable
 final class AppStore {
-    var devices: [Device] = []
+    var devices: [Device] = [] {
+        didSet { deviceIndexByName = Self.indexByName(devices) }
+    }
+    /// Position of each device in `devices` by friendly name, rebuilt on
+    /// every change, so rows looking up their device don't scan the list.
+    @ObservationIgnored private(set) var deviceIndexByName: [String: Int] = [:]
+    /// Per-device observation handles, see `DeviceLiveState`.
+    @ObservationIgnored var liveStates: [String: DeviceLiveState] = [:]
     /// Set once `bridge/devices` has arrived for this connection, so the
     /// splash can tell an empty network from one still loading.
     var hasReceivedDevices = false
@@ -69,6 +76,11 @@ final class AppStore {
     var otaUpdates: [String: OTAUpdateStatus] = [:]
     var logEntries: [LogEntry] = []
     var rawLogEntries: [LogEntry] = []
+    /// Every namespace seen in `logEntries` / `rawLogEntries`, for the
+    /// filter menus. Only changes when a new one first appears, so a menu
+    /// reading it doesn't redraw on every log line.
+    var logNamespaces: Set<String> = []
+    var rawLogNamespaces: Set<String> = []
     var operationErrors: [Z2MOperationError] = []
     var touchlinkDevices: [TouchlinkDevice] = []
     var touchlinkScanInProgress = false
@@ -132,9 +144,12 @@ final class AppStore {
         isConnected = false
         deviceStates = [:]
         deviceAvailability = [:]
+        publishAllLiveStates()
         pendingRenames = []
         otaUpdates = [:]
         logEntries = []
+        logNamespaces = []
+        rawLogNamespaces = []
         operationErrors = []
         deviceCheckResults = [:]
         pendingRemovals = []
@@ -326,5 +341,14 @@ final class AppStore {
         guard firstSeenByBridge[id]?.removeValue(forKey: ieee) != nil else { return }
         deviceFirstSeen.removeValue(forKey: ieee)
         persistFirstSeen()
+    }
+
+    private static func indexByName(_ devices: [Device]) -> [String: Int] {
+        var index: [String: Int] = [:]
+        index.reserveCapacity(devices.count)
+        for (position, device) in devices.enumerated() where index[device.friendlyName] == nil {
+            index[device.friendlyName] = position
+        }
+        return index
     }
 }

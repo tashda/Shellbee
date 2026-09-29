@@ -8,7 +8,14 @@ struct DocEntryRow: View {
     /// How many of these are paired, shown as a trailing count.
     var ownedCount: Int? = nil
 
-    @State private var bundledImageData: Data?
+    @State private var bundledImage: UIImage?
+
+    init(entry: DocBrowserEntry, showVendor: Bool = false, ownedCount: Int? = nil) {
+        self.entry = entry
+        self.showVendor = showVendor
+        self.ownedCount = ownedCount
+        _bundledImage = State(initialValue: entry.imageKey.flatMap(BundledImageStore.cachedImage(for:)))
+    }
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.md) {
@@ -30,10 +37,8 @@ struct DocEntryRow: View {
             }
         }
         .task(id: entry.docKey) {
-            bundledImageData = nil
-            if let key = entry.imageKey {
-                bundledImageData = await BundledImageStore.shared.imageData(for: key)
-            }
+            guard bundledImage == nil, let key = entry.imageKey else { return }
+            bundledImage = await BundledImageStore.shared.image(for: key)
         }
     }
 
@@ -45,7 +50,7 @@ struct DocEntryRow: View {
     @ViewBuilder
     private var deviceImage: some View {
         let size = DesignTokens.Size.summaryRowSymbolFrame
-        if let data = bundledImageData, let uiImage = UIImage(data: data) {
+        if let uiImage = bundledImage {
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)

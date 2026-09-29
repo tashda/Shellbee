@@ -52,13 +52,18 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
+            // The app builds under the splash as soon as a bridge connects,
+            // so its first layout (and Swift's one-off type setup for each
+            // screen) happens while the splash is up, not as it lifts.
+            if environment.hasAnyBridgeBeenConnected {
+                mainInterface
+                    .accessibilityHidden(isInitializing)
+            } else if !isInitializing {
+                setupInterface
+            }
             if isInitializing {
                 SplashScreenView(deviceCount: splashDeviceCount)
                     .transition(.opacity.combined(with: .scale(scale: 1.1)))
-            } else if environment.hasAnyBridgeBeenConnected {
-                mainInterface
-            } else {
-                setupInterface
             }
         }
         .animation(.spring(duration: DesignTokens.Duration.slowAnimation), value: isInitializing)
@@ -92,7 +97,7 @@ struct RootView: View {
                 // Unpack the device thumbnails now, so rows have their
                 // pictures when Home appears instead of popping in.
                 Task.detached(priority: .utility) {
-                    _ = await BundledImageStore.shared.imageData(for: "")
+                    await BundledImageStore.shared.preload()
                 }
                 // Hold the splash until the connect burst has landed, so
                 // Home opens complete rather than filling in under the user.

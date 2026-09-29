@@ -53,7 +53,7 @@ struct HomeView: View {
         environment.homeBridgeCardEntries(selectedBridgeID: selectedBridgeID)
     }
 
-    private var deviceReadings: [HomeDeviceReading] {
+    private func makeDeviceReadings() -> [HomeDeviceReading] {
         environment.homeDeviceReadings(selectedBridgeID: selectedBridgeID)
     }
 
@@ -61,26 +61,33 @@ struct HomeView: View {
         environment.allDevices.isEmpty && environment.isLoading(.devices)
     }
 
-    private var snapshot: HomeSnapshot {
+    private func makeSnapshot() -> HomeSnapshot {
         environment.homeSnapshot(selectedBridgeID: selectedBridgeID)
     }
 
     var body: some View {
+        // Built once per redraw and passed down: each walks every device,
+        // and Home redraws on every message from the bridge.
+        let snapshot = makeSnapshot()
+        let shownCards = shownCards
+        let needsReadings = shownCards.contains(.linkQuality) || shownCards.contains(.batteries)
+            || showingLinkQuality || showingBatteries
+        let deviceReadings = needsReadings ? makeDeviceReadings() : []
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxl) {
                 bridgeSection
-                nowSection
+                nowSection(snapshot)
                 if isLoadingDevices {
                     // Cards drawn from placeholder data until the bridge's
                     // devices arrive, instead of zeros and empty lists.
-                    ForEach(shownCards) { card($0) }
+                    ForEach(shownCards) { card($0, snapshot: snapshot, readings: deviceReadings) }
                         .redacted(reason: .placeholder)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 } else {
-                    attentionSection
-                    ForEach(shownCards) { card($0) }
+                    attentionSection(snapshot)
+                    ForEach(shownCards) { card($0, snapshot: snapshot, readings: deviceReadings) }
                 }
                 }
                 .padding(DesignTokens.Spacing.lg)
@@ -234,7 +241,7 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private var nowSection: some View {
+    private func nowSection(_ snapshot: HomeSnapshot) -> some View {
         let joins = permitJoins
         let updateCheck = environment.otaCheckProgress
         if HomeNowCard.hasContent(
@@ -256,17 +263,13 @@ struct HomeView: View {
         }
     }
 
-    private var attentionItems: [HomeAttentionItem] {
-        HomeAttentionItem.items(snapshot: snapshot)
-    }
-
     /// Needs attention is device problems. Anything true of one bridge —
     /// a pending restart, a Zigbee2MQTT release — gets its own section
     /// headed with that bridge's name, so which bridge is never something
     /// you work out from a colour. With one bridge there is nothing to
     /// disambiguate, so it all reads as one section.
     @ViewBuilder
-    private var attentionSection: some View {
+    private func attentionSection(_ snapshot: HomeSnapshot) -> some View {
         let entries = bridgeCardEntries
         let perBridge = entries.map { entry in
             (entry: entry, items: HomeAttentionItem.bridgeItems(
@@ -274,7 +277,7 @@ struct HomeView: View {
                 latestVersion: environment.releases.latestVersion
             ))
         }.filter { !$0.items.isEmpty }
-        let deviceItems = attentionItems
+        let deviceItems = HomeAttentionItem.items(snapshot: snapshot)
 
         if entries.count <= 1 {
             let all = perBridge.flatMap(\.items) + deviceItems
@@ -341,7 +344,7 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private func card(_ kind: HomeCardKind) -> some View {
+    private func card(_ kind: HomeCardKind, snapshot: HomeSnapshot, readings deviceReadings: [HomeDeviceReading]) -> some View {
         switch kind {
         case .network:
             HomeNetworkCard(snapshot: snapshot) {
@@ -376,30 +379,12 @@ struct HomeView: View {
                 }
             }
         case .activity:
-            activitySection
-        }
-    }
-
-    @ViewBuilder
-    private var activitySection: some View {
-        let items = recentEventItems(for: nil)
-        groupedRows(title: "Activity") {
-            if items.isEmpty {
-                groupedRow(Text("No recent events")
-                    .foregroundStyle(.secondary)
-                )
-            } else {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    groupedRow(Button {
-                        sceneNavigation.pendingLogSheet = LogSheetRequest(entryIDs: [item.id])
-                    } label: {
-                        HomeActivityRow(item: item)
-                    }.buttonStyle(.plain))
-                    if index < items.count - 1 { Divider().padding(.leading, DesignTokens.Spacing.lg) }
-                }
-                Divider().padding(.leading, DesignTokens.Spacing.lg)
-                groupedRow(Button("See all", action: openAllLogs))
-            }
+            HomeActivityCard(
+                limit: usesWideLayout
+                    ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
+                    : recentEventsCount,
+                onOpenAll: openAllLogs
+            )
         }
     }
 
@@ -407,48 +392,11 @@ struct HomeView: View {
         title: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            if let title {
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, DesignTokens.Spacing.lg)
-            }
-            VStack(spacing: 0, content: content)
-                .background(
-                    .shellbeeSurface,
-                    in: RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card, style: .continuous)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.CornerRadius.card, style: .continuous))
-        }
+        HomeGroupedRows(title: title, content: content)
     }
 
     private func groupedRow<Content: View>(_ content: Content) -> some View {
-        content
-            .padding(.horizontal, DesignTokens.Spacing.lg)
-            .padding(.vertical, DesignTokens.Spacing.sm)
-            .frame(maxWidth: .infinity, minHeight: DesignTokens.Size.homeRowMinHeight, alignment: .leading)
-    }
-
-
-    private func recentEventItems(for bridgeID: UUID?) -> [ActivityEventItem] {
-        let limit = usesWideLayout
-            ? max(recentEventsCount, HomeSettings.wideRecentEventsMinimum)
-            : recentEventsCount
-        let entries: [BridgeBoundLogEntry]
-        if let bridgeID, let session = environment.registry.session(for: bridgeID) {
-            entries = Array(session.store.logEntries
-                .lazy
-                .filter { !LogRowIconography.isLinkQualityOnly($0) }
-                .prefix(limit)
-                .map { BridgeBoundLogEntry(bridgeID: bridgeID, bridgeName: session.displayName, entry: $0) })
-        } else {
-            entries = Array(environment.allLogEntries
-                .lazy
-                .filter { !LogRowIconography.isLinkQualityOnly($0.entry) }
-                .prefix(limit))
-        }
-        return entries.map(environment.activityEventItem(for:))
+        content.homeGroupedRow()
     }
 
     private func showDevices(filter: DeviceQuickFilter, bridgeID: UUID? = nil) {
@@ -509,6 +457,15 @@ private enum HomeSheet: Identifiable {
         switch self {
         case .bridge(let bridgeID): "bridge-\(bridgeID.uuidString)"
         }
+    }
+}
+
+/// A tab root: SwiftUI can't compare some of its property wrappers, so
+/// without this every redraw of the tab bar (three per tab switch) rebuilds
+/// it. Its state and environment still redraw it as usual.
+extension HomeView: Equatable {
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.usesWideLayout == rhs.usesWideLayout
     }
 }
 

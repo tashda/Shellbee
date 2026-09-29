@@ -9,6 +9,24 @@ struct DeviceImageView: View {
     var showsAvailabilityIndicator = true
 
     @State private var bundledImage: UIImage?
+    /// Whether the bundled lookup has finished; until then the row shows
+    /// its category icon rather than starting a network download.
+    @State private var lookupFinished: Bool
+
+    init(device: Device, isAvailable: Bool, hasUpdate: Bool = false, otaStatus: OTAUpdateStatus? = nil,
+         size: CGFloat = 44, showsAvailabilityIndicator: Bool = true) {
+        self.device = device
+        self.isAvailable = isAvailable
+        self.hasUpdate = hasUpdate
+        self.otaStatus = otaStatus
+        self.size = size
+        self.showsAvailabilityIndicator = showsAvailabilityIndicator
+        // A picture decoded earlier shows on the first frame, so rows
+        // scrolled back into view don't flash their placeholder.
+        let cached = device.imageKey.flatMap(BundledImageStore.cachedImage(for:))
+        _bundledImage = State(initialValue: cached)
+        _lookupFinished = State(initialValue: cached != nil)
+    }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -29,13 +47,14 @@ struct DeviceImageView: View {
         }
         .frame(width: size, height: size)
         .animation(.spring(duration: DesignTokens.Duration.standardAnimation), value: isAvailable)
-        .task(id: device.ieeeAddress) {
-            bundledImage = nil
-            // Decode once here rather than in `body`, which re-runs on every
-            // state change and would otherwise re-decode the PNG each time.
-            if let key = device.imageKey, let data = await BundledImageStore.shared.imageData(for: key) {
-                bundledImage = UIImage(data: data)
+        .task(id: device.imageKey) {
+            // Returns at once from the cache after the first lookup.
+            bundledImage = if let key = device.imageKey {
+                await BundledImageStore.shared.image(for: key)
+            } else {
+                nil
             }
+            lookupFinished = true
         }
     }
 
@@ -48,6 +67,8 @@ struct DeviceImageView: View {
                 .saturation(isAvailable ? 1 : 0)
                 .opacity(isAvailable ? 1 : 0.4)
                 .transition(.opacity)
+        } else if !lookupFinished {
+            fallbackIcon
         } else {
             PersistentAsyncImage(url: device.imageURL) { image in
                 image

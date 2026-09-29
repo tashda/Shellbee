@@ -184,6 +184,7 @@ extension AppStore {
                             // availability would otherwise stick until app
                             // restart.
                             deviceAvailability[friendlyName] = true
+                            publishLiveState(for: friendlyName)
                         case "failed":
                             devices[idx].interviewing = false
                             devices[idx].interviewCompleted = false
@@ -218,6 +219,7 @@ extension AppStore {
                 }
             }
             deviceStates[name] = state
+            publishLiveState(for: name)
             handleOTAState(for: name, state: state)
             networkMapRenderRevision &+= 1
         case .deviceAvailability(let name, let available):
@@ -236,6 +238,7 @@ extension AppStore {
                 ))
             }
             deviceAvailability[name] = available
+            publishLiveState(for: name)
             networkMapRenderRevision &+= 1
         case .deviceOTAUpdateResponse(let response):
             handleOTAResponse(response)
@@ -393,6 +396,7 @@ extension AppStore {
                 devices.removeAll { $0.friendlyName == id }
                 deviceStates.removeValue(forKey: id)
                 deviceAvailability.removeValue(forKey: id)
+                publishLiveState(for: id)
                 otaUpdates.removeValue(forKey: id)
                 deviceCheckResults.removeValue(forKey: id)
             } else {

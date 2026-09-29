@@ -23,9 +23,8 @@ struct HomeLinkQualityCard: View {
     private var measured: [HomeDeviceReading] {
         readings.filter { ($0.linkQuality ?? 0) > 0 }.sorted { ($0.linkQuality ?? 0) < ($1.linkQuality ?? 0) }
     }
-    private var median: Int? {
-        let values = measured.compactMap(\.linkQuality)
-        return values.isEmpty ? nil : values[values.count / 2]
+    private static func median(of measured: [HomeDeviceReading]) -> Int? {
+        measured.isEmpty ? nil : measured[measured.count / 2].linkQuality
     }
     private var focusedBand: HomeSnapshot.LinkQualityBand? {
         bands.first { $0.id == (hoveredBand ?? selectedBand) }
@@ -38,18 +37,21 @@ struct HomeLinkQualityCard: View {
             return quality < DesignTokens.Threshold.weakSignal
         }.count
     }
-    private var listed: [HomeDeviceReading] {
+    private func listed(from measured: [HomeDeviceReading]) -> [HomeDeviceReading] {
         guard let band = bands.first(where: { $0.id == selectedBand }) else { return Array(measured.prefix(Self.listedCount)) }
         return Array(measured.filter { band.contains($0.linkQuality ?? 0) }.prefix(Self.listedCount))
     }
 
     var body: some View {
+        let measured = measured
+        let median = Self.median(of: measured)
+        let listed = listed(from: measured)
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 CardHeader(
                     instrument: .init(kind: .signal, normalizedValue: Double(median ?? 0) / DesignTokens.Threshold.maxLinkQuality),
                     title: "Link quality",
-                    value: headerValue
+                    value: median.map { "\($0) median" }
                 )
                 CardAccessoryButton(systemImage: "arrow.up.right", accessibilityLabel: "Open Link Quality", action: onOpenPage)
             }
@@ -104,10 +106,6 @@ struct HomeLinkQualityCard: View {
             }
         }
         .cardSurface()
-    }
-
-    private var headerValue: String? {
-        median.map { "\($0) median" }
     }
 
     /// "101 devices between 100 and 150", under the chart where there's

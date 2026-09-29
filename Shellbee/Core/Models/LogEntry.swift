@@ -68,6 +68,9 @@ struct LogEntry: Identifiable, Sendable, Hashable {
     /// on the canonical entries stored in `AppStore.logEntries`; the view
     /// model produces synthesized copies with a higher count for display.
     var coalescedCount: Int
+    /// `parsedMessageKind`, computed on first use. Shared by copies of the
+    /// entry, since `message` never changes.
+    private let messageKindCache = MessageKindCache()
 
     init(
         id: UUID, timestamp: Date, level: LogLevel, category: LogCategory,
@@ -93,7 +96,14 @@ struct LogEntry: Identifiable, Sendable, Hashable {
         case simple
     }
 
+    /// The message parsed as an MQTT publish (topic and JSON payload) or
+    /// plain text. Rows and the activity pill read this on every redraw,
+    /// so it's parsed once per entry.
     var parsedMessageKind: MessageKind {
+        messageKindCache.value { parseMessageKind() }
+    }
+
+    private func parseMessageKind() -> MessageKind {
         let topicPattern = /topic '([^']+)'/
         guard let topicMatch = message.firstMatch(of: topicPattern) else { return .simple }
         let topic = String(topicMatch.1)
@@ -236,4 +246,24 @@ struct LogEntry: Identifiable, Sendable, Hashable {
         LogEntry(id: UUID(), timestamp: .now.addingTimeInterval(-180), level: .info, category: .general, namespace: "z2m:mqtt", message: "MQTT publish: topic 'zigbee2mqtt/Living Room Light', payload '{\"state\":\"ON\",\"brightness\":254,\"linkquality\":116}'", deviceName: nil),
         LogEntry(id: UUID(), timestamp: .now.addingTimeInterval(-240), level: .debug, category: .general, namespace: "zh:controller", message: "Received Zigbee message from '0x00158d00045xx000'", deviceName: nil),
     ]
+}
+
+/// Holds one entry's parsed message kind, filled on first read.
+///
+/// `nonisolated` matters: the module defaults to `@MainActor`, and a
+/// main-actor class is freed through Swift's isolated-deinit path, which
+/// aborts ("pointer being freed was not allocated") on Xcode 26.3 whenever
+/// a `LogEntry` is released off the main thread.
+private nonisolated final class MessageKindCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: LogEntry.MessageKind?
+
+    func value(_ compute: () -> LogEntry.MessageKind) -> LogEntry.MessageKind {
+        lock.lock()
+        defer { lock.unlock() }
+        if let stored { return stored }
+        let computed = compute()
+        stored = computed
+        return computed
+    }
 }

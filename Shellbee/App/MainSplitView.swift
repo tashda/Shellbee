@@ -29,6 +29,7 @@ struct MainSplitView: View {
     @State private var selectedNetworkDeviceRoute: DeviceRoute?
     @State private var isCommandPalettePresented = false
     @State private var deviceListViewModel = DeviceListViewModel()
+    @State private var groupListViewModel = GroupListViewModel()
     @State private var logsWorkspace = LogsWorkspaceState()
     @State private var groupsWorkspace = GroupsWorkspaceState()
     @State private var didApplyInitialDestination = false
@@ -259,7 +260,8 @@ struct MainSplitView: View {
             NavigationStack {
                 GroupListView(
                     embedInNavigationStack: false,
-                    selection: groupSelection
+                    selection: groupSelection,
+                    viewModel: groupListViewModel
                 )
                 .navigationDestination(item: groupSelection) { route in
                     GroupDetailView(bridgeID: route.bridgeID, group: route.group)
@@ -318,7 +320,8 @@ struct MainSplitView: View {
         case .groups:
             GroupListView(
                 embedInNavigationStack: false,
-                selection: groupSelection
+                selection: groupSelection,
+                viewModel: groupListViewModel
             )
         case .logs:
             LogsView(

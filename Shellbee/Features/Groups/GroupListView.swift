@@ -8,15 +8,17 @@ struct GroupListView: View {
 
     init(
         embedInNavigationStack: Bool = true,
-        selection: Binding<GroupRoute?>? = nil
+        selection: Binding<GroupRoute?>? = nil,
+        viewModel: GroupListViewModel? = nil
     ) {
         self.embedInNavigationStack = embedInNavigationStack
         self.selection = selection
+        _viewModel = State(initialValue: viewModel ?? GroupListViewModel())
     }
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.sceneNavigation) private var sceneNavigation
-    @State private var viewModel = GroupListViewModel()
+    @State private var viewModel: GroupListViewModel
     @State private var groupToRename: BridgeBoundGroup?
     @State private var groupToRemove: BridgeBoundGroup?
     @State private var showAddGroup = false
@@ -318,6 +320,16 @@ private struct GroupListNavigationDestinations: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+/// SwiftUI can't compare the optional `selection` binding, so without this
+/// it treats every redraw of the tab bar as a change and rebuilds the list.
+/// Without a selection (iPhone) there's nothing else to compare.
+extension GroupListView: Equatable {
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.embedInNavigationStack == rhs.embedInNavigationStack
+            && lhs.selection == nil && rhs.selection == nil
     }
 }
 

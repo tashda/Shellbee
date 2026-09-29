@@ -192,3 +192,12 @@ private struct GlobalSearchDestinations: ViewModifier {
             }
     }
 }
+
+/// A tab root: SwiftUI can't compare some of its property wrappers, so
+/// without this every redraw of the tab bar (three per tab switch) rebuilds
+/// it. Its state and environment still redraw it as usual.
+extension GlobalSearchView: Equatable {
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        true
+    }
+}

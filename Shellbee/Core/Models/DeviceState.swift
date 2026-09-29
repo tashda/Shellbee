@@ -44,16 +44,15 @@ extension Dictionary where Key == String, Value == JSONValue {
         )
     }
 
-    private static func lastSeenDate(from value: String) -> Date? {
-        let fractionalFormatter = ISO8601DateFormatter()
-        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        if let date = fractionalFormatter.date(from: value) {
-            return date
-        }
-
+    /// Fallback for `last_seen` strings the fast parser doesn't accept.
+    /// `ISO8601DateFormatter` is thread-safe.
+    private nonisolated(unsafe) static let isoFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: value)
+        return formatter
+    }()
+
+    private static func lastSeenDate(from value: String) -> Date? {
+        ISO8601Timestamp.date(from: value) ?? isoFormatter.date(from: value)
     }
 }
