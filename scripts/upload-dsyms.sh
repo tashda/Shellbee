@@ -57,10 +57,16 @@ fi
 
 echo "Uploading dSYMs to Sentry ($SENTRY_ORG/$SENTRY_PROJECT) using $SENTRY_CLI"
 
-"$SENTRY_CLI" debug-files upload \
+# Xcode treats any "error:" line as a build error even when the phase exits 0,
+# so downgrade sentry-cli's error lines to warnings to keep the upload non-fatal.
+OUTPUT="$("$SENTRY_CLI" debug-files upload \
   --org "$SENTRY_ORG" \
   --project "$SENTRY_PROJECT" \
   --auth-token "$SENTRY_AUTH_TOKEN" \
   --include-sources \
-  "$DWARF_DSYM_FOLDER_PATH" \
-  || echo "warning: sentry-cli dSYM upload failed (non-fatal)"
+  "$DWARF_DSYM_FOLDER_PATH" 2>&1)"
+STATUS=$?
+printf '%s\n' "$OUTPUT" | sed 's/^error:/warning:/'
+if [ $STATUS -ne 0 ]; then
+  echo "warning: sentry-cli dSYM upload failed (non-fatal)"
+fi
