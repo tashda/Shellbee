@@ -249,7 +249,12 @@ struct LogEntry: Identifiable, Sendable, Hashable {
 }
 
 /// Holds one entry's parsed message kind, filled on first read.
-private final class MessageKindCache: @unchecked Sendable {
+///
+/// `nonisolated` matters: the module defaults to `@MainActor`, and a
+/// main-actor class is freed through Swift's isolated-deinit path, which
+/// aborts ("pointer being freed was not allocated") on Xcode 26.3 whenever
+/// a `LogEntry` is released off the main thread.
+private nonisolated final class MessageKindCache: @unchecked Sendable {
     private let lock = NSLock()
     private var stored: LogEntry.MessageKind?
 
