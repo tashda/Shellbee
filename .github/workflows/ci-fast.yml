@@ -158,6 +158,9 @@ jobs:
             -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO | tee build.log
 
+      - name: Check for isolated deinits
+        run: ./.github/scripts/check-isolated-deinits.sh "$DERIVED_DATA"
+
       - name: Run unit tests
         timeout-minutes: 12
         env:
