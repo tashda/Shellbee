@@ -6,7 +6,10 @@ struct ShellbeeSceneView: View {
     /// Debug automation only (screenshots, UI tests); see `init`.
     private var launchDestination: ShellbeeWindowDestination?
     #if DEBUG
-    private static var hasStartedUITestLaunch = false
+    @Environment(\.dismissWindow) private var dismissWindow
+    private static var uiTestLaunchDate: Date?
+    /// A window iPadOS restored from a previous UI test, closed on appear.
+    private var isLeftoverUITestWindow = false
     #endif
 
     init(destination: Binding<ShellbeeWindowDestination>) {
@@ -20,13 +23,18 @@ struct ShellbeeSceneView: View {
             section = requested
             launchDestination = requested == .home ? .home : .section(requested)
         }
-        // UI tests: the system restores the window where the previous test
-        // left it. Start the launch window at Home; windows a test opens
-        // afterwards keep their own destination.
-        if ProcessInfo.processInfo.environment["UI_TEST_MODE"] == "1", !Self.hasStartedUITestLaunch {
-            Self.hasStartedUITestLaunch = true
-            section = .home
-            launchDestination = .home
+        // UI tests: iPadOS restores every window where the previous test
+        // left it. Start the first window at Home and close any other window
+        // restored at launch; windows a test opens later (never within the
+        // first seconds) keep their own destination.
+        if ProcessInfo.processInfo.environment["UI_TEST_MODE"] == "1" {
+            if let launched = Self.uiTestLaunchDate {
+                isLeftoverUITestWindow = Date().timeIntervalSince(launched) < 3
+            } else {
+                Self.uiTestLaunchDate = Date()
+                section = .home
+                launchDestination = .home
+            }
         }
         #endif
         self._navigation = State(initialValue: SceneNavigationState(selectedTab: section))
@@ -39,5 +47,10 @@ struct ShellbeeSceneView: View {
             .onChange(of: navigation.selectedTab) { _, section in
                 destination = section == .home ? .home : .section(section)
             }
+            #if DEBUG
+            .onAppear {
+                if isLeftoverUITestWindow { dismissWindow() }
+            }
+            #endif
     }
 }

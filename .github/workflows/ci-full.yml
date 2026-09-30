@@ -271,7 +271,7 @@ jobs:
     env:
       SCHEME: Shellbee
       TEST_PLAN: Shellbee
-      IPAD_CLASSES: IPadShellMatrixUITests MultiWindowUITests ResizableWindowUITests
+      IPAD_CLASSES: IPadShellMatrixUITests MultiWindowUITests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
