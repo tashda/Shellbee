@@ -42,7 +42,10 @@ final class NetworkMapIntegrationTests: XCTestCase, @unchecked Sendable {
         )
         try await client.send(JSONEncoder().encode(outbound))
         let router = Z2MMessageRouter()
-        let deadline = Date().addingTimeInterval(20)
+        // The mock paces its scan like real z2m (one router every 300 ms,
+        // longer for the ones that fail): about 26 s for the 73 fixture
+        // routers.
+        let deadline = Date().addingTimeInterval(60)
 
         for await socketEvent in stream {
             guard case .message(let data) = socketEvent else { break }

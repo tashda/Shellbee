@@ -161,7 +161,10 @@ private enum OTABulkOperationQueueTestDriver {
                 await gate.wait()
                 return true
             },
-            onCompletion: { summary in recorder.summaries.append(summary) }
+            onCompletion: { summary in recorder.summaries.append(summary) },
+            // One at a time, so cancelling while "a" is in flight must
+            // stop "b" and "c". The default reads the user's concurrency.
+            settingsProvider: { (1, .seconds(30)) }
         )
 
         queue.enqueue(["a", "b", "c"], kind: .check)
