@@ -43,6 +43,9 @@ final class MultiWindowUITests: XCTestCase {
         defer { app.terminate() }
 
         let homeMarker = app.navigationBars["Home"]
+        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
+            .firstMatch
+            .tapWhenReady(timeout: 20)
         homeMarker.assertExists(timeout: 20)
         app.typeKey("l", modifierFlags: [.command, .shift])
         app.navigationBars["Activity"].assertExists(timeout: 15)
@@ -59,6 +62,10 @@ final class MultiWindowUITests: XCTestCase {
         app.launchForTesting()
         defer { app.terminate() }
 
+        // The sidebar restores the last section across launches.
+        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
+            .firstMatch
+            .tapWhenReady(timeout: 20)
         app.navigationBars["Home"].assertExists(timeout: 20)
         app.typeKey("l", modifierFlags: [.command, .shift])
         app.navigationBars["Activity"].assertExists(timeout: 15)

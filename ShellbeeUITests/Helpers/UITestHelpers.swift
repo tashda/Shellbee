@@ -37,11 +37,16 @@ extension XCUIApplication {
     func tapSearchTab()   { tapTab("Search") }
 
     /// The tab bar minimizes while content scrolls down, leaving only the
-    /// selected tab's button. Tapping that button expands the bar again.
+    /// selected tab's button, and iOS 26 draws the search tab as its own
+    /// button outside the bar. Look in the bar first, expand it if needed,
+    /// then fall back to the app-wide button (search).
     func tapTab(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
-        let tab = tabBar.buttons[name]
+        var tab = tabBar.buttons[name]
         if !(tab.exists && tab.isHittable), tabBar.buttons.firstMatch.exists {
             tabBar.buttons.firstMatch.tap()
+        }
+        if !tab.waitForExistence(timeout: 3) {
+            tab = buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
         }
         XCTAssertTrue(tab.waitForExistence(timeout: 5), "No '\(name)' tab", file: file, line: line)
         // A tap during launch or a tab-bar animation can be dropped, so
@@ -52,7 +57,13 @@ extension XCUIApplication {
                 predicate: NSPredicate(format: "isSelected == true"), object: tab
             )], timeout: 3)
         }
-        XCTAssertTrue(tab.isSelected, "The '\(name)' tab didn't become selected", file: file, line: line)
+        if name == "Search" {
+            // The search tab focuses its field instead of reporting selected.
+            XCTAssertTrue(searchFields.firstMatch.waitForExistence(timeout: 5),
+                          "The Search tab didn't open", file: file, line: line)
+        } else {
+            XCTAssertTrue(tab.isSelected, "The '\(name)' tab didn't become selected", file: file, line: line)
+        }
     }
 
     /// Opens a device's detail page the way a person finds one in 2.0:
@@ -83,9 +94,10 @@ extension XCUIApplication {
         return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
     }
 
-    /// The Activity/Log picker at the top of the feed on iPhone.
+    /// The Activity/Log picker at the top of the feed on iPhone, labelled
+    /// "Mode, <current mode>".
     var activityModePicker: XCUIElement {
-        buttons.matching(NSPredicate(format: "label == %@ OR label == %@ OR label == %@", "Mode", "Activity", "Log")).firstMatch
+        buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Mode,")).firstMatch
     }
 
     /// The name at the top of a device or group page. The page keeps its

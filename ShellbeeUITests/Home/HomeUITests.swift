@@ -79,11 +79,17 @@ final class HomeUITests: ShellbeeUITestCase {
         startButton.tapWhenReady(timeout: 5)
         let openNetwork = app.buttons["Open Network"].firstMatch
         openNetwork.assertExists(timeout: 5)
-        for _ in 0..<3 where openNetwork.exists {
-            app.swipeDown(velocity: .fast)
-            _ = openNetwork.waitForNonExistence(timeout: 1)
+        // A partial-height sheet dismisses by tapping the dimmed area above
+        // it, or by dragging the sheet itself down.
+        let outside = app.otherElements["PopoverDismissRegion"]
+        if outside.exists {
+            outside.tap()
+        } else {
+            let top = app.staticTexts["Open the network"].firstMatch
+            top.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
         }
-        XCTAssertFalse(openNetwork.exists, "The Permit Join sheet did not dismiss")
+        XCTAssertTrue(openNetwork.waitForNonExistence(timeout: 5), "The Permit Join sheet did not dismiss")
     }
 
     // MARK: - Helpers

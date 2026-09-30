@@ -24,7 +24,6 @@ final class ActivityUITests: ShellbeeUITestCase {
     }
 
     func testModeSwitchesToTheRawLog() {
-        // The menu picker's button reads as its current mode.
         app.activityModePicker.tapWhenReady(timeout: 5)
         app.buttons["Log"].firstMatch.tapWhenReady(timeout: 5)
         XCTAssertFalse(events.firstMatch.waitForExistence(timeout: 2),

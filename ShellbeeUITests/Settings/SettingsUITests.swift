@@ -46,7 +46,9 @@ final class SettingsUITests: ShellbeeUITestCase {
     // raw counts. Its chart cards stay discoverable to accessibility clients.
     func testDeviceStatisticsDashboardOpens() {
         connectionCard.tapWhenReady()
-        app.staticTexts["Device Statistics"].firstMatch.tapWhenReady()
+        let statistics = app.staticTexts["Device Statistics"].firstMatch
+        statistics.scrollIntoView(in: app)
+        statistics.tap()
 
         XCTAssertTrue(app.navigationBars["Device Statistics"].waitForExistence(timeout: 5))
         for heading in ["Network overview", "Device types", "Power sources", "Vendors"] {
@@ -268,11 +270,14 @@ final class SettingsUITests: ShellbeeUITestCase {
     func testBulkCheckLivesInOTASettings() {
         openSettingsScreen("OTA Updates")
         app.navigationBars["OTA Updates"].assertExists(timeout: 5)
-        let concurrency = app.staticTexts["Concurrency"].firstMatch
+        // InlineIntField reads as one element, "Concurrency, <value>".
+        let concurrency = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Concurrency")).firstMatch
         concurrency.scrollIntoView(in: app)
-        XCTAssertTrue(app.staticTexts["Bulk Check"].exists || app.staticTexts["BULK CHECK"].exists,
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Bulk Check")).firstMatch.exists,
                       "Concurrency isn't under the Bulk Check section")
-        XCTAssertFalse(app.staticTexts["Concurrent Requests"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Concurrent Requests")).firstMatch.exists)
     }
 
     // Behavior: when the section header already disambiguates, the row

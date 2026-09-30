@@ -15,6 +15,10 @@ final class ResizableWindowUITests: XCTestCase {
             device.orientation = originalOrientation
         }
 
+        // The sidebar restores the last section across launches.
+        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
+            .firstMatch
+            .tapWhenReady(timeout: 20)
         app.navigationBars["Home"].assertExists(timeout: 20)
         app.typeKey("k", modifierFlags: .command)
         let search = app.searchFields.firstMatch
