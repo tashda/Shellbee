@@ -63,11 +63,11 @@ final class IPadShellMatrixUITests: XCTestCase {
 
         openSidebarSection("Activity", expectedTitle: "Activity")
         selectSecondaryBridgeInSidebar()
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Secondary,"))
+        activityEvents(fromBridge: "Secondary")
             .firstMatch
             .assertExists(timeout: 20)
         XCTAssertFalse(
-            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Primary,"))
+            activityEvents(fromBridge: "Primary")
                 .firstMatch
                 .waitForExistence(timeout: 2),
             "The Secondary activity filter leaked a Primary bridge log"
@@ -114,6 +114,14 @@ final class IPadShellMatrixUITests: XCTestCase {
     private func selectSecondaryBridgeInSidebar() {
         app.collectionViews["Sidebar"].buttons["Secondary"]
             .tapWhenReady(timeout: 10)
+    }
+
+    /// Activity cards read as one element whose label ends with the bridge
+    /// monogram's "Bridge: <name>", so this also guards that VoiceOver says
+    /// which bridge an event came from.
+    @MainActor
+    private func activityEvents(fromBridge name: String) -> XCUIElementQuery {
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Bridge: \(name)"))
     }
 
     @MainActor

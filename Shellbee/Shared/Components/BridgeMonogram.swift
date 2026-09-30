@@ -24,8 +24,14 @@ struct BridgeMonogram: View {
                                color: BridgeColor.color(for: bridgeID),
                                size: size)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Bridge: \(name)")
+                .accessibilityLabel(Self.accessibilityLabel(for: name))
         }
+    }
+
+    /// What VoiceOver reads for the mark. Rows that flatten their children
+    /// into one label append this so the bridge isn't lost.
+    static func accessibilityLabel(for name: String) -> String {
+        String(localized: "Bridge: \(name)")
     }
 
     static func initial(for name: String) -> String {

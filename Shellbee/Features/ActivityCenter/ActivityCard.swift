@@ -10,6 +10,8 @@ struct ActivityCard: View {
     var bridgeID: UUID? = nil
     var bridgeName: String = ""
     @ScaledMetric(relativeTo: .subheadline) private var thumbnailSize = DesignTokens.ActivityFeed.thumbnail
+    @Environment(AppEnvironment.self) private var environment
+    @AppStorage(BridgeGradientMode.storageKey) private var indicatorModeRaw = BridgeGradientMode.default.rawValue
 
     var body: some View {
         ActivityEventRow(
@@ -39,10 +41,19 @@ struct ActivityCard: View {
         .accessibilityLabel(accessibilityText)
     }
 
+    /// The card reads as one element, which hides the bridge monogram's own
+    /// label, so the bridge is named here whenever the monogram is shown.
     private var accessibilityText: String {
-        [content.title, content.message, content.detail, moreText]
+        [content.title, content.message, content.detail, moreText, bridgeText]
             .compactMap { $0 }
             .joined(separator: ", ")
+    }
+
+    private var bridgeText: String? {
+        guard bridgeID != nil,
+              BridgeGradientMode.stored(indicatorModeRaw).showsIndicators(in: environment)
+        else { return nil }
+        return BridgeMonogram.accessibilityLabel(for: bridgeName)
     }
 }
 
