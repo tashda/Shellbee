@@ -30,6 +30,8 @@ nonisolated struct LiveFeedSnapshotState<Item: Identifiable> where Item.ID: Hash
 @MainActor
 @Observable
 final class LiveFeedState<Item: Identifiable> where Item.ID: Hashable {
+    nonisolated deinit {}
+
     private var snapshot = LiveFeedSnapshotState<Item>()
     var frozenItems: [Item]? { snapshot.frozenItems }
     /// Bumped by Follow Live. The feed's scroll tracking watches it and

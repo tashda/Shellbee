@@ -2,6 +2,8 @@ import Foundation
 
 @Observable
 final class NotificationPreferences {
+    nonisolated deinit {}
+
     private static let enabledKey = "notificationPreferences.enabledCategories"
     private static let overrideKey = "notificationPreferences.followLogLevelOverride"
     private static let mutedBridgesKey = "notificationPreferences.mutedBridgeIDs"

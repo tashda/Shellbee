@@ -3,6 +3,8 @@ import UIKit
 
 @Observable
 final class GroupDetailViewModel {
+    nonisolated deinit {}
+
     func synthesizedState(for group: Group, environment: AppEnvironment, bridgeID: UUID) -> [String: JSONValue] {
         let scope = environment.scope(for: bridgeID)
         let memberStates = group.members.compactMap { member in

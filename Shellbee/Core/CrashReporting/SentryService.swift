@@ -7,6 +7,8 @@ import Sentry
 
 @Observable
 final class SentryService {
+    nonisolated deinit {}
+
     static let shared = SentryService()
 
     private(set) var isEnabled = false

@@ -5,6 +5,8 @@ import SwiftUI
 /// from moving every other Shellbee window.
 @Observable
 final class SceneNavigationState {
+    nonisolated deinit {}
+
     var selectedTab: AppTab
     var selectedBridgeID: UUID?
     /// Presents the compact app's player-like Activity Center. Keeping this

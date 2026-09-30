@@ -7,6 +7,8 @@ import Foundation
 /// don't trigger view updates.
 @Observable
 final class GroupAvatarStore {
+    nonisolated deinit {}
+
     static let shared = GroupAvatarStore()
 
     private var cache: [Int: [String]] = [:]

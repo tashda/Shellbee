@@ -17,6 +17,8 @@ private struct ShellbeeWindowTint: UIViewRepresentable {
     }
 
     final class TintProbeView: UIView {
+        nonisolated deinit {}
+
         var accent: UIColor? {
             didSet { applyTint() }
         }

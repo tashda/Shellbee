@@ -2,6 +2,8 @@ import Foundation
 
 @Observable
 final class ConnectionSessionController {
+    nonisolated deinit {}
+
     enum State: Equatable, Sendable {
         case idle
         case connecting

@@ -6,6 +6,8 @@ import Observation
 /// IEEE address.
 @Observable
 final class BatteryReplacementLog {
+    nonisolated deinit {}
+
     static let shared = BatteryReplacementLog()
     private static let storageKey = "batteries.replacedAt"
 

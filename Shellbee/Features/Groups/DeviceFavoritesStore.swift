@@ -11,6 +11,8 @@ struct FavoriteDeviceReference: Codable, Identifiable, Equatable {
 
 @Observable
 final class DeviceFavoritesStore {
+    nonisolated deinit {}
+
     static let storageKey = "deviceFavorites"
 
     private(set) var items: [FavoriteDeviceReference] = []

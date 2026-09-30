@@ -7,6 +7,8 @@ import Foundation
 /// redraws only when its own device changes.
 @Observable
 final class DeviceLiveState {
+    nonisolated deinit {}
+
     fileprivate(set) var state: [String: JSONValue]
     fileprivate(set) var availability: Bool?
 

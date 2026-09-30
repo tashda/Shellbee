@@ -3,6 +3,8 @@ import SwiftUI
 
 @Observable
 final class ConnectionViewModel {
+    nonisolated deinit {}
+
     var isEditorPresented = false
     var name = ""
     var host = ""

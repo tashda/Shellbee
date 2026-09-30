@@ -9,6 +9,8 @@ import Foundation
 @Observable
 @MainActor
 final class Z2MReleaseService {
+    nonisolated deinit {}
+
     /// The latest tag as GitHub reports it — usually "2.9.3", sometimes
     /// prefixed with a "v". Callers normalise before parsing.
     private(set) var latestVersion: String?
