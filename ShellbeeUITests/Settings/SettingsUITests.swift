@@ -273,7 +273,9 @@ final class SettingsUITests: ShellbeeUITestCase {
         // InlineIntField reads as one element, "Concurrency, <value>".
         let concurrency = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Concurrency")).firstMatch
-        concurrency.scrollIntoView(in: app)
+        // Only needs to render, not be tapped, so existence is enough.
+        for _ in 0..<8 where !concurrency.exists { app.swipeUp() }
+        XCTAssertTrue(concurrency.exists, "No Concurrency setting in OTA Updates")
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Bulk Check")).firstMatch.exists,
                       "Concurrency isn't under the Bulk Check section")
         XCTAssertFalse(app.descendants(matching: .any)

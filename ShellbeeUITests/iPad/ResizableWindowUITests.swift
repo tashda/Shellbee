@@ -20,7 +20,7 @@ final class ResizableWindowUITests: XCTestCase {
             .firstMatch
             .tapWhenReady(timeout: 20)
         app.navigationBars["Home"].assertExists(timeout: 20)
-        app.typeKey("k", modifierFlags: .command)
+        app.typeKey("f", modifierFlags: .command)  // ⌘F is Search; ⌘K is the Command Palette
         let search = app.searchFields.firstMatch
         search.assertExists(timeout: 10)
         search.typeText("Living Room Light")

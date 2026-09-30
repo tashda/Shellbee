@@ -81,7 +81,7 @@ final class HomeUITests: ShellbeeUITestCase {
         openNetwork.assertExists(timeout: 5)
         // A partial-height sheet dismisses by tapping the dimmed area above
         // it, or by dragging the sheet itself down.
-        let outside = app.otherElements["PopoverDismissRegion"]
+        let outside = app.otherElements["PopoverDismissRegion"].firstMatch
         if outside.exists {
             outside.tap()
         } else {

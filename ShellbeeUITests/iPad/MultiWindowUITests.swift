@@ -6,7 +6,7 @@ final class MultiWindowUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchForTesting()
-        defer { app.terminate() }
+        defer { closeExtraWindows(app); app.terminate() }
 
         let homeMarker = app.navigationBars["Home"]
         app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
@@ -40,7 +40,7 @@ final class MultiWindowUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchForTesting()
-        defer { app.terminate() }
+        defer { closeExtraWindows(app); app.terminate() }
 
         let homeMarker = app.navigationBars["Home"]
         app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
@@ -60,7 +60,7 @@ final class MultiWindowUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchForTesting()
-        defer { app.terminate() }
+        defer { closeExtraWindows(app); app.terminate() }
 
         // The sidebar restores the last section across launches.
         app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
@@ -74,5 +74,14 @@ final class MultiWindowUITests: XCTestCase {
         app.activate()
 
         app.navigationBars["Activity"].assertExists(timeout: 15)
+    }
+
+    /// iPadOS restores every open window on the next launch, so a window a
+    /// test opened must be closed before quitting.
+    @MainActor
+    private func closeExtraWindows(_ app: XCUIApplication) {
+        for _ in 0..<3 where app.windows.count > 1 {
+            app.typeKey("w", modifierFlags: .command)
+        }
     }
 }

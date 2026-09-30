@@ -49,6 +49,17 @@ extension XCUIApplication {
             tab = buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
         }
         XCTAssertTrue(tab.waitForExistence(timeout: 5), "No '\(name)' tab", file: file, line: line)
+
+        if name == "Search" {
+            // Selecting Search raises the keyboard, whose Search key would
+            // match this query too, so confirm by the field instead.
+            tab.tap()
+            if !searchFields.firstMatch.waitForExistence(timeout: 5) { tab.tap() }
+            XCTAssertTrue(searchFields.firstMatch.waitForExistence(timeout: 5),
+                          "The Search tab didn't open", file: file, line: line)
+            return
+        }
+
         // A tap during launch or a tab-bar animation can be dropped, so
         // confirm the tab took and try once more if it didn't.
         for _ in 0..<2 where !tab.isSelected {
@@ -57,13 +68,7 @@ extension XCUIApplication {
                 predicate: NSPredicate(format: "isSelected == true"), object: tab
             )], timeout: 3)
         }
-        if name == "Search" {
-            // The search tab focuses its field instead of reporting selected.
-            XCTAssertTrue(searchFields.firstMatch.waitForExistence(timeout: 5),
-                          "The Search tab didn't open", file: file, line: line)
-        } else {
-            XCTAssertTrue(tab.isSelected, "The '\(name)' tab didn't become selected", file: file, line: line)
-        }
+        XCTAssertTrue(tab.isSelected, "The '\(name)' tab didn't become selected", file: file, line: line)
     }
 
     /// Opens a device's detail page the way a person finds one in 2.0:
