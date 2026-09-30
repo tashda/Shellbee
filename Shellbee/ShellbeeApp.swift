@@ -13,6 +13,15 @@ struct ShellbeeApp: App {
     init() {
         SentryService.shared.start()
         HomeCardKind.applyDefaultsOnce()
+        #if DEBUG
+        // XCUITest waits for the app to go idle before every action; with
+        // a live bridge redrawing constantly it may never go idle, and each
+        // action then stalls for a minute. UI tests check behaviour, not
+        // motion, so they run without animations.
+        if ProcessInfo.processInfo.environment["UI_TEST_MODE"] == "1" {
+            UIView.setAnimationsEnabled(false)
+        }
+        #endif
     }
 
     var body: some Scene {
