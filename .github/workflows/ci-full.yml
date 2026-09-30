@@ -88,17 +88,7 @@ jobs:
 
       - name: Pick simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPhone")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          NAME=$(xcrun simctl list devices --json \
-            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh 'iPhone.*Pro Max' '^iPhone'
 
       - name: Boot simulator and wait for readiness
         timeout-minutes: 4
@@ -243,22 +233,7 @@ jobs:
 
       - name: Pick iPad simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPad")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          if [ -z "$DEVICE_ID" ] || [ "$DEVICE_ID" = "null" ]; then
-            echo "No iPad simulator available on this runner" >&2
-            exit 1
-          fi
-          NAME=$(xcrun simctl list devices --json \
-            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
-          echo "Using: $NAME ($DEVICE_ID)"
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh '^iPad'
 
       - name: Build for iPad
         env:
@@ -296,7 +271,7 @@ jobs:
     env:
       SCHEME: Shellbee
       TEST_PLAN: Shellbee
-      TEST_TARGET: ShellbeeUITests/IPadShellMatrixUITests
+      IPAD_CLASSES: IPadShellMatrixUITests MultiWindowUITests ResizableWindowUITests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
@@ -327,24 +302,7 @@ jobs:
         id: sim
         env:
           NAME_REGEX: ${{ matrix.name_regex }}
-        run: |
-          DEVICE_JSON=$(xcrun simctl list devices available --json)
-          DEVICE_ID=$(jq -r --arg regex "$NAME_REGEX" \
-            '[.devices | to_entries[]
-              | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-              | .value[]
-              | select(.isAvailable and (.name | test($regex; "i")))]
-             | sort_by(.name) | last | .udid // empty' <<< "$DEVICE_JSON")
-          if [ -z "$DEVICE_ID" ]; then
-            echo "No iPad matched $NAME_REGEX" >&2
-            xcrun simctl list devices available
-            exit 1
-          fi
-          NAME=$(jq -r --arg id "$DEVICE_ID" \
-            '[.devices | to_entries[].value[] | select(.udid==$id)][0].name' <<< "$DEVICE_JSON")
-          echo "Using: $NAME ($DEVICE_ID)"
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh "$NAME_REGEX"
 
       - name: Boot simulator and wait for readiness
         timeout-minutes: 4
@@ -375,12 +333,14 @@ jobs:
           # One retry absorbs a simulator hiccup; a test that needs it is
           # still flagged as flaky in the report. A real regression fails
           # both attempts and fails the job.
+          ONLY=()
+          for class in $IPAD_CLASSES; do ONLY+=("-only-testing:ShellbeeUITests/$class"); done
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            -only-testing:"$TEST_TARGET" \
+            "${ONLY[@]}" \
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
@@ -431,7 +391,7 @@ jobs:
           retention-days: 7
 
   ui-tests:
-    name: UI Tests (smoke)
+    name: iPhone UI (${{ matrix.shard }})
     # Opt-in: PR labeled `run-ui-tests`, or dispatched with ui_smoke. The
     # suite was dormant during the multi-bridge redesign (#83); it stays
     # out of the default run until it's green, and out of the notify job
@@ -441,11 +401,24 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.ui_smoke)
     runs-on: macos-15
     timeout-minutes: 60
+    # Split by class so each shard fits well inside its time budget. A new
+    # UI test class must be added to one shard or it never runs.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: devices
+            classes: DeviceDetailUITests DeviceListUITests SearchUITests
+          - shard: groups-home
+            classes: GroupsUITests HomeUITests HomeDashboardUITests
+          - shard: settings
+            classes: SettingsUITests ActivityCenterEnabledSettingsUITests ActivityInstrumentGalleryUITests IconGalleryUITests ThemeUITests
+          - shard: activity-connection
+            classes: ActivityUITests ActivityCenterDisabledUITests ConnectionFlowUITests DisconnectUITests
 
     env:
       SCHEME: Shellbee
       TEST_PLAN: Shellbee
-      TEST_TARGET: ShellbeeUITests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
@@ -461,7 +434,10 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      - name: Start mock Z2M bridge (single)
+      # Both bridges: some suites (Home dashboard) add the secondary.
+      - name: Start dual mock Z2M bridges (native)
+        env:
+          MULTI_BRIDGE: "1"
         run: ./.github/scripts/start-mock-bridge.sh
 
       - name: Select Xcode
@@ -469,17 +445,7 @@ jobs:
 
       - name: Pick simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPhone")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          NAME=$(xcrun simctl list devices --json \
-            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh 'iPhone.*Pro Max' '^iPhone'
 
       - name: Boot simulator
         timeout-minutes: 4
@@ -506,19 +472,19 @@ jobs:
         timeout-minutes: 45
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+          CLASSES: ${{ matrix.classes }}
         run: |
           # Serial: parallel testing clones the simulator, which hangs on
           # the hosted runner with zero tests run (#83), and every UI test
           # shares one mock bridge anyway.
+          ONLY=()
+          for class in $CLASSES; do ONLY+=("-only-testing:ShellbeeUITests/$class"); done
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            -only-testing:"$TEST_TARGET" \
-            -skip-testing:ShellbeeUITests/IPadShellMatrixUITests \
-            -skip-testing:ShellbeeUITests/MultiWindowUITests \
-            -skip-testing:ShellbeeUITests/ResizableWindowUITests \
+            "${ONLY[@]}" \
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
@@ -531,16 +497,28 @@ jobs:
         run: |
           cp "$RUNNER_TEMP/z2m-bridge.log" mock-bridge.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder.log" mock-seeder.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
 
       - name: Report results
         if: always()
-        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/UITests.xcresult" "iPhone UI smoke"
+        env:
+          FAILURES_OUT: failures-iphone-${{ matrix.shard }}.md
+        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/UITests.xcresult" "iPhone UI (${{ matrix.shard }})"
+
+      - name: Upload failure list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures-iphone-${{ matrix.shard }}
+          path: failures-iphone-${{ matrix.shard }}.md
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-full-ui-logs
+          name: ci-full-iphone-${{ matrix.shard }}
           path: |
             build-ui.log
             test-ui.log
@@ -548,7 +526,7 @@ jobs:
             mock-seeder.log
             ${{ env.DERIVED_DATA }}/UITests.xcresult
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
 
 
   skipped-audit:
@@ -580,15 +558,11 @@ jobs:
 
       - name: Pick simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPhone")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          xcrun simctl bootstatus "$DEVICE_ID" -b
+        run: ./.github/scripts/pick-simulator.sh 'iPhone.*Pro Max' '^iPhone'
+
+      - name: Boot simulator
+        timeout-minutes: 4
+        run: xcrun simctl bootstatus "${{ steps.sim.outputs.device_id }}" -b
 
       - name: Run skipped tests
         continue-on-error: true

@@ -4,138 +4,91 @@ final class HomeUITests: ShellbeeUITestCase {
 
     override func setUp() {
         super.setUp()
-        waitForMainTab()
         app.tapHomeTab()
+        app.navigationBars["Home"].assertExists(timeout: 10)
     }
 
-    // MARK: - The screen itself
+    // MARK: - Bridge
 
-    func testHomeHasATitle() {
-        XCTAssertTrue(
-            app.navigationBars["Home"].waitForExistence(timeout: 10),
-            "Home should have a large title, not an empty navigation bar"
-        )
+    /// Each connected bridge is one row reading "Connected · Zigbee2MQTT <version>".
+    func testBridgeRowShowsConnectedBridge() {
+        bridgeRow.assertExists(timeout: 10)
     }
 
-    // Behavior: each connected bridge is one row reading
-    // "Connected · Zigbee2MQTT <version>".
-    func testBridgeRowVisible() {
-        let bridgeDetail = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS 'Zigbee2MQTT'")
-        ).firstMatch
-        XCTAssertTrue(bridgeDetail.waitForExistence(timeout: 10), "No bridge row on Home")
-    }
-
-    // Behavior: tapping a bridge row opens BridgeInfoSheet, which is where
-    // the bridge's own figures live now that Home doesn't repeat them.
-    func testTappingBridgeRowOpensBridgeInfo() {
-        let bridgeDetail = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS 'Zigbee2MQTT'")
-        ).firstMatch
-        guard bridgeDetail.waitForExistence(timeout: 10) else {
-            return XCTFail("No bridge row on Home")
-        }
-        bridgeDetail.tap()
-
-        XCTAssertTrue(
-            app.staticTexts["Connection"].waitForExistence(timeout: 5),
-            "The bridge row should open the bridge info sheet"
-        )
+    /// The bridge's own figures live in the info sheet, not on Home.
+    func testBridgeRowOpensBridgeInfo() {
+        bridgeRow.tapWhenReady(timeout: 10)
+        app.staticTexts["Connection"].firstMatch.assertExists(timeout: 5)
         app.buttons["Done"].firstMatch.tapWhenReady()
+        XCTAssertTrue(app.staticTexts["Connection"].waitForNonExistence(timeout: 5))
     }
 
     // MARK: - Needs attention
 
-    // Behavior: the section only exists while something is wrong, and every
-    // row in it opens the Devices tab filtered to what it named. The fixture
-    // bridge always has devices that stopped answering.
-    func testAttentionRowOpensFilteredDevices() {
-        let devicesRow = app.staticTexts["Devices"].firstMatch
-        guard devicesRow.waitForExistence(timeout: 10) else {
-            // Nothing needs attention on this bridge — the section is
-            // correctly absent, so there is nothing to assert.
-            return
-        }
-        devicesRow.tap()
-        XCTAssertTrue(
-            app.navigationBars["Devices"].firstMatch.waitForExistence(timeout: 5),
-            "A Needs attention row should open the Devices tab"
-        )
+    /// The fixtures always have low batteries, so the section must be there,
+    /// and its row opens Devices already filtered.
+    func testNeedsAttentionOpensFilteredDevices() {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Low battery"))
+            .firstMatch
+            .tapWhenReady(timeout: 10)
+        app.navigationBars["Devices"].assertExists(timeout: 5)
+        app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "clear-filters", "Clear Filters"))
+            .firstMatch
+            .assertExists(timeout: 5)
     }
 
-    // MARK: - Activity
+    // MARK: - Cards
 
-    func testActivitySectionVisible() {
-        XCTAssertTrue(
-            app.staticTexts["Activity"].firstMatch.waitForExistence(timeout: 10),
-            "Home should show an Activity section"
-        )
-    }
-
-    // Behavior: "See all" pushes the Activity Center's own feed.
-    func testSeeAllOpensActivity() {
-        let seeAll = app.buttons["See all"].firstMatch
-        XCTAssertTrue(seeAll.waitForExistence(timeout: 10), "Activity section missing See all")
-        seeAll.tap()
-        XCTAssertTrue(
-            app.navigationBars["Activity"].firstMatch.waitForExistence(timeout: 5),
-            "See all should push the Activity feed"
-        )
+    /// Vendors and Activity are opt-in; the default Home has neither.
+    func testOptInCardsAreOffByDefault() {
+        app.staticTexts["Network"].firstMatch.assertExists(timeout: 10)
+        for _ in 0..<5 { app.swipeUp() }
+        XCTAssertFalse(app.buttons["See all"].exists, "The Activity card is on by default")
+        XCTAssertFalse(app.staticTexts["Vendors"].exists, "The Vendors card is on by default")
     }
 
     // MARK: - Permit Join
 
-    func testPermitJoinToolbarButtonExists() {
-        let permitBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch
-        XCTAssertTrue(permitBtn.waitForExistence(timeout: 5), "Permit Join button not in toolbar")
+    /// A real round trip: Open Network sends bridge/request/permit_join, the
+    /// mock bridge answers and reports the network open with a countdown,
+    /// and Close Network closes it again.
+    func testPermitJoinOpensAndClosesTheNetwork() {
+        permitJoinButton.tapWhenReady(timeout: 5)
+        app.buttons["Open Network"].firstMatch.tapWhenReady(timeout: 5)
+        app.staticTexts["Network is open"].firstMatch.assertExists(timeout: 10)
+
+        app.buttons["Close Network"].firstMatch.tapWhenReady(timeout: 5)
+        app.buttons["Open Network"].firstMatch.assertExists(timeout: 10)
     }
 
-    func testPermitJoinSheetOpens() {
-        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
-        XCTAssertTrue(
-            app.buttons["Open Network"].firstMatch.waitForExistence(timeout: 5),
-            "Permit Join sheet did not open"
-        )
-    }
-
-    // Behavior: the Permit Join sheet has a Duration section with a
-    // Preset picker and a Target section. The picker's label renders as
-    // a static text "Preset"; tapping the Preset row opens a menu with
-    // the preset options (1 min / 2 min / 3 min / ~4 min / Custom).
-    func testPermitJoinSheetHasDurationOptions() {
-        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
-        XCTAssertTrue(app.navigationBars["Permit Join"].waitForExistence(timeout: 5),
-                      "Permit Join sheet did not open")
-        XCTAssertTrue(app.staticTexts["Duration"].firstMatch.waitForExistence(timeout: 3),
-                      "Duration section header missing")
-        XCTAssertTrue(app.staticTexts["Preset"].firstMatch.waitForExistence(timeout: 3),
-                      "Preset picker label missing")
-    }
-
-    // XCUIApplication.swipeDown on the root triggers the sheet's drag
-    // gesture; medium+large detent sheets may need two swipes.
-    func testPermitJoinDismisses() {
-        app.buttons.matching(NSPredicate(format: "label CONTAINS 'Permit Join'")).firstMatch.tapWhenReady()
-        let nav = app.navigationBars["Permit Join"]
-        XCTAssertTrue(nav.waitForExistence(timeout: 5), "Sheet did not open")
-        // The Permit Join button in the Home toolbar stays in the tree —
-        // dismissal is proven by the sheet's navigation bar disappearing.
-        for _ in 0..<4 {
-            if !nav.exists { break }
-            app.swipeDown(velocity: .fast)
-            _ = nav.waitForNonExistence(timeout: 1)
+    func testPermitJoinSheetOffersDurationAndTarget() {
+        permitJoinButton.tapWhenReady(timeout: 5)
+        app.staticTexts["Open the network"].firstMatch.assertExists(timeout: 5)
+        for picker in ["Duration", "Via"] {
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", picker))
+                .firstMatch
+                .assertExists(timeout: 5)
         }
-        XCTAssertFalse(nav.exists, "Permit Join sheet did not dismiss")
     }
 
-    func testRestartAlertAppears() {
-        let restartBtn = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Restart'")).firstMatch
-        guard restartBtn.waitForExistence(timeout: 5) else { return }
-        restartBtn.tap()
+    func testPermitJoinSheetDismisses() {
+        permitJoinButton.tapWhenReady(timeout: 5)
+        let openNetwork = app.buttons["Open Network"].firstMatch
+        openNetwork.assertExists(timeout: 5)
+        for _ in 0..<3 where openNetwork.exists {
+            app.swipeDown(velocity: .fast)
+            _ = openNetwork.waitForNonExistence(timeout: 1)
+        }
+        XCTAssertFalse(openNetwork.exists, "The Permit Join sheet did not dismiss")
+    }
 
-        let confirmAlert = app.alerts.firstMatch
-        XCTAssertTrue(confirmAlert.waitForExistence(timeout: 3), "Restart confirmation alert not shown")
+    // MARK: - Helpers
 
-        confirmAlert.buttons["Cancel"].tap()
+    private var bridgeRow: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Connected · Zigbee2MQTT")).firstMatch
+    }
+
+    private var permitJoinButton: XCUIElement {
+        app.buttons["Start Permit Join"].firstMatch
     }
 }

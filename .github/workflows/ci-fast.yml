@@ -79,22 +79,7 @@ jobs:
 
       - name: Pick simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPhone")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          if [ -z "$DEVICE_ID" ] || [ "$DEVICE_ID" = "null" ]; then
-            echo "No iPhone simulator available on this runner" >&2
-            exit 1
-          fi
-          NAME=$(xcrun simctl list devices --json \
-            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
-          echo "Using: $NAME ($DEVICE_ID)"
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh 'iPhone.*Pro Max' '^iPhone'
 
       - name: Boot simulator and wait for readiness
         timeout-minutes: 4
