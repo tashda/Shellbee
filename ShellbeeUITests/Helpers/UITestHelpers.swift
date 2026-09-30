@@ -30,12 +30,30 @@ extension XCUIApplication {
 
     var tabBar: XCUIElement { tabBars.firstMatch }
 
-    func tapHomeTab()     { tabBar.buttons["Home"].tap() }
-    func tapDevicesTab()  { tabBar.buttons["Devices"].tap() }
-    func tapGroupsTab()   { tabBar.buttons["Groups"].tap() }
-    func tapSettingsTab() { tabBar.buttons["Settings"].tap() }
+    func tapHomeTab()     { tapTab("Home") }
+    func tapDevicesTab()  { tapTab("Devices") }
+    func tapGroupsTab()   { tapTab("Groups") }
+    func tapSettingsTab() { tapTab("Settings") }
+    func tapSearchTab()   { tapTab("Search") }
 
-    func tapSearchTab()   { tabBar.buttons["Search"].tap() }
+    /// The tab bar minimizes while content scrolls down, leaving only the
+    /// selected tab's button. Tapping that button expands the bar again.
+    func tapTab(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        let tab = tabBar.buttons[name]
+        if !(tab.exists && tab.isHittable), tabBar.buttons.firstMatch.exists {
+            tabBar.buttons.firstMatch.tap()
+        }
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "No '\(name)' tab", file: file, line: line)
+        // A tap during launch or a tab-bar animation can be dropped, so
+        // confirm the tab took and try once more if it didn't.
+        for _ in 0..<2 where !tab.isSelected {
+            tab.tap()
+            _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "isSelected == true"), object: tab
+            )], timeout: 3)
+        }
+        XCTAssertTrue(tab.isSelected, "The '\(name)' tab didn't become selected", file: file, line: line)
+    }
 
     /// Opens a device's detail page the way a person finds one in 2.0:
     /// global Search, narrowed to Devices. The Devices list has no search
@@ -63,6 +81,11 @@ extension XCUIApplication {
         let query = cells.containing(.staticText, identifier: text)
         _ = query.firstMatch.waitForExistence(timeout: timeout)
         return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
+    }
+
+    /// The Activity/Log picker at the top of the feed on iPhone.
+    var activityModePicker: XCUIElement {
+        buttons.matching(NSPredicate(format: "label == %@ OR label == %@ OR label == %@", "Mode", "Activity", "Log")).firstMatch
     }
 
     /// The name at the top of a device or group page. The page keeps its

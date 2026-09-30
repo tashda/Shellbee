@@ -14,15 +14,14 @@ final class SettingsUITests: ShellbeeUITestCase {
     // MARK: - Settings root
 
     func testSettingsRootVisible() {
-        XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 5))
+        app.navigationBars["Settings"].assertExists(timeout: 5)
     }
 
-    func testServerRowExists() {
-        XCTAssertTrue(
-            app.cells.containing(.staticText, identifier: "Server").firstMatch
-                .waitForExistence(timeout: 5),
-            "Server row not found in settings"
-        )
+    // Behavior: with one bridge, Settings opens with a Connection section
+    // holding that bridge's card ("<name>, Connected").
+    func testConnectionCardShowsConnectedBridge() {
+        app.staticTexts["Connection"].firstMatch.assertExists(timeout: 5)
+        connectionCard.assertExists(timeout: 5)
     }
 
     func testGeneralRowExists() {
@@ -34,11 +33,9 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     // MARK: - Server detail
 
-    // Behavior: tapping the Server row pushes the ServerDetailView
-    // (navigationTitle "Server"). SettingsView's nav stack is the only
-    // visible one, so we assert the pushed nav bar title.
+    // Behavior: the connection card pushes the bridge's Server page.
     func testServerDetailOpens() {
-        app.cells.containing(.staticText, identifier: "Server").firstMatch.tapWhenReady()
+        connectionCard.tapWhenReady()
         XCTAssertTrue(
             app.navigationBars["Server"].firstMatch.waitForExistence(timeout: 5),
             "Server detail did not open"
@@ -48,7 +45,7 @@ final class SettingsUITests: ShellbeeUITestCase {
     // Behavior: Device Statistics is a visual dashboard rather than a Form of
     // raw counts. Its chart cards stay discoverable to accessibility clients.
     func testDeviceStatisticsDashboardOpens() {
-        app.cells.containing(.staticText, identifier: "Server").firstMatch.tapWhenReady()
+        connectionCard.tapWhenReady()
         app.staticTexts["Device Statistics"].firstMatch.tapWhenReady()
 
         XCTAssertTrue(app.navigationBars["Device Statistics"].waitForExistence(timeout: 5))
@@ -78,18 +75,12 @@ final class SettingsUITests: ShellbeeUITestCase {
         )
     }
 
-    // Behavior: General settings exposes a Log Level picker for the bridge.
-    // The picker label is rendered as a StaticText row; match against
-    // staticTexts rather than the enclosing cell because iOS 26 Form
-    // rows nest differently.
-    func testGeneralSettingsHasLogLevelPicker() {
-        openSettingsScreen("General")
-        XCTAssertTrue(app.navigationBars["General"].firstMatch.waitForExistence(timeout: 5),
-                      "General pane did not open")
-        XCTAssertTrue(
-            app.staticTexts["Log Level"].firstMatch.waitForExistence(timeout: 5),
-            "Log Level picker not found in General settings"
-        )
+    // Behavior: the bridge's log level is a picker right on the Settings
+    // root (Logging section), not a row inside General.
+    func testLoggingLevelPickerIsOnSettingsRoot() {
+        let picker = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Logging Level")).firstMatch
+        picker.scrollIntoView(in: app)
+        XCTAssertFalse(app.staticTexts["Log Level"].exists, "The old General-page label is back")
     }
 
     // Behavior: Apply sits in the confirmationAction slot of the toolbar
@@ -240,23 +231,16 @@ final class SettingsUITests: ShellbeeUITestCase {
     }
 
     // Behavior: numeric labels never duplicate their unit
-    // ("5 attempts attempts" / "5 requests requests" / "3 retries retries").
+    // ("5 attempts attempts" / "5 requests requests").
     func testNumericLabelsDoNotRepeatUnit() {
-        // App General — Reconnect Limit
-        openSettingsScreen("General")
-        app.swipeUp()
+        openSettingsScreen("General", inApplication: true)
+        app.staticTexts["Reconnect Limit"].firstMatch.assertExists(timeout: 5)
         XCTAssertFalse(app.staticTexts["Reconnect Attempts"].exists,
                        "Should be 'Reconnect Limit' to avoid 'attempts attempts'")
-        // Performance — Concurrency
-        app.navigationBars.buttons.firstMatch.tap()
-        openSettingsScreen("Performance")
-        XCTAssertTrue(app.staticTexts["Concurrency"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Concurrent Requests"].exists)
     }
 
-    // Behavior: Live Activities have their own subpage under Application;
-    // they no longer live on App → General. The new page exposes all three
-    // toggles and is reachable via a dedicated nav link.
+    // Behavior: Live Activities have their own page under Application, with
+    // one toggle per kind of activity.
     func testLiveActivitiesHasOwnPage() {
         // Reach the new link in the Application section.
         openSettingsScreen("Live Activities")
@@ -264,37 +248,31 @@ final class SettingsUITests: ShellbeeUITestCase {
             app.navigationBars["Live Activities"].firstMatch.waitForExistence(timeout: 5),
             "Live Activities page did not open"
         )
-        XCTAssertTrue(app.staticTexts["Connection"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["OTA Updates"].exists)
-        XCTAssertTrue(app.staticTexts["Scheduled OTAs"].exists)
+        for toggle in ["Permit Join", "Touchlink", "OTA Updates", "Scheduled OTAs"] {
+            app.switches[toggle].firstMatch.assertExists(timeout: 5)
+        }
     }
 
     // Behavior: App → General no longer hosts the Live Activity toggles —
     // they moved to their own page.
     func testGeneralNoLongerHostsLiveActivities() {
-        openSettingsScreen("General")
+        openSettingsScreen("General", inApplication: true)
+        app.staticTexts["Reconnect Limit"].firstMatch.assertExists(timeout: 5)
         XCTAssertFalse(app.staticTexts["Connection Live Activity"].exists)
         XCTAssertFalse(app.staticTexts["OTA Live Activity"].exists)
         XCTAssertFalse(app.staticTexts["Show Scheduled OTAs"].exists)
-        // Reconnect Limit stays on General.
-        XCTAssertTrue(app.staticTexts["Reconnect Limit"].waitForExistence(timeout: 3))
     }
 
-    // Behavior: the Performance page was renamed to "Bulk OTA" since
-    // that was its only content. The link label and page title both update.
-    func testBulkOTAReplacesPerformance() {
-        // The settings root should expose "Bulk OTA", not "Performance".
-        let bulkOTARow = app.cells.containing(.staticText, identifier: "Bulk OTA").firstMatch
-        if !bulkOTARow.waitForExistence(timeout: 3) {
-            app.swipeUp()
-        }
-        XCTAssertTrue(bulkOTARow.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.cells.containing(.staticText, identifier: "Performance").firstMatch.exists)
-        bulkOTARow.tap()
-        XCTAssertTrue(
-            app.navigationBars["Bulk OTA"].firstMatch.waitForExistence(timeout: 5),
-            "Bulk OTA page did not open"
-        )
+    // Behavior: bulk OTA pacing lives in OTA Updates' Bulk Check section;
+    // there is no separate Performance or Bulk OTA page.
+    func testBulkCheckLivesInOTASettings() {
+        openSettingsScreen("OTA Updates")
+        app.navigationBars["OTA Updates"].assertExists(timeout: 5)
+        let concurrency = app.staticTexts["Concurrency"].firstMatch
+        concurrency.scrollIntoView(in: app)
+        XCTAssertTrue(app.staticTexts["Bulk Check"].exists || app.staticTexts["BULK CHECK"].exists,
+                      "Concurrency isn't under the Bulk Check section")
+        XCTAssertFalse(app.staticTexts["Concurrent Requests"].exists)
     }
 
     // Behavior: when the section header already disambiguates, the row
@@ -341,17 +319,13 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     // MARK: - Logs
 
-    // When Activity Center is disabled, tapping the fallback Logs row opens
-    // the same Activity feed used by Activity Center.
+    // When Activity Center is disabled, the fallback Logs row opens the
+    // feed. It has no title; the Activity/Log mode picker stands in for it.
     func testLogsNavigationFromSettings() {
-        let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
-        XCTAssertTrue(logsRow.waitForExistence(timeout: 5),
-                      "Logs row not found in Settings")
+        let logsRow = app.visibleCell(containing: "Logs")
+        logsRow.scrollIntoView(in: app)
         logsRow.tap()
-        XCTAssertTrue(
-            app.navigationBars["Activity"].firstMatch.waitForExistence(timeout: 5),
-            "Activity feed did not open after tapping Logs row"
-        )
+        app.activityModePicker.assertExists(timeout: 5)
     }
 
     // MARK: - Touchlink
@@ -404,12 +378,32 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     // MARK: - Helpers
 
-    private func openSettingsScreen(_ name: String) {
-        let cell = app.cells.containing(.staticText, identifier: name).firstMatch
-        if !cell.waitForExistence(timeout: 5) {
+    private var connectionCard: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Connected")).firstMatch
+    }
+
+    /// Scrolls Settings until the row is on screen and opens it. Rows below
+    /// the fold don't exist until scrolled to, and every tab stays in the
+    /// tree, so only an on-screen (hittable) row counts. `inApplication`
+    /// picks the row under the Application header, for names like
+    /// "General" that the bridge sections use too.
+    private func openSettingsScreen(_ name: String, inApplication: Bool = false,
+                                    file: StaticString = #filePath, line: UInt = #line) {
+        let rows = app.cells.containing(.staticText, identifier: name)
+        let header = app.staticTexts["Application"].firstMatch
+        for _ in 0..<12 {
+            let candidates = rows.allElementsBoundByIndex.filter { row in
+                guard row.isHittable else { return false }
+                guard inApplication else { return true }
+                return header.exists && row.frame.minY > header.frame.minY
+            }
+            if let row = candidates.first {
+                row.tap()
+                return
+            }
             app.swipeUp()
         }
-        cell.tapWhenReady()
+        XCTFail("Settings row '\(name)' never came on screen", file: file, line: line)
     }
 }
 
@@ -451,6 +445,7 @@ final class ActivityInstrumentGalleryUITests: ShellbeeUITestCase {
         let developerRow = app.buttons["Developer"].firstMatch
         reveal(developerRow)
         developerRow.tapWhenReady()
+        app.buttons["Shellbee"].firstMatch.tapWhenReady()
 
         let galleryRow = app.buttons["Activity Instruments"].firstMatch
         galleryRow.tapWhenReady()

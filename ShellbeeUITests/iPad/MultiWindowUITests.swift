@@ -8,7 +8,7 @@ final class MultiWindowUITests: XCTestCase {
         app.launchForTesting()
         defer { app.terminate() }
 
-        let homeMarker = app.staticTexts["Total"].firstMatch
+        let homeMarker = app.navigationBars["Home"]
         app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
             .firstMatch
             .tapWhenReady(timeout: 20)
@@ -17,7 +17,7 @@ final class MultiWindowUITests: XCTestCase {
         app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Activity")
             .firstMatch
             .tapWhenReady(timeout: 15)
-        app.navigationBars["Logs"].assertExists(timeout: 15)
+        app.navigationBars["Activity"].assertExists(timeout: 15)
         let originalWindowCount = app.windows.count
         app.buttons["open-in-new-window"].firstMatch.tapWhenReady(timeout: 15)
 
@@ -26,7 +26,7 @@ final class MultiWindowUITests: XCTestCase {
             object: nil
         )
         XCTAssertEqual(XCTWaiter.wait(for: [secondWindow], timeout: 15), .completed)
-        app.navigationBars["Logs"].assertExists(timeout: 15)
+        app.navigationBars["Activity"].assertExists(timeout: 15)
 
         app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Devices")
             .firstMatch
@@ -42,10 +42,10 @@ final class MultiWindowUITests: XCTestCase {
         app.launchForTesting()
         defer { app.terminate() }
 
-        let homeMarker = app.staticTexts["Total"].firstMatch
+        let homeMarker = app.navigationBars["Home"]
         homeMarker.assertExists(timeout: 20)
         app.typeKey("l", modifierFlags: [.command, .shift])
-        app.navigationBars["Logs"].assertExists(timeout: 15)
+        app.navigationBars["Activity"].assertExists(timeout: 15)
 
         app.typeKey("w", modifierFlags: .command)
         homeMarker.assertExists(timeout: 15)
@@ -59,13 +59,13 @@ final class MultiWindowUITests: XCTestCase {
         app.launchForTesting()
         defer { app.terminate() }
 
-        app.staticTexts["Total"].firstMatch.assertExists(timeout: 20)
+        app.navigationBars["Home"].assertExists(timeout: 20)
         app.typeKey("l", modifierFlags: [.command, .shift])
-        app.navigationBars["Logs"].assertExists(timeout: 15)
+        app.navigationBars["Activity"].assertExists(timeout: 15)
 
         XCUIDevice.shared.press(.home)
         app.activate()
 
-        app.navigationBars["Logs"].assertExists(timeout: 15)
+        app.navigationBars["Activity"].assertExists(timeout: 15)
     }
 }

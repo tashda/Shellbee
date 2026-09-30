@@ -15,7 +15,7 @@ final class ResizableWindowUITests: XCTestCase {
             device.orientation = originalOrientation
         }
 
-        app.staticTexts["Total"].firstMatch.assertExists(timeout: 20)
+        app.navigationBars["Home"].assertExists(timeout: 20)
         app.typeKey("k", modifierFlags: .command)
         let search = app.searchFields.firstMatch
         search.assertExists(timeout: 10)
@@ -23,11 +23,11 @@ final class ResizableWindowUITests: XCTestCase {
         app.cells.containing(.staticText, identifier: "Living Room Light")
             .firstMatch
             .tapWhenReady(timeout: 10)
-        app.navigationBars["Living Room Light"].assertExists(timeout: 15)
+        app.deviceIdentity(named: "Living Room Light").assertExists(timeout: 15)
 
         device.orientation = .portrait
 
-        app.navigationBars["Living Room Light"].assertExists(timeout: 15)
+        app.deviceIdentity(named: "Living Room Light").assertExists(timeout: 15)
         XCTAssertTrue(app.exists, "Changing window geometry terminated Shellbee")
     }
 }

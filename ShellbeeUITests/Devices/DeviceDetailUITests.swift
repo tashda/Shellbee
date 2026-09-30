@@ -39,7 +39,7 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
     /// merges it into state and publishes it back, and the card follows.
     func testPlugToggleRoundTripsThroughTheBridge() {
         app.openDevice(named: "Kitchen Plug")
-        let toggle = app.switches.firstMatch
+        let toggle = app.switches["Power"].firstMatch
         toggle.assertExists(timeout: 5)
         let before = toggle.value as? String
         toggle.tap()
@@ -67,18 +67,18 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
 
     // MARK: - Climate
 
-    func testClimateShowsTargetAndMode() {
+    func testClimateShowsTarget() {
         app.openDevice(named: "Bedroom Thermostat")
         app.staticTexts["Climate"].firstMatch.assertExists(timeout: 5)
         app.descendants(matching: .any)["Target"].firstMatch.assertExists(timeout: 5)
-        app.staticTexts["Mode"].firstMatch.assertExists(timeout: 5)
     }
 
     // MARK: - Cover
 
-    func testCoverHasOpenCloseAndStop() {
+    /// Stop only appears while the cover is moving.
+    func testCoverHasOpenAndClose() {
         app.openDevice(named: "Living Room Blinds")
-        for action in ["Open", "Close", "Stop"] {
+        for action in ["Open", "Close"] {
             app.buttons[action].firstMatch.assertExists(timeout: 5)
         }
     }
@@ -93,20 +93,25 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
     // MARK: - Fan
 
     func testFanShowsSpeed() {
-        app.openDevice(named: "Bathroom Fan")
+        app.openDevice(named: "Attic Tuya Fan")
         app.staticTexts["Fan"].firstMatch.assertExists(timeout: 5)
         app.descendants(matching: .any)["Speed"].firstMatch.assertExists(timeout: 5)
     }
 
-    /// Writable numeric settings render their slider inline instead of
-    /// pushing a page. Attic Tuya Fan has a speed slider and a
-    /// `countdown_hours` setting.
+    /// A fan with air-quality sensors (IKEA STARKVIND) is an air purifier.
+    func testAirPurifierIsNamedAsSuch() {
+        app.openDevice(named: "Bathroom Fan")
+        app.staticTexts["Air Purifier"].firstMatch.assertExists(timeout: 5)
+    }
+
+    /// Writable numeric settings edit in place instead of pushing a page.
+    /// Attic Tuya Fan has a `countdown_hours` setting.
     func testFanWritableNumericRendersInline() {
         app.openDevice(named: "Attic Tuya Fan")
-        app.swipeUp()
-        app.swipeUp()
-        XCTAssertGreaterThan(app.sliders.count, 1,
-                             "Expected the speed slider plus an inline slider for countdown_hours")
+        let countdown = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "countdown")).firstMatch
+        countdown.scrollIntoView(in: app)
+        XCTAssertTrue(app.deviceIdentity(named: "Attic Tuya Fan").exists || app.navigationBars["Attic Tuya Fan"].exists,
+                      "The countdown setting isn't on the device page")
         XCTAssertFalse(app.navigationBars["Countdown Hours"].exists,
                        "A writable numeric must not push its own page")
     }

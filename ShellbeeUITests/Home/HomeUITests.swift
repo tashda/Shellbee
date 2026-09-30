@@ -6,6 +6,7 @@ final class HomeUITests: ShellbeeUITestCase {
         super.setUp()
         app.tapHomeTab()
         app.navigationBars["Home"].assertExists(timeout: 10)
+        closeNetworkIfOpen()
     }
 
     // MARK: - Bridge
@@ -49,20 +50,23 @@ final class HomeUITests: ShellbeeUITestCase {
 
     // MARK: - Permit Join
 
-    /// A real round trip: Open Network sends bridge/request/permit_join, the
-    /// mock bridge answers and reports the network open with a countdown,
-    /// and Close Network closes it again.
+    /// A real round trip: Open Network sends bridge/request/permit_join and
+    /// closes the sheet; the mock bridge reports the network open, so the
+    /// toolbar button changes, and reopening the sheet shows the countdown.
+    /// Close Network closes it again.
     func testPermitJoinOpensAndClosesTheNetwork() {
-        permitJoinButton.tapWhenReady(timeout: 5)
+        startButton.tapWhenReady(timeout: 5)
         app.buttons["Open Network"].firstMatch.tapWhenReady(timeout: 5)
-        app.staticTexts["Network is open"].firstMatch.assertExists(timeout: 10)
 
-        app.buttons["Close Network"].firstMatch.tapWhenReady(timeout: 5)
-        app.buttons["Open Network"].firstMatch.assertExists(timeout: 10)
+        activeButton.tapWhenReady(timeout: 10)
+        app.staticTexts["Network is open"].firstMatch.assertExists(timeout: 5)
+        app.buttons["Close Network"].firstMatch.tap()
+
+        startButton.assertExists(timeout: 10)
     }
 
     func testPermitJoinSheetOffersDurationAndTarget() {
-        permitJoinButton.tapWhenReady(timeout: 5)
+        startButton.tapWhenReady(timeout: 5)
         app.staticTexts["Open the network"].firstMatch.assertExists(timeout: 5)
         for picker in ["Duration", "Via"] {
             app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", picker))
@@ -72,7 +76,7 @@ final class HomeUITests: ShellbeeUITestCase {
     }
 
     func testPermitJoinSheetDismisses() {
-        permitJoinButton.tapWhenReady(timeout: 5)
+        startButton.tapWhenReady(timeout: 5)
         let openNetwork = app.buttons["Open Network"].firstMatch
         openNetwork.assertExists(timeout: 5)
         for _ in 0..<3 where openNetwork.exists {
@@ -88,7 +92,15 @@ final class HomeUITests: ShellbeeUITestCase {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Connected · Zigbee2MQTT")).firstMatch
     }
 
-    private var permitJoinButton: XCUIElement {
-        app.buttons["Start Permit Join"].firstMatch
+    private var startButton: XCUIElement { app.buttons["Start Permit Join"].firstMatch }
+    private var activeButton: XCUIElement { app.buttons["Permit Join Active"].firstMatch }
+
+    /// The mock bridge keeps permit_join across app launches, so a test that
+    /// failed mid-way could leave the network open for the next one.
+    private func closeNetworkIfOpen() {
+        guard activeButton.waitForExistence(timeout: 2) else { return }
+        activeButton.tap()
+        app.buttons["Close Network"].firstMatch.tapWhenReady(timeout: 5)
+        startButton.assertExists(timeout: 10)
     }
 }

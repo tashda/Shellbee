@@ -24,12 +24,13 @@ final class ActivityUITests: ShellbeeUITestCase {
     }
 
     func testModeSwitchesToTheRawLog() {
-        app.buttons["Mode"].firstMatch.tapWhenReady(timeout: 5)
+        // The menu picker's button reads as its current mode.
+        app.activityModePicker.tapWhenReady(timeout: 5)
         app.buttons["Log"].firstMatch.tapWhenReady(timeout: 5)
         XCTAssertFalse(events.firstMatch.waitForExistence(timeout: 2),
                        "Activity cards are still showing in Log mode")
 
-        app.buttons["Mode"].firstMatch.tapWhenReady(timeout: 5)
+        app.activityModePicker.tapWhenReady(timeout: 5)
         app.buttons["Activity"].firstMatch.tapWhenReady(timeout: 5)
         events.firstMatch.assertExists(timeout: 10)
     }
@@ -88,6 +89,6 @@ final class ActivityCenterDisabledUITests: ShellbeeUITestCase {
         let logsRow = app.visibleCell(containing: "Logs")
         logsRow.scrollIntoView(in: app)
         logsRow.tap()
-        app.navigationBars["Activity"].assertExists(timeout: 10)
+        app.activityModePicker.assertExists(timeout: 10)
     }
 }
