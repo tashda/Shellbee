@@ -8,6 +8,8 @@ import Foundation
 @Observable
 @MainActor
 final class BridgeRegistry {
+    nonisolated deinit {}
+
     private(set) var sessions: [UUID: BridgeSession] = [:]
     /// The bridge whose data the legacy single-bridge UI surfaces. Changes
     /// instantly when the user picks a different bridge in the toolbar — no

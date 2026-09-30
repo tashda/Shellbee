@@ -5,6 +5,8 @@ import SwiftUI
 /// Subscribe tab. Backed by `ConnectionSessionController.rawInboundTap`.
 @Observable
 final class SubscribeStore {
+    nonisolated deinit {}
+
     var messages: [InspectorMessage] = []
     var paused: Bool = false
     var filter: String = ""

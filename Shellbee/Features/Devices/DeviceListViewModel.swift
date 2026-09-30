@@ -101,6 +101,8 @@ struct DeviceFilterState: Equatable {
 
 @Observable
 final class DeviceListViewModel {
+    nonisolated deinit {}
+
     var searchText     = ""
     var categoryFilter: Device.Category? = nil
     var typeFilter: DeviceType? = nil

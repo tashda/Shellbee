@@ -255,6 +255,8 @@ extension ConnectionConfig {
 }
 
 private final class ConnectionTokenKeychain {
+    nonisolated deinit {}
+
     static let shared = ConnectionTokenKeychain()
 
     private let service = "dev.echodb.shellbee.connection-token"

@@ -2,6 +2,8 @@ import Foundation
 
 @Observable
 final class PairingWizardModel {
+    nonisolated deinit {}
+
     /// Stamped when the wizard opens. Drives the "is this device part of
     /// THIS pairing session?" filter — anything whose first-seen timestamp
     /// predates this is from a previous session and not in scope.

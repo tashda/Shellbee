@@ -22,25 +22,9 @@
     {
       "parallelizable" : false,
       "skippedTests" : [
-        "ConnectionConfigTests\/testSaveAndLoad()",
-        "ConnectionConfigTests\/testSecondLoadAfterLegacyMigrationStillReturnsToken()",
-        "ConnectionHistoryTests",
-        "BridgeRegistryTests",
-        "BridgeScopeTests",
-        "DeviceFavoritesStoreTests",
-        "GroupsWorkspaceStateTests",
-        "HomeLayoutStoreTests",
-        "LogsWorkspaceStateTests",
-        "MultiBridgeIntegrationTests",
-        "MultiWindowTests",
-        "NetworkMapTests",
-        "MultiBridgeNavigationTests",
-        "MultiBridgeAggregationTests",
         "GroupDropIntegrationTests",
+        "MultiBridgeIntegrationTests",
         "NetworkMapIntegrationTests",
-        "NotificationPreferencesTests",
-        "OTABulkOperationQueueTests",
-        "Z2MEventBatcherTests\/testLoneMessageArrivesAtOnceAndBurstIsBatchedInOrder()",
         "Z2MIntegrationTests"
       ],
       "target" : {

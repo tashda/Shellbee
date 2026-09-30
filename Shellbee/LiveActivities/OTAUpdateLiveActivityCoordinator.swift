@@ -8,6 +8,8 @@ import Foundation
 /// `visibleBridges`.
 @MainActor
 final class OTAUpdateLiveActivityCoordinator {
+    nonisolated deinit {}
+
     static let shared = OTAUpdateLiveActivityCoordinator()
 
     private let controller = LiveActivityController<OTAUpdateActivityAttributes>(

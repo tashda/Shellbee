@@ -2,6 +2,8 @@ import Foundation
 
 @Observable
 final class BridgeLogViewModel {
+    nonisolated deinit {}
+
     var searchText = ""
     var selectedLevel: LogLevel? = nil
     /// Multi-bridge: when set, the raw log tab reads entries from this bridge.

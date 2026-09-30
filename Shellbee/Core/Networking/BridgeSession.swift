@@ -9,6 +9,8 @@ import Foundation
 @Observable
 @MainActor
 final class BridgeSession {
+    nonisolated deinit {}
+
     let bridgeID: UUID
     var config: ConnectionConfig
     let store: AppStore

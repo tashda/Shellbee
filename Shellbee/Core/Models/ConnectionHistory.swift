@@ -3,6 +3,8 @@ import SwiftUI
 
 @Observable
 final class ConnectionHistory {
+    nonisolated deinit {}
+
     private(set) var connections: [ConnectionConfig] = []
     private(set) var defaultBridgeID: UUID?
     /// Bridges marked for auto-connect on app launch. Phase 2 multi-bridge:

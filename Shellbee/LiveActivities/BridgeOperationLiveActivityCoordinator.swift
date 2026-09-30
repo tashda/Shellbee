@@ -2,6 +2,8 @@ import Foundation
 
 @MainActor
 final class BridgeOperationLiveActivityCoordinator {
+    nonisolated deinit {}
+
     static let shared = BridgeOperationLiveActivityCoordinator()
 
     private let controller = LiveActivityController<BridgeOperationActivityAttributes>(

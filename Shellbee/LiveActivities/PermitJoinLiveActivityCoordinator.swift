@@ -6,6 +6,8 @@ import Foundation
 /// system's stale date handles the case where the app is suspended.
 @MainActor
 final class PermitJoinLiveActivityCoordinator {
+    nonisolated deinit {}
+
     static let shared = PermitJoinLiveActivityCoordinator()
 
     private let controller = LiveActivityController<PermitJoinActivityAttributes>(

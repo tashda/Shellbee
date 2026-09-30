@@ -1,15 +1,15 @@
 name: CI (Full)
 
-# Unit + Integration suite, run against a live mock z2m bridge. Triggers:
-#   1. Nightly at 03:00 UTC (catches environmental / flaky issues)
-#   2. On-demand from the Actions tab
-#   3. Labeling a PR with `run-ui-tests`
+# Unit + integration suites against a live mock z2m bridge, plus the iPad
+# matrix. Triggers:
+#   1. Every PR to main (a release PR can't merge without us seeing this)
+#   2. Nightly at 03:00 UTC (catches environmental drift on main)
+#   3. On demand from the Actions tab
 #
-# The focused iPad matrix runs on every Full CI invocation. The broader iPhone
-# UI suite remains opt-in while its legacy coverage is stabilized.
+# Not a required check, but a red run on main opens a `ci-failure` issue
+# (see the notify job) so it can't go unnoticed.
 #
-# Typical duration: ~10 min. Not required for PR merge — see ci-fast.yml
-# for the required check.
+# Typical duration: ~20 min.
 
 on:
   schedule:
@@ -21,28 +21,28 @@ on:
         description: 'Why are you running the full suite?'
         required: false
         default: 'Manual run'
+      audit_skipped:
+        description: 'Also run every unit test the CI plans skip, to see which still fail'
+        type: boolean
+        default: false
   pull_request:
-    types: [labeled]
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'marketing/**'
 
 concurrency:
   group: ci-full-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  # Guard: when triggered by `pull_request: labeled`, only run if the label
-  # is exactly `run-ui-tests`. Without this, every label add would trigger.
-  gate:
-    name: Gate
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ui-tests'
-    steps:
-      - name: Gate passed
-        run: |
-          echo "Trigger: ${{ github.event_name }}"
+permissions:
+  contents: read
 
+jobs:
   unit-tests:
     name: Unit + Integration Tests
-    needs: gate
     runs-on: macos-15
     timeout-minutes: 35
 
@@ -75,25 +75,12 @@ jobs:
           MOCK_SEED_INTERVAL: "60"
         run: ./.github/scripts/start-mock-bridge.sh
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPhone")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          NAME=$(xcrun simctl list devices --json \
-            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh 'iPhone.*Pro Max' '^iPhone'
 
       - name: Boot simulator and wait for readiness
         timeout-minutes: 4
@@ -121,45 +108,27 @@ jobs:
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-unit.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-unit.log
 
       - name: Run unit tests
         timeout-minutes: 15
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
-          # Skip the same tests that Shellbee-CI.xctestplan skips on Fast CI
-          # Skip only the known runner-specific cases documented in the test
-          # plan README. Live bridge suites run in the next step.
+          # Everything except the suites that need a live mock bridge,
+          # which run in the next step.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
-            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
-            -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
-            -skip-testing:"ShellbeeTests/BridgeRegistryTests" \
-            -skip-testing:"ShellbeeTests/BridgeScopeTests" \
-            -skip-testing:"ShellbeeTests/DeviceFavoritesStoreTests" \
-            -skip-testing:"ShellbeeTests/GroupsWorkspaceStateTests" \
-            -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
-            -skip-testing:"ShellbeeTests/LogsWorkspaceStateTests" \
-            -skip-testing:"ShellbeeTests/MultiWindowTests" \
-            -skip-testing:"ShellbeeTests/NetworkMapTests" \
-            -skip-testing:"ShellbeeTests/MultiBridgeNavigationTests" \
-            -skip-testing:"ShellbeeTests/MultiBridgeAggregationTests" \
-            -skip-testing:"ShellbeeTests/GroupDropIntegrationTests" \
-            -skip-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
-            -skip-testing:"ShellbeeTests/OTABulkOperationQueueTests" \
-            -skip-testing:"ShellbeeTests/Z2MEventBatcherTests/testLoneMessageArrivesAtOnceAndBurstIsBatchedInOrder" \
-            -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
-            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
-            -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests" \
             -skip-testing:"ShellbeeTests/MultiBridgeIntegrationTests" \
+            -skip-testing:"ShellbeeTests/GroupDropIntegrationTests" \
+            -skip-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-unit.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-unit.log
 
       - name: Run mock bridge integration tests
         timeout-minutes: 15
@@ -177,11 +146,12 @@ jobs:
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"ShellbeeTests/Z2MIntegrationTests" \
             -only-testing:"ShellbeeTests/MultiBridgeIntegrationTests" \
-            -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
+            -only-testing:"ShellbeeTests/GroupDropIntegrationTests" \
+            -only-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
             -parallel-testing-enabled NO \
             -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/IntegrationTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-integration.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-integration.log
 
       - name: Capture mock bridge logs
         if: always()
@@ -191,34 +161,24 @@ jobs:
           cp "$RUNNER_TEMP/z2m-bridge-2.log" mock-bridge-2.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
 
-      - name: Summarize
+      - name: Report results
         if: always()
         env:
-          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
+          FAILURES_OUT: failures-unit.md
         run: |
-          {
-            echo "## Unit Tests"
-            echo
-            echo "| Field | Value |"
-            echo "| --- | --- |"
-            echo "| Simulator | $DEVICE_NAME |"
-            echo "| Target | $TEST_TARGET |"
-            echo
-            if [ -d "$DERIVED_DATA/UnitTests.xcresult" ]; then
-              xcrun xcresulttool get --path "$DERIVED_DATA/UnitTests.xcresult" --format json 2>/dev/null \
-                | jq -r '.metrics | "**Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)**"' \
-                || echo "_Result bundle present but could not be parsed._"
-            else
-              echo "_No result bundle produced._"
-            fi
-            if [ -d "$DERIVED_DATA/IntegrationTests.xcresult" ]; then
-              echo
-              echo "## Mock Bridge Integration Tests"
-              xcrun xcresulttool get --path "$DERIVED_DATA/IntegrationTests.xcresult" --format json 2>/dev/null \
-                | jq -r '.metrics | "**Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)**"' \
-                || echo "_Result bundle present but could not be parsed._"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/UnitTests.xcresult" "Unit tests"
+          if [ -d "$DERIVED_DATA/IntegrationTests.xcresult" ]; then
+            ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/IntegrationTests.xcresult" "Mock bridge integration tests"
+          fi
+
+      - name: Upload failure list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures-unit
+          path: failures-unit.md
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Upload artifacts on failure
         if: failure()
@@ -240,7 +200,6 @@ jobs:
 
   ipad-build:
     name: iPad build (build-only)
-    needs: gate
     runs-on: macos-15
     timeout-minutes: 15
 
@@ -261,30 +220,12 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick iPad simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPad")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          if [ -z "$DEVICE_ID" ] || [ "$DEVICE_ID" = "null" ]; then
-            echo "No iPad simulator available on this runner" >&2
-            exit 1
-          fi
-          NAME=$(xcrun simctl list devices --json \
-            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
-          echo "Using: $NAME ($DEVICE_ID)"
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh '^iPad'
 
       - name: Build for iPad
         env:
@@ -294,7 +235,7 @@ jobs:
           xcodebuild build \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-ipad.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-ipad.log
 
       - name: Upload artifacts on failure
         if: failure()
@@ -308,7 +249,6 @@ jobs:
 
   ipad-ui-tests:
     name: iPad UI (${{ matrix.form_factor }})
-    needs: gate
     runs-on: macos-15
     timeout-minutes: 35
     strategy:
@@ -323,7 +263,7 @@ jobs:
     env:
       SCHEME: Shellbee
       TEST_PLAN: Shellbee
-      TEST_TARGET: ShellbeeUITests/IPadShellMatrixUITests
+      IPAD_CLASSES: IPadShellMatrixUITests MultiWindowUITests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
@@ -347,34 +287,14 @@ jobs:
           MOCK_SEED_INTERVAL: "60"
         run: ./.github/scripts/start-mock-bridge.sh
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick representative iPad simulator
         id: sim
         env:
           NAME_REGEX: ${{ matrix.name_regex }}
-        run: |
-          DEVICE_JSON=$(xcrun simctl list devices available --json)
-          DEVICE_ID=$(jq -r --arg regex "$NAME_REGEX" \
-            '[.devices | to_entries[]
-              | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-              | .value[]
-              | select(.isAvailable and (.name | test($regex; "i")))]
-             | sort_by(.name) | last | .udid // empty' <<< "$DEVICE_JSON")
-          if [ -z "$DEVICE_ID" ]; then
-            echo "No iPad matched $NAME_REGEX" >&2
-            xcrun simctl list devices available
-            exit 1
-          fi
-          NAME=$(jq -r --arg id "$DEVICE_ID" \
-            '[.devices | to_entries[].value[] | select(.udid==$id)][0].name' <<< "$DEVICE_JSON")
-          echo "Using: $NAME ($DEVICE_ID)"
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh "$NAME_REGEX"
 
       - name: Boot simulator and wait for readiness
         timeout-minutes: 4
@@ -395,24 +315,30 @@ jobs:
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-ipad-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-ipad-ui.log
 
       - name: Run adaptive iPad behavior tests
         timeout-minutes: 20
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
+          # One retry absorbs a simulator hiccup; a test that needs it is
+          # still flagged as flaky in the report. A real regression fails
+          # both attempts and fails the job.
+          ONLY=()
+          for class in $IPAD_CLASSES; do ONLY+=("-only-testing:ShellbeeUITests/$class"); done
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            -only-testing:"$TEST_TARGET" \
+            "${ONLY[@]}" \
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
+            -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/IPadMatrix.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-ipad-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-ipad-ui.log
 
       - name: Capture mock bridge logs
         if: always()
@@ -422,21 +348,26 @@ jobs:
           cp "$RUNNER_TEMP/z2m-bridge-2.log" mock-bridge-2.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
 
-      - name: Summarize
+      - name: Report results
         if: always()
         env:
-          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
-        run: |
-          {
-            echo "## iPad UI — $DEVICE_NAME"
-            echo
-            echo "Behavioral smoke, bridge-scoped selection, and rotation restoration."
-            echo
-            echo "Failure artifacts include the xcresult bundle and XCTest screenshots."
-          } >> "$GITHUB_STEP_SUMMARY"
+          FAILURES_OUT: failures-ipad-${{ matrix.form_factor }}.md
+        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/IPadMatrix.xcresult" "iPad UI (${{ steps.sim.outputs.device_name }})"
 
-      - name: Upload failure diagnostics
-        if: failure()
+      - name: Upload failure list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures-ipad-${{ matrix.form_factor }}
+          path: failures-ipad-${{ matrix.form_factor }}.md
+          if-no-files-found: ignore
+          retention-days: 3
+
+      # Always kept: a test that passed only on retry leaves its first
+      # attempt's screenshots and hierarchy here, which is the only way
+      # to tell a slow test from a real race.
+      - name: Upload diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-full-ipad-${{ matrix.form_factor }}
@@ -449,24 +380,30 @@ jobs:
             mock-seeder-2.log
             ${{ env.DERIVED_DATA }}/IPadMatrix.xcresult
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
 
   ui-tests:
-    name: UI Tests (smoke)
-    # Only run when the PR is explicitly labeled `run-ui-tests`. The suite
-    # was dormant during the multi-bridge redesign; running it on every
-    # Full CI invocation hangs at 20 min with zero test execution while
-    # the simulator + app launch story is sorted (#83). The job is kept
-    # in the workflow so labeling a PR re-enables it once it's green.
-    if: github.event_name == 'pull_request' && github.event.label.name == 'run-ui-tests'
-    needs: gate
+    name: iPhone UI (${{ matrix.shard }})
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 60
+    # Split by class so each shard fits well inside its time budget. A new
+    # UI test class must be added to one shard or it never runs.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: devices
+            classes: DeviceDetailUITests DeviceListUITests SearchUITests
+          - shard: groups-home
+            classes: GroupsUITests HomeUITests HomeDashboardUITests
+          - shard: settings
+            classes: SettingsUITests ActivityCenterEnabledSettingsUITests ActivityInstrumentGalleryUITests IconGalleryUITests ThemeUITests
+          - shard: activity-connection
+            classes: ActivityUITests ActivityCenterDisabledUITests ConnectionFlowUITests DisconnectUITests
 
     env:
       SCHEME: Shellbee
       TEST_PLAN: Shellbee
-      TEST_TARGET: ShellbeeUITests
       DERIVED_DATA: ${{ github.workspace }}/DerivedData
 
     steps:
@@ -482,28 +419,20 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      - name: Start mock Z2M bridge (single)
+      # Both bridges: some suites (Home dashboard) add the secondary. The
+      # default 10 s republish delivers the battery and signal readings Home's
+      # Needs attention is built from.
+      - name: Start dual mock Z2M bridges (native)
+        env:
+          MULTI_BRIDGE: "1"
         run: ./.github/scripts/start-mock-bridge.sh
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick simulator
         id: sim
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | jq -r '[.devices | to_entries[]
-                       | select(.key | test("iOS|com.apple.CoreSimulator.SimRuntime.iOS"))
-                       | .value[]
-                       | select(.isAvailable and (.name | startswith("iPhone")))]
-                     | sort_by(.name) | reverse | .[0].udid')
-          NAME=$(xcrun simctl list devices --json \
-            | jq -r --arg id "$DEVICE_ID" '[.devices | to_entries[].value[] | select(.udid==$id)][0].name')
-          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
-          echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+        run: ./.github/scripts/pick-simulator.sh 'iPhone.*Pro Max' '^iPhone'
 
       - name: Boot simulator
         timeout-minutes: 4
@@ -524,33 +453,59 @@ jobs:
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-ui.log
 
       - name: Run UI tests
-        timeout-minutes: 20
+        timeout-minutes: 45
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+          CLASSES: ${{ matrix.classes }}
         run: |
+          # Serial: parallel testing clones the simulator, which hangs on
+          # the hosted runner with zero tests run (#83), and every UI test
+          # shares one mock bridge anyway.
+          ONLY=()
+          for class in $CLASSES; do ONLY+=("-only-testing:ShellbeeUITests/$class"); done
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            -only-testing:"$TEST_TARGET" \
+            "${ONLY[@]}" \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-ui.log
 
       - name: Capture mock bridge logs
         if: always()
         run: |
           cp "$RUNNER_TEMP/z2m-bridge.log" mock-bridge.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder.log" mock-seeder.log 2>/dev/null || true
+          cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
 
-      - name: Upload artifacts on failure
-        if: failure()
+      - name: Report results
+        if: always()
+        env:
+          FAILURES_OUT: failures-iphone-${{ matrix.shard }}.md
+        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/UITests.xcresult" "iPhone UI (${{ matrix.shard }})"
+
+      - name: Upload failure list
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-full-ui-logs
+          name: failures-iphone-${{ matrix.shard }}
+          path: failures-iphone-${{ matrix.shard }}.md
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-full-iphone-${{ matrix.shard }}
           path: |
             build-ui.log
             test-ui.log
@@ -558,4 +513,118 @@ jobs:
             mock-seeder.log
             ${{ env.DERIVED_DATA }}/UITests.xcresult
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
+
+
+  skipped-audit:
+    name: Audit skipped unit tests
+    # Dispatch-only. Runs exactly the tests Shellbee-CI.xctestplan skips
+    # (minus the live-bridge suites, which the unit job already runs) so a
+    # skip can be deleted as soon as it passes, and a real crash is seen.
+    if: github.event_name == 'workflow_dispatch' && inputs.audit_skipped
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    env:
+      SCHEME: Shellbee
+      TEST_PLAN: Shellbee
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start dual mock Z2M bridges (native)
+        env:
+          MULTI_BRIDGE: "1"
+          DRIFT_ON_CLIENT_CONNECT: "0"
+          MOCK_SEED_INTERVAL: "60"
+        run: ./.github/scripts/start-mock-bridge.sh
+
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
+
+      - name: Pick simulator
+        id: sim
+        run: ./.github/scripts/pick-simulator.sh 'iPhone.*Pro Max' '^iPhone'
+
+      - name: Boot simulator
+        timeout-minutes: 4
+        run: xcrun simctl bootstatus "${{ steps.sim.outputs.device_id }}" -b
+
+      - name: Run skipped tests
+        continue-on-error: true
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          PLAN=Shellbee.xcodeproj/xcshareddata/xctestplans/Shellbee-CI.xctestplan
+          ONLY=()
+          while read -r t; do
+            ONLY+=("-only-testing:ShellbeeTests/${t%()}")
+          done < <(jq -r '.testTargets[] | select(.target.name == "ShellbeeTests")
+                          | .skippedTests[]
+                          | select(. != "Z2MIntegrationTests" and . != "MultiBridgeIntegrationTests")' "$PLAN")
+          printf '%s\n' "${ONLY[@]}"
+          set -o pipefail
+          xcodebuild test \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            "${ONLY[@]}" \
+            -retry-tests-on-failure -test-iterations 2 \
+            -resultBundlePath "$DERIVED_DATA/SkippedAudit.xcresult" \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee audit.log
+
+      - name: Report results
+        if: always()
+        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/SkippedAudit.xcresult" "Skipped unit tests (audit)"
+
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skipped-audit
+          path: |
+            audit.log
+            ${{ env.DERIVED_DATA }}/SkippedAudit.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+  notify:
+    name: Notify on main
+    # Only for runs of main (nightly or dispatched). A PR's failures show
+    # on the PR itself. Cancelled runs say nothing either way.
+    needs: [unit-tests, ipad-build, ipad-ui-tests, ui-tests]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect failing tests
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: failures-*
+          path: failures
+          merge-multiple: true
+
+      - name: Open, update or close the ci-failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED: ${{ contains(needs.*.result, 'failure') }}
+          CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
+        run: |
+          if [ "$FAILED" = "true" ]; then
+            {
+              echo "**Failed jobs:**"
+              gh run view "$GITHUB_RUN_ID" --json jobs \
+                --jq '.jobs[] | select(.conclusion == "failure") | "- [\(.name)](\(.url))"'
+              echo
+              cat failures/*.md 2>/dev/null || true
+            } > details.md
+            ./.github/scripts/ci-failure-issue.sh failure details.md
+          elif [ "$CANCELLED" != "true" ]; then
+            ./.github/scripts/ci-failure-issue.sh success
+          fi

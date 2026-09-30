@@ -22,6 +22,8 @@ enum GroupSortOrder: String, CaseIterable {
 
 @Observable
 final class GroupListViewModel {
+    nonisolated deinit {}
+
     var searchText = ""
     var sortOrder: GroupSortOrder = .id
     var sortAscending = true

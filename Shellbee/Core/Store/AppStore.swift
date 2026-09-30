@@ -3,6 +3,8 @@ import UIKit
 
 @Observable
 final class AppStore {
+    nonisolated deinit {}
+
     var devices: [Device] = [] {
         didSet { deviceIndexByName = Self.indexByName(devices) }
     }

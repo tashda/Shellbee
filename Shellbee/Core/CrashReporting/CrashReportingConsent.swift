@@ -3,6 +3,8 @@ import Observation
 
 @Observable
 final class CrashReportingConsent {
+    nonisolated deinit {}
+
     static let shared = CrashReportingConsent()
 
     private enum Keys {

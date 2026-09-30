@@ -83,7 +83,6 @@ struct ActivitySubjectEvents {
                 bridgeName: bridgeName
             )
             .padding(.vertical, DesignTokens.Spacing.sm)
-            .accessibilityIdentifier("activity-log-\(bridgeName)")
         }
 
         private var bridgeName: String {
