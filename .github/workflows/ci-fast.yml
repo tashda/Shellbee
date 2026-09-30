@@ -36,6 +36,9 @@ concurrency:
   group: ci-fast-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build-and-unit-test:
     name: Build & Unit Tests
@@ -71,12 +74,8 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          echo "Selecting $LATEST"
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick simulator
         id: sim
@@ -179,39 +178,29 @@ jobs:
               -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
               CODE_SIGNING_ALLOWED=NO | tee test.log
 
-      - name: Summarize results
+      - name: Report results
         if: always()
         env:
-          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
+          FAILURES_OUT: failures-fast.md
         run: |
           XCRESULT="$DERIVED_DATA/UnitTests.xcresult"
-          {
-            echo "## CI (Fast) — Unit Tests"
-            echo
-            echo "| Field | Value |"
-            echo "| --- | --- |"
-            echo "| Simulator | $DEVICE_NAME |"
-            echo "| Xcode | $(xcodebuild -version | head -n1) |"
-            echo "| Scheme | $SCHEME |"
-            echo "| Target | $UNIT_TEST_TARGET |"
-            echo
-            if [ -d "$XCRESULT" ]; then
-              SUMMARY=$(xcrun xcresulttool get --path "$XCRESULT" --format json 2>/dev/null \
-                | jq -r '.metrics | "Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)"' 2>/dev/null || echo "Results bundle present but could not be parsed.")
-              echo "**$SUMMARY**"
-              echo
-              # Best-effort line coverage. xcresulttool's coverage subcommand
-              # is the modern path; the CLI shape varies between Xcode versions
-              # so we tolerate failure rather than block CI on a parse change.
-              COV=$(xcrun xccov view --report --only-targets "$XCRESULT" 2>/dev/null \
-                | awk '/^Shellbee\.app/ { print $2 }' | head -n1 || true)
-              if [ -n "$COV" ]; then
-                echo "Line coverage (Shellbee.app): **$COV**"
-              fi
-            else
-              echo "_No result bundle produced (build may have failed before tests ran)._"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          ./.github/scripts/report-xcresult.sh "$XCRESULT" "CI (Fast): unit tests"
+          # Best-effort line coverage; the xccov output shape varies
+          # between Xcode versions, so a parse miss just omits the line.
+          COV=$(xcrun xccov view --report --only-targets "$XCRESULT" 2>/dev/null \
+            | awk '/^Shellbee\.app/ { print $2 }' | head -n1 || true)
+          if [ -n "$COV" ]; then
+            echo "Line coverage (Shellbee.app): **$COV** · $(xcodebuild -version | head -n1)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload failure list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures-fast
+          path: failures-fast.md
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Stop simulator log stream
         if: always()
@@ -233,3 +222,37 @@ jobs:
             ${{ env.DERIVED_DATA }}/simulator.log
           if-no-files-found: ignore
           retention-days: 7
+
+  notify:
+    name: Notify on main
+    # A red push to main opens (or updates) a ci-failure issue; the next
+    # green push closes it. PR failures show on the PR itself.
+    needs: [build-and-unit-test]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect failing tests
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: failures-*
+          path: failures
+          merge-multiple: true
+
+      - name: Open, update or close the ci-failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.build-and-unit-test.result }}
+        run: |
+          if [ "$RESULT" = "failure" ]; then
+            cat failures/*.md > details.md 2>/dev/null || true
+            ./.github/scripts/ci-failure-issue.sh failure details.md
+          elif [ "$RESULT" = "success" ]; then
+            ./.github/scripts/ci-failure-issue.sh success
+          fi

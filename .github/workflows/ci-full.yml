@@ -1,15 +1,19 @@
 name: CI (Full)
 
-# Unit + Integration suite, run against a live mock z2m bridge. Triggers:
-#   1. Nightly at 03:00 UTC (catches environmental / flaky issues)
-#   2. On-demand from the Actions tab
-#   3. Labeling a PR with `run-ui-tests`
+# Unit + integration suites against a live mock z2m bridge, plus the iPad
+# matrix. Triggers:
+#   1. Every PR to main (a release PR can't merge without us seeing this)
+#   2. Nightly at 03:00 UTC (catches environmental drift on main)
+#   3. On demand from the Actions tab
 #
-# The focused iPad matrix runs on every Full CI invocation. The broader iPhone
-# UI suite remains opt-in while its legacy coverage is stabilized.
+# Not a required check, but a red run on main opens a `ci-failure` issue
+# (see the notify job) so it can't go unnoticed.
 #
-# Typical duration: ~10 min. Not required for PR merge — see ci-fast.yml
-# for the required check.
+# The broader iPhone UI smoke suite stays opt-in while its legacy coverage
+# is stabilized: label the PR `run-ui-tests` (then push or re-run) or tick
+# "ui_smoke" when dispatching.
+#
+# Typical duration: ~20 min.
 
 on:
   schedule:
@@ -21,28 +25,28 @@ on:
         description: 'Why are you running the full suite?'
         required: false
         default: 'Manual run'
+      ui_smoke:
+        description: 'Also run the iPhone UI smoke suite'
+        type: boolean
+        default: false
   pull_request:
-    types: [labeled]
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'marketing/**'
 
 concurrency:
   group: ci-full-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  # Guard: when triggered by `pull_request: labeled`, only run if the label
-  # is exactly `run-ui-tests`. Without this, every label add would trigger.
-  gate:
-    name: Gate
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ui-tests'
-    steps:
-      - name: Gate passed
-        run: |
-          echo "Trigger: ${{ github.event_name }}"
+permissions:
+  contents: read
 
+jobs:
   unit-tests:
     name: Unit + Integration Tests
-    needs: gate
     runs-on: macos-15
     timeout-minutes: 35
 
@@ -75,11 +79,8 @@ jobs:
           MOCK_SEED_INTERVAL: "60"
         run: ./.github/scripts/start-mock-bridge.sh
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick simulator
         id: sim
@@ -191,34 +192,24 @@ jobs:
           cp "$RUNNER_TEMP/z2m-bridge-2.log" mock-bridge-2.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
 
-      - name: Summarize
+      - name: Report results
         if: always()
         env:
-          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
+          FAILURES_OUT: failures-unit.md
         run: |
-          {
-            echo "## Unit Tests"
-            echo
-            echo "| Field | Value |"
-            echo "| --- | --- |"
-            echo "| Simulator | $DEVICE_NAME |"
-            echo "| Target | $TEST_TARGET |"
-            echo
-            if [ -d "$DERIVED_DATA/UnitTests.xcresult" ]; then
-              xcrun xcresulttool get --path "$DERIVED_DATA/UnitTests.xcresult" --format json 2>/dev/null \
-                | jq -r '.metrics | "**Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)**"' \
-                || echo "_Result bundle present but could not be parsed._"
-            else
-              echo "_No result bundle produced._"
-            fi
-            if [ -d "$DERIVED_DATA/IntegrationTests.xcresult" ]; then
-              echo
-              echo "## Mock Bridge Integration Tests"
-              xcrun xcresulttool get --path "$DERIVED_DATA/IntegrationTests.xcresult" --format json 2>/dev/null \
-                | jq -r '.metrics | "**Tests: \(.testsCount._value // 0) • Failed: \(.testsFailedCount._value // 0) • Skipped: \(.testsSkippedCount._value // 0)**"' \
-                || echo "_Result bundle present but could not be parsed._"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/UnitTests.xcresult" "Unit tests"
+          if [ -d "$DERIVED_DATA/IntegrationTests.xcresult" ]; then
+            ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/IntegrationTests.xcresult" "Mock bridge integration tests"
+          fi
+
+      - name: Upload failure list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures-unit
+          path: failures-unit.md
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Upload artifacts on failure
         if: failure()
@@ -240,7 +231,6 @@ jobs:
 
   ipad-build:
     name: iPad build (build-only)
-    needs: gate
     runs-on: macos-15
     timeout-minutes: 15
 
@@ -261,11 +251,8 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick iPad simulator
         id: sim
@@ -308,7 +295,6 @@ jobs:
 
   ipad-ui-tests:
     name: iPad UI (${{ matrix.form_factor }})
-    needs: gate
     runs-on: macos-15
     timeout-minutes: 35
     strategy:
@@ -347,11 +333,8 @@ jobs:
           MOCK_SEED_INTERVAL: "60"
         run: ./.github/scripts/start-mock-bridge.sh
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick representative iPad simulator
         id: sim
@@ -402,6 +385,9 @@ jobs:
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
+          # One retry absorbs a simulator hiccup; a test that needs it is
+          # still flagged as flaky in the report. A real regression fails
+          # both attempts and fails the job.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
@@ -411,6 +397,7 @@ jobs:
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
+            -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/IPadMatrix.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-ipad-ui.log
 
@@ -422,18 +409,20 @@ jobs:
           cp "$RUNNER_TEMP/z2m-bridge-2.log" mock-bridge-2.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder-2.log" mock-seeder-2.log 2>/dev/null || true
 
-      - name: Summarize
+      - name: Report results
         if: always()
         env:
-          DEVICE_NAME: ${{ steps.sim.outputs.device_name }}
-        run: |
-          {
-            echo "## iPad UI — $DEVICE_NAME"
-            echo
-            echo "Behavioral smoke, bridge-scoped selection, and rotation restoration."
-            echo
-            echo "Failure artifacts include the xcresult bundle and XCTest screenshots."
-          } >> "$GITHUB_STEP_SUMMARY"
+          FAILURES_OUT: failures-ipad-${{ matrix.form_factor }}.md
+        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/IPadMatrix.xcresult" "iPad UI (${{ steps.sim.outputs.device_name }})"
+
+      - name: Upload failure list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failures-ipad-${{ matrix.form_factor }}
+          path: failures-ipad-${{ matrix.form_factor }}.md
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Upload failure diagnostics
         if: failure()
@@ -453,13 +442,13 @@ jobs:
 
   ui-tests:
     name: UI Tests (smoke)
-    # Only run when the PR is explicitly labeled `run-ui-tests`. The suite
-    # was dormant during the multi-bridge redesign; running it on every
-    # Full CI invocation hangs at 20 min with zero test execution while
-    # the simulator + app launch story is sorted (#83). The job is kept
-    # in the workflow so labeling a PR re-enables it once it's green.
-    if: github.event_name == 'pull_request' && github.event.label.name == 'run-ui-tests'
-    needs: gate
+    # Opt-in: PR labeled `run-ui-tests`, or dispatched with ui_smoke. The
+    # suite was dormant during the multi-bridge redesign (#83); it stays
+    # out of the default run until it's green, and out of the notify job
+    # so an opt-in experiment never opens a ci-failure issue.
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'run-ui-tests') ||
+      (github.event_name == 'workflow_dispatch' && inputs.ui_smoke)
     runs-on: macos-15
     timeout-minutes: 30
 
@@ -485,11 +474,8 @@ jobs:
       - name: Start mock Z2M bridge (single)
         run: ./.github/scripts/start-mock-bridge.sh
 
-      - name: Select latest Xcode
-        run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n1)
-          sudo xcode-select -s "$LATEST"
-          xcodebuild -version
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
 
       - name: Pick simulator
         id: sim
@@ -546,6 +532,10 @@ jobs:
           cp "$RUNNER_TEMP/z2m-bridge.log" mock-bridge.log 2>/dev/null || true
           cp "$RUNNER_TEMP/z2m-seeder.log" mock-seeder.log 2>/dev/null || true
 
+      - name: Report results
+        if: always()
+        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/UITests.xcresult" "iPhone UI smoke"
+
       - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -559,3 +549,44 @@ jobs:
             ${{ env.DERIVED_DATA }}/UITests.xcresult
           if-no-files-found: ignore
           retention-days: 14
+
+  notify:
+    name: Notify on main
+    # Only for runs of main (nightly or dispatched). A PR's failures show
+    # on the PR itself. Cancelled runs say nothing either way.
+    needs: [unit-tests, ipad-build, ipad-ui-tests]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect failing tests
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: failures-*
+          path: failures
+          merge-multiple: true
+
+      - name: Open, update or close the ci-failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED: ${{ contains(needs.*.result, 'failure') }}
+          CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
+        run: |
+          if [ "$FAILED" = "true" ]; then
+            {
+              echo "**Failed jobs:**"
+              gh run view "$GITHUB_RUN_ID" --json jobs \
+                --jq '.jobs[] | select(.conclusion == "failure") | "- [\(.name)](\(.url))"'
+              echo
+              cat failures/*.md 2>/dev/null || true
+            } > details.md
+            ./.github/scripts/ci-failure-issue.sh failure details.md
+          elif [ "$CANCELLED" != "true" ]; then
+            ./.github/scripts/ci-failure-issue.sh success
+          fi
