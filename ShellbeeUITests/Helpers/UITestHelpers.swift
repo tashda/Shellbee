@@ -41,6 +41,8 @@ extension XCUIApplication {
     /// button outside the bar. Look in the bar first, expand it if needed,
     /// then fall back to the app-wide button (search).
     func tapTab(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        // Already on Search: the keyboard hides the tab bar.
+        if name == "Search", searchFields.firstMatch.exists { return }
         var tab = tabBar.buttons[name]
         if !(tab.exists && tab.isHittable), tabBar.buttons.firstMatch.exists {
             tabBar.buttons.firstMatch.tap()

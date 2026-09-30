@@ -434,10 +434,14 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      # Both bridges: some suites (Home dashboard) add the secondary.
+      # Both bridges: some suites (Home dashboard) add the secondary. The
+      # 60 s republish keeps the connect-time burst (Activity tests need
+      # events) without a steady stream of redraws that keeps the app from
+      # ever going idle, which XCUITest waits for before every action.
       - name: Start dual mock Z2M bridges (native)
         env:
           MULTI_BRIDGE: "1"
+          MOCK_SEED_INTERVAL: "60"
         run: ./.github/scripts/start-mock-bridge.sh
 
       - name: Select Xcode
