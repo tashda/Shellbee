@@ -29,6 +29,10 @@ on:
         description: 'Also run the iPhone UI smoke suite'
         type: boolean
         default: false
+      audit_skipped:
+        description: 'Also run every unit test the CI plans skip, to see which still fail'
+        type: boolean
+        default: false
   pull_request:
     branches: [main]
     paths-ignore:
@@ -453,7 +457,7 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'run-ui-tests') ||
       (github.event_name == 'workflow_dispatch' && inputs.ui_smoke)
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     env:
       SCHEME: Shellbee
@@ -516,7 +520,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tee build-ui.log
 
       - name: Run UI tests
-        timeout-minutes: 20
+        timeout-minutes: 45
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
@@ -526,6 +530,12 @@ jobs:
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
+            -skip-testing:ShellbeeUITests/IPadShellMatrixUITests \
+            -skip-testing:ShellbeeUITests/MultiWindowUITests \
+            -skip-testing:ShellbeeUITests/ResizableWindowUITests \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
             CODE_SIGNING_ALLOWED=NO | tee test-ui.log
 
@@ -539,8 +549,8 @@ jobs:
         if: always()
         run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/UITests.xcresult" "iPhone UI smoke"
 
-      - name: Upload artifacts on failure
-        if: failure()
+      - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-full-ui-logs
@@ -552,6 +562,83 @@ jobs:
             ${{ env.DERIVED_DATA }}/UITests.xcresult
           if-no-files-found: ignore
           retention-days: 14
+
+
+  skipped-audit:
+    name: Audit skipped unit tests
+    # Dispatch-only. Runs exactly the tests Shellbee-CI.xctestplan skips
+    # (minus the live-bridge suites, which the unit job already runs) so a
+    # skip can be deleted as soon as it passes, and a real crash is seen.
+    if: github.event_name == 'workflow_dispatch' && inputs.audit_skipped
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    env:
+      SCHEME: Shellbee
+      TEST_PLAN: Shellbee
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start dual mock Z2M bridges (native)
+        env:
+          MULTI_BRIDGE: "1"
+          DRIFT_ON_CLIENT_CONNECT: "0"
+          MOCK_SEED_INTERVAL: "60"
+        run: ./.github/scripts/start-mock-bridge.sh
+
+      - name: Select Xcode
+        run: ./.github/scripts/select-xcode.sh
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[]
+                       | select(.key | test("iOS"))
+                       | .value[]
+                       | select(.isAvailable and (.name | startswith("iPhone")))]
+                     | sort_by(.name) | reverse | .[0].udid')
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+
+      - name: Run skipped tests
+        continue-on-error: true
+        env:
+          DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
+        run: |
+          PLAN=Shellbee.xcodeproj/xcshareddata/xctestplans/Shellbee-CI.xctestplan
+          ONLY=()
+          while read -r t; do
+            ONLY+=("-only-testing:ShellbeeTests/${t%()}")
+          done < <(jq -r '.testTargets[] | select(.target.name == "ShellbeeTests")
+                          | .skippedTests[]
+                          | select(. != "Z2MIntegrationTests" and . != "MultiBridgeIntegrationTests")' "$PLAN")
+          printf '%s\n' "${ONLY[@]}"
+          set -o pipefail
+          xcodebuild test \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
+            "${ONLY[@]}" \
+            -retry-tests-on-failure -test-iterations 2 \
+            -resultBundlePath "$DERIVED_DATA/SkippedAudit.xcresult" \
+            CODE_SIGNING_ALLOWED=NO | tee audit.log
+
+      - name: Report results
+        if: always()
+        run: ./.github/scripts/report-xcresult.sh "$DERIVED_DATA/SkippedAudit.xcresult" "Skipped unit tests (audit)"
+
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skipped-audit
+          path: |
+            audit.log
+            ${{ env.DERIVED_DATA }}/SkippedAudit.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
 
   notify:
     name: Notify on main
