@@ -126,45 +126,27 @@ jobs:
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-unit.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-unit.log
 
       - name: Run unit tests
         timeout-minutes: 15
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
-          # Skip the same tests that Shellbee-CI.xctestplan skips on Fast CI
-          # Skip only the known runner-specific cases documented in the test
-          # plan README. Live bridge suites run in the next step.
+          # Everything except the suites that need a live mock bridge,
+          # which run in the next step.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"$TEST_TARGET" \
-            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSaveAndLoad" \
-            -skip-testing:"ShellbeeTests/ConnectionHistoryTests" \
-            -skip-testing:"ShellbeeTests/BridgeRegistryTests" \
-            -skip-testing:"ShellbeeTests/BridgeScopeTests" \
-            -skip-testing:"ShellbeeTests/DeviceFavoritesStoreTests" \
-            -skip-testing:"ShellbeeTests/GroupsWorkspaceStateTests" \
-            -skip-testing:"ShellbeeTests/HomeLayoutStoreTests" \
-            -skip-testing:"ShellbeeTests/LogsWorkspaceStateTests" \
-            -skip-testing:"ShellbeeTests/MultiWindowTests" \
-            -skip-testing:"ShellbeeTests/NetworkMapTests" \
-            -skip-testing:"ShellbeeTests/MultiBridgeNavigationTests" \
-            -skip-testing:"ShellbeeTests/MultiBridgeAggregationTests" \
-            -skip-testing:"ShellbeeTests/GroupDropIntegrationTests" \
-            -skip-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
-            -skip-testing:"ShellbeeTests/OTABulkOperationQueueTests" \
-            -skip-testing:"ShellbeeTests/Z2MEventBatcherTests/testLoneMessageArrivesAtOnceAndBurstIsBatchedInOrder" \
-            -skip-testing:"ShellbeeTests/NotificationPreferencesTests" \
-            -skip-testing:"ShellbeeTests/ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken" \
-            -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
             -skip-testing:"ShellbeeTests/Z2MIntegrationTests" \
             -skip-testing:"ShellbeeTests/MultiBridgeIntegrationTests" \
+            -skip-testing:"ShellbeeTests/GroupDropIntegrationTests" \
+            -skip-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
             -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-unit.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-unit.log
 
       - name: Run mock bridge integration tests
         timeout-minutes: 15
@@ -182,11 +164,12 @@ jobs:
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
             -only-testing:"ShellbeeTests/Z2MIntegrationTests" \
             -only-testing:"ShellbeeTests/MultiBridgeIntegrationTests" \
-            -skip-testing:"ShellbeeTests/Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo" \
+            -only-testing:"ShellbeeTests/GroupDropIntegrationTests" \
+            -only-testing:"ShellbeeTests/NetworkMapIntegrationTests" \
             -parallel-testing-enabled NO \
             -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/IntegrationTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-integration.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-integration.log
 
       - name: Capture mock bridge logs
         if: always()
@@ -285,7 +268,7 @@ jobs:
           xcodebuild build \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-ipad.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-ipad.log
 
       - name: Upload artifacts on failure
         if: failure()
@@ -382,7 +365,7 @@ jobs:
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-ipad-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-ipad-ui.log
 
       - name: Run adaptive iPad behavior tests
         timeout-minutes: 20
@@ -403,7 +386,7 @@ jobs:
             -default-test-execution-time-allowance 180 \
             -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/IPadMatrix.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-ipad-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-ipad-ui.log
 
       - name: Capture mock bridge logs
         if: always()
@@ -517,7 +500,7 @@ jobs:
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-ui.log
 
       - name: Run UI tests
         timeout-minutes: 45
@@ -541,7 +524,7 @@ jobs:
             -default-test-execution-time-allowance 180 \
             -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee test-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-ui.log
 
       - name: Capture mock bridge logs
         if: always()
@@ -627,7 +610,7 @@ jobs:
             "${ONLY[@]}" \
             -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$DERIVED_DATA/SkippedAudit.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee audit.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee audit.log
 
       - name: Report results
         if: always()

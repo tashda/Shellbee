@@ -143,7 +143,7 @@ jobs:
             -scheme ShellbeeWidgetsExtension \
             -destination "$DESTINATION" \
             -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build-widget.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build-widget.log
 
       - name: Build for testing
         env:
@@ -156,7 +156,7 @@ jobs:
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" \
             -derivedDataPath "$DERIVED_DATA" \
-            CODE_SIGNING_ALLOWED=NO | tee build.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee build.log
 
       - name: Check for isolated deinits
         run: ./.github/scripts/check-isolated-deinits.sh "$DERIVED_DATA"
@@ -179,7 +179,7 @@ jobs:
               -destination "$DESTINATION" \
               -derivedDataPath "$DERIVED_DATA" \
               -resultBundlePath "$DERIVED_DATA/UnitTests.xcresult" \
-              CODE_SIGNING_ALLOWED=NO | tee test.log
+              CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test.log
 
       - name: Report results
         if: always()
