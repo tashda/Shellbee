@@ -136,9 +136,13 @@ final class IPadShellMatrixUITests: XCTestCase {
 
     @MainActor
     private func openSidebarSection(_ section: String, expectedTitle: String) {
-        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: section)
-            .firstMatch
-            .tapWhenReady(timeout: 15)
+        let row = app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: section).firstMatch
+        row.tapWhenReady(timeout: 15)
+        // A tap while the window is still settling after launch can be
+        // dropped; tap again once before failing.
+        if !app.navigationBars[expectedTitle].waitForExistence(timeout: 8) {
+            row.tap()
+        }
         app.navigationBars[expectedTitle].assertExists(timeout: 15)
     }
 

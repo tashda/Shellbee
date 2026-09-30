@@ -9,10 +9,6 @@ name: CI (Full)
 # Not a required check, but a red run on main opens a `ci-failure` issue
 # (see the notify job) so it can't go unnoticed.
 #
-# The broader iPhone UI smoke suite stays opt-in while its legacy coverage
-# is stabilized: label the PR `run-ui-tests` (then push or re-run) or tick
-# "ui_smoke" when dispatching.
-#
 # Typical duration: ~20 min.
 
 on:
@@ -25,10 +21,6 @@ on:
         description: 'Why are you running the full suite?'
         required: false
         default: 'Manual run'
-      ui_smoke:
-        description: 'Also run the iPhone UI smoke suite'
-        type: boolean
-        default: false
       audit_skipped:
         description: 'Also run every unit test the CI plans skip, to see which still fail'
         type: boolean
@@ -392,13 +384,6 @@ jobs:
 
   ui-tests:
     name: iPhone UI (${{ matrix.shard }})
-    # Opt-in: PR labeled `run-ui-tests`, or dispatched with ui_smoke. The
-    # suite was dormant during the multi-bridge redesign (#83); it stays
-    # out of the default run until it's green, and out of the notify job
-    # so an opt-in experiment never opens a ci-failure issue.
-    if: >-
-      contains(github.event.pull_request.labels.*.name, 'run-ui-tests') ||
-      (github.event_name == 'workflow_dispatch' && inputs.ui_smoke)
     runs-on: macos-15
     timeout-minutes: 60
     # Split by class so each shard fits well inside its time budget. A new
@@ -435,13 +420,11 @@ jobs:
             spm-${{ runner.os }}-
 
       # Both bridges: some suites (Home dashboard) add the secondary. The
-      # 60 s republish keeps the connect-time burst (Activity tests need
-      # events) without a steady stream of redraws that keeps the app from
-      # ever going idle, which XCUITest waits for before every action.
+      # default 10 s republish delivers the battery and signal readings Home's
+      # Needs attention is built from.
       - name: Start dual mock Z2M bridges (native)
         env:
           MULTI_BRIDGE: "1"
-          MOCK_SEED_INTERVAL: "60"
         run: ./.github/scripts/start-mock-bridge.sh
 
       - name: Select Xcode
@@ -609,7 +592,7 @@ jobs:
     name: Notify on main
     # Only for runs of main (nightly or dispatched). A PR's failures show
     # on the PR itself. Cancelled runs say nothing either way.
-    needs: [unit-tests, ipad-build, ipad-ui-tests]
+    needs: [unit-tests, ipad-build, ipad-ui-tests, ui-tests]
     if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

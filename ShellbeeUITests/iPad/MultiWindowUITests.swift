@@ -1,87 +1,54 @@
 import XCTest
 
+/// One launch walks the whole multi-window story. Split across launches,
+/// the tests fought each other: iPadOS restores every window a previous
+/// launch left open, and opening a window for a destination that's already
+/// open brings that window forward instead of making a new one.
 final class MultiWindowUITests: XCTestCase {
     @MainActor
-    func testOpeningSecondSceneShowsIndependentDestination() {
+    func testSecondWindowIsIndependentClosesAndSurvivesBackgrounding() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchForTesting()
         defer { app.terminate() }
 
-        let homeMarker = app.navigationBars["Home"]
-        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
-            .firstMatch
-            .tapWhenReady(timeout: 20)
-        homeMarker.assertExists(timeout: 20)
+        let sidebar = app.collectionViews["Sidebar"]
+        func openSection(_ name: String) {
+            sidebar.cells.containing(.staticText, identifier: name).firstMatch.tapWhenReady(timeout: 20)
+        }
 
-        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Activity")
-            .firstMatch
-            .tapWhenReady(timeout: 15)
+        openSection("Home")
+        app.navigationBars["Home"].assertExists(timeout: 20)
+        openSection("Activity")
         app.navigationBars["Activity"].assertExists(timeout: 15)
-        let originalWindowCount = app.windows.count
-        app.buttons["open-in-new-window"].firstMatch.tapWhenReady(timeout: 15)
 
-        let secondWindow = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in app.windows.count > originalWindowCount },
+        // Open Activity in a second window.
+        let windowsBefore = app.windows.count
+        app.buttons["open-in-new-window"].firstMatch.tapWhenReady(timeout: 15)
+        let opened = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in app.windows.count > windowsBefore },
             object: nil
         )
-        XCTAssertEqual(XCTWaiter.wait(for: [secondWindow], timeout: 15), .completed)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 15), .completed, "No second window opened")
         app.navigationBars["Activity"].assertExists(timeout: 15)
 
-        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Devices")
-            .firstMatch
-            .tapWhenReady(timeout: 15)
+        // The new window navigates on its own.
+        openSection("Devices")
         app.navigationBars["Devices"].assertExists(timeout: 15)
-        XCTAssertTrue(app.exists, "Opening a second scene terminated the shared app session")
 
-        // Close the new (key) window so it isn't restored into the next test.
+        // Closing it returns to the original window, still on Activity.
         app.typeKey("w", modifierFlags: .command)
-        app.navigationBars["Home"].assertExists(timeout: 15)
-    }
-
-    @MainActor
-    func testClosingSecondSceneReturnsToOriginalScene() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchForTesting()
-        defer { app.terminate() }
-
-        let homeMarker = app.navigationBars["Home"]
-        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
-            .firstMatch
-            .tapWhenReady(timeout: 20)
-        homeMarker.assertExists(timeout: 20)
-        app.typeKey("l", modifierFlags: [.command, .shift])
+        let closed = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in app.windows.count == windowsBefore },
+            object: nil
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 15), .completed, "The second window didn't close")
         app.navigationBars["Activity"].assertExists(timeout: 15)
 
-        app.typeKey("w", modifierFlags: .command)
-        homeMarker.assertExists(timeout: 15)
-        XCTAssertTrue(app.exists, "Closing the Activity scene terminated Shellbee")
-    }
-
-    @MainActor
-    func testSecondSceneSurvivesBackgrounding() {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchForTesting()
-        defer { app.terminate() }
-
-        // Start from Home.
-        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: "Home")
-            .firstMatch
-            .tapWhenReady(timeout: 20)
-        app.navigationBars["Home"].assertExists(timeout: 20)
-        app.typeKey("l", modifierFlags: [.command, .shift])
-        app.navigationBars["Activity"].assertExists(timeout: 15)
-
-        let windowsBefore = app.windows.count
-
+        // The window survives a trip to the background.
         XCUIDevice.shared.press(.home)
         app.activate()
-
-        // iPadOS decides which window comes forward; what must hold is that
-        // the second window survived the trip to the background.
-        app.navigationBars["Home"].assertExists(timeout: 15)
-        XCTAssertEqual(app.windows.count, windowsBefore, "A window was lost while the app was in the background")
+        app.navigationBars["Activity"].assertExists(timeout: 15)
+        XCTAssertTrue(app.exists, "Shellbee didn't come back from the background")
     }
 }
