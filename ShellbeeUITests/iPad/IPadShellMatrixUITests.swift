@@ -98,22 +98,26 @@ final class IPadShellMatrixUITests: XCTestCase {
         app.staticTexts["Secondary"].firstMatch.assertExists(timeout: 25)
     }
 
-    /// The sidebar already shows a "Secondary" row, so wait for the submenu
-    /// to add its own before tapping the newest one. Reading the elements
-    /// straight after the tap raced the menu's animation.
+    /// The sidebar already shows a "Secondary" row, so tap the newest
+    /// hittable one once the submenu has added its own. Elements bound by
+    /// index go stale while the menu animates, so resolve and tap together
+    /// until one sticks.
     @MainActor
     private func selectSecondaryBridgeFilter(openingSubmenu submenu: XCUIElement) {
         let options = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "Secondary"))
         let countBefore = options.count
         submenu.tapWhenReady(timeout: 10)
-        let appeared = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count > %d", countBefore),
-                                                 object: options)
-        guard XCTWaiter().wait(for: [appeared], timeout: 10) == .completed,
-              let option = options.allElementsBoundByIndex.last else {
-            return XCTFail("The Secondary bridge filter option was not found")
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline {
+            if options.count > countBefore,
+               let option = options.allElementsBoundByIndex.last(where: \.isHittable) {
+                option.tap()
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
-        option.tapWhenReady(timeout: 10)
+        XCTFail("The Secondary bridge filter option was not found")
     }
 
     @MainActor
