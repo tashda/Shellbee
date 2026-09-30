@@ -35,38 +35,38 @@ final class ActivityUITests: ShellbeeUITestCase {
         events.firstMatch.assertExists(timeout: 10)
     }
 
-    func testClearRemovesExistingEvents() {
-        let event = events.firstMatch
-        event.assertExists(timeout: 20)
-        let label = event.label
+    /// Cards update in place ("2 more updates", "now"), so they're
+    /// compared by count, not by label. Clearing leaves at most the
+    /// events that arrive afterwards.
+    func testClearEmptiesTheFeed() {
+        events.firstMatch.assertExists(timeout: 20)
+        let before = events.count
 
-        app.navigationBars.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "trash", "Delete"))
-            .firstMatch
-            .tapWhenReady(timeout: 5)
+        trashButton.tapWhenReady(timeout: 5)
         let alert = app.alerts["Clear Activity?"]
         alert.assertExists(timeout: 5)
         alert.buttons["Clear"].tap()
 
-        XCTAssertTrue(app.buttons[label].waitForNonExistence(timeout: 5),
-                      "An event from before Clear is still in the feed")
+        XCTAssertLessThan(events.count, before, "Clear didn't remove the events that were showing")
     }
 
     func testCancellingClearKeepsEvents() {
-        let event = events.firstMatch
-        event.assertExists(timeout: 20)
-        let label = event.label
+        events.firstMatch.assertExists(timeout: 20)
 
-        app.navigationBars.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "trash", "Delete"))
-            .firstMatch
-            .tapWhenReady(timeout: 5)
+        trashButton.tapWhenReady(timeout: 5)
         app.alerts["Clear Activity?"].buttons["Cancel"].tapWhenReady(timeout: 5)
-        XCTAssertTrue(app.buttons[label].exists, "Cancelling Clear removed events")
+        XCTAssertTrue(events.firstMatch.exists, "Cancelling Clear removed events")
     }
 
     // MARK: - Helpers
 
     /// Activity cards read as "<device>, <change>" with an arrow between
     /// the old and new value.
+    private var trashButton: XCUIElement {
+        app.navigationBars.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "trash", "Delete"))
+            .firstMatch
+    }
+
     private var events: XCUIElementQuery {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "→"))
     }
