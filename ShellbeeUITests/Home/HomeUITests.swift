@@ -26,12 +26,13 @@ final class HomeUITests: ShellbeeUITestCase {
 
     // MARK: - Needs attention
 
-    /// The fixtures always have low batteries, so the section must be there,
-    /// and its row opens Devices already filtered.
+    /// The fixtures always have devices needing attention (low battery, weak
+    /// signal or offline, depending on which readings have arrived), and a
+    /// row about devices opens Devices already filtered.
     func testNeedsAttentionOpensFilteredDevices() {
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Low battery"))
+        app.buttons.matching(NSPredicate(format: "label ENDSWITH %@ OR label ENDSWITH %@", " devices", " device"))
             .firstMatch
-            .tapWhenReady(timeout: 10)
+            .tapWhenReady(timeout: 15)
         app.navigationBars["Devices"].assertExists(timeout: 5)
         app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "clear-filters", "Clear Filters"))
             .firstMatch

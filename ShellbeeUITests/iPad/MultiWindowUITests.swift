@@ -33,6 +33,10 @@ final class MultiWindowUITests: XCTestCase {
             .tapWhenReady(timeout: 15)
         app.navigationBars["Devices"].assertExists(timeout: 15)
         XCTAssertTrue(app.exists, "Opening a second scene terminated the shared app session")
+
+        // Close the new (key) window so it isn't restored into the next test.
+        app.typeKey("w", modifierFlags: .command)
+        app.navigationBars["Home"].assertExists(timeout: 15)
     }
 
     @MainActor

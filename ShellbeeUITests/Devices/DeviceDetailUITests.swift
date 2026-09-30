@@ -118,9 +118,12 @@ final class DeviceDetailUITests: ShellbeeUITestCase {
 
     // MARK: - Remote
 
+    /// A battery device shows its level where a mains device shows "Power".
     func testRemoteRunsOnBattery() {
         app.openDevice(named: "TRADFRI Remote")
-        app.otherElements["Power: Battery"].assertExists(timeout: 5)
+        app.otherElements.matching(NSPredicate(format: "label BEGINSWITH %@", "Battery: ")).firstMatch
+            .assertExists(timeout: 5)
+        app.otherElements["Role: End Device"].assertExists(timeout: 5)
     }
 
     // MARK: - Settings rows
