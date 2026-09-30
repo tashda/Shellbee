@@ -14,6 +14,8 @@ final class ActivityUITests: ShellbeeUITestCase {
         let seeAll = app.buttons["See all"].firstMatch
         seeAll.scrollIntoView(in: app)
         seeAll.tap()
+        // A tap right after scrolling can land while the list is settling.
+        if !app.navigationBars["Activity"].waitForExistence(timeout: 5) { seeAll.tap() }
         app.navigationBars["Activity"].assertExists(timeout: 10)
     }
 
