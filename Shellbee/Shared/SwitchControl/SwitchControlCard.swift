@@ -70,7 +70,8 @@ struct SwitchControlCard: View {
     @ViewBuilder
     private var powerControl: some View {
         if mode == .interactive, let f = context.stateFeature, f.isWritable {
-            Toggle("", isOn: Binding(
+            // Hidden visually, but VoiceOver needs the name.
+            Toggle("Power", isOn: Binding(
                 get: { context.isOn },
                 set: { _ in if let p = context.togglePayload() { onSend(p) } }
             ))
