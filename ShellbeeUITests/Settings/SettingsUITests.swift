@@ -426,6 +426,10 @@ final class ActivityCenterEnabledSettingsUITests: ShellbeeUITestCase {
     }
 
     func testLogsFallbackIsHidden() {
+        // Absence only means something once the Logging section rendered.
+        let logging = app.staticTexts["Logging"].firstMatch
+        for _ in 0..<6 where !logging.exists { app.swipeUp() }
+        XCTAssertTrue(logging.exists, "Settings never showed its Logging section")
         let logsRow = app.cells.containing(.staticText, identifier: "Logs").firstMatch
         XCTAssertFalse(
             logsRow.waitForExistence(timeout: 2),

@@ -200,8 +200,10 @@ class ShellbeeUITestCase: XCTestCase {
     /// still on the connection screen the bridge is down, and that has to
     /// fail the run: counting it as an expected failure made a dead bridge
     /// look like a green run.
+    /// 45 s covers a job's first, cold launch (the splash waits for the
+    /// bundled thumbnails); a warm launch connects in a few seconds.
     private func assertConnectedToMockBridge() {
-        guard !app.tabBars.firstMatch.waitForExistence(timeout: 20) else { return }
+        guard !app.tabBars.firstMatch.waitForExistence(timeout: 45) else { return }
         let onSetup = app.buttons["Connect"].exists
         XCTFail(onSetup
             ? "The app never connected to the mock bridge on localhost:8080. Start it with 'docker compose up -d'."
