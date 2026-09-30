@@ -524,6 +524,9 @@ jobs:
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
         run: |
+          # Serial: parallel testing clones the simulator, which hangs on
+          # the hosted runner with zero tests run (#83), and every UI test
+          # shares one mock bridge anyway.
           set -o pipefail
           xcodebuild test-without-building \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
@@ -533,6 +536,7 @@ jobs:
             -skip-testing:ShellbeeUITests/IPadShellMatrixUITests \
             -skip-testing:ShellbeeUITests/MultiWindowUITests \
             -skip-testing:ShellbeeUITests/ResizableWindowUITests \
+            -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
             -retry-tests-on-failure -test-iterations 2 \
