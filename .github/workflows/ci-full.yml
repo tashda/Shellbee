@@ -392,14 +392,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # seed_interval: how often the mock republishes every device's
+          # state. Home's Needs attention is built from those readings;
+          # the Activity suite wants the feed to stay as it left it (the
+          # connect-time burst still supplies its events).
           - shard: devices
             classes: DeviceDetailUITests DeviceListUITests SearchUITests
+            seed_interval: 10
           - shard: groups-home
             classes: GroupsUITests HomeUITests HomeDashboardUITests
+            seed_interval: 10
           - shard: settings
             classes: SettingsUITests ActivityCenterEnabledSettingsUITests ActivityInstrumentGalleryUITests IconGalleryUITests ThemeUITests
+            seed_interval: 10
           - shard: activity-connection
             classes: ActivityUITests ActivityCenterDisabledUITests ConnectionFlowUITests DisconnectUITests
+            seed_interval: 600
 
     env:
       SCHEME: Shellbee
@@ -419,12 +427,11 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      # Both bridges: some suites (Home dashboard) add the secondary. The
-      # default 10 s republish delivers the battery and signal readings Home's
-      # Needs attention is built from.
+      # Both bridges: some suites (Home dashboard) add the secondary.
       - name: Start dual mock Z2M bridges (native)
         env:
           MULTI_BRIDGE: "1"
+          MOCK_SEED_INTERVAL: ${{ matrix.seed_interval }}
         run: ./.github/scripts/start-mock-bridge.sh
 
       - name: Select Xcode
