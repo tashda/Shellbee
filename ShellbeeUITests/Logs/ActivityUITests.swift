@@ -14,8 +14,11 @@ final class ActivityUITests: ShellbeeUITestCase {
         let seeAll = app.buttons["See all"].firstMatch
         seeAll.scrollIntoView(in: app)
         seeAll.tap()
-        // A tap right after scrolling can land while the list is settling.
-        if !app.navigationBars["Activity"].waitForExistence(timeout: 5) { seeAll.tap() }
+        // A tap right after scrolling can land while the list is settling;
+        // re-tap only if the page really didn't open.
+        if !app.navigationBars["Activity"].waitForExistence(timeout: 10), seeAll.isHittable {
+            seeAll.tap()
+        }
         app.navigationBars["Activity"].assertExists(timeout: 10)
     }
 
@@ -36,19 +39,18 @@ final class ActivityUITests: ShellbeeUITestCase {
         events.firstMatch.assertExists(timeout: 10)
     }
 
-    /// Cards update in place ("2 more updates", "now"), so they're
-    /// compared by count, not by label. Clearing leaves at most the
-    /// events that arrive afterwards.
+    /// CI runs this suite with the mock republishing rarely, so nothing
+    /// refills the feed right after Clear.
     func testClearEmptiesTheFeed() {
         events.firstMatch.assertExists(timeout: 20)
-        let before = events.count
 
         trashButton.tapWhenReady(timeout: 5)
         let alert = app.alerts["Clear Activity?"]
         alert.assertExists(timeout: 5)
         alert.buttons["Clear"].tap()
 
-        XCTAssertLessThan(events.count, before, "Clear didn't remove the events that were showing")
+        XCTAssertTrue(events.firstMatch.waitForNonExistence(timeout: 5),
+                      "Clear didn't remove the events that were showing")
     }
 
     func testCancellingClearKeepsEvents() {
