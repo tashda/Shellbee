@@ -27,6 +27,8 @@ enum BridgeColor {
 /// `DesignTokens.Bridge.setCustomColor(_:for:)` to fire both.
 @MainActor
 final class BridgeColorObserver {
+    nonisolated deinit {}
+
     static let shared = BridgeColorObserver()
     static let revisionKey = "bridgeColorRevision"
     private init() {}

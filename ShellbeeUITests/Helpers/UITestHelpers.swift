@@ -30,29 +30,88 @@ extension XCUIApplication {
 
     var tabBar: XCUIElement { tabBars.firstMatch }
 
-    func tapHomeTab()     { tabBar.buttons["Home"].tap() }
-    func tapDevicesTab()  { tabBar.buttons["Devices"].tap() }
-    func tapGroupsTab()   { tabBar.buttons["Groups"].tap() }
-    func tapSettingsTab() { tabBar.buttons["Settings"].tap() }
+    func tapHomeTab()     { tapTab("Home") }
+    func tapDevicesTab()  { tapTab("Devices") }
+    func tapGroupsTab()   { tapTab("Groups") }
+    func tapSettingsTab() { tapTab("Settings") }
+    func tapSearchTab()   { tapTab("Search") }
 
-    /// Reveal the minimized search bar on lists that use
-    /// `.searchToolbarBehavior(.minimize)`. The search field only exists in
-    /// the view hierarchy after the user taps the magnifying-glass icon in
-    /// the navigation bar — scrolling does not reveal it.
-    ///
-    /// Returns the search field if it became available within the timeout.
-    @discardableResult
-    func revealSearchField(timeout: TimeInterval = 5) -> XCUIElement {
-        let field = searchFields.firstMatch
-        if field.waitForExistence(timeout: 1) { return field }
-
-        // The .minimize search icon is exposed as a Button labeled "Search".
-        let searchButton = navigationBars.buttons["Search"].firstMatch
-        if searchButton.waitForExistence(timeout: timeout) {
-            searchButton.tap()
+    /// The tab bar minimizes while content scrolls down, leaving only the
+    /// selected tab's button, and iOS 26 draws the search tab as its own
+    /// button outside the bar. Look in the bar first, expand it if needed,
+    /// then fall back to the app-wide button (search).
+    func tapTab(_ name: String, file: StaticString = #filePath, line: UInt = #line) {
+        // Already on Search: the keyboard hides the tab bar.
+        if name == "Search", searchFields.firstMatch.exists { return }
+        var tab = tabBar.buttons[name]
+        if !(tab.exists && tab.isHittable), tabBar.buttons.firstMatch.exists {
+            tabBar.buttons.firstMatch.tap()
         }
-        _ = field.waitForExistence(timeout: timeout)
-        return field
+        if !tab.waitForExistence(timeout: 3) {
+            tab = buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
+        }
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "No '\(name)' tab", file: file, line: line)
+
+        if name == "Search" {
+            // Selecting Search raises the keyboard, whose Search key would
+            // match this query too, so confirm by the field instead.
+            tab.tap()
+            if !searchFields.firstMatch.waitForExistence(timeout: 5) { tab.tap() }
+            XCTAssertTrue(searchFields.firstMatch.waitForExistence(timeout: 5),
+                          "The Search tab didn't open", file: file, line: line)
+            return
+        }
+
+        // A tap during launch or a tab-bar animation can be dropped, so
+        // confirm the tab took and try once more if it didn't.
+        for _ in 0..<2 where !tab.isSelected {
+            tab.tap()
+            _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "isSelected == true"), object: tab
+            )], timeout: 3)
+        }
+        XCTAssertTrue(tab.isSelected, "The '\(name)' tab didn't become selected", file: file, line: line)
+    }
+
+    /// Opens a device's detail page the way a person finds one in 2.0:
+    /// global Search, narrowed to Devices. The Devices list has no search
+    /// field of its own, and with 174 mock devices scrolling to one is slow
+    /// and depends on screen size.
+    func openDevice(named name: String, file: StaticString = #filePath, line: UInt = #line) {
+        tapSearchTab()
+        let field = searchFields.firstMatch
+        field.tapWhenReady(timeout: 10)
+        let clear = field.buttons["Clear text"]
+        if clear.exists { clear.tap() }
+        field.typeText(name)
+        buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Devices,"))
+            .firstMatch
+            .tapWhenReady(timeout: 10)
+        cells.containing(.staticText, identifier: name).firstMatch.tapWhenReady(timeout: 10)
+        XCTAssertTrue(deviceIdentity(named: name).waitForExistence(timeout: 10),
+                      "\(name)'s detail page did not open from Search", file: file, line: line)
+    }
+
+    /// The on-screen row containing `text`. Every tab stays in the
+    /// accessibility tree, so a plain `cells.containing` query can match a
+    /// row in a hidden tab (reported with an off-screen frame).
+    func visibleCell(containing text: String, timeout: TimeInterval = 15) -> XCUIElement {
+        let query = cells.containing(.staticText, identifier: text)
+        _ = query.firstMatch.waitForExistence(timeout: timeout)
+        return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
+    }
+
+    /// The Activity/Log picker at the top of the feed on iPhone, labelled
+    /// "Mode, <current mode>".
+    var activityModePicker: XCUIElement {
+        buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Mode,")).firstMatch
+    }
+
+    /// The name at the top of a device or group page. The page keeps its
+    /// navigation title empty while this is on screen (the name is shown
+    /// once), so this, not `navigationBars[name]`, identifies the page.
+    func deviceIdentity(named name: String) -> XCUIElement {
+        buttons.matching(NSPredicate(format: "value == %@", name)).firstMatch
     }
 }
 
@@ -85,6 +144,19 @@ extension XCUIElement {
         typeText(text)
     }
 
+    /// Swipes the screen up until this element is on screen. Lazy lists
+    /// don't create rows below the fold, so a plain existence wait misses
+    /// them.
+    func scrollIntoView(in app: XCUIApplication, maxSwipes: Int = 8,
+                        file: StaticString = #filePath, line: UInt = #line) {
+        var swipes = 0
+        while !(exists && isHittable) && swipes < maxSwipes {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(exists && isHittable, "Never scrolled into view: \(self)", file: file, line: line)
+    }
+
     /// A far-travel leading swipe that reliably reveals List trailing swipe
     /// actions even when `allowsFullSwipe: false`. The stock `swipeLeft()`
     /// on iOS 26 is too short to expose multiple swipe buttons.
@@ -111,7 +183,7 @@ class ShellbeeUITestCase: XCTestCase {
         app = XCUIApplication()
         configureAppBeforeLaunch()
         app.launchForTesting()
-        skipIfZ2MUnavailable()
+        assertConnectedToMockBridge()
     }
 
     /// Override when a suite needs a persisted setting to start in a
@@ -124,19 +196,18 @@ class ShellbeeUITestCase: XCTestCase {
         super.tearDown()
     }
 
-    /// Skip if the Z2M Docker stack isn't up (detected by whether the
-    /// connection setup screen is still showing after a reasonable wait).
-    private func skipIfZ2MUnavailable() {
-        // If the app connected successfully the main tab bar should appear.
-        // If not, we get stuck on the connection setup screen.
-        let tabBar = app.tabBars.firstMatch
-        if !tabBar.waitForExistence(timeout: 15) {
-            // Try to detect whether we're on a connection setup screen
-            let isSetup = app.buttons["Connect"].waitForExistence(timeout: 3)
-            if isSetup {
-                XCTExpectFailure("Docker Z2M stack not running — run 'docker compose up -d'")
-            }
-        }
+    /// Every suite on this base class needs the mock bridge. If the app is
+    /// still on the connection screen the bridge is down, and that has to
+    /// fail the run: counting it as an expected failure made a dead bridge
+    /// look like a green run.
+    /// 45 s covers a job's first, cold launch (the splash waits for the
+    /// bundled thumbnails); a warm launch connects in a few seconds.
+    private func assertConnectedToMockBridge() {
+        guard !app.tabBars.firstMatch.waitForExistence(timeout: 45) else { return }
+        let onSetup = app.buttons["Connect"].exists
+        XCTFail(onSetup
+            ? "The app never connected to the mock bridge on localhost:8080. Start it with 'docker compose up -d'."
+            : "The main tab bar never appeared after launch.")
     }
 
     // MARK: - Convenience
@@ -144,12 +215,5 @@ class ShellbeeUITestCase: XCTestCase {
     func waitForMainTab(timeout: TimeInterval = 15) {
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: timeout),
                       "Main tab bar never appeared — is the Docker stack running?")
-    }
-
-    func navigateToDeviceDetail(named name: String) {
-        app.tapDevicesTab()
-        let cell = app.cells.containing(.staticText, identifier: name).firstMatch
-        cell.assertExists()
-        cell.tap()
     }
 }

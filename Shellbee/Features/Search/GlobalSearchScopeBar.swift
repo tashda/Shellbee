@@ -24,7 +24,7 @@ struct GlobalSearchScopeBar: View {
                 ) {
                     selection = scope
                 }
-                .accessibilityLabel("\(scope.title), \(results.count(for: scope)) results")
+                .accessibilityLabel(Text("\(scope.title), ^[\(results.count(for: scope)) result](inflect: true)"))
             }
         }
         .animation(.snappy, value: visibleScopes)

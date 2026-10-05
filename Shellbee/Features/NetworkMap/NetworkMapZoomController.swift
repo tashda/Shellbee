@@ -10,6 +10,8 @@ import SwiftUI
 /// Screen position of a map point is `point * scale + offset`.
 @Observable
 final class NetworkMapZoomController {
+    nonisolated deinit {}
+
     private(set) var scale: CGFloat = 1
     private(set) var offset: CGSize = .zero
 

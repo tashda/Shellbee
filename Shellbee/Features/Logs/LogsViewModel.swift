@@ -2,6 +2,8 @@ import Foundation
 
 @Observable
 final class LogsWorkspaceState {
+    nonisolated deinit {}
+
     var mode: LogsView.LogMode = .activity
     var activity = LogsViewModel()
     var bridge = BridgeLogViewModel()
@@ -16,6 +18,8 @@ final class LogsWorkspaceState {
 
 @Observable
 final class LogsViewModel {
+    nonisolated deinit {}
+
     var searchText = ""
     var selectedLevel: LogLevel? = nil
     var selectedCategory: LogCategory? = nil

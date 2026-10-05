@@ -17,6 +17,8 @@ struct DiscoveredEndpoint: Hashable, Sendable {
 
 @Observable
 final class Z2MDiscoveryService {
+    nonisolated deinit {}
+
     @MainActor public var discoveredEndpoints: Set<DiscoveredEndpoint> = []
     @MainActor public private(set) var isScanning: Bool = false
 

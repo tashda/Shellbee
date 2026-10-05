@@ -48,6 +48,19 @@ if [[ -n "$ELLIPSIS_HITS" ]]; then
   FAIL=1
 fi
 
+# 3. Every UI test class is scheduled. Full CI runs UI tests by class name
+# (iPhone shards, iPad matrix), so a class missing from ci-full.yml would
+# never run anywhere.
+echo "==> Checking every UI test class is scheduled in ci-full.yml"
+UI_CLASSES=$(grep -RhoE '^(final )?class [A-Za-z]+UITests' ShellbeeUITests/ --include='*.swift' \
+  | awk '{print $NF}' | sort -u)
+for class in $UI_CLASSES; do
+  if ! grep -qE "(^|[ /:\"])$class([ \"]|$)" .github/workflows/ci-full.yml; then
+    echo "::error::UI test class $class is not scheduled in .github/workflows/ci-full.yml. Add it to an iPhone shard or the iPad matrix."
+    FAIL=1
+  fi
+done
+
 if [[ "$FAIL" == "0" ]]; then
   echo "==> Lint passed."
 fi

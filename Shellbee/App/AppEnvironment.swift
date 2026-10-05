@@ -3,6 +3,8 @@ import Foundation
 @Observable
 @MainActor
 final class AppEnvironment {
+    nonisolated deinit {}
+
     let discovery = Z2MDiscoveryService()
     let history = ConnectionHistory()
     let registry: BridgeRegistry

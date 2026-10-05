@@ -15,6 +15,7 @@ import Foundation
 @MainActor
 @Observable
 final class OTABulkOperationQueue {
+    nonisolated deinit {}
 
     enum Kind: Sendable, Equatable {
         case check

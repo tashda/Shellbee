@@ -2,6 +2,8 @@ import Foundation
 
 @Observable
 final class GroupsWorkspaceState {
+    nonisolated deinit {}
+
     var selectedGroup: GroupRoute?
 
     func selectGroup(_ route: GroupRoute?) {

@@ -55,19 +55,18 @@ final class IPadShellMatrixUITests: XCTestCase {
 
         openSidebarSection("Groups", expectedTitle: "Groups")
         app.buttons["Filter"].firstMatch.tapWhenReady(timeout: 10)
-        app.buttons["Bridge"].tapWhenReady(timeout: 10)
-        selectSecondaryBridgeFilter()
+        selectSecondaryBridgeFilter(openingSubmenu: app.buttons["Bridge"])
         visibleCell(containing: "All Lights")
             .tapWhenReady(timeout: 15)
         assertSecondaryDetail(title: "All Lights")
 
         openSidebarSection("Activity", expectedTitle: "Activity")
         selectSecondaryBridgeInSidebar()
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Secondary,"))
+        activityEvents(fromBridge: "Secondary")
             .firstMatch
             .assertExists(timeout: 20)
         XCTAssertFalse(
-            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Primary,"))
+            activityEvents(fromBridge: "Primary")
                 .firstMatch
                 .waitForExistence(timeout: 2),
             "The Secondary activity filter leaked a Primary bridge log"
@@ -99,15 +98,26 @@ final class IPadShellMatrixUITests: XCTestCase {
         app.staticTexts["Secondary"].firstMatch.assertExists(timeout: 25)
     }
 
+    /// The sidebar already shows a "Secondary" row, so tap the newest
+    /// hittable one once the submenu has added its own. Elements bound by
+    /// index go stale while the menu animates, so resolve and tap together
+    /// until one sticks.
     @MainActor
-    private func selectSecondaryBridgeFilter() {
+    private func selectSecondaryBridgeFilter(openingSubmenu submenu: XCUIElement) {
         let options = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "Secondary"))
-            .allElementsBoundByIndex
-        guard let option = options.last else {
-            return XCTFail("The Secondary bridge filter option was not found")
+        let countBefore = options.count
+        submenu.tapWhenReady(timeout: 10)
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline {
+            if options.count > countBefore,
+               let option = options.allElementsBoundByIndex.last(where: \.isHittable) {
+                option.tap()
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
-        option.tapWhenReady(timeout: 10)
+        XCTFail("The Secondary bridge filter option was not found")
     }
 
     @MainActor
@@ -116,11 +126,23 @@ final class IPadShellMatrixUITests: XCTestCase {
             .tapWhenReady(timeout: 10)
     }
 
+    /// Activity cards read as one element whose label ends with the bridge
+    /// monogram's "Bridge: <name>", so this also guards that VoiceOver says
+    /// which bridge an event came from.
+    @MainActor
+    private func activityEvents(fromBridge name: String) -> XCUIElementQuery {
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Bridge: \(name)"))
+    }
+
     @MainActor
     private func openSidebarSection(_ section: String, expectedTitle: String) {
-        app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: section)
-            .firstMatch
-            .tapWhenReady(timeout: 15)
+        let row = app.collectionViews["Sidebar"].cells.containing(.staticText, identifier: section).firstMatch
+        row.tapWhenReady(timeout: 15)
+        // A tap while the window is still settling after launch can be
+        // dropped; tap again once before failing.
+        if !app.navigationBars[expectedTitle].waitForExistence(timeout: 8) {
+            row.tap()
+        }
         app.navigationBars[expectedTitle].assertExists(timeout: 15)
     }
 

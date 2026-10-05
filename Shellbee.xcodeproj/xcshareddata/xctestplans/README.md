@@ -15,53 +15,41 @@ or crash specifically under the conditions of the GitHub macOS runner
 (Xcode 26.3 strict concurrency, simulator without a provisioning profile for
 Keychain, etc.). Used by `ci-fast.yml` to gate PRs.
 
-`ci-full.yml` uses the default `Shellbee.xctestplan` but mirrors the same
-skip set on the `xcodebuild` command line via `-skip-testing` flags — the
-same root causes apply on Full CI too because it's the same runner image.
-The exceptions are `Z2MIntegrationTests` and `MultiBridgeIntegrationTests`,
-which Full CI runs because it starts the dual mock z2m bridge first (one method
-that hits the keychain still has to be skipped — see the table below). If you
-add or remove a skip in this plan, mirror the change in
-`.github/workflows/ci-full.yml` when the same runner limitation also applies
-to Full CI.
+`ci-full.yml` uses the default `Shellbee.xctestplan`. It runs the unit tests
+first, then the four live-bridge suites against the dual mock z2m bridge it
+starts, with one retry for WebSocket timing only.
 
-Full CI runs deterministic unit tests separately from the live bridge
-integration suites. Only the integration step retries failed tests once,
-because it depends on simulator-to-WebSocket timing and mock retained-state
-replay; unit-test failures are never retried.
+Every entry in `skippedTests` needs a reason below. When the reason goes
+away, delete the entry in the same PR.
 
-Every entry in `skippedTests` is tech debt with a tracking reason. When the
-underlying problem is fixed, the skip entry should be removed in the same PR
-as the fix.
-
-### Currently skipped
+### Currently skipped (Fast CI only)
 
 | Test | Reason |
 |---|---|
-| `Z2MIntegrationTests` (entire class) | Requires the docker z2m bridge on `localhost:8080`, which Fast CI does not start. Runs in Full CI instead. |
-| `MultiBridgeIntegrationTests` (entire class) | Requires both mock bridges on `localhost:8080` and `localhost:8082`, which Fast CI does not start. Runs in Full CI instead. |
-| `ConnectionConfigTests/testSaveAndLoad()` | Reads a token from the Keychain that was just written. iOS simulator on GitHub runners has no provisioning profile, so `SecItem*` silently no-ops; the load returns nil. Fix: abstract the Keychain read/write so tests can inject an in-memory store. |
-| `ConnectionConfigTests/testSecondLoadAfterLegacyMigrationStillReturnsToken()` | Same Keychain limitation. |
-| `ConnectionHistoryTests` (entire class) | Every test calls `h.add(...)` → `save()` → `persistToken(for:)` which hits the Keychain. Without a provisioning profile, the GitHub runner crashes (malloc free corruption) inside `SecItem*` rather than returning a no-op error. Skip the whole class until the Keychain layer is abstracted (same root cause as the two `ConnectionConfigTests` skips). |
-| `HomeLayoutStoreTests` (entire class) | Crashes with malloc free corruption on Xcode 26.3 GitHub runners even with `@MainActor + async setUp` migration. Suspected isolation interaction between XCTest's nonisolated launch path and `@Observable` (implicit `@MainActor`). Locally green; CI-only flake. |
-| `NotificationPreferencesTests` (entire class) | Same isolation pattern as `HomeLayoutStoreTests` — `@Observable @MainActor` model created from XCTest's nonisolated bridge crashes the host on Xcode 26.3 runners. |
-| `DeviceFavoritesStoreTests`, `GroupsWorkspaceStateTests`, `LogsWorkspaceStateTests`, `MultiWindowTests`, `NetworkMapTests` (entire classes) | Same `@MainActor` XCTestCase / `@Observable` isolation crash as `HomeLayoutStoreTests` — added 2026-09-22 once these suites started hitting it too. All pass locally (confirmed under AddressSanitizer). |
-| `BridgeRegistryTests` (entire class) | `connect()` starts a live WebSocket session task; on GitHub's simulator the task teardown crashes the test host with `malloc: pointer being freed was not allocated`, even when `disconnectAll()` is awaited in `tearDown`. Keep registry behavior covered locally until session creation/connection can be injected independently. |
-| `BridgeScopeTests` (entire class) | Its multi-session cases create live `AppEnvironment` connections. The Xcode 26.3 simulator intermittently crashes the test host with the same allocator failure during these network task lifecycles. Keep scope behavior covered locally until sessions can be injected independently. |
-| `MultiBridgeNavigationTests` (entire class) | The suite creates multiple live `AppEnvironment` sessions in XCTest. The Xcode 26.3 simulator crashes the test host during session teardown; pure route identity remains covered by route/value tests. Keep it local until sessions can be injected independently. |
-| `MultiBridgeAggregationTests` (entire class) | Although aggregation uses value snapshots, these XCTest methods construct `@MainActor` model fixtures and intermittently crash the test host with the Xcode 26.3 allocator failure. Keep deterministic attribution and ordering checks local until model fixtures can be built outside the actor-isolated XCTest path. |
-| `GroupDropIntegrationTests` (entire class) | These tests open live WebSocket sessions from the XCTest host and trigger the same allocator crash on Xcode 26.3. Group-drop acceptance and rejection are covered by `GroupDeviceDropDecisionTests`; keep fixture-level checks local until the socket client can be injected. |
-| `NetworkMapIntegrationTests` (entire class) | These tests open live WebSocket sessions directly from the XCTest host and trigger the same allocator crash on Xcode 26.3. Network-map parsing and topology logic remain covered by unit tests; keep live bridge topology checks local until the socket client can be injected. |
-| `OTABulkOperationQueueTests` (entire class) | Async queue tests intermittently crash the Xcode 26.3 simulator test host with `malloc: pointer being freed was not allocated`; after isolating the cancellation case, the same crash moved to `testConcurrencyDispatchesMultipleInFlight()`. This currently removes bulk queue behavior tests from hosted CI; keep the suite local until the hosted runner issue is resolved. |
-| `Z2MEventBatcherTests/testLoneMessageArrivesAtOnceAndBurstIsBatchedInOrder()` | Drives the batcher's detached decode and flush tasks through an `AsyncStream`; the Xcode 26.3 simulator test host crashes with `malloc: pointer being freed was not allocated` on the first run of this case (added 2026-09-28). Passes locally, including under AddressSanitizer. `testUnusedBridgeTopicsAreDropped()` still runs in CI. |
-| `Z2MIntegrationTests/testReloadedPersistedConfigConnectsAndReceivesBridgeInfo()` | Skipped by Full CI only (this plan still runs the rest of `Z2MIntegrationTests`). Same Keychain limitation — it calls `ConnectionConfig.save()` then `.load()`. |
+| `Z2MIntegrationTests` | Needs the mock bridge on `localhost:8080`; Fast CI doesn't start one. Runs in Full CI. |
+| `MultiBridgeIntegrationTests` | Needs both mock bridges (`8080`, `8082`). Runs in Full CI. |
+| `GroupDropIntegrationTests` | Needs both mock bridges. Runs in Full CI. |
+| `NetworkMapIntegrationTests` | Needs both mock bridges; the paced scan takes about 26 s per bridge. Runs in Full CI. |
 
-### Recently un-skipped
+### History: the "Xcode 26.3 runner" skips (removed 2026-09-30)
 
-`ConnectionHistoryTests`, `HomeLayoutStoreTests`, and `NotificationPreferencesTests` were previously skipped due to Xcode 26.3 isolation bugs in their `setUp()` paths. Resolved by marking the classes `@MainActor` and converting setUp/tearDown to `async throws`. Tracked in #83.
+Until 2.0.0 this plan skipped about 90 more tests as "crashes on the GitHub
+runner, passes locally". They were two real problems, both fixed:
+
+- **Isolated deinits.** The app defaults to `@MainActor`, so the compiler
+  gave its classes isolated deinits. Before iOS 26.4 the Swift runtime
+  aborts ("pointer being freed was not allocated") when one isolated deinit
+  releases another. CI's simulator ran iOS 26.2; local simulators ran 26.4+.
+  The app classes now declare `nonisolated deinit {}`, and Fast CI fails if
+  a new isolated deinit appears (`.github/scripts/check-isolated-deinits.sh`).
+- **Keychain.** CI built with `CODE_SIGNING_ALLOWED=NO`, so the test host had
+  no entitlements and `SecItem*` returned nothing. CI now signs simulator
+  builds ad hoc (`CODE_SIGN_IDENTITY=-`).
+
+Use Full CI's `audit_skipped` dispatch input to run whatever this plan
+still skips on the CI runner.
 
 ### How to remove an entry
 
-Fix the underlying cause, run `-testPlan Shellbee-CI` locally to confirm it
-passes, then delete the line from `skippedTests`. The next CI run validates
-that nothing regressed.
+Fix the underlying cause, confirm with the `audit_skipped` dispatch (or
+`-testPlan Shellbee-CI` locally), then delete the line from `skippedTests`.
