@@ -26,10 +26,12 @@ final class HomeUITests: ShellbeeUITestCase {
 
     // MARK: - Needs attention
 
-    /// The fixtures always have devices needing attention (low battery, weak
-    /// signal or offline, depending on which readings have arrived), and a
-    /// row about devices opens Devices already filtered.
+    /// A row about devices opens Devices already filtered. The fixtures start
+    /// healthy (every battery at 80, every link at 200, all online), so the
+    /// test takes one device offline and expects Home to say so.
     func testNeedsAttentionOpensFilteredDevices() {
+        MockBridgeControl.setAvailability("Kitchen Plug", online: false)
+        addTeardownBlock { MockBridgeControl.setAvailability("Kitchen Plug", online: true) }
         app.buttons.matching(NSPredicate(format: "label ENDSWITH %@ OR label ENDSWITH %@", " devices", " device"))
             .firstMatch
             .tapWhenReady(timeout: 15)
