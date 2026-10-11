@@ -16,6 +16,10 @@ import XCTest
 ///
 /// If either bridge is unreachable, every test in this file fails (a dead
 /// bridge must never read as a pass).
+///
+/// Keep `try XCTUnwrap` out of the tests that use `async let`: throwing after
+/// the awaits aborts the process on iOS before 26.4 ("freed pointer was not
+/// the last allocation"), which fails the CI step with the test never re-run.
 final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
 
     static let primaryHost = "localhost"
@@ -40,15 +44,11 @@ final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
         async let primaryInfo = collectBridgeInfo(for: primaryConfig(), timeout: 15)
         async let secondaryInfo = collectBridgeInfo(for: secondaryConfig(), timeout: 15)
 
-        // Await in reverse order of declaration: the runtime frees `async let`
-        // storage as a stack, and awaiting a tuple frees it in the wrong
-        // order ("freed pointer was not the last allocation" on iOS < 26.4).
-        let b = try await secondaryInfo
-        let a = try await primaryInfo
-        let primaryReceived = try XCTUnwrap(a, "primary bridge did not deliver bridge/info")
-        let secondaryReceived = try XCTUnwrap(b, "secondary bridge did not deliver bridge/info")
-        XCTAssertFalse(primaryReceived.version.isEmpty)
-        XCTAssertFalse(secondaryReceived.version.isEmpty)
+        let (a, b) = try await (primaryInfo, secondaryInfo)
+        XCTAssertNotNil(a, "primary bridge did not deliver bridge/info")
+        XCTAssertNotNil(b, "secondary bridge did not deliver bridge/info")
+        XCTAssertFalse(a?.version.isEmpty ?? true)
+        XCTAssertFalse(b?.version.isEmpty ?? true)
     }
 
     /// Devices from each bridge land in that bridge's own store and do
@@ -60,8 +60,7 @@ final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
         async let primary = collectDevices(for: primaryConfig(), timeout: 20)
         async let secondary = collectDevices(for: secondaryConfig(), timeout: 20)
 
-        let secondaryDevices = try await secondary // reverse order, see above
-        let primaryDevices = try await primary
+        let (primaryDevices, secondaryDevices) = try await (primary, secondary)
 
         XCTAssertFalse(primaryDevices.isEmpty,   "primary bridge devices not received")
         XCTAssertFalse(secondaryDevices.isEmpty, "secondary bridge devices not received")
@@ -150,8 +149,7 @@ final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
     private func skipIfDualStackUnavailable() async throws {
         async let p = ping(host: Self.primaryHost, port: Self.primaryPort)
         async let s = ping(host: Self.secondaryHost, port: Self.secondaryPort)
-        let secondaryUp = await s // reverse order, see above
-        let primaryUp = await p
+        let (primaryUp, secondaryUp) = await (p, s)
         guard primaryUp, secondaryUp else {
             let message = """
             Dual-bridge mock stack not running. Start with:
