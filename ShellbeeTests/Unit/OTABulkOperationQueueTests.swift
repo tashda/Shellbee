@@ -307,10 +307,10 @@ private enum OTABulkOperationQueueTestDriver {
         )
 
         queue.enqueue(["a"], kind: .update)
-        await waitUntil { sendCount == 1 }
 
-        // Let the first attempt time out, then answer the retry.
-        await waitUntil(timeout: 2.0) { sendCount == 2 }
+        // The first attempt's timer fires at once, so the queue reissues the
+        // request; then answer the retry.
+        await waitUntil { sendCount == 2 }
         queue.handleResponse(friendlyName: "a", success: true, kind: .update)
 
         await waitUntil(timeout: 2.0) { !queue.isActive }

@@ -77,9 +77,18 @@ final class GroupsUITests: ShellbeeUITestCase {
     private func dismissSheet(file: StaticString = #filePath, line: UInt = #line) {
         let navBar = app.navigationBars["Create Group"].firstMatch
         navBar.assertExists(timeout: 5, file: file, line: line)
-        navBar.swipeDown(velocity: .fast)
+        dragSheetAway(from: navBar)
         XCTAssertTrue(navBar.waitForNonExistence(timeout: 5),
                       "The Create Group sheet did not dismiss", file: file, line: line)
+    }
+
+    /// Pulls a sheet down by its navigation bar. Dragging by hand, as the
+    /// Permit Join test does, dismisses where a flick can stop short of the
+    /// sheet's dismiss threshold.
+    private func dragSheetAway(from navBar: XCUIElement) {
+        navBar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.1,
+                   thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
     }
 
     // MARK: - Sort
@@ -135,7 +144,7 @@ final class GroupsUITests: ShellbeeUITestCase {
                       "Save Scene sheet did not open")
         XCTAssertTrue(app.textFields.firstMatch.waitForExistence(timeout: 2),
                       "Scene Name text field not present")
-        saveSceneNav.swipeDown(velocity: .fast)
+        dragSheetAway(from: saveSceneNav)
         XCTAssertTrue(saveSceneNav.waitForNonExistence(timeout: 5), "The Save Scene sheet did not dismiss")
     }
 

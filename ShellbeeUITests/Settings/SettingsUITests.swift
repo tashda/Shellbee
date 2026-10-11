@@ -291,12 +291,13 @@ final class SettingsUITests: ShellbeeUITestCase {
         // Enable tracking so the timeout sections appear.
         let toggle = app.switches["Track Device Availability"].firstMatch
         toggle.assertExists(timeout: 5)
-        if toggle.value as? String == "0" { toggle.tap() }
-        let mains = app.staticTexts["Mains-Powered Devices"].firstMatch
+        if toggle.value as? String == "0" { flip(toggle) }
+        // Section headers are drawn in capitals, so match case-insensitively.
+        let mains = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Mains-Powered Devices")).firstMatch
         XCTAssertTrue(mains.waitForExistence(timeout: 5), "Enabling tracking didn't show the timeout sections")
         // The row reads "Timeout, <value>"; the legacy qualified label is gone.
         let timeout = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "Timeout")).firstMatch
+            .matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Timeout")).firstMatch
         XCTAssertTrue(timeout.waitForExistence(timeout: 5), "No unqualified Timeout row")
         XCTAssertFalse(app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "Offline Timeout")).firstMatch.exists)
@@ -312,7 +313,7 @@ final class SettingsUITests: ShellbeeUITestCase {
     // MARK: - Network
 
     func testNetworkSettingsOpens() {
-        openSettingsScreen("Network")
+        openSettingsScreen("Network & Hardware")
         app.navigationBars["Network & Hardware"].assertExists(timeout: 5)
     }
 
@@ -370,7 +371,7 @@ final class SettingsUITests: ShellbeeUITestCase {
         let toggle = app.switches["Show Elapsed Time"].firstMatch
         toggle.assertExists(timeout: 5)
         let original = toggle.value as? String
-        toggle.tap()
+        flip(toggle)
         XCTAssertNotEqual(toggle.value as? String, original, "The toggle didn't change")
 
         let cancel = app.buttons["Cancel"].firstMatch
@@ -390,6 +391,17 @@ final class SettingsUITests: ShellbeeUITestCase {
     }
 
     // MARK: - Helpers
+
+    /// Flips a switch in a settings row. The element spans the whole row, so
+    /// a plain tap lands on the label; tap where the switch itself is, then
+    /// wait for the value to follow.
+    private func flip(_ toggle: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        let before = toggle.value as? String
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        let changed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value != %@", before ?? ""), object: toggle)
+        _ = XCTWaiter().wait(for: [changed], timeout: 5) // lint-allow-vacuous: callers assert the new value
+    }
 
     private var connectionCard: XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Connected")).firstMatch
