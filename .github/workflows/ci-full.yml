@@ -327,8 +327,7 @@ jobs:
           # both attempts and fails the job.
           ONLY=()
           for class in $IPAD_CLASSES; do ONLY+=("-only-testing:ShellbeeUITests/$class"); done
-          set -o pipefail
-          xcodebuild test-without-building \
+          ./.github/scripts/run-tests-resilient.sh "$DERIVED_DATA/IPadMatrix.xcresult" test-ipad-ui.log \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
@@ -337,8 +336,7 @@ jobs:
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
             -retry-tests-on-failure -test-iterations 2 \
-            -resultBundlePath "$DERIVED_DATA/IPadMatrix.xcresult" \
-            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-ipad-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=
 
       - name: Capture mock bridge logs
         if: always()
@@ -473,8 +471,7 @@ jobs:
           # shares one mock bridge anyway.
           ONLY=()
           for class in $CLASSES; do ONLY+=("-only-testing:ShellbeeUITests/$class"); done
-          set -o pipefail
-          xcodebuild test-without-building \
+          ./.github/scripts/run-tests-resilient.sh "$DERIVED_DATA/UITests.xcresult" test-ui.log \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" -derivedDataPath "$DERIVED_DATA" \
@@ -483,8 +480,7 @@ jobs:
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
             -retry-tests-on-failure -test-iterations 2 \
-            -resultBundlePath "$DERIVED_DATA/UITests.xcresult" \
-            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= | tee test-ui.log
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=
 
       - name: Capture mock bridge logs
         if: always()
