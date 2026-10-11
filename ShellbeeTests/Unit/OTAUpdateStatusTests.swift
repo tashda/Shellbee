@@ -76,6 +76,7 @@ final class OTAUpdateStatusTests: XCTestCase {
     @MainActor
 
     func testScheduledBeforeRequested() {
+        XCTAssertLessThan(makeStatus(.scheduled).sortPriority, makeStatus(.requested).sortPriority)
         XCTAssertLessThan(makeStatus(.scheduled).sortPriority, makeStatus(.checking).sortPriority)
     }
 

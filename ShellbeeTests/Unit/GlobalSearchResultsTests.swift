@@ -29,6 +29,19 @@ final class GlobalSearchResultsTests: XCTestCase {
         XCTAssertEqual(results.devices.first?.device.friendlyName, "Living Room Light")
     }
 
+    func testTitlePrefixOutranksTitleSubstringRegardlessOfInputOrder() {
+        let results = GlobalSearchResults(
+            query: "living",
+            devices: [
+                BridgeBoundDevice(bridgeID: bridgeA, bridgeName: "Home", device: DeviceFixture.sensor(name: "Hall Living Sensor")),
+                BridgeBoundDevice(bridgeID: bridgeA, bridgeName: "Home", device: DeviceFixture.light(name: "Living Room Light"))
+            ],
+            groups: [], bridges: [], activity: [], logs: [], docs: []
+        )
+
+        XCTAssertEqual(results.devices.map(\.device.friendlyName), ["Living Room Light", "Hall Living Sensor"])
+    }
+
     func testEveryCategoryIsSearched() {
         let results = makeResults(query: "office")
 

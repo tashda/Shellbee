@@ -96,26 +96,27 @@ final class DeviceStateTests: XCTestCase {
 
     @MainActor
 
-    func testLastSeenEpoch() {
+    func testLastSeenEpoch() throws {
         let epoch = 1_700_000_000_000.0  // 2023-11-14 in ms
         let state: [String: JSONValue] = ["last_seen": .double(epoch)]
-        let date = state.lastSeen
-        XCTAssertNotNil(date)
-        XCTAssertEqual(date!.timeIntervalSince1970, epoch / 1000, accuracy: 0.1)
+        let date = try XCTUnwrap(state.lastSeen)
+        XCTAssertEqual(date.timeIntervalSince1970, epoch / 1000, accuracy: 0.1)
     }
 
     @MainActor
 
-    func testLastSeenISO8601() {
+    func testLastSeenISO8601() throws {
         let state: [String: JSONValue] = ["last_seen": .string("2023-11-14T10:00:00+00:00")]
-        XCTAssertNotNil(state.lastSeen)
+        let date = try XCTUnwrap(state.lastSeen)
+        XCTAssertEqual(date.timeIntervalSince1970, 1_699_956_000, accuracy: 0.001)
     }
 
     @MainActor
 
-    func testLastSeenISO8601WithFractional() {
+    func testLastSeenISO8601WithFractional() throws {
         let state: [String: JSONValue] = ["last_seen": .string("2023-11-14T10:00:00.123+00:00")]
-        XCTAssertNotNil(state.lastSeen)
+        let date = try XCTUnwrap(state.lastSeen)
+        XCTAssertEqual(date.timeIntervalSince1970, 1_699_956_000.123, accuracy: 0.01)
     }
 
     @MainActor
@@ -136,12 +137,11 @@ final class DeviceStateTests: XCTestCase {
 
     @MainActor
 
-    func testOTAUpdateStatusAvailable() {
+    func testOTAUpdateStatusAvailable() throws {
         let state = StateFixture.withOTA(state: "available", installed: 1, latest: 2)
-        let status = state.otaUpdateStatus(for: "TestDevice")
-        XCTAssertNotNil(status)
-        XCTAssertEqual(status?.phase, .available)
-        XCTAssertEqual(status?.deviceName, "TestDevice")
+        let status = try XCTUnwrap(state.otaUpdateStatus(for: "TestDevice"))
+        XCTAssertEqual(status.phase, .available)
+        XCTAssertEqual(status.deviceName, "TestDevice")
     }
 
     @MainActor

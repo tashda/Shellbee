@@ -12,14 +12,21 @@ final class LogEntryTests: XCTestCase {
 
     func testPlainMessageParsesAsSimpleEveryTime() {
         let entry = entry("Zigbee2MQTT started")
-        XCTAssertEqual(String(describing: entry.parsedMessageKind), String(describing: entry.parsedMessageKind))
-        guard case .simple = entry.parsedMessageKind else { return XCTFail("expected .simple") }
+        for _ in 0..<2 {
+            guard case .simple = entry.parsedMessageKind else { return XCTFail("expected .simple") }
+        }
     }
 
     func testCopiesOfAnEntryAgreeOnTheParsedKind() {
         let original = entry("MQTT publish: topic 'zigbee2mqtt/lamp', payload '{\"state\":\"ON\"}'")
         var copy = original
         copy.category = .stateChange
-        XCTAssertEqual(String(describing: original.parsedMessageKind), String(describing: copy.parsedMessageKind))
+        for candidate in [original, copy] {
+            guard case .mqttPublish(_, let topic, let payload) = candidate.parsedMessageKind else {
+                return XCTFail("expected .mqttPublish")
+            }
+            XCTAssertEqual(topic, "zigbee2mqtt/lamp")
+            XCTAssertEqual(payload["state"], .string("ON"))
+        }
     }
 }

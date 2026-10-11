@@ -45,6 +45,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         store.apply(.deviceAvailability(friendlyName: "Office Sensor", available: false))
         vm.statusFilter = .online
         let result = vm.filteredDevices(store: store)
+        XCTAssertEqual(result.count, DeviceFixture.allCategoryDevices.count - 1)
         XCTAssertTrue(result.allSatisfy { store.isAvailable($0.friendlyName) })
         XCTAssertFalse(result.contains { $0.friendlyName == "Office Sensor" })
     }
@@ -99,13 +100,15 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         ))
         vm.statusFilter = .batteryLow
         let result = vm.filteredDevices(store: store)
-        XCTAssertTrue(result.contains { $0.friendlyName == "Office Sensor" })
+        XCTAssertEqual(result.map(\.friendlyName), ["Office Sensor"])
     }
 
     // Regression: the filter boundary must be exactly Threshold.isLowBattery.
     @MainActor
     func testFilterBatteryLowHonoursThresholdBoundary() {
         vm.statusFilter = .batteryLow
+        XCTAssertTrue(DesignTokens.Threshold.isLowBattery(DesignTokens.Threshold.lowBattery - 1),
+                      "Level just below the threshold must count as low")
         for level in [DesignTokens.Threshold.lowBattery - 1, DesignTokens.Threshold.lowBattery] {
             store.apply(.deviceState(
                 friendlyName: "Office Sensor",
@@ -127,7 +130,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         ))
         vm.statusFilter = .weakSignal
         let result = vm.filteredDevices(store: store)
-        XCTAssertTrue(result.contains { $0.friendlyName == "Bedroom Thermostat" })
+        XCTAssertEqual(result.map(\.friendlyName), ["Bedroom Thermostat"])
     }
 
     @MainActor
@@ -178,6 +181,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     func testFilterBySensorCategory() {
         vm.categoryFilter = .sensor
         let result = vm.filteredDevices(store: store)
+        XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.allSatisfy { $0.category == .sensor })
     }
 
@@ -185,6 +189,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     func testFilterByClimateCategory() {
         vm.categoryFilter = .climate
         let result = vm.filteredDevices(store: store)
+        XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.allSatisfy { $0.category == .climate })
     }
 
@@ -194,6 +199,8 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     func testFilterByVendor() {
         vm.vendorFilter = "IKEA"
         let result = vm.filteredDevices(store: store)
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertLessThan(result.count, DeviceFixture.allCategoryDevices.count)
         XCTAssertTrue(result.allSatisfy { $0.definition?.vendor == "IKEA" })
     }
 
@@ -203,6 +210,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     func testFilterByRouter() {
         vm.typeFilter = .router
         let result = vm.filteredDevices(store: store)
+        XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.allSatisfy { $0.type == .router })
     }
 
@@ -210,6 +218,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     func testFilterByEndDevice() {
         vm.typeFilter = .endDevice
         let result = vm.filteredDevices(store: store)
+        XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.allSatisfy { $0.type == .endDevice })
     }
 
@@ -228,6 +237,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     func testSearchByFriendlyName() {
         vm.searchText = "living"
         let result = vm.filteredDevices(store: store)
+        XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.allSatisfy { $0.friendlyName.lowercased().contains("living") })
     }
 
@@ -235,6 +245,7 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     func testSearchByVendor() {
         vm.searchText = "ikea"
         let result = vm.filteredDevices(store: store)
+        XCTAssertFalse(result.isEmpty)
         XCTAssertTrue(result.allSatisfy {
             $0.definition?.vendor.lowercased().contains("ikea") == true
         })
@@ -272,7 +283,8 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         vm.sortAscending = true
         let result = vm.filteredDevices(store: store)
         let names = result.map(\.friendlyName)
-        XCTAssertEqual(names, names.sorted())
+        XCTAssertGreaterThan(names.count, 1)
+        XCTAssertEqual(names, names.sorted { $0.localizedCompare($1) == .orderedAscending })
     }
 
     @MainActor
@@ -281,7 +293,8 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
         vm.sortAscending = false
         let result = vm.filteredDevices(store: store)
         let names = result.map(\.friendlyName)
-        XCTAssertEqual(names, names.sorted(by: >))
+        XCTAssertGreaterThan(names.count, 1)
+        XCTAssertEqual(names, names.sorted { $0.localizedCompare($1) == .orderedDescending })
     }
 
     @MainActor
@@ -292,9 +305,9 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
                                  state: ["battery": .int(90), "linkquality": .int(100)]))
         vm.sortOrder = .battery
         vm.sortAscending = true
-        vm.categoryFilter = .light
-        let result = vm.filteredDevices(store: store)
-        XCTAssertFalse(result.isEmpty)
+        let names = vm.filteredDevices(store: store).map(\.friendlyName)
+        XCTAssertEqual(names.first, "Living Room Light", "Lowest battery first")
+        XCTAssertEqual(names.last, "Office Sensor", "Highest battery last")
     }
 
     @MainActor
@@ -305,12 +318,10 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
                                  state: ["linkquality": .int(200)]))
         vm.sortOrder = .linkQuality
         vm.sortAscending = true
-        vm.categoryFilter = .light
-        let result = vm.filteredDevices(store: store)
-        guard result.count >= 2 else { return }
-        let lqiFirst = store.state(for: result[0].friendlyName).linkQuality ?? -1
-        let lqiSecond = store.state(for: result[1].friendlyName).linkQuality ?? -1
-        XCTAssertGreaterThanOrEqual(lqiFirst, lqiSecond)
+        let names = vm.filteredDevices(store: store).map(\.friendlyName)
+        // "Ascending" ranks the strongest signal first (see DeviceListViewModel.sorted).
+        XCTAssertEqual(names.first, "Bedroom Hue", "Strongest link first")
+        XCTAssertEqual(names.last, "Living Room Light", "Weakest link last")
     }
 
     // MARK: - hasActiveFilter
@@ -335,16 +346,17 @@ final class DeviceListViewModelTests: XCTestCase, @unchecked Sendable {
     // MARK: - Workspace selection policy
 
     @MainActor
-    func testSelectedDeviceRemainsIncludedByMatchingFilter() {
-        let device = store.devices.first { $0.friendlyName == "Office Sensor" }!
+    func testSelectedDeviceRemainsIncludedByMatchingFilter() throws {
+        let device = try XCTUnwrap(store.devices.first { $0.friendlyName == "Office Sensor" })
         vm.categoryFilter = device.category
 
         XCTAssertTrue(vm.includes(device: device, bridgeID: UUID(), store: store))
     }
 
     @MainActor
-    func testSelectedDeviceIsExcludedByNonmatchingFilter() {
-        let device = store.devices.first { $0.friendlyName == "Office Sensor" }!
+    func testSelectedDeviceIsExcludedByNonmatchingFilter() throws {
+        let device = try XCTUnwrap(store.devices.first { $0.friendlyName == "Office Sensor" })
+        XCTAssertEqual(device.type, .endDevice, "Precondition: the sensor is not a router")
         vm.typeFilter = .router
 
         XCTAssertFalse(vm.includes(device: device, bridgeID: UUID(), store: store))

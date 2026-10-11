@@ -63,15 +63,42 @@ private enum OTABulkOperationQueueTestDriver {
         )
     }
 
+    /// Polls until `condition` holds. Fails the test on timeout so a stalled
+    /// queue can't pass by silently skipping the wait.
     private static func waitUntil(
-        timeout: TimeInterval = 1.0,
+        timeout: TimeInterval = 5.0,
+        file: StaticString = #filePath,
+        line: UInt = #line,
         _ condition: () -> Bool
     ) async {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        let deadline = ContinuousClock.now + .seconds(timeout)
+        while ContinuousClock.now < deadline {
             if condition() { return }
             await Task.yield()
             try? await Task.sleep(for: .milliseconds(5))
+        }
+        if !condition() {
+            XCTFail("Timed out after \(timeout)s waiting for condition", file: file, line: line)
+        }
+    }
+
+    /// A `sleep` for the queue's timeout timers: the first timer fires at once
+    /// (a device that never answers), every later one never fires, so a
+    /// response arriving late on a loaded machine can't race a real timeout.
+    private final class FirstTimerFiresImmediately: @unchecked Sendable {
+        private let lock = NSLock()
+        private var calls = 0
+
+        private func claimFirst() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            calls += 1
+            return calls == 1
+        }
+
+        func sleep(_ duration: Duration) async throws {
+            if claimFirst() { return }
+            try await Task.sleep(for: .seconds(1_000))
         }
     }
 
@@ -126,8 +153,9 @@ private enum OTABulkOperationQueueTestDriver {
 
     static func testTimeoutCountsAsFailureAndAdvances() async {
         let recorder = Recorder()
+        let timers = FirstTimerFiresImmediately()
         let queue = makeQueue(recorder: recorder, checkTimeout: .milliseconds(20)) { duration in
-            try await Task.sleep(for: duration)
+            try await timers.sleep(duration)
         }
 
         queue.enqueue(["a", "b"], kind: .check)
@@ -264,6 +292,7 @@ private enum OTABulkOperationQueueTestDriver {
         // Update requests get one reissue before being marked failed — the
         // retry succeeds here, simulating the response having arrived late.
         let recorder = Recorder()
+        let timers = FirstTimerFiresImmediately()
         var sendCount = 0
         let queue = OTABulkOperationQueue(
             sender: { topic, payload in
@@ -274,7 +303,7 @@ private enum OTABulkOperationQueueTestDriver {
             },
             onCompletion: { summary in recorder.summaries.append(summary) },
             updateTimeout: .milliseconds(20),
-            sleep: { try await Task.sleep(for: $0) }
+            sleep: { try await timers.sleep($0) }
         )
 
         queue.enqueue(["a"], kind: .update)

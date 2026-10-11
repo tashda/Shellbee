@@ -4,10 +4,20 @@ import XCTest
 @MainActor
 final class NotificationPreferencesTests: XCTestCase {
 
+    private static let defaultsKeys = [
+        "notificationPreferences.enabledCategories",
+        "notificationPreferences.followLogLevelOverride",
+        "notificationPreferences.mutedBridgeIDs"
+    ]
+
     override func setUp() async throws {
         try await super.setUp()
-        UserDefaults.standard.removeObject(forKey: "notificationPreferences.enabledCategories")
-        UserDefaults.standard.removeObject(forKey: "notificationPreferences.followLogLevelOverride")
+        Self.defaultsKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
+    }
+
+    override func tearDown() async throws {
+        Self.defaultsKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
+        try await super.tearDown()
     }
 
     @MainActor

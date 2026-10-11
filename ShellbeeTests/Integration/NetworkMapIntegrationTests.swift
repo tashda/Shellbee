@@ -25,7 +25,9 @@ final class NetworkMapIntegrationTests: XCTestCase, @unchecked Sendable {
     @MainActor
     private func fetchNetworkMap(port: Int, token: String) async throws -> NetworkTopology {
         guard await MockBridgeProbe.isReachable(host: "localhost", port: port) else {
-            throw XCTSkip("Mock bridge is not reachable on port \(port)")
+            throw RequiredMockBridgeError.unavailable(
+                "Mock bridge not reachable at localhost:\(port) — run 'docker compose up -d'."
+            )
         }
         let config = ConnectionConfig(
             host: "localhost",

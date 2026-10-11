@@ -182,6 +182,8 @@ final class AppStoreTests: XCTestCase, @unchecked Sendable {
             store.apply(.logMessage(makeLogMessage(msg: "msg\(i)")))
         }
         XCTAssertFalse(store.logEntries.contains { $0.message == "msg0" })
+        XCTAssertEqual(store.logEntries.first?.message, "msg1000")
+        XCTAssertEqual(store.logEntries.count, AppStore.logLimit)
     }
 
     // MARK: - bridgeEvent → log
@@ -190,14 +192,14 @@ final class AppStoreTests: XCTestCase, @unchecked Sendable {
     func testDeviceJoinedCreatesLogEntry() {
         store.apply(.bridgeEvent(BridgeDeviceEvent(type: "device_joined",
             data: .object(["friendly_name": .string("NewDev"), "ieee_address": .string("0x1")]))))
-        XCTAssertTrue(store.logEntries.contains { $0.category == .deviceJoined })
+        XCTAssertEqual(store.logEntries.filter { $0.category == .deviceJoined }.count, 1)
     }
 
     @MainActor
     func testDeviceLeaveCreatesLogEntry() {
         store.apply(.bridgeEvent(BridgeDeviceEvent(type: "device_leave",
             data: .object(["friendly_name": .string("OldDev"), "ieee_address": .string("0x2")]))))
-        XCTAssertTrue(store.logEntries.contains { $0.category == .deviceLeave })
+        XCTAssertEqual(store.logEntries.filter { $0.category == .deviceLeave }.count, 1)
     }
 
     // MARK: - OTA startOTAUpdate / startOTACheck
@@ -276,6 +278,7 @@ final class AppStoreTests: XCTestCase, @unchecked Sendable {
     func testTouchlinkScanResultPopulatesDevices() {
         store.apply(.touchlinkScanResult([TouchlinkDevice(ieeeAddress: "0xABC", channel: 15)]))
         XCTAssertEqual(store.touchlinkDevices.count, 1)
+        XCTAssertEqual(store.touchlinkDevices.first?.ieeeAddress, "0xABC")
     }
 
     // MARK: - operationError
@@ -285,7 +288,9 @@ final class AppStoreTests: XCTestCase, @unchecked Sendable {
         let err = Z2MOperationError(id: UUID(), topic: "bridge/response/device/rename",
                                     message: "not found", timestamp: .now)
         store.apply(.operationError(err))
-        XCTAssertFalse(store.operationErrors.isEmpty)
+        XCTAssertEqual(store.operationErrors.count, 1)
+        XCTAssertEqual(store.operationErrors.first?.message, "not found")
+        XCTAssertEqual(store.operationErrors.first?.topic, "bridge/response/device/rename")
     }
 
     // MARK: - Helpers

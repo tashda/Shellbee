@@ -69,6 +69,7 @@ final class ConnectionHistoryTests: XCTestCase {
             h.add(makeConfig(host: "host\(i)"))
         }
         XCTAssertFalse(h.connections.contains { $0.host == "host1" })
+        XCTAssertEqual(h.connections.first?.host, "host11")
     }
 
     // MARK: - remove
@@ -90,7 +91,7 @@ final class ConnectionHistoryTests: XCTestCase {
         h.add(makeConfig(host: "a"))
         h.add(makeConfig(host: "b"))
         h.remove(at: IndexSet(integer: 0))
-        XCTAssertEqual(h.connections.count, 1)
+        XCTAssertEqual(h.connections.map(\.host), ["a"])
     }
 
     @MainActor
@@ -118,6 +119,7 @@ final class ConnectionHistoryTests: XCTestCase {
         h.add(cfg)
         cfg.authToken = "newtoken"
         h.update(cfg)
+        XCTAssertEqual(h.connections.count, 1)
         XCTAssertEqual(h.connections.first?.authToken, "newtoken")
     }
 
@@ -153,10 +155,12 @@ final class ConnectionHistoryTests: XCTestCase {
         XCTAssertEqual(history.connections.first?.authToken, "legacy-secret")
 
         let migratedData = try XCTUnwrap(UserDefaults.standard.data(forKey: "connectionHistory"))
-        let json = try JSONSerialization.jsonObject(with: migratedData) as? [[String: Any]]
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: migratedData) as? [[String: Any]])
+        let first = try XCTUnwrap(json.first)
 
-        XCTAssertNil(json?.first?["authToken"])
-        XCTAssertNil(json?.first?["auth_token"])
+        XCTAssertEqual(first["host"] as? String, "legacy")
+        XCTAssertNil(first["authToken"])
+        XCTAssertNil(first["auth_token"])
     }
 
     // MARK: - Helpers

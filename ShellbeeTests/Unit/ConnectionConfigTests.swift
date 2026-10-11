@@ -56,7 +56,7 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
     @MainActor
     func testAuthToken() {
         let cfg = config(host: "h", port: 8080, authToken: "secret123")
-        XCTAssertTrue(cfg.webSocketURL?.absoluteString.contains("token=secret123") == true)
+        XCTAssertEqual(cfg.webSocketURL?.absoluteString, "ws://h:8080/api?token=secret123")
     }
 
     @MainActor
@@ -97,10 +97,11 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
         cfg.save()
 
         let data = try XCTUnwrap(UserDefaults.standard.data(forKey: "lastSuccessfulConnectionConfig"))
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
-        XCTAssertNil(json?["authToken"])
-        XCTAssertNil(json?["auth_token"])
+        XCTAssertEqual(json["host"] as? String, "stored.host")
+        XCTAssertNil(json["authToken"])
+        XCTAssertNil(json["auth_token"])
     }
 
     @MainActor
@@ -113,10 +114,11 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(loaded.authToken, "legacy-token")
 
         let migratedData = try XCTUnwrap(UserDefaults.standard.data(forKey: "lastSuccessfulConnectionConfig"))
-        let json = try JSONSerialization.jsonObject(with: migratedData) as? [String: Any]
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: migratedData) as? [String: Any])
 
-        XCTAssertNil(json?["authToken"])
-        XCTAssertNil(json?["auth_token"])
+        XCTAssertEqual(json["host"] as? String, "legacy.host")
+        XCTAssertNil(json["authToken"])
+        XCTAssertNil(json["auth_token"])
     }
 
     @MainActor
@@ -235,16 +237,15 @@ final class ConnectionConfigTests: XCTestCase, @unchecked Sendable {
     }
 
     @MainActor
-    func testLegacySnapshotMintsIDOnLoad() {
+    func testLegacySnapshotMintsIDOnLoad() throws {
         let legacyJSON = #"{"host":"legacy.local","port":8080,"useTLS":false,"basePath":"/","name":"Legacy","allowInvalidCertificates":false}"#
         let data = legacyJSON.data(using: .utf8)!
         UserDefaults.standard.set(data, forKey: "lastSuccessfulConnectionConfig")
         defer { UserDefaults.standard.removeObject(forKey: "lastSuccessfulConnectionConfig") }
 
-        let loaded = ConnectionConfig.load()
-        XCTAssertNotNil(loaded)
-        XCTAssertEqual(loaded?.host, "legacy.local")
-        XCTAssertEqual(loaded?.name, "Legacy")
+        let loaded = try XCTUnwrap(ConnectionConfig.load())
+        XCTAssertEqual(loaded.host, "legacy.local")
+        XCTAssertEqual(loaded.name, "Legacy")
     }
 
     // MARK: - Helpers

@@ -55,6 +55,8 @@ final class CommandPaletteModelTests: XCTestCase {
     }
 
     func testNetworkMapCommandsAreHiddenWhenUnsupported() {
+        XCTAssertTrue(makeModel(includesNetworkMap: true).items.contains { $0.category == .networkMap })
+
         let model = makeModel(includesNetworkMap: false)
 
         XCTAssertFalse(model.items.contains { $0.category == .networkMap })

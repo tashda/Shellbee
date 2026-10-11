@@ -55,7 +55,7 @@ final class MultiBridgeAggregationTests: XCTestCase {
     func testLogEntriesAreSortedNewestFirstAndAttributed() async {
         let mainID = UUID()
         let labID = UUID()
-        let now = Date()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
         let snapshots = [
             snapshot(id: mainID, name: "Main", logEntries: [
                 makeLog(message: "A_old", at: now.addingTimeInterval(-60)),

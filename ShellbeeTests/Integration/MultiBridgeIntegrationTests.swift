@@ -14,7 +14,8 @@ import XCTest
 /// device lists do not bleed into each other (the secondary seeder's
 /// `FIXTURE_PREFIX=Lab` makes friendly names visibly distinct).
 ///
-/// If either bridge is unreachable, every test in this file is skipped.
+/// If either bridge is unreachable, every test in this file fails (a dead
+/// bridge must never read as a pass).
 final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
 
     static let primaryHost = "localhost"
@@ -40,10 +41,10 @@ final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
         async let secondaryInfo = collectBridgeInfo(for: secondaryConfig(), timeout: 15)
 
         let (a, b) = try await (primaryInfo, secondaryInfo)
-        XCTAssertNotNil(a, "primary bridge did not deliver bridge/info")
-        XCTAssertNotNil(b, "secondary bridge did not deliver bridge/info")
-        XCTAssertFalse(a?.version.isEmpty ?? true)
-        XCTAssertFalse(b?.version.isEmpty ?? true)
+        let primaryReceived = try XCTUnwrap(a, "primary bridge did not deliver bridge/info")
+        let secondaryReceived = try XCTUnwrap(b, "secondary bridge did not deliver bridge/info")
+        XCTAssertFalse(primaryReceived.version.isEmpty)
+        XCTAssertFalse(secondaryReceived.version.isEmpty)
     }
 
     /// Devices from each bridge land in that bridge's own store and do
