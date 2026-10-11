@@ -97,7 +97,7 @@ extension XCUIApplication {
     /// row in a hidden tab (reported with an off-screen frame).
     func visibleCell(containing text: String, timeout: TimeInterval = 15) -> XCUIElement {
         let query = cells.containing(.staticText, identifier: text)
-        _ = query.firstMatch.waitForExistence(timeout: timeout)
+        _ = query.firstMatch.waitForExistence(timeout: timeout) // lint-allow-vacuous: callers assert on the returned cell
         return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
     }
 

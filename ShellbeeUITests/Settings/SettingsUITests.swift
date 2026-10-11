@@ -113,8 +113,8 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     func testMQTTSettingsHasServerField() {
         openSettingsScreen("MQTT")
-        _ = app.cells.matching(NSPredicate(format: "label CONTAINS 'Server'")).firstMatch
-            .waitForExistence(timeout: 5)
+        app.navigationBars["MQTT"].assertExists(timeout: 5)
+        app.staticTexts["Server URL"].firstMatch.assertExists(timeout: 5)
     }
 
     // MARK: - Adapter (Serial) settings
@@ -139,31 +139,29 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     func testHomeAssistantToggleExists() {
         openSettingsScreen("Home Assistant")
-        let toggle = app.switches.firstMatch
-        _ = toggle.waitForExistence(timeout: 5)
+        app.navigationBars["Home Assistant"].assertExists(timeout: 5)
+        app.switches.firstMatch.assertExists(timeout: 5)
     }
 
     // MARK: - Availability
 
     func testAvailabilitySettingsOpens() {
         openSettingsScreen("Availability")
-        _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+        app.navigationBars["Availability"].assertExists(timeout: 5)
     }
 
     func testAvailabilityTrackingToggle() {
         openSettingsScreen("Availability")
-        let toggle = app.switches.firstMatch
-        if toggle.waitForExistence(timeout: 5) {
-            // Verify the toggle is interactive
-            XCTAssertTrue(toggle.isEnabled)
-        }
+        let toggle = app.switches["Track Device Availability"].firstMatch
+        toggle.assertExists(timeout: 5)
+        XCTAssertTrue(toggle.isEnabled, "The availability tracking toggle isn't interactive")
     }
 
     // MARK: - OTA settings
 
     func testOTASettingsOpens() {
         openSettingsScreen("OTA Updates")
-        _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+        app.navigationBars["OTA Updates"].assertExists(timeout: 5)
     }
 
     // Behavior: Automatic Checks is presented as a positive toggle
@@ -217,7 +215,10 @@ final class SettingsUITests: ShellbeeUITestCase {
         openSettingsScreen("Home Assistant")
         // The toggles are inside the conditional "Compatibility" section,
         // only visible when HA is enabled. We just assert the negative —
-        // the verb-prefixed labels must not exist anywhere on the screen.
+        // the verb-prefixed labels must not exist anywhere on the screen —
+        // once the page has rendered, so absence means something.
+        app.navigationBars["Home Assistant"].assertExists(timeout: 5)
+        app.switches.firstMatch.assertExists(timeout: 5)
         XCTAssertFalse(app.staticTexts["Use Legacy Action Sensor"].exists)
         XCTAssertFalse(app.staticTexts["Use Event Entities"].exists)
     }
@@ -288,40 +289,38 @@ final class SettingsUITests: ShellbeeUITestCase {
     func testAvailabilityTimeoutRowsAreUnqualified() {
         openSettingsScreen("Availability")
         // Enable tracking so the timeout sections appear.
-        let toggle = app.switches.firstMatch
-        if toggle.waitForExistence(timeout: 5), toggle.value as? String == "0" {
-            toggle.tap()
-        }
-        // Two "Timeout" rows are expected (one per section); legacy label gone.
-        XCTAssertFalse(app.staticTexts["Offline Timeout"].exists)
+        let toggle = app.switches["Track Device Availability"].firstMatch
+        toggle.assertExists(timeout: 5)
+        if toggle.value as? String == "0" { toggle.tap() }
+        let mains = app.staticTexts["Mains-Powered Devices"].firstMatch
+        XCTAssertTrue(mains.waitForExistence(timeout: 5), "Enabling tracking didn't show the timeout sections")
+        // The row reads "Timeout, <value>"; the legacy qualified label is gone.
+        let timeout = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Timeout")).firstMatch
+        XCTAssertTrue(timeout.waitForExistence(timeout: 5), "No unqualified Timeout row")
+        XCTAssertFalse(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Offline Timeout")).firstMatch.exists)
     }
 
     // MARK: - Health
 
     func testHealthSettingsOpens() {
         openSettingsScreen("Health Checks")
-        _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+        app.navigationBars["Health Checks"].assertExists(timeout: 5)
     }
 
     // MARK: - Network
 
     func testNetworkSettingsOpens() {
         openSettingsScreen("Network")
-        _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+        app.navigationBars["Network & Hardware"].assertExists(timeout: 5)
     }
 
     // MARK: - App appearance
 
-    func testAppGeneralOpens() {
-        // Scroll down if needed to find App section
-        app.swipeUp()
-        let appearanceRow = app.cells.matching(
-            NSPredicate(format: "label CONTAINS 'Appearance'")
-        ).firstMatch
-        if appearanceRow.waitForExistence(timeout: 5) {
-            appearanceRow.tap()
-            _ = app.pickers.firstMatch.waitForExistence(timeout: 5)
-        }
+    func testAppearanceOpens() {
+        openSettingsScreen("Appearance")
+        app.navigationBars["Appearance"].assertExists(timeout: 5)
     }
 
     // MARK: - Logs
@@ -339,48 +338,55 @@ final class SettingsUITests: ShellbeeUITestCase {
 
     func testTouchlinkOpens() {
         openSettingsScreen("Touchlink")
-        _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+        app.navigationBars["Touchlink"].assertExists(timeout: 5)
     }
 
     func testTouchlinkScanButton() {
         openSettingsScreen("Touchlink")
-        let scanBtn = app.buttons["Scan"].firstMatch
-        _ = scanBtn.waitForExistence(timeout: 5)
+        app.buttons["Scan"].firstMatch.assertExists(timeout: 5)
     }
 
     // MARK: - About
 
     func testAboutOpens() {
         openSettingsScreen("About")
-        _ = app.navigationBars.element(boundBy: 1).waitForExistence(timeout: 5)
+        app.navigationBars["About"].assertExists(timeout: 5)
     }
 
-    func testAboutShowsBridgeVersion() {
+    func testAboutShowsAppVersion() {
         openSettingsScreen("About")
-        let versionCell = app.cells.matching(
-            NSPredicate(format: "label CONTAINS 'Version'")
-        ).firstMatch
-        _ = versionCell.waitForExistence(timeout: 5)
+        let version = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Version")).firstMatch
+        XCTAssertTrue(version.waitForExistence(timeout: 5), "About shows no app version")
     }
 
     // MARK: - Discard alert
 
+    /// A pending change turns Back into Cancel, which asks before throwing
+    /// the change away. Keep Editing stays on the page with the change;
+    /// Discard Changes leaves it.
     func testDiscardAlertOnNavigationAwayWithChanges() {
         openSettingsScreen("General")
-        // Modify a setting
-        let outputPicker = app.cells.matching(
-            NSPredicate(format: "label CONTAINS 'Output'")
-        ).firstMatch
-        if outputPicker.waitForExistence(timeout: 3) {
-            outputPicker.tap()
-        }
-        // Navigate back without applying
-        app.navigationBars.buttons.firstMatch.tapWhenReady()
-        // A discard alert may appear
-        let alert = app.alerts.firstMatch
-        if alert.waitForExistence(timeout: 3) {
-            alert.buttons.firstMatch.tap()
-        }
+        let toggle = app.switches["Show Elapsed Time"].firstMatch
+        toggle.assertExists(timeout: 5)
+        let original = toggle.value as? String
+        toggle.tap()
+        XCTAssertNotEqual(toggle.value as? String, original, "The toggle didn't change")
+
+        let cancel = app.buttons["Cancel"].firstMatch
+        cancel.tapWhenReady(timeout: 5)
+        let alert = app.alerts["Discard Unsaved Changes?"]
+        alert.assertExists(timeout: 5)
+        alert.buttons["Keep Editing"].tap()
+        XCTAssertTrue(alert.waitForNonExistence(timeout: 5))
+        app.navigationBars["General"].assertExists(timeout: 5)
+        XCTAssertNotEqual(toggle.value as? String, original, "Keep Editing lost the pending change")
+
+        cancel.tapWhenReady(timeout: 5)
+        alert.assertExists(timeout: 5)
+        alert.buttons["Discard Changes"].tap()
+        XCTAssertTrue(app.navigationBars["General"].waitForNonExistence(timeout: 5),
+                      "Discard Changes didn't leave the page")
     }
 
     // MARK: - Helpers
@@ -508,7 +514,7 @@ final class IconGalleryUITests: ShellbeeUITestCase {
 
         XCTAssertTrue(app.navigationBars["Icon Gallery"].waitForExistence(timeout: 5))
         app.segmentedControls.buttons["Symbols"].firstMatch.tapWhenReady()
-        XCTAssertTrue(app.staticTexts["shellbee.home"].exists)
+        XCTAssertTrue(app.staticTexts["shellbee.home"].waitForExistence(timeout: 5))
 
         app.segmentedControls.buttons["Instruments"].firstMatch.tapWhenReady()
         XCTAssertTrue(app.staticTexts["Health"].waitForExistence(timeout: 3))

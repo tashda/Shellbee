@@ -61,6 +61,18 @@ for class in $UI_CLASSES; do
   fi
 done
 
+# 4. Tests that can't fail. A discarded wait asserts nothing, and an
+# XCTSkip that isn't thrown does nothing, so either one turns a broken
+# screen into a green run. Use assertExists / XCTAssertTrue, or `throw XCTSkip`.
+echo "==> Checking tests for discarded waits and unthrown XCTSkip"
+VACUOUS_HITS=$(grep -RnE '_ = .*(waitForExistence|waitForNonExistence)\(|(^|[^w] )XCTSkip\(' ShellbeeUITests/ ShellbeeTests/ --include='*.swift' \
+  | grep -vE 'throw[[:space:]]+XCTSkip|lint-allow-vacuous' | not_a_comment || true)
+if [[ -n "$VACUOUS_HITS" ]]; then
+  echo "::error::A test discards a wait result or builds an XCTSkip without throwing it, so it can't fail. Assert the result, or annotate '// lint-allow-vacuous' where discarding is the point."
+  echo "$VACUOUS_HITS"
+  FAIL=1
+fi
+
 if [[ "$FAIL" == "0" ]]; then
   echo "==> Lint passed."
 fi

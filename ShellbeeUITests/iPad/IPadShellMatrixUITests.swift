@@ -31,10 +31,14 @@ final class IPadShellMatrixUITests: XCTestCase {
             .assertExists(timeout: 15)
 
         openSidebarSection("Activity", expectedTitle: "Activity")
-        XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15), "Activity did not load any rows")
+        // The sidebar's own rows are cells too, so look for an event card.
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Bridge: ")).firstMatch
+            .assertExists(timeout: 15)
 
         openSidebarSection("Network Map", expectedTitle: "Network Map")
-        app.staticTexts["Network Map"].firstMatch.assertExists(timeout: 15)
+        // The title and the sidebar row both say "Network Map"; the refresh
+        // control only exists once the map screen has rendered.
+        app.buttons["Refresh Network Map"].firstMatch.assertExists(timeout: 15)
 
         openSidebarSection("Settings", expectedTitle: "Settings")
         app.cells.containing(.staticText, identifier: "Device Library")
@@ -156,7 +160,7 @@ final class IPadShellMatrixUITests: XCTestCase {
     @MainActor
     private func visibleCell(containing text: String) -> XCUIElement {
         let query = app.cells.containing(.staticText, identifier: text)
-        _ = query.firstMatch.waitForExistence(timeout: 15)
+        _ = query.firstMatch.waitForExistence(timeout: 15) // lint-allow-vacuous: callers assert on the returned cell
         return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
     }
 }

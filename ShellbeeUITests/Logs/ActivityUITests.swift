@@ -31,6 +31,8 @@ final class ActivityUITests: ShellbeeUITestCase {
     func testModeSwitchesToTheRawLog() {
         app.activityModePicker.tapWhenReady(timeout: 5)
         app.buttons["Log"].firstMatch.tapWhenReady(timeout: 5)
+        XCTAssertTrue(app.activityModePicker.label.contains("Log"),
+                      "The picker doesn't say Log mode is showing")
         XCTAssertFalse(events.firstMatch.waitForExistence(timeout: 2),
                        "Activity cards are still showing in Log mode")
 
