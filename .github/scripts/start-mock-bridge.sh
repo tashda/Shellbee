@@ -37,7 +37,7 @@ VENV="$LOG_DIR/z2m-venv"
 python3 -m venv "$VENV"
 PYTHON="$VENV/bin/python"
 "$PYTHON" -m pip install --upgrade --quiet pip
-"$PYTHON" -m pip install --quiet paho-mqtt websockets
+"$PYTHON" -m pip install --quiet -r "$REPO_ROOT/docker/seeder/requirements.txt" websockets
 
 write_mosq_conf() {
   local port="$1" path="$2"
@@ -85,10 +85,19 @@ echo "==> [primary] Starting seeder"
   cd "$REPO_ROOT/docker/seeder"
   MQTT_HOST=localhost MQTT_PORT=1883 Z2M_TOPIC=zigbee2mqtt \
   MODE=continuous SEED_INTERVAL="${MOCK_SEED_INTERVAL:-10}" \
-  DRIFT_ON_CLIENT_CONNECT="${DRIFT_ON_CLIENT_CONNECT:-1}" \
+  DRIFT_ON_CLIENT_CONNECT="${DRIFT_ON_CLIENT_CONNECT:-1}" CONTROL_PORT=8765 \
   nohup "$PYTHON" -u seeder.py >"$LOG_DIR/z2m-seeder.log" 2>&1 &
   echo $! > "$LOG_DIR/z2m-seeder.pid"
 )
+
+# UI tests put the mock in a known state through the test center instead of
+# hoping the drift produced it, so it has to be up before any test runs.
+echo "==> [primary] Waiting for the test center on 8765"
+wait_port 8765 30 || {
+  echo "test center did not come up on 8765" >&2
+  echo "--- seeder log ---" >&2; cat "$LOG_DIR/z2m-seeder.log" >&2 || true
+  exit 1
+}
 
 echo "==> [primary] Waiting for WebSocket on 8080"
 wait_port 8080 30 || {
@@ -126,7 +135,7 @@ if [[ "$DUAL" == "1" ]]; then
     MQTT_HOST=localhost MQTT_PORT=1884 Z2M_TOPIC=zigbee2mqtt \
     MODE=continuous SEED_INTERVAL="${MOCK_SEED_INTERVAL:-10}" \
     DRIFT_ON_CLIENT_CONNECT="${DRIFT_ON_CLIENT_CONNECT:-1}" \
-    FIXTURE_PREFIX="$SECONDARY_FIXTURE_PREFIX" FIXTURE_IEEE_SALT=Lab \
+    FIXTURE_PREFIX="$SECONDARY_FIXTURE_PREFIX" FIXTURE_IEEE_SALT=Lab CONTROL_PORT=8766 \
     nohup "$PYTHON" -u seeder.py >"$LOG_DIR/z2m-seeder-2.log" 2>&1 &
     echo $! > "$LOG_DIR/z2m-seeder-2.pid"
   )

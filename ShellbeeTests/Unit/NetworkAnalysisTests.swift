@@ -140,7 +140,7 @@ final class NetworkAnalysisTests: XCTestCase {
     @MainActor
 
     func testInterviewingWhenFlagSet() {
-        var d = DeviceFixture.sensor()
+        let d = DeviceFixture.sensor()
         // Create a device that is interviewing
         let interviewing = Device(
             ieeeAddress: d.ieeeAddress, type: d.type, networkAddress: d.networkAddress,

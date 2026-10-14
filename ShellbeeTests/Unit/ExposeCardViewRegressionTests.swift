@@ -59,6 +59,7 @@ final class ExposeCardViewRegressionTests: XCTestCase {
         let writable = (device.definition?.exposes ?? []).flattenedLeaves
             .filter(\.isWritable)
             .compactMap(\.property)
+        XCTAssertFalse(writable.isEmpty, "Fixture must have writable exposes")
         for property in writable {
             XCTAssertTrue(shown.contains(property), "Writable \(property) is not shown")
         }

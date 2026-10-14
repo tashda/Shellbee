@@ -22,14 +22,9 @@ final class ConnectionFlowUITests: XCTestCase {
     // MARK: - Setup screen appears on fresh launch
 
     func testConnectionSetupAppearsOnFreshLaunch() {
-        // Should land on the connection overview / setup screen
-        let addButton = app.buttons["Add Server"].firstMatch
-            .waitForExistence(timeout: 5)
-        // If we get the main tabs instead (server was saved), skip
-        if app.tabBars.firstMatch.waitForExistence(timeout: 2) {
-            XCTSkip("A saved server was found — reset app state to test this flow")
-        }
-        XCTAssertTrue(addButton, "Expected connection setup screen on fresh launch")
+        app.buttons["Add Server"].firstMatch.assertExists(timeout: 10)
+        XCTAssertFalse(app.tabBars.firstMatch.exists,
+                       "The main tabs are showing although the saved server was cleared")
     }
 
     // MARK: - Add server and connect
@@ -37,11 +32,7 @@ final class ConnectionFlowUITests: XCTestCase {
     // Behavior: from the empty setup screen, Add Server opens the editor;
     // filling in localhost:8080 + the mock bridge's auth token and tapping
     // Connect should establish a session and show the main tab bar.
-    func testAddServerAndConnect() throws {
-        if app.tabBars.firstMatch.waitForExistence(timeout: 2) {
-            XCTSkip("Already connected — test only valid on fresh install")
-        }
-
+    func testAddServerAndConnect() {
         app.buttons["Add Server"].firstMatch.tapWhenReady()
 
         // SettingsTextField renders TextFields whose accessibility label is
@@ -72,24 +63,11 @@ final class ConnectionFlowUITests: XCTestCase {
     // Behavior: the connection editor exposes a Protocol chooser (HTTP /
     // HTTPS). With `.pickerStyle(.automatic)` inside a Form, iOS renders
     // it as a menu button whose accessibility label is "Protocol".
-    func testConnectionEditorShowsProtocolPicker() throws {
-        if app.tabBars.firstMatch.waitForExistence(timeout: 2) { XCTSkip("Already connected") }
+    func testConnectionEditorShowsProtocolPicker() {
         app.buttons["Add Server"].firstMatch.tapWhenReady()
         let matches = app.staticTexts["Protocol"].firstMatch.waitForExistence(timeout: 5)
             || app.buttons["Protocol"].firstMatch.waitForExistence(timeout: 1)
             || app.segmentedControls.firstMatch.waitForExistence(timeout: 1)
         XCTAssertTrue(matches, "Protocol picker not found in connection editor")
     }
-
-    // MARK: - Saved connections
-
-    func testSavedConnectionAppearsInList() throws {
-        if app.tabBars.firstMatch.waitForExistence(timeout: 2) { XCTSkip("Already connected") }
-        // If the history list has any entries, the first one should be tappable
-        let firstHistory = app.cells.firstMatch
-        if firstHistory.waitForExistence(timeout: 3) {
-            XCTAssertTrue(firstHistory.isHittable)
-        }
-    }
-
 }

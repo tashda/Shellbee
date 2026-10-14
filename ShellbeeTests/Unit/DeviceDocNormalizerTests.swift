@@ -28,12 +28,17 @@ final class DeviceDocNormalizerTests: XCTestCase {
         let normalized = DeviceDocNormalizer.normalize(parsed: parsed, device: DeviceFixture.remote())
 
         XCTAssertNotNil(normalized.pairing, "Pairing subsection should be promoted to a guide")
-        XCTAssertFalse(normalized.pairing?.summary.isEmpty == true,
-                       "Pairing summary should be the paragraph text")
+        XCTAssertTrue(normalized.pairing?.summary.contains {
+            if case .text(let text) = $0 { return text.contains("Press the pair button 4 times") }
+            return false
+        } == true, "Pairing summary should be the paragraph text")
         XCTAssertTrue(normalized.pairing?.primarySteps.isEmpty == true,
                       "Paragraph alone should not count as a step — only real stepLists do")
-        XCTAssertFalse(normalized.notesSections.isEmpty,
+        XCTAssertEqual(normalized.notesSections.count, 1,
                        "Battery subsection should remain in notesSections")
+        XCTAssertFalse(normalized.notesSections.contains { section in
+            section.blocks.contains { if case .subsection(let title, _) = $0 { return title == "Pairing" }; return false }
+        }, "Pairing subsection should no longer be left in notes")
     }
 
     func testNormalizesTopLevelPairingAlternatives() {
@@ -125,6 +130,7 @@ final class DeviceDocNormalizerTests: XCTestCase {
     // corpus on disk: the iOS simulator cannot access `/Users/…` on the
     // host, so a path-based test always skipped in CI.
     func testDiverseCuratedDocsParseAndNormalize() {
+        XCTAssertFalse(Self.curatedDocSamples.isEmpty)
         for sample in Self.curatedDocSamples {
             let parsed = DocParser.parse(sample.markdown)
             let device = DeviceFixture.light(model: sample.model)

@@ -19,6 +19,7 @@ final class CardGalleryTests: XCTestCase {
 
     @MainActor
     func testGalleryControlContextsMatchCardCategories() {
+        XCTAssertFalse(CardGalleryCatalog.samples.isEmpty)
         for sample in CardGalleryCatalog.samples {
             let device = sample.device
             let state = sample.state
@@ -44,8 +45,8 @@ final class CardGalleryTests: XCTestCase {
     }
 
     @MainActor
-    func testGallerySensorKeepsWritableSettingsAlongsideReadings() {
-        let sensor = CardGalleryCatalog.samples.first { $0.device.category == .sensor }!
+    func testGallerySensorKeepsWritableSettingsAlongsideReadings() throws {
+        let sensor = try XCTUnwrap(CardGalleryCatalog.samples.first { $0.device.category == .sensor })
         let readingProperties = SensorSections.readingProperties(device: sensor.device, state: sensor.state)
         let settings = DeviceSettingsSections.exposes(for: sensor.device, claimedProperties: readingProperties)
         let settingsProperties = Set(settings.compactMap(\.property))

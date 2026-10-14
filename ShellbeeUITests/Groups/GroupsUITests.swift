@@ -6,7 +6,7 @@ final class GroupsUITests: ShellbeeUITestCase {
         super.setUp()
         waitForMainTab()
         app.tapGroupsTab()
-        _ = app.cells.firstMatch.waitForExistence(timeout: 15)
+        app.cells.firstMatch.assertExists(timeout: 15)
     }
 
     // MARK: - List
@@ -74,26 +74,30 @@ final class GroupsUITests: ShellbeeUITestCase {
     // AddGroupSheet dismisses via the .presentationDragIndicator(.visible)
     // grabber at the top of the sheet — swipe the sheet down past its
     // medium detent, dismissing it.
-    private func dismissSheet() {
-        // Dismiss the "Create Group" sheet by swiping it down.
-        // The sheet's nav bar is the last (topmost modal) navigation bar.
+    private func dismissSheet(file: StaticString = #filePath, line: UInt = #line) {
         let navBar = app.navigationBars["Create Group"].firstMatch
-        if navBar.waitForExistence(timeout: 2) {
-            navBar.swipeDown(velocity: .fast)
-        } else {
-            app.swipeDown(velocity: .fast)
-        }
-        _ = app.navigationBars["Create Group"].waitForNonExistence(timeout: 3)
+        navBar.assertExists(timeout: 5, file: file, line: line)
+        dragSheetAway(from: navBar)
+        XCTAssertTrue(navBar.waitForNonExistence(timeout: 5),
+                      "The Create Group sheet did not dismiss", file: file, line: line)
+    }
+
+    /// Pulls a sheet down by its navigation bar. Dragging by hand, as the
+    /// Permit Join test does, dismisses where a flick can stop short of the
+    /// sheet's dismiss threshold.
+    private func dragSheetAway(from navBar: XCUIElement) {
+        navBar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.1,
+                   thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
     }
 
     // MARK: - Sort
 
     func testSortMenuOpens() {
-        let sortBtn = app.buttons["Sort"].firstMatch
-        XCTAssertTrue(sortBtn.waitForExistence(timeout: 5))
-        sortBtn.tap()
-        _ = app.buttons["Name"].firstMatch.waitForExistence(timeout: 3)
-        app.tap()
+        app.buttons["Sort"].firstMatch.tapWhenReady(timeout: 5)
+        for order in ["Name", "Members", "Group ID"] {
+            app.buttons[order].firstMatch.assertExists(timeout: 5)
+        }
     }
 
     // MARK: - Group detail
@@ -111,20 +115,18 @@ final class GroupsUITests: ShellbeeUITestCase {
 
     func testGroupDetailShowsAddButton() {
         app.cells.firstMatch.tapWhenReady()
-        _ = app.buttons["Groups"].firstMatch.waitForExistence(timeout: 5)
         let actionsBtn = app.buttons["Group Actions"].firstMatch
-        XCTAssertTrue(actionsBtn.waitForExistence(timeout: 5))
+        XCTAssertTrue(actionsBtn.waitForExistence(timeout: 5), "Group detail has no Group Actions menu")
     }
 
     func testGroupDetailAddMemberSheetOpens() {
         app.cells.firstMatch.tapWhenReady()
-        _ = app.buttons["Groups"].firstMatch.waitForExistence(timeout: 5)
-        app.buttons["Group Actions"].firstMatch.tapWhenReady()
-        if app.buttons["Add Member"].firstMatch.waitForExistence(timeout: 3) {
-            app.buttons["Add Member"].firstMatch.tap()
-        }
-        _ = app.sheets.firstMatch.waitForExistence(timeout: 5)
-        app.buttons["Cancel"].firstMatch.tap()
+        app.buttons["Group Actions"].firstMatch.tapWhenReady(timeout: 5)
+        app.buttons["Add Member"].firstMatch.tapWhenReady(timeout: 5)
+        let cancel = app.buttons["Cancel"].firstMatch
+        cancel.assertExists(timeout: 5)
+        cancel.tap()
+        XCTAssertTrue(cancel.waitForNonExistence(timeout: 5), "The Add Member sheet did not close")
     }
 
     // Behavior: Group Actions menu → "Save Scene" opens the AddSceneSheet
@@ -132,8 +134,7 @@ final class GroupsUITests: ShellbeeUITestCase {
     // indicator (no Cancel button by design).
     func testGroupDetailSaveSceneSheetOpens() {
         app.cells.firstMatch.tapWhenReady()
-        _ = app.buttons["Groups"].firstMatch.waitForExistence(timeout: 5)
-        app.buttons["Group Actions"].firstMatch.tapWhenReady()
+        app.buttons["Group Actions"].firstMatch.tapWhenReady(timeout: 5)
         let saveScene = app.buttons["Save Scene"].firstMatch
         XCTAssertTrue(saveScene.waitForExistence(timeout: 3),
                       "Save Scene action missing from Group Actions menu")
@@ -143,36 +144,31 @@ final class GroupsUITests: ShellbeeUITestCase {
                       "Save Scene sheet did not open")
         XCTAssertTrue(app.textFields.firstMatch.waitForExistence(timeout: 2),
                       "Scene Name text field not present")
-        saveSceneNav.swipeDown(velocity: .fast)
-        _ = saveSceneNav.waitForNonExistence(timeout: 3)
+        dragSheetAway(from: saveSceneNav)
+        XCTAssertTrue(saveSceneNav.waitForNonExistence(timeout: 5), "The Save Scene sheet did not dismiss")
     }
 
     func testGroupDetailScenesVisible() {
-        // "All Lights" group has scenes: Evening, Movie
+        // The seeder's "All Lights" group has the scenes Evening and Movie.
         let groupCell = app.cells.containing(.staticText, identifier: "All Lights").firstMatch
-        if groupCell.waitForExistence(timeout: 5) {
-            groupCell.tap()
-            _ = app.buttons["Groups"].firstMatch.waitForExistence(timeout: 5)
-            let eveningScene = app.staticTexts["Evening"].firstMatch
-            _ = eveningScene.waitForExistence(timeout: 5)
+        groupCell.tapWhenReady(timeout: 10)
+        for scene in ["Evening", "Movie"] {
+            let row = app.staticTexts[scene].firstMatch
+            row.scrollIntoView(in: app)
         }
     }
 
     // MARK: - Swipe actions
 
     func testSwipeGroupRevealRename() {
-        let cell = app.cells.firstMatch
-        cell.assertExists()
-        cell.swipeLeft()
-        _ = app.buttons["Rename"].firstMatch.waitForExistence(timeout: 3)
-        cell.swipeRight()
+        app.cells.firstMatch.swipeLeftFar()
+        app.buttons["Rename"].firstMatch.assertExists(timeout: 5)
     }
 
-    func testSwipeGroupRevealRemove() {
-        let cell = app.cells.firstMatch
-        cell.assertExists()
-        cell.swipeLeft()
-        _ = app.buttons["Remove"].firstMatch.waitForExistence(timeout: 3)
-        cell.swipeRight()
+    /// The destructive swipe action is labelled "Delete"; it opens a
+    /// confirmation rather than removing the group.
+    func testSwipeGroupRevealDelete() {
+        app.cells.firstMatch.swipeLeftFar()
+        app.buttons["Delete"].firstMatch.assertExists(timeout: 5)
     }
 }

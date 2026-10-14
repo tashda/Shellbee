@@ -110,6 +110,11 @@ final class HomeSnapshotTests: XCTestCase {
     func testLowBatteryCountAgreesWithStatusFilterAcrossThreshold() {
         let sensor = DeviceFixture.sensor()
         let threshold = DesignTokens.Threshold.lowBattery
+        let below = StateFixture.batteryLow(level: threshold - 1)
+        XCTAssertEqual(
+            makeSnapshot(devices: [sensor], states: [sensor.friendlyName: below]).lowBatteryDevices, 1,
+            "Just below the threshold counts as low"
+        )
         for level in [threshold - 1, threshold, threshold + 1] {
             let state = StateFixture.batteryLow(level: level)
             let snapshot = makeSnapshot(devices: [sensor], states: [sensor.friendlyName: state])
@@ -130,15 +135,15 @@ final class HomeSnapshotTests: XCTestCase {
     // Behavior: permitJoinRemaining is derived from the absolute
     // permitJoinEnd timestamp (ms since epoch). A future end returns
     // the seconds remaining; a past end clamps to 0; nil returns nil.
-    func testPermitJoinRemainingDerivation() {
+    func testPermitJoinRemainingDerivation() throws {
         let future = Int(Date().timeIntervalSince1970 * 1000) + 30_000
         let past = Int(Date().timeIntervalSince1970 * 1000) - 30_000
 
         let active = makeSnapshot(devices: [], states: [:],
                                   isPermitJoinActive: true, permitJoinEnd: future)
-        XCTAssertNotNil(active.permitJoinRemaining)
-        XCTAssertLessThanOrEqual(active.permitJoinRemaining ?? 0, 30)
-        XCTAssertGreaterThan(active.permitJoinRemaining ?? 0, 25)
+        let remaining = try XCTUnwrap(active.permitJoinRemaining)
+        XCTAssertLessThanOrEqual(remaining, 30)
+        XCTAssertGreaterThan(remaining, 25)
 
         let expired = makeSnapshot(devices: [], states: [:], permitJoinEnd: past)
         XCTAssertEqual(expired.permitJoinRemaining, 0)

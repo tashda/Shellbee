@@ -15,6 +15,7 @@ final class TouchlinkGuidePageTests: XCTestCase {
 
         XCTAssertEqual(pages.map { $0.title }, ["About Touchlink", "Support", "Factory reset device"])
         XCTAssertEqual(pages.first?.summary, "Intro")
+        guard pages.count == 3 else { return }
         XCTAssertEqual(pages[2].blocks.count, 2)
     }
 

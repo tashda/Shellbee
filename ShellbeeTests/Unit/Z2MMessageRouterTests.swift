@@ -62,7 +62,7 @@ final class Z2MMessageRouterTests: XCTestCase, @unchecked Sendable {
         let devices = [DeviceFixture.light(), DeviceFixture.sensor()]
         let data = FrameFixture.bridgeDevices(devices)
         guard case .devices(let list) = router.route(data) else { return XCTFail() }
-        XCTAssertEqual(list.count, 2)
+        XCTAssertEqual(list.map(\.friendlyName), devices.map(\.friendlyName))
     }
 
     // MARK: - bridge/groups
@@ -112,7 +112,8 @@ final class Z2MMessageRouterTests: XCTestCase, @unchecked Sendable {
 
     func testRoutesBridgeEventInterview() {
         let data = FrameFixture.bridgeEvent(type: "device_interview", friendlyName: "Dev")
-        guard case .bridgeEvent(_) = router.route(data) else { return XCTFail() }
+        guard case .bridgeEvent(let e) = router.route(data) else { return XCTFail() }
+        XCTAssertEqual(e.type, "device_interview")
     }
 
     // MARK: - bridge/health
@@ -127,7 +128,7 @@ final class Z2MMessageRouterTests: XCTestCase, @unchecked Sendable {
             "mqtt": ["connected": true, "queued": 0, "published": 100, "received": 200]
         ])
         guard case .bridgeHealth(let h) = router.route(data) else { return XCTFail() }
-        XCTAssertTrue(h.healthy == true)
+        XCTAssertEqual(h.healthy, true)
     }
 
     // MARK: - OTA
@@ -180,17 +181,17 @@ final class Z2MMessageRouterTests: XCTestCase, @unchecked Sendable {
             topic: "bridge/response/touchlink/scan",
             payload: ["status": "ok", "data": ["found": []]]
         )
-        guard case .touchlinkScanResult(_) = router.route(data) else { return XCTFail() }
+        guard case .touchlinkScanResult(let found) = router.route(data) else { return XCTFail() }
+        XCTAssertTrue(found.isEmpty)
     }
 
     @MainActor
 
     func testRoutesTouchlinkIdentifyDone() {
         let data = FrameFixture.bridgeResponse(topic: "bridge/response/touchlink/identify")
-        // Error path: the router returns .bridgeResponse for non-scan touchlink
-        // since these are handled via the default generic response path
-        let event = router.route(data)
-        XCTAssertNotNil(event)
+        guard case .touchlinkIdentifyDone = router.route(data) else {
+            return XCTFail("Expected .touchlinkIdentifyDone")
+        }
     }
 
     // MARK: - Device topics (dynamic routing)
@@ -233,7 +234,8 @@ final class Z2MMessageRouterTests: XCTestCase, @unchecked Sendable {
             topic: "bridge/response/device/configure",
             payload: ["status": "error", "error": "Device not found"]
         )
-        guard case .operationError(_) = router.route(data) else { return XCTFail() }
+        guard case .operationError(let error) = router.route(data) else { return XCTFail() }
+        XCTAssertEqual(error.message, "Device not found")
     }
 
     @MainActor

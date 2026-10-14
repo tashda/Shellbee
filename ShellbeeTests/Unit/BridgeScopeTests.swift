@@ -96,9 +96,9 @@ final class BridgeScopeTests: MultiBridgeTestCase {
         let scope = env.scope(for: cfg.id)
 
         scope.identifyDevice("Lamp")
-        let firstSize = scope.store.identifyInProgress.count
+        XCTAssertEqual(scope.store.identifyInProgress.count, 1)
         scope.identifyDevice("Lamp")
-        XCTAssertEqual(scope.store.identifyInProgress.count, firstSize,
+        XCTAssertEqual(scope.store.identifyInProgress.count, 1,
                        "Repeat identify while in progress is a no-op")
     }
 
@@ -144,7 +144,7 @@ final class BridgeScopeTests: MultiBridgeTestCase {
     }
 
     @MainActor
-    func testScopeIsConnectedReflectsSessionState() {
+    func testScopeIsConnectedReflectsSessionState() throws {
         let env = makeEnvironment()
         let cfg = makeConfig(name: "Main")
         env.connect(config: cfg)
@@ -153,8 +153,9 @@ final class BridgeScopeTests: MultiBridgeTestCase {
         // real WebSocket in the test harness, so isConnected may be false.
         // Important property here is that the scope reads the live session
         // value, not a cached one.
-        XCTAssertEqual(scope.isConnected, scope.session?.isConnected ?? false)
-        XCTAssertEqual(scope.connectionState, scope.session?.connectionState ?? .idle)
+        let session = try XCTUnwrap(scope.session)
+        XCTAssertEqual(scope.isConnected, session.isConnected)
+        XCTAssertEqual(scope.connectionState, session.connectionState)
     }
 
     @MainActor

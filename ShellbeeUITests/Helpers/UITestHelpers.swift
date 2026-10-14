@@ -97,7 +97,7 @@ extension XCUIApplication {
     /// row in a hidden tab (reported with an off-screen frame).
     func visibleCell(containing text: String, timeout: TimeInterval = 15) -> XCUIElement {
         let query = cells.containing(.staticText, identifier: text)
-        _ = query.firstMatch.waitForExistence(timeout: timeout)
+        _ = query.firstMatch.waitForExistence(timeout: timeout) // lint-allow-vacuous: callers assert on the returned cell
         return query.allElementsBoundByIndex.first(where: \.isHittable) ?? query.firstMatch
     }
 
@@ -155,6 +155,16 @@ extension XCUIElement {
             swipes += 1
         }
         XCTAssertTrue(exists && isHittable, "Never scrolled into view: \(self)", file: file, line: line)
+        // Hittable can still mean tucked under the tab bar, where a tap is
+        // refused. Nudge it into the upper part of the screen.
+        let screen = app.windows.firstMatch.frame
+        var nudges = 0
+        while frame.midY > screen.height * 0.7 && nudges < 3 {
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+            start.press(forDuration: 0.05, thenDragTo: end)
+            nudges += 1
+        }
     }
 
     /// A far-travel leading swipe that reliably reveals List trailing swipe

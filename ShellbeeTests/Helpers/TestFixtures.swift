@@ -264,7 +264,7 @@ enum DeviceFixture {
             ) : nil
 
         return Device(
-            ieeeAddress: ieee, type: type, networkAddress: Int.random(in: 10000...60000),
+            ieeeAddress: ieee, type: type, networkAddress: 10_000 + ieee.utf8.reduce(0) { ($0 &* 31 &+ Int($1)) % 50_000 },
             supported: true, friendlyName: name, disabled: false,
             description: nil, definition: definition,
             powerSource: powerSource, modelId: model,

@@ -31,24 +31,24 @@ final class BridgeRegistryTests: MultiBridgeTestCase {
         let second = makeConfig(name: "Lab")
 
         registry.connect(config: first)
-        let originalPrimary = registry.primaryBridgeID
+        XCTAssertEqual(registry.primaryBridgeID, first.id)
         registry.connect(config: second)
 
         XCTAssertEqual(registry.sessions.count, 2)
         // Adding a second bridge does NOT change focus — that's the explicit
         // multi-bridge contract: a new connection never disturbs the focused one.
-        XCTAssertEqual(registry.primaryBridgeID, originalPrimary)
+        XCTAssertEqual(registry.primaryBridgeID, first.id)
     }
 
-    func testReConnectingSameBridgeReusesSession() {
+    func testReConnectingSameBridgeReusesSession() throws {
         let history = ConnectionHistory()
         let registry = makeRegistry(history: history)
         let cfg = makeConfig(name: "Main")
 
         registry.connect(config: cfg)
-        let firstSessionRef = registry.session(for: cfg.id)
+        let firstSessionRef = try XCTUnwrap(registry.session(for: cfg.id))
         registry.connect(config: cfg)
-        let secondSessionRef = registry.session(for: cfg.id)
+        let secondSessionRef = try XCTUnwrap(registry.session(for: cfg.id))
 
         XCTAssertEqual(registry.sessions.count, 1)
         XCTAssertTrue(firstSessionRef === secondSessionRef)
@@ -56,9 +56,15 @@ final class BridgeRegistryTests: MultiBridgeTestCase {
 
     func testSetPrimaryNoOpForUnknownID() {
         let registry = makeRegistry(history: ConnectionHistory())
-        let unknown = UUID()
-        registry.setPrimary(unknown)
-        XCTAssertNil(registry.primaryBridgeID)
+        let main = makeConfig(name: "Main")
+        registry.connect(config: main)
+
+        registry.setPrimary(UUID())
+        XCTAssertEqual(registry.primaryBridgeID, main.id)
+
+        let empty = makeRegistry(history: ConnectionHistory())
+        empty.setPrimary(UUID())
+        XCTAssertNil(empty.primaryBridgeID)
     }
 
     func testSetPrimarySwitchesFocus() {
@@ -86,6 +92,7 @@ final class BridgeRegistryTests: MultiBridgeTestCase {
         let registry = makeRegistry(history: ConnectionHistory())
         registry.connect(config: makeConfig(name: "A"))
         registry.connect(config: makeConfig(name: "B"))
+        XCTAssertEqual(registry.sessions.count, 2)
 
         await registry.disconnectAll()
 

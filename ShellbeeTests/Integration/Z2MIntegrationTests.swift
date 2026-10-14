@@ -22,7 +22,12 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
     }
 
     override func tearDown() async throws {
-        await MainActor.run { store = nil }
+        // testReloadedPersistedConfig... writes the real saved-connection slot.
+        await MainActor.run {
+            ConnectionConfig.clear()
+            ConnectionConfig.clearPersistedSecretsForTests()
+            store = nil
+        }
         try await super.tearDown()
     }
 
@@ -40,8 +45,8 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
         }
 
         await client.disconnect()
-        XCTAssertNotNil(info)
-        XCTAssertFalse(info?.version.isEmpty ?? true)
+        let received = try XCTUnwrap(info, "No bridge/info received")
+        XCTAssertFalse(received.version.isEmpty)
     }
 
     @MainActor
@@ -62,8 +67,8 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
         }
 
         await client.disconnect()
-        XCTAssertNotNil(info)
-        XCTAssertFalse(info?.version.isEmpty ?? true)
+        let received = try XCTUnwrap(info, "No bridge/info received")
+        XCTAssertFalse(received.version.isEmpty)
     }
 
     @MainActor
@@ -150,7 +155,7 @@ final class Z2MIntegrationTests: XCTestCase, @unchecked Sendable {
         }
         await client.disconnect()
 
-        let nonCoordinator = (devices ?? []).filter { $0.type != .coordinator }
+        let nonCoordinator = try XCTUnwrap(devices).filter { $0.type != .coordinator }
         let categories = Set(nonCoordinator.map(\.category))
 
         let expected: Set<Device.Category> = [.light, .switchPlug, .sensor, .climate, .cover, .lock, .fan, .remote]

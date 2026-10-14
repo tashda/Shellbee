@@ -14,7 +14,12 @@ import XCTest
 /// device lists do not bleed into each other (the secondary seeder's
 /// `FIXTURE_PREFIX=Lab` makes friendly names visibly distinct).
 ///
-/// If either bridge is unreachable, every test in this file is skipped.
+/// If either bridge is unreachable, every test in this file fails (a dead
+/// bridge must never read as a pass).
+///
+/// Keep `try XCTUnwrap` out of the tests that use `async let`: throwing after
+/// the awaits aborts the process on iOS before 26.4 ("freed pointer was not
+/// the last allocation"), which fails the CI step with the test never re-run.
 final class MultiBridgeIntegrationTests: XCTestCase, @unchecked Sendable {
 
     static let primaryHost = "localhost"
