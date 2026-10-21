@@ -179,4 +179,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
-        run: gh pr merge "$PR_NUMBER" --squash --delete-branch
+        run: |
+          # Branch protection normally refuses a merge opened by the
+          # workflow token, so the refresh PR waits for a person. That is
+          # the expected outcome, not a failure; anything else still fails.
+          if ! out=$(gh pr merge "$PR_NUMBER" --squash --delete-branch 2>&1); then
+            if grep -q "base branch policy prohibits the merge" <<<"$out"; then
+              echo "::notice::Refresh PR #$PR_NUMBER is ready and needs a manual squash-merge."
+              echo "Refresh PR #$PR_NUMBER is ready and needs a manual squash-merge." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "$out" >&2
+              exit 1
+            fi
+          fi

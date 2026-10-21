@@ -110,7 +110,7 @@ jobs:
 
       - name: Resolve Swift packages
         run: |
-          xcodebuild -resolvePackageDependencies \
+          ./.github/scripts/resolve-packages.sh \
             -project Shellbee.xcodeproj \
             -scheme "$SCHEME" \
             -derivedDataPath "$DERIVED_DATA"
