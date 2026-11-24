@@ -95,7 +95,7 @@ jobs:
 
       - name: Resolve Swift packages
         run: |
-          xcodebuild -resolvePackageDependencies \
+          ./.github/scripts/resolve-packages.sh \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -derivedDataPath "$DERIVED_DATA"
 
@@ -227,6 +227,12 @@ jobs:
         id: sim
         run: ./.github/scripts/pick-simulator.sh '^iPad'
 
+      - name: Resolve Swift packages
+        run: |
+          ./.github/scripts/resolve-packages.sh \
+            -project Shellbee.xcodeproj -scheme "$SCHEME" \
+            -derivedDataPath "$DERIVED_DATA"
+
       - name: Build for iPad
         env:
           DESTINATION: platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}
@@ -302,7 +308,7 @@ jobs:
 
       - name: Resolve Swift packages
         run: |
-          xcodebuild -resolvePackageDependencies \
+          ./.github/scripts/resolve-packages.sh \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -derivedDataPath "$DERIVED_DATA"
 
@@ -445,7 +451,7 @@ jobs:
 
       - name: Resolve Swift packages
         run: |
-          xcodebuild -resolvePackageDependencies \
+          ./.github/scripts/resolve-packages.sh \
             -project Shellbee.xcodeproj -scheme "$SCHEME" \
             -derivedDataPath "$DERIVED_DATA"
 

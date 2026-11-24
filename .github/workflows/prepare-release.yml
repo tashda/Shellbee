@@ -172,11 +172,37 @@ jobs:
             exit 1
           fi
 
-          gh run watch "$RUN_ID" --exit-status --interval 10
+          # A job that never got a runner is rerun once by
+          # rerun-unstarted.yml as a new attempt of the same run, so keep
+          # watching while one is starting.
+          for pass in 1 2; do
+            if gh run watch "$RUN_ID" --exit-status --interval 10; then
+              exit 0
+            fi
+            [ "$pass" = 2 ] && exit 1
+            sleep 45
+            status=$(gh run view "$RUN_ID" --json status --jq .status)
+            if [ "$status" = "completed" ]; then
+              exit 1
+            fi
+            echo "Fast CI was rerun (status: $status); watching the new attempt."
+          done
 
       - name: Squash-merge refreshed bundles
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
-        run: gh pr merge "$PR_NUMBER" --squash --delete-branch
+        run: |
+          # Branch protection normally refuses a merge opened by the
+          # workflow token, so the refresh PR waits for a person. That is
+          # the expected outcome, not a failure; anything else still fails.
+          if ! out=$(gh pr merge "$PR_NUMBER" --squash --delete-branch 2>&1); then
+            if grep -q "base branch policy prohibits the merge" <<<"$out"; then
+              echo "::notice::Refresh PR #$PR_NUMBER is ready and needs a manual squash-merge."
+              echo "Refresh PR #$PR_NUMBER is ready and needs a manual squash-merge." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "$out" >&2
+              exit 1
+            fi
+          fi

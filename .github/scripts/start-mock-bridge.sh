@@ -28,16 +28,28 @@ if [[ "${MULTI_BRIDGE:-0}" == "1" ]] || [[ "${1:-}" == "--dual" ]]; then
   DUAL=1
 fi
 
+# Package downloads fail now and then for reasons that have nothing to do
+# with the app, so give each a few tries before failing the job.
+retry() {
+  local n
+  for n in 1 2 3 4; do
+    "$@" && return 0
+    echo "::warning::'$*' failed (attempt $n of 4)" >&2
+    sleep $((n * 10))
+  done
+  return 1
+}
+
 echo "==> Installing mosquitto and Python deps"
-brew install mosquitto
+retry brew install mosquitto
 
 # Homebrew Python on macOS GitHub runners is PEP 668 externally-managed,
 # so install Python deps into a dedicated venv and use that interpreter.
 VENV="$LOG_DIR/z2m-venv"
 python3 -m venv "$VENV"
 PYTHON="$VENV/bin/python"
-"$PYTHON" -m pip install --upgrade --quiet pip
-"$PYTHON" -m pip install --quiet -r "$REPO_ROOT/docker/seeder/requirements.txt" websockets
+retry "$PYTHON" -m pip install --upgrade --quiet pip
+retry "$PYTHON" -m pip install --quiet -r "$REPO_ROOT/docker/seeder/requirements.txt" websockets
 
 write_mosq_conf() {
   local port="$1" path="$2"
