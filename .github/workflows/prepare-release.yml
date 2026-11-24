@@ -172,7 +172,21 @@ jobs:
             exit 1
           fi
 
-          gh run watch "$RUN_ID" --exit-status --interval 10
+          # A job that never got a runner is rerun once by
+          # rerun-unstarted.yml as a new attempt of the same run, so keep
+          # watching while one is starting.
+          for pass in 1 2; do
+            if gh run watch "$RUN_ID" --exit-status --interval 10; then
+              exit 0
+            fi
+            [ "$pass" = 2 ] && exit 1
+            sleep 45
+            status=$(gh run view "$RUN_ID" --json status --jq .status)
+            if [ "$status" = "completed" ]; then
+              exit 1
+            fi
+            echo "Fast CI was rerun (status: $status); watching the new attempt."
+          done
 
       - name: Squash-merge refreshed bundles
         if: steps.diff.outputs.changed == 'true'

@@ -1,0 +1,37 @@
+name: Rerun unstarted jobs
+
+# GitHub's hosted macOS runners are sometimes at capacity. A job that never
+# gets a runner ends "cancelled" with no steps run, which is not a code
+# failure. When a CI run finishes with such jobs, rerun the run's failed and
+# cancelled jobs once. A run cannot rerun itself while it is still going, so
+# this is a separate workflow.
+
+on:
+  workflow_run:
+    workflows: ['CI (Fast)', 'CI (Full)']
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  rerun:
+    name: Rerun jobs that never got a runner
+    # Cancelled runs (a person cancelled, or a newer push superseded it)
+    # are left alone; so is every run past its first attempt.
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt == 1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rerun if a job never started
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          unstarted=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs" --paginate \
+            --jq '[.jobs[] | select(.conclusion == "cancelled" and ((.steps // []) | length == 0))] | length')
+          if [ "$unstarted" -gt 0 ]; then
+            echo "$unstarted job(s) never got a runner; rerunning once."
+            gh run rerun "$RUN_ID" --failed
+          else
+            echo "No unstarted jobs; leaving the failure as it is."
+          fi
